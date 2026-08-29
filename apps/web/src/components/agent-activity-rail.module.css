@@ -105,6 +105,41 @@
   line-height: 1.5;
 }
 
+.prompt {
+  display: grid;
+  gap: 11px;
+  margin-block-start: 18px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--jb-radius-md);
+  background: var(--color-surface-subtle);
+  padding: 14px;
+}
+
+.prompt q {
+  color: var(--color-ink);
+  font-size: 11px;
+  font-weight: 550;
+  line-height: 1.5;
+}
+
+.prompt button {
+  display: inline-flex;
+  min-block-size: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-size: 10px;
+  font-weight: 630;
+}
+
+.prompt button:hover {
+  background: var(--color-canvas);
+}
+
 .spin {
   animation: activity-spin 900ms linear infinite;
 }

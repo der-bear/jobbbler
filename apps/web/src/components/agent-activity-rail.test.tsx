@@ -56,7 +56,8 @@ describe("AgentActivityRail", () => {
   it("shows a useful empty receipt state when an agent is ready", () => {
     const markup = renderToStaticMarkup(<AgentActivityRail activities={[]} webMcpAvailable />);
 
-    expect(markup).toContain("No agent actions yet.");
-    expect(markup).toContain("When an agent uses a tool, its outcome appears here.");
+    expect(markup).toContain("Waiting for an agent");
+    expect(markup).toContain("Tool calls and their visible results will appear here.");
+    expect(markup).toContain("Copy prompt");
   });
 });

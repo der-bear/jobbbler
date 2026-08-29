@@ -21,7 +21,7 @@ import {
 
 import styles from "./agent-panel.module.css";
 
-const panelTabs = ["guide", "activity", "tools"] as const;
+const panelTabs = ["activity", "tools", "guide"] as const;
 type PanelTab = (typeof panelTabs)[number];
 
 interface AgentPanelSurfaceProps {
@@ -83,7 +83,7 @@ export function AgentPanelSurface({
   supported,
   width,
 }: AgentPanelSurfaceProps) {
-  const [selectedTab, setSelectedTab] = useState<PanelTab>("guide");
+  const [selectedTab, setSelectedTab] = useState<PanelTab>("activity");
   const mountedAt = useRef(Date.now());
   const panelRef = useRef<HTMLElement | null>(null);
   const tabRefs = useRef<Partial<Record<PanelTab, HTMLButtonElement | null>>>({});
@@ -98,7 +98,7 @@ export function AgentPanelSurface({
   }, [latestActivity]);
 
   useEffect(() => {
-    if (modal) tabRefs.current.guide?.focus();
+    if (modal) tabRefs.current.activity?.focus();
   }, [modal]);
 
   function selectTab(tab: PanelTab, userInitiated = true) {
@@ -111,16 +111,16 @@ export function AgentPanelSurface({
     const index = panelTabs.indexOf(tab);
     if (event.key === "ArrowRight") {
       event.preventDefault();
-      selectTab(panelTabs[(index + 1) % panelTabs.length] ?? "guide");
+      selectTab(panelTabs[(index + 1) % panelTabs.length] ?? "activity");
     } else if (event.key === "ArrowLeft") {
       event.preventDefault();
-      selectTab(panelTabs[(index - 1 + panelTabs.length) % panelTabs.length] ?? "guide");
+      selectTab(panelTabs[(index - 1 + panelTabs.length) % panelTabs.length] ?? "activity");
     } else if (event.key === "Home") {
       event.preventDefault();
-      selectTab("guide");
+      selectTab("activity");
     } else if (event.key === "End") {
       event.preventDefault();
-      selectTab("tools");
+      selectTab("guide");
     }
   }
 
@@ -181,7 +181,7 @@ export function AgentPanelSurface({
 
   return (
     <aside
-      aria-label="Agent layer"
+      aria-label="Agent view"
       aria-modal={modal || undefined}
       className={styles["panel"]}
       onKeyDown={handlePanelKey}
@@ -203,7 +203,7 @@ export function AgentPanelSurface({
 
       <header className={styles["header"]}>
         <div className={styles["titleRow"]}>
-          <h2>Agent layer</h2>
+          <h2>Agent view</h2>
           <button
             aria-label="Close agent panel"
             className={styles["close"]}
@@ -236,11 +236,11 @@ export function AgentPanelSurface({
       <div aria-label="Agent panel sections" className={styles["tabs"]} role="tablist">
         {panelTabs.map((tab) => {
           const label =
-            tab === "guide"
-              ? "Guide"
-              : tab === "activity"
-                ? `Activity${activities.length === 0 ? "" : ` · ${String(activities.length)}`}`
-                : "Tools";
+            tab === "activity"
+              ? `Activity${activities.length === 0 ? "" : ` · ${String(activities.length)}`}`
+              : tab === "tools"
+                ? "Tools"
+                : "Guide";
           return (
             <button
               aria-controls={`agent-panel-${tab}`}

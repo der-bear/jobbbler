@@ -1,12 +1,18 @@
+"use client";
+
 import {
   ArrowClockwiseIcon,
+  CheckIcon,
   CheckCircleIcon,
+  CopyIcon,
   WarningCircleIcon,
   XIcon,
 } from "@phosphor-icons/react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import type { ToolActivity } from "@jobbbler/contracts";
+
+import { agentExamplePrompt } from "./agent-guide";
 
 import styles from "./agent-activity-rail.module.css";
 
@@ -61,6 +67,14 @@ export function AgentActivityRail({
   const itemLimit = Math.max(0, maxItems);
   const visibleActivities = itemLimit === 0 ? [] : activities.slice(-itemLimit).reverse();
   const latestActivity = activities.at(-1);
+  const [copied, setCopied] = useState(false);
+
+  async function copyPrompt() {
+    if (navigator.clipboard === undefined) return;
+    await navigator.clipboard.writeText(agentExamplePrompt);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1_600);
+  }
 
   return (
     <section
@@ -75,12 +89,25 @@ export function AgentActivityRail({
 
       {visibleActivities.length === 0 ? (
         <div className={styles["empty"]} role="status">
-          <p>{webMcpAvailable ? "No agent actions yet." : "No agent actions in this browser."}</p>
-          <span>
-            {webMcpAvailable
-              ? "When an agent uses a tool, its outcome appears here."
-              : "The job portal still works normally."}
-          </span>
+          <p>{webMcpAvailable ? "Waiting for an agent" : "No agent actions in this browser."}</p>
+          {webMcpAvailable ? (
+            <>
+              <span>Tool calls and their visible results will appear here.</span>
+              <div className={styles["prompt"]}>
+                <q>{agentExamplePrompt}</q>
+                <button onClick={() => void copyPrompt()} type="button">
+                  {copied ? (
+                    <CheckIcon aria-hidden="true" size={14} />
+                  ) : (
+                    <CopyIcon aria-hidden="true" size={14} />
+                  )}
+                  {copied ? "Copied" : "Copy prompt"}
+                </button>
+              </div>
+            </>
+          ) : (
+            <span>The job portal still works normally.</span>
+          )}
         </div>
       ) : (
         <ol className={styles["timeline"]}>

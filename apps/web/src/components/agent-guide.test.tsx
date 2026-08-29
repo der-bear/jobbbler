@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { AgentTools } from "./agent-guide";
 
 describe("AgentTools", () => {
-  it("separates the stable core, current context, and compact capability map", () => {
+  it("shows what is active now and the complete grouped capability catalog", () => {
     const markup = renderToStaticMarkup(
       <AgentTools
         tools={[
@@ -20,11 +20,16 @@ describe("AgentTools", () => {
       />,
     );
 
-    expect(markup).toContain("Site-wide");
-    expect(markup).toContain("This page");
-    expect(markup).toContain("View all 29 tools");
+    expect(markup).toContain("Active now");
+    expect(markup).toContain("All capabilities");
+    expect(markup).toContain("29 tools");
+    expect(markup).toContain("Find");
+    expect(markup).toContain("Inspect and compare");
+    expect(markup).toContain("Alerts");
+    expect(markup).toContain("Apply");
     expect(markup).toContain("Action");
     expect(markup).toContain("get_search_state");
-    expect(markup).not.toContain("request_application_access");
+    expect(markup).toContain("request_application_access");
+    expect(markup).not.toContain("View all 29 tools");
   });
 });

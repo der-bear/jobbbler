@@ -14,7 +14,7 @@ const coreTools: readonly RegisteredToolSummary[] = [
 ];
 
 describe("AgentPanelSurface", () => {
-  it("starts with a concise guide and makes the capability hierarchy obvious", () => {
+  it("starts with Activity and keeps the technical proof hierarchy obvious", () => {
     const markup = renderToStaticMarkup(
       <AgentPanelSurface
         activities={[]}
@@ -35,13 +35,17 @@ describe("AgentPanelSurface", () => {
       />,
     );
 
-    expect(markup).toContain("Agent layer");
+    expect(markup).toContain("Agent view");
     expect(markup).toContain("WebMCP ready");
     expect(markup).toContain("7 tools active. Discovery is automatic.");
-    expect(markup).toContain('aria-selected="true"');
-    expect(markup).toContain("Try it with one prompt");
-    expect(markup).toContain("No setup. Every agent action stays visible.");
-    expect(markup).not.toContain("request_application_access");
+    expect(markup.indexOf('id="agent-tab-activity"')).toBeLessThan(
+      markup.indexOf('id="agent-tab-tools"'),
+    );
+    expect(markup.indexOf('id="agent-tab-tools"')).toBeLessThan(
+      markup.indexOf('id="agent-tab-guide"'),
+    );
+    expect(markup).toContain('aria-controls="agent-panel-activity" aria-selected="true"');
+    expect(markup).toContain("Waiting for an agent");
   });
 
   it("exposes a keyboard-operable resize separator with its current width", () => {

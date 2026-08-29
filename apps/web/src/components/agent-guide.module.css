@@ -5,14 +5,27 @@
 
 .guide section {
   display: grid;
-  gap: 11px;
+  gap: 10px;
+}
+
+.guide h3,
+.guide h4 {
+  margin: 0;
+  color: var(--color-ink);
 }
 
 .guide h3 {
-  margin: 0;
   font-size: 13px;
-  font-weight: 660;
+  font-weight: 680;
   letter-spacing: -0.015em;
+}
+
+.guide h4 {
+  color: var(--color-ink-muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
 }
 
 .promise {
@@ -22,125 +35,138 @@
   font-weight: 650;
 }
 
-.steps {
-  display: grid;
-  gap: 10px;
+.guideText,
+.control p,
+.note {
   margin: 0;
-  padding-inline-start: 22px;
   color: var(--color-ink-muted);
   font-size: 12px;
   line-height: 1.55;
 }
 
-.steps li::marker {
-  color: var(--color-signal-strong);
-  font-family: var(--jb-font-mono);
-  font-size: 10px;
-}
-
-.steps q {
+.prompt {
+  display: block;
+  margin: 2px 0 0;
+  border-inline-start: 2px solid var(--jb-signal);
   color: var(--color-ink);
+  padding: 3px 0 3px 12px;
+  font-size: 12px;
   font-weight: 560;
+  line-height: 1.55;
 }
 
-.outcomes,
 .control,
-.context {
+.catalog {
   border-block-start: 1px solid var(--color-line);
   padding-block-start: 20px;
 }
 
-.outcomes ul,
-.toolList {
-  display: grid;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.outcomes li {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
+.sectionHeading,
+.toolTitle,
+.toolMeta {
+  display: flex;
+  align-items: baseline;
   gap: 8px;
-  border-block-end: 1px solid var(--color-line);
-  padding-block: 12px;
-}
-
-.outcomes li:first-child {
-  padding-block-start: 2px;
-}
-
-.outcomes svg {
-  margin-block-start: 2px;
-  color: var(--color-signal-strong);
-}
-
-.outcomes strong {
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.outcomes p,
-.control p,
-.toolList p,
-.note,
-.empty {
-  margin: 4px 0 0;
-  color: var(--color-ink-muted);
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-.control p {
-  margin: 0;
-}
-
-.guide code {
-  color: var(--color-ink);
-  font-family: var(--jb-font-mono);
-  font-size: 10px;
-  font-weight: 500;
 }
 
 .sectionHeading {
-  display: flex;
-  align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
 }
 
 .sectionHeading > span {
   color: var(--color-ink-subtle);
   font-family: var(--jb-font-mono);
   font-size: 9px;
-  text-transform: uppercase;
 }
 
-.note,
-.empty {
-  margin: -3px 0 2px;
+.note {
+  margin-block-start: -3px;
 }
 
-.toolList li {
-  border-block-end: 1px solid var(--color-line);
+.activeGroups,
+.capabilityGroups {
+  display: grid;
+  gap: 20px;
+}
+
+.activeGroups > div,
+.capabilityGroups > section {
+  display: grid;
+  gap: 7px;
+}
+
+.toolList {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.toolList > li {
+  position: relative;
+  display: grid;
+  gap: 3px;
+  border-block-start: 1px solid var(--color-line);
   padding-block: 11px;
 }
 
-.toolList li > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+.toolList > li:last-child {
+  border-block-end: 1px solid var(--color-line);
 }
 
-.toolList li > div > span {
+.toolList > li[data-active="true"]::before {
+  position: absolute;
+  inset-block: 11px;
+  inset-inline-start: -10px;
+  inline-size: 2px;
+  border-radius: 999px;
+  background: var(--jb-signal);
+  content: "";
+}
+
+.toolTitle {
+  justify-content: space-between;
+}
+
+.toolTitle strong {
+  color: var(--color-ink);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.activeMark {
+  color: var(--color-signal-strong);
+  font-size: 8px;
+  font-weight: 650;
+}
+
+.guide code {
+  overflow: hidden;
   color: var(--color-ink-subtle);
+  font-family: var(--jb-font-mono);
   font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .toolList p {
+  margin: 1px 0 0;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.toolMeta {
   margin-block-start: 3px;
+  color: var(--color-ink-subtle);
+  font-family: var(--jb-font-mono);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.toolMeta span + span::before {
+  margin-inline-end: 8px;
+  content: "·";
 }
 
 .moreLink {
