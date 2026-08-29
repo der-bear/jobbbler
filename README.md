@@ -192,11 +192,11 @@ bounds, WebMCP registration/lifecycle/output budgets, security headers, and
 production builds. Browser QA evidence is recorded in
 [design-qa.md](design-qa.md).
 
-The last recorded full run (`pnpm verify` with 97 files passed and 1 skipped,
-403 tests passed and 25 skipped, a passing production build, focused E2E
-11/11, and the local PostgreSQL 15 contract 30/30) predates the agent-first
-application pass; the release candidate re-runs the full gate and records
-fresh numbers before publishing.
+The current release candidate passes `pnpm verify`: 104 test files passed and
+1 skipped, 473 tests passed and 27 skipped, and both production builds
+completed. The PostgreSQL 16 contract passes 34/34, including concurrent
+authorization and indexed location-discovery cases. The final published build
+is smoke-tested again before submission.
 
 ## Security and privacy
 
