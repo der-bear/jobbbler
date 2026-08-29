@@ -307,7 +307,6 @@ button.jb-chip {
   align-items: flex-start;
   background: var(--jb-surface);
   border: 1px solid var(--jb-border-strong);
-  border-left: 3px solid var(--jb-signal);
   border-radius: var(--jb-radius-md);
   box-shadow: var(--jb-shadow-raised);
   display: grid;
@@ -316,10 +315,10 @@ button.jb-chip {
   padding: 0.875rem;
 }
 .jb-toast--warning {
-  border-left-color: var(--jb-warning);
+  border-color: color-mix(in srgb, var(--jb-warning) 45%, var(--jb-border-strong));
 }
 .jb-toast--danger {
-  border-left-color: var(--jb-danger);
+  border-color: color-mix(in srgb, var(--jb-danger) 45%, var(--jb-border-strong));
 }
 .jb-toast p {
   color: var(--jb-text-muted);
