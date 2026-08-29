@@ -279,29 +279,6 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
       storage.delegations.approve(expiredDelegation.id, ownerId, now),
     ).rejects.toMatchObject({ code: "CONFLICT" });
 
-    const racingDelegation = {
-      ...delegation,
-      id: "delegation-postgres-auth-race",
-    };
-    await storage.delegations.insert(racingDelegation);
-    await Promise.allSettled([
-      storage.delegations.approve(racingDelegation.id, ownerId, now, {
-        channel: "agent_client",
-        requestId: racingDelegation.id,
-        action: "approved",
-        evidenceVersion: "agent-interaction-v1",
-      }),
-      storage.delegations.revoke(racingDelegation.id, ownerId, now, {
-        channel: "agent_client",
-        requestId: racingDelegation.id,
-        action: "declined",
-        evidenceVersion: "agent-interaction-v1",
-      }),
-    ]);
-    await expect(storage.delegations.getById(racingDelegation.id, ownerId)).resolves.toMatchObject({
-      status: "revoked",
-    });
-
     const newerDelegation = {
       ...delegation,
       id: "delegation-postgres-auth-newer",
@@ -466,6 +443,74 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
     ).resolves.toMatchObject({ receipt, inserted: false });
     await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toEqual(receipt);
     await storage.close();
+  });
+
+  it("never reactivates a delegation when approval and revocation race", async () => {
+    const storage = createPostgresStorage(databaseUrl!);
+    await resetPostgresSchema(storage.sql);
+    await migratePostgres(storage.sql);
+    close = async () => storage.close();
+
+    const now = "2026-08-29T10:00:00.000Z";
+    const ownerId = "owner-postgres-delegation-race";
+    const draftId = "application-postgres-delegation-race";
+    const sessionId = "agent-session-postgres-delegation-race";
+    await storage.owners.insert({ id: ownerId, createdAt: now });
+    await storage.applications.insert({
+      id: draftId,
+      ownerId,
+      jobId: "job-postgres-delegation-race",
+      state: "draft",
+      version: 0,
+      answers: [],
+      coverLetter: null,
+      acceptedByHuman: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await storage.agentSessions.insert({
+      id: sessionId,
+      ownerId,
+      draftId,
+      tokenHash: "d".repeat(64),
+      expiresAt: "2026-08-29T11:00:00.000Z",
+      createdAt: now,
+      revokedAt: null,
+    });
+    const delegation = {
+      id: "delegation-postgres-race",
+      ownerId,
+      agentSessionId: sessionId,
+      resourceType: "application_draft" as const,
+      resourceId: draftId,
+      operations: ["edit_application"] as const,
+      purpose: "Prepare the selected application.",
+      status: "requested" as const,
+      expiresAt: "2026-08-29T11:00:00.000Z",
+      createdAt: now,
+      approvedAt: null,
+      revokedAt: null,
+    };
+    await storage.delegations.insert(delegation);
+
+    await Promise.allSettled([
+      storage.delegations.approve(delegation.id, ownerId, now, {
+        channel: "agent_client",
+        requestId: delegation.id,
+        action: "approved",
+        evidenceVersion: "agent-interaction-v1",
+      }),
+      storage.delegations.revoke(delegation.id, ownerId, now, {
+        channel: "agent_client",
+        requestId: delegation.id,
+        action: "declined",
+        evidenceVersion: "agent-interaction-v1",
+      }),
+    ]);
+
+    await expect(storage.delegations.getById(delegation.id, ownerId)).resolves.toMatchObject({
+      status: "revoked",
+    });
   });
 
   it("serializes verification and recovery consumption while rotating exactly one session", async () => {

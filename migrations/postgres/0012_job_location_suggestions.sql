@@ -6,7 +6,7 @@ CREATE TABLE jobbbler.job_location_suggestions (
 );
 
 CREATE INDEX job_location_suggestions_prefix_idx
-  ON jobbbler.job_location_suggestions(normalized_value, job_id);
+  ON jobbbler.job_location_suggestions((normalized_value COLLATE "C"), job_id);
 
 CREATE OR REPLACE FUNCTION jobbbler.sync_job_location_suggestions()
 RETURNS trigger

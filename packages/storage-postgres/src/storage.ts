@@ -883,6 +883,7 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
       async suggestLocations(query, limit) {
         const normalizedQuery = query.trim().slice(0, 120).toLocaleLowerCase("en");
         const safeLimit = Math.min(20, Math.max(1, Math.trunc(limit)));
+        const prefixUpperBound = `${normalizedQuery}${String.fromCodePoint(0x10ffff)}`;
         const rows =
           normalizedQuery.length === 0
             ? await sql<{ readonly value: string }[]>`
@@ -894,8 +895,8 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
             : await sql<{ readonly value: string }[]>`
                 SELECT min(value) AS value
                 FROM jobbbler.job_location_suggestions
-                WHERE normalized_value >= ${normalizedQuery}
-                  AND normalized_value < ${`${normalizedQuery}\uffff`}
+                WHERE normalized_value COLLATE "C" >= ${normalizedQuery}
+                  AND normalized_value COLLATE "C" < ${prefixUpperBound}
                 GROUP BY normalized_value
                 ORDER BY
                   CASE WHEN normalized_value = ${normalizedQuery} THEN 0 ELSE 1 END,
