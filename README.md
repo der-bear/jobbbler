@@ -13,14 +13,15 @@ roles: search, filters, saved alerts, and one deliberate application at a time.
 Describe what you want once, in plain words, to a compatible browser agent; the
 agent runs the search on the real site, the server keeps checking after you
 close the page, and the next answer contains only what changed. When it is time
-to apply, the flow deliberately slows down: the exact disclosure is shown,
-explicit permission is recorded, and the final confirmation stays human.
+to apply, the flow deliberately slows down: the exact disclosure is shown, and
+one explicit decision — bound to that exact application — is recorded before
+anything is shared or submitted.
 
 The technology that makes this possible is WebMCP — no separately installed or
-declared MCP server. A global Agent layer is available on every page: six
-stable, site-wide tools make the main journeys reachable, while contextual
-tools appear only where the current route or application state makes them
-safe and useful.
+declared MCP server. A global Agent layer is available on every page: seven
+stable, site-wide core tools make the main journeys reachable, and every
+contextual tool stays registered across navigation, gating itself on page and
+workflow state at execution time.
 
 > Not an AI job board. A proof that any data-rich website can become safely
 > operable by an external browser agent — without a separate MCP server,
@@ -37,12 +38,13 @@ Built for the OpenAI WebMCP Challenge.
   salary semantics, what to verify, and fit evidence stay visible in the
   interface. Salary ranking is currency-aware (EUR, USD, GBP, and CAD at pinned
   rates) and explains itself with evidence strings.
-- **Global agent layer.** Six stable tools are available on every page; search,
-  role, comparison, saved-alert, and application screens add small,
-  purpose-specific tool sets. Navigation and application state remove stale
-  contextual tools, and the site describes itself — an agent can read accepted
-  filter vocabulary instead of guessing enums and ask how a role accepts
-  applications before starting one.
+- **Global agent layer.** Seven stable core tools plus purpose-specific
+  contextual tools for search, roles, comparison, saved alerts, and
+  applications — all registered on every page, so navigation never costs an
+  agent a capability. State-gated tools answer with a clear next step when
+  their moment has not arrived, and the site describes itself — an agent can
+  read accepted filter vocabulary instead of guessing enums and ask how a role
+  accepts applications before starting one.
 - **Observable agent work.** The Agent layer uses a clear **Guide**,
   **Activity**, **Tools** hierarchy. It shows readiness, the current tools, and
   human-readable activity without taking over the normal portal. Every activity
@@ -54,10 +56,11 @@ Built for the OpenAI WebMCP Challenge.
   recovery of saved searches without turning the first visit into an account
   wall.
 - **Independent authority layers.** Agent delegation, payload-bound data
-  permission, immutable review, and final confirmation are separate
-  server-enforced decisions. The agent can request each decision but cannot
-  approve it; the visible private workspace records what the person approved,
-  bound to the exact application.
+  permission, immutable review, and single-use confirmation are separate
+  server-enforced decisions. The agent presents each decision to the person —
+  in their agent client or on the private review page — and the server accepts
+  it only when it is bound to the exact server-issued request and draft
+  version, recording the decision channel as evidence.
 - **Truthful actions.** Internal fictional-demo applications produce an
   immutable receipt. External roles end in an honest handoff to the employer's
   website (`handed_off`, never a fake `submitted`); Jobbbler never claims an
@@ -68,19 +71,19 @@ Built for the OpenAI WebMCP Challenge.
 
 ## Product tour
 
-| Find once                                                                                                            | Stay updated                                                                            | Apply with control                                                                                                      |
-| -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Search and live filters — chips, multi-selects, a salary slider — with every result opening as a readable role page. | Save the exact query, preview the timing, verify your email, and see only what changed. | Accept candidate facts, seal a review, approve the exact disclosure, and issue one five-minute single-use confirmation. |
-| Evidence, trade-offs, and source freshness stay on the role page.                                                    | Pause or resume checking without exposing an address or credential to WebMCP.           | Agent suggestions remain visibly unaccepted until the human edits or approves them.                                     |
+| Find once                                                                                                            | Stay updated                                                                            | Apply with control                                                                                                |
+| -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Search and live filters — chips, multi-selects, a salary slider — with every result opening as a readable role page. | Save the exact query, preview the timing, verify your email, and see only what changed. | Review one document-like draft, decide once on the exact disclosure, and the sealed payload submits exactly once. |
+| Evidence, trade-offs, and source freshness stay on the role page.                                                    | Pause or resume checking without exposing an address or credential to WebMCP.           | Agent-prepared answers keep their provenance and stay editable until the person's review.                         |
 
 ![A role page reads like an article](docs/design/qa-role-article.png)
 
 ## WebMCP surface
 
 Jobbbler uses `document.modelContext.registerTool` with feature detection,
-strict JSON schemas, route/state lifecycle cleanup, cancellation propagation,
-explicit annotations, and concise JSON-serializable results. A browser
-capability is never treated as identity or authorization.
+strict JSON schemas, stable global registration with state-gated execution,
+cancellation propagation, explicit annotations, and concise JSON-serializable
+results. A browser capability is never treated as identity or authorization.
 
 > Jobbbler does not only expose tools. It publishes a live workflow manifest
 > that helps an external agent compose those tools into safe, useful outcomes.
@@ -88,13 +91,14 @@ capability is never treated as identity or authorization.
 `plan_job_workflow` returns recommended safe steps for a goal from the current
 page. It is advisory only: it plans, it never acts.
 
-The catalog has **26 tools**: six stable tools on every page, plus contextual
-tools that are registered only where they apply. The stable core is
+The catalog has **24 tools**, all registered on every page. The stable core is
 `plan_job_workflow`, `get_site_capabilities`, `get_search_filters`,
-`search_jobs`, `open_job_details`, and `open_jobbbler_page`.
+`search_jobs`, `open_job_details`, `prepare_application`, and
+`open_jobbbler_page`. The contextual tools, grouped by the page that owns
+them, gate themselves on state at execution time:
 
 - Search `/`: `get_search_state` (including an explicit truncation summary for
-  bounded criteria), plus the stable core
+  bounded criteria)
 - Role `/jobs/:jobId`: `get_job_details`, `get_job_application_capability`
   (how this role accepts applications — what the agent may prepare, what stays
   human, and whether an external handoff is required), `compare_jobs`
@@ -103,12 +107,11 @@ tools that are registered only where they apply. The stable core is
 - Saved `/saved`: `get_saved_alerts`, `set_job_alert_state`,
   `open_saved_search`, `get_latest_search_update` (reads only what changed
   since the last check, not the full result list)
-- Application `/apply/:draftId`: nine state-gated contextual tools —
-  `get_application_state`, `request_application_access`,
-  `set_application_answer`, `validate_application`, `review_application`,
-  `request_data_permission`, `request_final_confirmation`, `submit_application`, and
-  `prepare_external_handoff` — with only the tools that fit the current
-  application step registered at any moment; the stable core remains available
+- Application `/apply/:draftId`: six outcome-oriented tools —
+  `get_application_readiness`, `request_application_assistance`,
+  `decide_application_assistance`, `propose_application_updates`,
+  `request_submission_review`, and `decide_application_submission` — each
+  answering with the next safe step when its stage has not arrived
 
 The application flow never exposes an owner ID, candidate answer, reusable
 agent token, confirmation secret, email destination, or ciphertext in tool
@@ -189,10 +192,11 @@ bounds, WebMCP registration/lifecycle/output budgets, security headers, and
 production builds. Browser QA evidence is recorded in
 [design-qa.md](design-qa.md).
 
-Recorded verification for the current release candidate: `pnpm verify` passed
-with 97 files passed and 1 skipped, 403 tests passed and 25 skipped, and a
-production build passed. The focused E2E run passed 11/11 checks; the local
-PostgreSQL 15 contract run passed 30/30 checks.
+The last recorded full run (`pnpm verify` with 97 files passed and 1 skipped,
+403 tests passed and 25 skipped, a passing production build, focused E2E
+11/11, and the local PostgreSQL 15 contract 30/30) predates the agent-first
+application pass; the release candidate re-runs the full gate and records
+fresh numbers before publishing.
 
 ## Security and privacy
 

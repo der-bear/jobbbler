@@ -16,15 +16,16 @@
 
 ## WebMCP and demo proof
 
-- [ ] Verify WebMCP in a supported browser context using the real route tools.
-- [ ] Verify the global Agent layer on more than one route: its stable six-tool
-      core remains available, while contextual tools change safely with route
-      and state.
-- [ ] Record actual registration/readiness, route-relevant tool activity,
-      search, compare, saved alert, and application boundaries.
+- [ ] Verify WebMCP in a supported browser context using the real registered
+      tools.
+- [ ] Verify the global Agent layer on more than one route: the stable
+      seven-tool core and the contextual tools stay registered everywhere, and
+      state-gated tools answer with a clear next step when they are not ready.
+- [ ] Record actual registration/readiness, tool activity, search, compare,
+      saved alert, and application boundaries.
 - [ ] Confirm the video matches the storyboard's 0–160s beats and narration
       lines, including the delta beat (“Since the last check…”) and the
-      permission stop.
+      person's decision stop before anything is shared or submitted.
 - [ ] Show that an unavailable or unsupported context leaves the ordinary UI
       usable.
 - [ ] Confirm tool output/activity does not expose secrets, reusable
@@ -38,9 +39,9 @@
       state if used.
 - [ ] Use the clearly fictional internal-demo employer for application
       submission footage.
-- [ ] Demonstrate the real agent request, the first-party payload-bound
-      approval, the delegation/review boundary, and the
-      short-lived final confirmation as distinct states.
+- [ ] Demonstrate the real agent assistance request, the person's recorded
+      decision on the exact payload-bound disclosure, and the single-use
+      confirmation inside the one review-and-decide flow.
 - [ ] Describe the stored interaction as a record of what was approved in its
       exact context, never as cryptographic proof of the human, model, or
       vendor.
@@ -54,14 +55,14 @@
 - [ ] Confirm gallery screenshots show the current global Agent layer — the
       three-tab Guide / Activity / Tools hierarchy, stable-core/contextual
       distinction, and current readiness state — not an older rail.
-- [ ] Record the current verification evidence accurately: `pnpm verify` 97
-      passed / 1 skipped files, 403 passed / 25 skipped tests, production build
-      passed; focused E2E 11/11; local PostgreSQL 15 contract 30/30.
+- [ ] Re-run `pnpm verify`, the focused E2E suite, and the local PostgreSQL
+      contract suite on the final build and record the fresh numbers; earlier
+      recorded figures predate the agent-first application pass.
 - [ ] Validate gallery image crops, captions, alt text, dimensions, and
       file-size limits on Devpost.
-- [x] Validate the current four checked-in gallery crops, authored captions,
-      3:2 dimensions, and file-size limits; recapture and revalidate them after
-      the final interface pass.
+- [ ] Recapture all four gallery crops on the final interface — the checked-in
+      images predate the agent-first application flow — then revalidate
+      captions, alt text, 3:2 dimensions, and file-size limits.
 - [ ] Check spelling, team/attribution fields, rules acknowledgement, and URLs
       immediately before submission.
 - [ ] Do not submit from this checklist. Obtain the user’s action-time

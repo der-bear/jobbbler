@@ -47,15 +47,18 @@ When the journey reaches an application, speed stops being the point.
 - Before anything starts, `get_job_application_capability` negotiates the
   ground rules for this specific role: what the agent may prepare, what stays
   human, and whether the application finishes on the employer's website.
-- The application route registers nine state-gated tools, but only those that
-  fit the current step exist at any moment. Agent suggestions
-  remain visibly unaccepted until the human edits or approves them.
+- Six outcome-oriented application tools are discoverable from every page and
+  state-gated at execution: each answers with the next safe step when its
+  moment has not arrived. Agent-prepared answers keep their provenance and
+  stay editable until the person's final review.
 - Sharing reviewed data requires explicit permission bound to the exact
   reviewed payload, recipient, purpose, fields, and notice — permission
-  applies only to this exact application. The agent can request that approval
-  but cannot grant it; the visible private workspace records the exact
-  first-party decision without claiming cryptographic identity.
-- Submission needs a fresh, short-lived, single-use human confirmation.
+  applies only to this exact application. The agent presents that request to
+  the person; Jobbbler binds the recorded decision to the exact server-issued
+  request ID and draft version and stores the decision channel as evidence,
+  without claiming cryptographic identity.
+- Submission needs a fresh, short-lived, single-use confirmation, and the
+  sealed payload cannot change between the person's review and the submit.
 - External roles end in an honest handoff (`handed_off`, never a fake
   `submitted`); Jobbbler never claims an external submission it cannot prove.
 
@@ -66,10 +69,11 @@ When the journey reaches an application, speed stops being the point.
 > without hiding what changed, and without confusing tool access with human
 > authority.
 
-Jobbbler registers 26 WebMCP tools directly in the page: six stable, site-wide
-core tools are available on every page, and 20 contextual tools appear only
-when their route and application state make them safe. Navigation retains the
-core and removes stale contextual tools. The visible interface and WebMCP are
+Jobbbler registers 24 WebMCP tools directly in the page: seven stable,
+site-wide core tools plus 17 contextual tools, all registered on every page so
+an agent never loses a capability by navigating. Contextual tools are
+state-gated at execution — when their page or workflow state is not ready they
+return a clear next step instead of failing. The visible interface and WebMCP are
 two adapters over the same server commands, so the URL, filters, results,
 alerts, permissions, and receipts stay consistent whether a person or an agent
 acted.
@@ -78,7 +82,7 @@ acted.
 steps toward a goal from the current page and is advisory only — it plans, it
 never acts. The global Agent layer makes the same story visible to people in a
 plain hierarchy: Guide explains how to begin, Activity shows what happened,
-and Tools separates the six always-available tools from context-specific ones.
+and Tools separates the seven always-available tools from context-specific ones.
 `get_search_state` also makes bounded output honest by explicitly reporting
 when criteria have been omitted or shortened.
 
@@ -98,9 +102,9 @@ Jobbbler is a TypeScript monorepo with a Next.js web app, domain packages,
 portable SQLite/PostgreSQL storage adapters, connector workers, and an
 accessible shared UI system. Its catalog normalizes policy-controlled job
 records, retains source evidence, and ranks salaries currency-aware (EUR, USD,
-GBP, CAD at pinned rates) with human-readable evidence strings. Six stable
-WebMCP tools are registered on every page; contextual tools are registered only
-where they are useful, and navigation removes stale contextual tools.
+GBP, CAD at pinned rates) with human-readable evidence strings. All 24 WebMCP
+tools are registered on every page — a seven-tool stable core plus contextual
+tools that gate themselves on route and workflow state at execution time.
 
 WebMCP capability is live while the page is open; durable alerts are an honest
 server-side continuation, not a claim that the browser agent remains alive.
@@ -109,14 +113,17 @@ deliveries, and require a verified email endpoint — and the first visit needs
 no account at all: a loginless private owner session with passwordless email
 recovery.
 
-The application flow separates a draft, validation and immutable review, agent
-delegation, data permission, short-lived confirmation, and idempotent receipt.
-When permission is needed, the agent client receives the exact recipient,
-purpose, categories, fields, notice, and server request ID. No WebMCP approval
-tool exists: the person approves the request in Jobbbler's private workspace.
-The resulting first-party receipt is useful evidence, but it deliberately does
-not claim cryptographic human identity. Sensitive values and raw chat stay out
-of tool results and stored consent evidence.
+The application flow is agent-first with one human review: the agent checks
+readiness, asks once for short-lived draft-bound assistance, proposes truthful
+answers in bounded batches, and then presents one exact submission review —
+recipient, purpose, fields, and privacy notice. The person decides in their
+agent client or on the private review page; either way the server accepts the
+decision only when it is bound to the exact request ID and draft version,
+seals the reviewed payload, and issues a single-use confirmation before the
+idempotent submit. The stored consent receipt records the decision channel as
+evidence and deliberately does not claim cryptographic human identity.
+Sensitive values and raw chat stay out of tool results and stored consent
+evidence.
 
 ## Challenges we ran into
 
@@ -133,8 +140,9 @@ of tool results and stored consent evidence.
 
 ## Accomplishments we are proud of
 
-- A real WebMCP surface: six stable tools on every page, with contextual tools
-  for the job, comparison, saved-search, and application work that follows.
+- A real WebMCP surface: a seven-tool stable core and 17 contextual tools for
+  job, comparison, saved-search, and application work — all reachable from any
+  page, each honest about when its moment has not arrived.
 - A zero-configuration website encounter: the agent opens Jobbbler and
   discovers the active page's actions without a separate MCP-server
   declaration.
@@ -171,14 +179,14 @@ augments a working product rather than disguising a missing workflow.
 
 ## What’s next
 
-- Observe production tool use and refine route vocabularies and workflow plans
-  from real user requests.
+- Observe production tool use and refine the tool vocabulary and workflow
+  plans from real user requests.
 - Broaden connector coverage under explicit source policies and freshness
   monitoring.
 - Add more user-controlled alert channels after the same verification and
   consent model is in place.
 - Continue testing WebMCP behavior across supported browser contexts and
-  refine route tools from observed user workflows.
+  refine state gates from observed agent workflows.
 
 ## Technologies used
 
