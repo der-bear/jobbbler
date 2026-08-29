@@ -12,7 +12,13 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json-summary", "html"],
     },
-    exclude: ["**/.next/**", "**/.worktrees/**", "**/dist/**", "**/node_modules/**"],
+    exclude: [
+      "**/.next/**",
+      "**/.worktrees/**",
+      "**/dist/**",
+      "**/node_modules/**",
+      "**/tests/e2e/**",
+    ],
     passWithNoTests: true,
   },
 });

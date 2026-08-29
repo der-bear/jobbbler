@@ -1,14 +1,70 @@
+@import "@fontsource-variable/manrope/wght.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@jobbbler/ui/styles.css";
 @import "tailwindcss";
 
 :root {
-  color-scheme: light dark;
-  font-family: Arial, Helvetica, sans-serif;
+  --font-manrope: "Manrope Variable", Manrope, ui-sans-serif, system-ui, sans-serif;
+  --font-ibm-plex-mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: light;
+  font-family: var(--font-manrope);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
-* {
-  box-sizing: border-box;
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+html {
+  min-inline-size: 320px;
+  scroll-behavior: smooth;
 }
 
 body {
+  min-block-size: 100dvh;
   margin: 0;
+  background: var(--color-canvas);
+}
+
+a,
+button,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+select {
+  cursor: pointer;
+}
+
+.sr-only {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--jb-signal) 24%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }

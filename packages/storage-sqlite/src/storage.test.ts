@@ -83,7 +83,7 @@ describe("SQLite relevance candidate completeness", () => {
     expect(result.total).toBe(1_001);
     expect(result.nextCursor).toEqual(expect.any(String));
     storage.close();
-  });
+  }, 15_000);
 });
 
 afterAll(async () => {

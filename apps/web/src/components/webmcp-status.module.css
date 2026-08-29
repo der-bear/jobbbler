@@ -1,0 +1,27 @@
+.status {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: var(--color-ink-muted);
+}
+
+.status[data-available="true"] {
+  color: var(--color-signal-strong);
+}
+
+.status span {
+  display: grid;
+  gap: 2px;
+}
+
+.status strong {
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.status small {
+  color: var(--color-ink-subtle);
+  font-size: 11px;
+  line-height: 1.4;
+}

@@ -1,0 +1,206 @@
+.workspace,
+.state,
+.empty {
+  max-inline-size: 1320px;
+  margin-inline: auto;
+  padding: clamp(32px, 5vw, 76px) clamp(20px, 4vw, 52px) 88px;
+}
+
+.header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  border-block-end: 1px solid var(--color-line);
+  padding-block-end: 22px;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-family: var(--jb-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.header h1,
+.state h1,
+.empty h1 {
+  max-inline-size: 18ch;
+  margin: 10px 0 0;
+  color: var(--color-ink);
+  font-size: clamp(32px, 4.5vw, 56px);
+  font-weight: 540;
+  letter-spacing: -0.06em;
+  line-height: 1.04;
+  text-wrap: balance;
+}
+
+.header > p {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-family: var(--jb-font-mono);
+  font-size: 10px;
+  text-align: end;
+}
+
+.tableScroll {
+  overflow-x: auto;
+  border-block-end: 1px solid var(--color-line);
+}
+
+.comparisonTable {
+  inline-size: 100%;
+  min-inline-size: 780px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.comparisonTable th,
+.comparisonTable td {
+  border-block-start: 1px solid var(--color-line);
+  padding: 18px 20px;
+  text-align: start;
+  vertical-align: top;
+}
+
+.comparisonTable thead th {
+  border-block-start: 0;
+  padding-block: 28px 24px;
+}
+
+.comparisonTable thead th:first-child,
+.comparisonTable tbody th {
+  inline-size: 160px;
+  color: var(--color-ink-muted);
+  font-family: var(--jb-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.comparisonTable td {
+  color: var(--color-ink-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.jobHeading h2 {
+  margin: 6px 0 4px;
+  color: var(--color-ink);
+  font-size: 18px;
+  font-weight: 620;
+  letter-spacing: -0.04em;
+  line-height: 1.2;
+}
+
+.jobHeading > p:not(.match) {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.match {
+  margin: 0;
+  color: var(--jb-signal);
+  font-family: var(--jb-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.jobHeading a,
+.comparisonTable a,
+.empty a,
+.state a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-block-start: 14px;
+  color: var(--color-signal-strong);
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.jobHeading a:hover,
+.comparisonTable a:hover,
+.empty a:hover,
+.state a:hover {
+  color: var(--jb-signal);
+}
+
+.fitNotes {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fitNotes li {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 7px;
+}
+
+.fitNotes svg {
+  margin-block-start: 2px;
+  color: var(--jb-signal);
+}
+
+.unknown,
+.freshness,
+.sourceFact {
+  margin: 0;
+}
+
+.unknown,
+.freshness {
+  color: var(--color-ink-subtle);
+  font-size: 12px;
+}
+
+.freshness {
+  margin-block-start: 3px;
+}
+
+.sourceFact {
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.footnote,
+.empty > p:not(.eyebrow) {
+  max-inline-size: 70ch;
+  margin: 24px 0 0;
+  color: var(--color-ink-subtle);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.state,
+.empty {
+  min-block-size: calc(100dvh - 69px);
+}
+
+@media (max-width: 640px) {
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .header > p {
+    text-align: start;
+  }
+
+  .comparisonTable th,
+  .comparisonTable td {
+    padding: 16px;
+  }
+}

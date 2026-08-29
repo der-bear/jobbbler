@@ -1,0 +1,321 @@
+.workspace,
+.state {
+  max-inline-size: 1120px;
+  margin-inline: auto;
+  padding: clamp(32px, 5vw, 76px) clamp(20px, 4vw, 52px) 88px;
+}
+
+.identity,
+.evidenceSection,
+.roleFacts,
+.provenanceSection {
+  border-block-end: 1px solid var(--color-line);
+}
+
+.identity {
+  padding-block-end: clamp(30px, 4vw, 48px);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-family: var(--jb-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.titleRow,
+.sectionHeading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 28px;
+}
+
+.titleRow h1,
+.state h1 {
+  max-inline-size: 17ch;
+  margin: 12px 0 6px;
+  color: var(--color-ink);
+  font-size: clamp(34px, 5vw, 64px);
+  font-weight: 540;
+  letter-spacing: -0.065em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+.organization {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.score,
+.matchScore {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 2px;
+  margin: 0;
+  color: var(--color-ink-muted);
+  text-align: end;
+}
+
+.score strong,
+.matchScore strong {
+  color: var(--jb-signal);
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.05em;
+}
+
+.score span,
+.matchScore span {
+  font-family: var(--jb-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 18px;
+  margin-block: 26px 0;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.facts span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.summary {
+  max-inline-size: 78ch;
+  margin: 20px 0 0;
+  color: var(--color-ink);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 24px;
+  margin-block-start: 28px;
+}
+
+.backLink,
+.sourceLink,
+.unavailableLink,
+.state a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-signal-strong);
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.backLink {
+  color: var(--color-ink-muted);
+}
+
+.backLink:hover,
+.sourceLink:hover,
+.state a:hover {
+  color: var(--jb-signal);
+}
+
+.unavailableLink {
+  color: var(--color-ink-subtle);
+  font-weight: 500;
+}
+
+.evidenceSection,
+.roleFacts,
+.provenanceSection {
+  padding-block: clamp(28px, 4vw, 46px);
+}
+
+.sectionHeading h2,
+.roleFacts h2,
+.provenanceSection h2 {
+  margin: 8px 0 0;
+  color: var(--color-ink);
+  font-size: clamp(23px, 3vw, 34px);
+  font-weight: 560;
+  letter-spacing: -0.05em;
+}
+
+.evidenceGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(28px, 6vw, 88px);
+  margin-block-start: 32px;
+}
+
+.evidenceGrid h3,
+.unknowns h3 {
+  margin: 0 0 14px;
+  color: var(--color-ink);
+  font-family: var(--jb-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.subheading {
+  margin-block-start: 24px !important;
+}
+
+.insightList {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.insightList li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 9px;
+  color: var(--color-ink-muted);
+  font-size: 13px;
+  line-height: 1.52;
+}
+
+.insightList svg {
+  margin-block-start: 2px;
+  color: var(--jb-signal);
+}
+
+.insightList li.caution svg {
+  color: var(--color-ink-subtle);
+}
+
+.unknown,
+.unknowns p {
+  margin: 0;
+  color: var(--color-ink-subtle);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.unknowns {
+  margin-block-start: 30px;
+  border-block-start: 1px solid var(--color-line);
+  padding-block-start: 22px;
+}
+
+.roleFacts {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(0, 1.7fr);
+  gap: 34px;
+}
+
+.skills {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 8px;
+}
+
+.skills span {
+  border: 1px solid var(--color-line-strong);
+  color: var(--color-ink-muted);
+  font-family: var(--jb-font-mono);
+  font-size: 11px;
+  padding: 6px 9px;
+}
+
+.provenanceSection {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(0, 1.7fr);
+  gap: 34px;
+}
+
+.provenanceList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 26px;
+  margin: 0;
+}
+
+.provenanceList div {
+  border-block-end: 1px solid var(--color-line);
+  padding-block-end: 10px;
+}
+
+.provenanceList dt {
+  color: var(--color-ink-subtle);
+  font-family: var(--jb-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.provenanceList dd {
+  margin: 5px 0 0;
+  color: var(--color-ink);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.sourceNote {
+  display: flex;
+  grid-column: 2;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 4px 0 0;
+  color: var(--color-ink-subtle);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.state {
+  min-block-size: calc(100dvh - 69px);
+}
+
+.state h1 {
+  max-inline-size: 17ch;
+}
+
+@media (max-width: 720px) {
+  .titleRow,
+  .sectionHeading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .score,
+  .matchScore {
+    text-align: start;
+  }
+
+  .evidenceGrid,
+  .roleFacts,
+  .provenanceSection {
+    grid-template-columns: 1fr;
+  }
+
+  .provenanceList,
+  .sourceNote {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 500px) {
+  .provenanceList {
+    grid-template-columns: 1fr;
+  }
+}

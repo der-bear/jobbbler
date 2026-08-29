@@ -6,7 +6,9 @@ import nextConfig from "./next.config.js";
 
 describe("Next standalone tracing", () => {
   it("includes SQLite migrations from the monorepo in every server trace", () => {
-    expect(nextConfig.outputFileTracingRoot).toBe(fileURLToPath(new URL("../../", import.meta.url)));
+    expect(nextConfig.outputFileTracingRoot).toBe(
+      fileURLToPath(new URL("../../", import.meta.url)),
+    );
     expect(nextConfig.outputFileTracingIncludes).toMatchObject({
       "/*": ["../../migrations/sqlite/*.sql"],
     });

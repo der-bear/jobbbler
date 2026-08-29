@@ -1,17 +1,35 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { ToastProvider } from "@jobbbler/ui";
+
+import { AppShell } from "@/components/app-shell";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Jobbbler",
-  description: "Agent-native job discovery, alerts, and safe applications.",
+  metadataBase: new URL(process.env["PUBLIC_BASE_URL"] ?? "http://localhost:3000"),
+  title: {
+    default: "Jobbbler — Signal over noise",
+    template: "%s · Jobbbler",
+  },
+  description:
+    "Find explainable technology roles, monitor the right opportunities, and apply with human-controlled agent assistance.",
 };
+
+const themeBootstrap = `(()=>{try{const s=localStorage.getItem("jobbbler-theme");const t=s==="dark"||s==="light"?s:matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch{document.documentElement.dataset.theme="light"}})()`;
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+      </head>
+      <body>
+        <ToastProvider>
+          <AppShell>{children}</AppShell>
+        </ToastProvider>
+      </body>
     </html>
   );
 }

@@ -1,0 +1,902 @@
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(330px, 28vw) minmax(0, 1fr);
+  min-block-size: calc(100dvh - 69px);
+}
+
+.intentRail {
+  border-inline-end: 1px solid var(--color-line);
+  padding: clamp(34px, 4vw, 58px) clamp(24px, 3vw, 44px) 56px;
+}
+
+.outcomeSection h1 {
+  max-inline-size: 15ch;
+  margin: 16px 0 10px;
+  color: var(--color-ink);
+  font-size: clamp(28px, 2.55vw, 43px);
+  font-weight: 540;
+  letter-spacing: -0.052em;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+.outcomeHelp {
+  max-inline-size: 38ch;
+  margin: 0;
+  color: var(--color-ink-subtle);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.eyebrowRow,
+.filterHeading,
+.activityHeader,
+.resultsHeader,
+.resultsControls,
+.resultsFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-family: var(--jb-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.105em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.liveState {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-signal-strong);
+  font-size: 10px;
+  font-weight: 640;
+}
+
+.filterForm {
+  display: grid;
+  margin-block-start: 32px;
+  border-block-start: 1px solid var(--color-line);
+}
+
+.mobileFiltersButton {
+  display: none;
+}
+
+.mobileFilterSheet {
+  display: none;
+}
+
+.queryField {
+  display: grid;
+  gap: 7px;
+  border-block-end: 1px solid var(--color-line);
+  padding-block: 17px;
+}
+
+.queryField > span,
+.filterHeading {
+  color: var(--color-ink-muted);
+  font-family: var(--jb-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.queryField input,
+.filterRow input,
+.filterRow select,
+.resultsControls select {
+  min-inline-size: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-ink);
+}
+
+.queryField input {
+  inline-size: 100%;
+  font-size: 15px;
+  font-weight: 560;
+}
+
+.queryField input::placeholder,
+.filterRow input::placeholder {
+  color: var(--color-ink-subtle);
+}
+
+.filterHeading {
+  padding-block: 19px 8px;
+}
+
+.filterRow {
+  display: grid;
+  grid-template-columns: minmax(104px, 0.9fr) minmax(0, 1.25fr);
+  align-items: center;
+  gap: 14px;
+  border-block-end: 1px solid var(--color-line);
+  padding-block: 12px;
+}
+
+.filterRow > span:first-child {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+}
+
+.filterRow > input,
+.filterRow > select {
+  inline-size: 100%;
+  text-align: end;
+  font-size: 12px;
+  font-weight: 570;
+}
+
+.salaryInput {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 5px;
+}
+
+.salaryInput select,
+.salaryInput input {
+  inline-size: 100%;
+  min-inline-size: 0;
+  text-align: end;
+  font-size: 12px;
+}
+
+.searchButton,
+.primaryLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-block-size: 44px;
+  border: 1px solid var(--jb-signal);
+  border-radius: var(--radius-sm);
+  background: var(--jb-signal);
+  color: var(--jb-signal-contrast);
+  font-size: 13px;
+  font-weight: 670;
+  text-decoration: none;
+  transition:
+    background var(--motion-fast) var(--ease-standard),
+    translate var(--motion-fast) var(--ease-standard);
+}
+
+.searchButton {
+  margin-block-start: 18px;
+}
+
+.searchButton:hover,
+.primaryLink:hover {
+  background: var(--jb-signal-strong);
+  translate: 0 -1px;
+}
+
+.activityPreview {
+  margin-block-start: 42px;
+  border-block-start: 1px solid var(--color-line);
+  padding-block-start: 21px;
+}
+
+.activityHeader {
+  align-items: flex-start;
+}
+
+.activityHeader > div {
+  display: grid;
+  gap: 12px;
+}
+
+.activityScope {
+  color: var(--color-signal-strong);
+  font-size: 11px;
+}
+
+.activityPreview ol {
+  display: grid;
+  gap: 0;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activityPreview li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  gap: 11px;
+  min-block-size: 74px;
+}
+
+.activityPreview li:not(:last-child)::after {
+  position: absolute;
+  inset-block: 10px -2px;
+  inset-inline-start: 4px;
+  inline-size: 1px;
+  background: var(--color-line-strong);
+  content: "";
+}
+
+.activityDot {
+  position: relative;
+  z-index: 1;
+  margin-block-start: 3px;
+  color: var(--jb-signal);
+}
+
+.activityPreview li div {
+  min-inline-size: 0;
+}
+
+.activityPreview li strong {
+  display: block;
+  color: var(--color-ink);
+  font-size: 11px;
+  font-weight: 640;
+}
+
+.activityPreview li p {
+  margin: 4px 0 3px;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.activityPreview li small {
+  color: var(--color-ink-subtle);
+  font-family: var(--jb-font-mono);
+  font-size: 9px;
+}
+
+.results {
+  min-inline-size: 0;
+  padding: clamp(34px, 4vw, 58px) clamp(24px, 4vw, 64px) 56px;
+}
+
+.resultsHeader {
+  align-items: flex-end;
+  border-block-end: 1px solid var(--color-line);
+  padding-block-end: 18px;
+}
+
+.resultsHeader h2 {
+  margin: 6px 0 0;
+  font-size: 19px;
+  font-weight: 590;
+  letter-spacing: -0.035em;
+}
+
+.resultsControls select {
+  min-block-size: 34px;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+}
+
+.compareLink,
+.secondaryAction,
+.ghostAction,
+.errorState button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-block-size: 36px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 11px;
+  font-weight: 620;
+  text-decoration: none;
+}
+
+.secondaryAction {
+  cursor: pointer;
+}
+
+.compareCheckbox {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.secondaryAction:focus-within {
+  outline: 3px solid var(--jb-focus);
+  outline-offset: 3px;
+}
+
+.secondaryAction:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.46;
+}
+
+.selectionStatus {
+  color: var(--color-ink-subtle);
+  font-family: var(--jb-font-mono);
+  font-size: 9px;
+}
+
+.compareLink {
+  padding-inline: 11px;
+}
+
+.filterChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-block-size: 44px;
+  align-items: center;
+  border-block-end: 1px solid var(--color-line);
+  padding-block: 9px;
+}
+
+.filterChips > span {
+  display: inline-flex;
+}
+
+.filterChips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-surface-subtle);
+  color: var(--color-ink-muted);
+  font-size: 10px;
+  padding: 5px 8px;
+}
+
+.filterChips button:hover {
+  background: var(--jb-surface-strong);
+  color: var(--color-ink);
+}
+
+.filterChips svg {
+  color: var(--jb-signal);
+}
+
+.resultList {
+  opacity: 1;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+
+.resultList[data-loading="true"] {
+  opacity: 0.58;
+}
+
+.jobResult {
+  border-block-end: 1px solid var(--color-line);
+}
+
+.jobResult[data-expanded="true"] {
+  background: color-mix(in srgb, var(--color-surface-subtle) 52%, transparent);
+}
+
+.jobSummary {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.45fr) minmax(150px, 0.58fr) 74px;
+  align-items: center;
+  gap: 22px;
+  min-block-size: 92px;
+  padding: 18px 20px;
+}
+
+.jobTitleButton {
+  display: flex;
+  min-inline-size: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+  padding: 0;
+  text-align: start;
+}
+
+.jobTitleButton > span {
+  display: grid;
+  min-inline-size: 0;
+  gap: 7px;
+}
+
+.jobTitleButton strong {
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.026em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jobTitleButton small,
+.jobSalary small,
+.matchScore small {
+  color: var(--color-ink-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.jobTitleButton svg {
+  flex: 0 0 auto;
+  color: var(--color-ink-subtle);
+  transition: rotate var(--motion-fast) var(--ease-standard);
+}
+
+.jobResult[data-expanded="true"] .jobTitleButton svg {
+  rotate: 180deg;
+}
+
+.jobSalary,
+.matchScore {
+  display: grid;
+  gap: 5px;
+}
+
+.jobSalary strong {
+  font-size: 12px;
+  font-weight: 590;
+}
+
+.matchScore {
+  justify-items: end;
+}
+
+.matchScore strong {
+  color: var(--color-signal-strong);
+  font-size: 14px;
+  font-weight: 680;
+}
+
+.matchScore small {
+  font-family: var(--jb-font-mono);
+  font-size: 8px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.jobExpanded {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(210px, 0.65fr);
+  gap: 32px;
+  border-block-start: 1px solid var(--color-line);
+  padding: 26px 20px 22px;
+}
+
+.jobNarrative > p {
+  max-inline-size: 65ch;
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: 13px;
+  line-height: 1.62;
+}
+
+.evidenceBlock,
+.tradeoffs {
+  margin-block-start: 24px;
+}
+
+.evidenceBlock h3,
+.tradeoffs h3 {
+  margin: 0 0 11px;
+  color: var(--color-ink);
+  font-family: var(--jb-font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.evidenceBlock ul {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.evidenceBlock li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--color-ink);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.evidenceBlock li svg {
+  flex: 0 0 auto;
+  margin-block-start: 1px;
+  color: var(--jb-signal);
+}
+
+.tradeoffs {
+  border-block-start: 1px dashed var(--color-line-strong);
+  padding-block-start: 18px;
+}
+
+.tradeoffs p {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.jobFacts {
+  align-self: start;
+  border-inline-start: 1px solid var(--color-line);
+  padding-inline-start: 22px;
+}
+
+.jobFacts > div {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  gap: 11px;
+  border-block-end: 1px solid var(--color-line);
+  padding-block: 10px;
+}
+
+.jobFacts span {
+  color: var(--color-ink-subtle);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.jobFacts strong,
+.jobFacts p {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 10px;
+  font-weight: 570;
+  line-height: 1.45;
+}
+
+.skills {
+  grid-template-columns: 1fr !important;
+}
+
+.skills p {
+  font-family: var(--jb-font-mono);
+  font-size: 9px;
+}
+
+.resultActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  grid-column: 1 / -1;
+  border-block-start: 1px solid var(--color-line);
+  padding-block-start: 18px;
+}
+
+.primaryLink,
+.secondaryAction,
+.ghostAction {
+  padding-inline: 14px;
+}
+
+.secondaryAction[data-selected="true"] {
+  border-color: var(--jb-signal);
+  background: var(--color-surface-subtle);
+  color: var(--color-signal-strong);
+}
+
+.ghostAction {
+  margin-inline-start: auto;
+  border-color: transparent;
+}
+
+.secondaryAction:hover,
+.ghostAction:hover,
+.compareLink:hover,
+.errorState button:hover {
+  background: var(--color-surface-subtle);
+}
+
+.skeletonList {
+  display: grid;
+}
+
+.skeletonRow {
+  display: grid;
+  grid-template-columns: 1.4fr 0.6fr 0.25fr;
+  align-items: center;
+  gap: 22px;
+  min-block-size: 92px;
+  border-block-end: 1px solid var(--color-line);
+  padding: 18px 20px;
+}
+
+.skeletonRow span {
+  display: block;
+  block-size: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+}
+
+.skeletonRow span:nth-child(2) {
+  inline-size: 75%;
+}
+
+.skeletonRow span:nth-child(3) {
+  inline-size: 45px;
+  justify-self: end;
+}
+
+.errorState {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  margin-block-start: 18px;
+  border: 1px solid color-mix(in srgb, var(--jb-danger) 35%, var(--color-line));
+  border-radius: var(--radius-sm);
+  padding: 15px;
+  color: var(--jb-danger);
+}
+
+.errorState strong {
+  color: var(--color-ink);
+  font-size: 12px;
+}
+
+.errorState p {
+  margin: 4px 0 0;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+}
+
+.errorState button {
+  padding-inline: 12px;
+}
+
+.emptyState {
+  display: grid;
+  justify-items: start;
+  min-block-size: 340px;
+  align-content: center;
+  border-block-end: 1px solid var(--color-line);
+  padding: 32px 20px;
+}
+
+.emptyState svg {
+  color: var(--color-ink-subtle);
+}
+
+.emptyState h3 {
+  margin: 18px 0 7px;
+  font-size: 19px;
+}
+
+.emptyState p {
+  max-inline-size: 48ch;
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.resultsFooter {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin-block-start: 20px;
+  color: var(--color-ink-subtle);
+  font-size: 10px;
+}
+
+.resultsFooter span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@keyframes skeletonPulse {
+  50% {
+    opacity: 0.48;
+  }
+}
+
+@media (max-width: 1080px) {
+  .workspace {
+    grid-template-columns: minmax(300px, 33vw) minmax(0, 1fr);
+  }
+
+  .jobSummary {
+    grid-template-columns: minmax(200px, 1.2fr) minmax(130px, 0.6fr) 62px;
+    gap: 14px;
+    padding-inline: 12px;
+  }
+
+  .jobExpanded {
+    grid-template-columns: 1fr;
+    padding-inline: 12px;
+  }
+
+  .jobFacts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    border-inline-start: 0;
+    padding-inline-start: 0;
+  }
+}
+
+@media (max-width: 800px) {
+  .workspace {
+    display: block;
+    padding-block-end: 86px;
+  }
+
+  .intentRail {
+    border-inline-end: 0;
+    border-block-end: 1px solid var(--color-line);
+    padding: 28px 20px 24px;
+  }
+
+  .outcomeSection h1 {
+    max-inline-size: 19ch;
+    font-size: clamp(27px, 8.2vw, 38px);
+  }
+
+  .activityPreview {
+    display: none;
+  }
+
+  .desktopFilters {
+    display: none;
+  }
+
+  .mobileFiltersButton {
+    display: flex;
+    inline-size: 100%;
+    align-items: center;
+    gap: 8px;
+    margin-block-start: 22px;
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-ink);
+    padding: 11px 12px;
+    font-size: 12px;
+    font-weight: 650;
+  }
+
+  .mobileFiltersButton span {
+    margin-inline-start: auto;
+    color: var(--color-ink-subtle);
+    font-family: var(--jb-font-mono);
+    font-size: 9px;
+    font-weight: 400;
+  }
+
+  .mobileFilterSheet[open] {
+    display: block;
+  }
+
+  .mobileFilterSheet :global(.jb-dialog__surface) {
+    max-block-size: 82dvh;
+    overflow: hidden;
+  }
+
+  .mobileFilterSheet :global(.jb-dialog__body) {
+    max-block-size: calc(82dvh - 92px);
+    overflow-y: auto;
+    padding-block-start: 0;
+  }
+
+  .sheetFilters {
+    margin-block-start: 0;
+    border-block-start: 0;
+  }
+
+  .results {
+    padding: 26px 0 38px;
+  }
+
+  .resultsHeader,
+  .filterChips,
+  .resultsFooter {
+    margin-inline: 20px;
+  }
+
+  .filterChips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .filterChips > span,
+  .filterChips button {
+    flex: 0 0 auto;
+  }
+
+  .jobSummary {
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-block-size: 104px;
+    padding: 17px 20px;
+  }
+
+  .jobSalary {
+    grid-column: 1;
+  }
+
+  .matchScore {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .jobExpanded {
+    padding: 22px 20px 20px;
+  }
+
+  .jobFacts {
+    grid-template-columns: 1fr;
+  }
+
+  .ghostAction {
+    margin-inline-start: 0;
+  }
+
+  .skeletonRow {
+    grid-template-columns: 1fr 60px;
+    padding-inline: 20px;
+  }
+
+  .skeletonRow span:nth-child(2) {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .resultsHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .resultsControls {
+    inline-size: 100%;
+  }
+
+  .resultsControls label {
+    margin-inline-start: auto;
+  }
+
+  .jobTitleButton strong {
+    font-size: 15px;
+  }
+
+  .jobTitleButton small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .resultActions > * {
+    flex: 1 1 auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonRow span {
+    animation: none;
+  }
+
+  .jobTitleButton svg,
+  .resultList,
+  .searchButton,
+  .primaryLink {
+    transition: none;
+  }
+}
