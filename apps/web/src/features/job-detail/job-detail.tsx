@@ -104,13 +104,11 @@ function ListOrUnknown({
 
 function JobIdentity({
   job,
-  fit,
   criteriaSearch,
   applicationBusy,
   onStartApplication,
 }: Readonly<{
   job: Job;
-  fit: JobFit;
   criteriaSearch: string;
   applicationBusy: boolean;
   onStartApplication(): void;
@@ -119,16 +117,11 @@ function JobIdentity({
 
   return (
     <header className={styles["identity"]}>
-      <p className={styles["eyebrow"]}>Role record</p>
       <div className={styles["titleRow"]}>
         <div>
           <h1>{job.title}</h1>
           <p className={styles["organization"]}>{job.organizationName}</p>
         </div>
-        <p className={styles["score"]}>
-          <strong>{fit.score}%</strong>
-          <span>{fit.eligible ? "current criteria" : "not eligible"}</span>
-        </p>
       </div>
       <div className={styles["facts"]}>
         <span>
@@ -170,21 +163,25 @@ function JobIdentity({
 }
 
 function FitEvidence({ fit }: Readonly<{ fit: JobFit }>) {
+  const hasSignal =
+    fit.evidence.length > 0 || fit.caveats.length > 0 || fit.exclusions.length > 0 || !fit.eligible;
   const unknownDimensions = Object.entries(fit.dimensions)
     .filter(([, dimension]) => dimension.status === "unknown")
     .map(([key]) => dimensionLabels[key as keyof JobFit["dimensions"]]);
+
+  if (!hasSignal) return null;
 
   return (
     <section aria-labelledby="why-this-matches" className={styles["evidenceSection"]}>
       <div className={styles["sectionHeading"]}>
         <div>
-          <p className={styles["eyebrow"]}>Fit assessment</p>
           <h2 id="why-this-matches">Why this matches</h2>
+          {fit.eligible ? null : (
+            <p className={styles["ineligibleNote"]}>
+              This role does not meet your current criteria.
+            </p>
+          )}
         </div>
-        <p className={styles["matchScore"]}>
-          <strong>{fit.score}%</strong>
-          <span>{fit.eligible ? "eligible" : "not eligible"}</span>
-        </p>
       </div>
       <div className={styles["evidenceGrid"]}>
         <div>
@@ -229,7 +226,6 @@ function SourceAndFreshness({ job }: Readonly<{ job: Job }>) {
   return (
     <section aria-labelledby="source-and-freshness" className={styles["provenanceSection"]}>
       <div>
-        <p className={styles["eyebrow"]}>Provenance</p>
         <h2 id="source-and-freshness">Source and freshness</h2>
       </div>
       <dl className={styles["provenanceList"]}>
@@ -275,15 +271,13 @@ function DetailContent({
       <JobIdentity
         applicationBusy={applicationBusy}
         criteriaSearch={criteriaSearch}
-        fit={result.fit}
         job={result.job}
         onStartApplication={onStartApplication}
       />
       <FitEvidence fit={result.fit} />
       <section className={styles["roleFacts"]}>
         <div>
-          <p className={styles["eyebrow"]}>Role details</p>
-          <h2>Skills and terms</h2>
+          <h2>Skills</h2>
         </div>
         <div className={styles["skills"]}>
           {result.job.skills.length === 0 ? (
@@ -368,10 +362,7 @@ export function JobDetail({
 
   return (
     <section aria-live="polite" className={styles["state"]}>
-      <p className={styles["eyebrow"]}>
-        {state.kind === "loading" ? "Loading role" : "Role unavailable"}
-      </p>
-      <h1>{state.kind === "loading" ? "Gathering the source record" : state.message}</h1>
+      <h1>{state.kind === "loading" ? "Loading this role…" : state.message}</h1>
       {state.kind === "error" ? <Link href="/">Return to search</Link> : null}
     </section>
   );

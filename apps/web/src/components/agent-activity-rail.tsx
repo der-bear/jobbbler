@@ -97,7 +97,6 @@ export function AgentActivityRail({
     >
       <summary className={styles["summary"]}>
         <span>
-          <small>Optional assistant layer</small>
           <strong>Agent activity</strong>
         </span>
         <span className={styles["summaryStatus"]} data-attention={String(needsAttention)}>
@@ -109,7 +108,6 @@ export function AgentActivityRail({
       <div className={styles["body"]}>
         <header className={styles["header"]}>
           <div>
-            <p className={styles["eyebrow"]}>Agent activity</p>
             <h2>What changed</h2>
           </div>
           {status ?? (

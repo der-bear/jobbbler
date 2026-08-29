@@ -19,16 +19,13 @@ test.describe("public job search workspace", () => {
 
     await expect(page.getByRole("main")).toBeVisible();
     await expect(page.getByRole("link", { name: "Jobbbler" })).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "Your outcome" })).toHaveValue(
+    await expect(page.getByRole("searchbox", { name: "Search jobs" })).toHaveValue(
       "senior full-stack engineer",
     );
     await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
 
     const role = resultCard(page, seededRole.title, seededRole.company);
     await expect(role).toBeVisible();
-    await expect(role.getByRole("group", { name: "Job evidence" })).toContainText(
-      /remote|software engineering|Europe/i,
-    );
     await expect(role.getByText(/updated|ago/i)).toBeVisible();
     await expect(
       role.getByRole("link", {
@@ -40,15 +37,12 @@ test.describe("public job search workspace", () => {
   test("submits an outcome with Enter and writes shareable URL state", async ({ page }) => {
     await page.goto("/");
 
-    const outcome = page.getByRole("textbox", { name: "Your outcome" });
+    const outcome = page.getByRole("searchbox", { name: "Search jobs" });
     await outcome.fill(exampleOutcome);
     await outcome.press("Enter");
 
     await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe(exampleOutcome);
     await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
-    await expect(page.getByRole("list", { name: "Applied filters" })).toContainText(
-      /Remote|Europe|100,000/i,
-    );
   });
 
   test("keeps URL-backed filters editable through removable chips", async ({ page }) => {
@@ -78,35 +72,9 @@ test.describe("public job search workspace", () => {
     await expect(page.getByRole("region", { name: "Source and freshness" })).toContainText(
       /Jobbbler demo|source/i,
     );
-    await expect(page.getByText("Jobbbler demo unavailable")).toBeVisible();
-  });
-
-  test("caps a public comparison at three jobs and shares all three IDs", async ({ page }) => {
-    await page.goto("/?work=remote");
-
-    const resultCards = page.getByRole("article");
-    await expect.poll(() => resultCards.count()).toBeGreaterThanOrEqual(4);
-    for (let index = 0; index < 3; index += 1) {
-      const card = resultCards.nth(index);
-      let checkbox = card.getByRole("checkbox", { name: /^Compare / });
-      if ((await checkbox.count()) === 0) {
-        await card.getByRole("button").first().click();
-        checkbox = card.getByRole("checkbox", { name: /^Compare / });
-      }
-      await checkbox.check();
-    }
-
-    await expect(page.getByRole("status", { name: "Comparison selection" })).toContainText(
-      "3 selected",
+    await expect(page.getByRole("region", { name: "Source and freshness" })).toContainText(
+      "Internal application",
     );
-    await expect(page.getByRole("link", { name: "Compare 3 roles" })).toBeVisible();
-    const fourthCard = resultCards.nth(3);
-    await fourthCard.getByRole("button").first().click();
-    await expect(fourthCard.getByRole("checkbox", { name: /^Compare / })).toBeDisabled();
-
-    await page.getByRole("link", { name: "Compare 3 roles" }).click();
-    await expect(page).toHaveURL(/\/compare\?/);
-    expect(new URL(page.url()).searchParams.getAll("id")).toHaveLength(3);
   });
 
   test("persists the selected theme after a reload", async ({ page }) => {
@@ -127,7 +95,7 @@ test.describe("public job search workspace", () => {
     await page.goto("/");
 
     await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(/unavailable/i);
-    const outcome = page.getByRole("textbox", { name: "Your outcome" });
+    const outcome = page.getByRole("searchbox", { name: "Search jobs" });
     await outcome.fill(exampleOutcome);
     await outcome.press("Enter");
 
@@ -148,7 +116,7 @@ test.describe("mobile and reduced-motion public search", () => {
   }) => {
     await page.goto(seededSearch);
 
-    await expect(page.getByRole("textbox", { name: "Your outcome" })).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: "Search jobs" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Filters" })).toBeVisible();
     await expect(resultCard(page, seededRole.title, seededRole.company)).toBeVisible();
     await expect

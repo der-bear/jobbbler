@@ -2,17 +2,12 @@
 
 import {
   ArrowClockwiseIcon,
-  ArrowSquareOutIcon,
   BriefcaseIcon,
   BellSimpleIcon,
-  CaretDownIcon,
-  CheckCircleIcon,
   CircleIcon,
   ClockIcon,
-  MapPinIcon,
-  ScalesIcon,
+  MagnifyingGlassIcon,
   SlidersHorizontalIcon,
-  SparkleIcon,
   WarningCircleIcon,
   XIcon,
 } from "@phosphor-icons/react";
@@ -54,18 +49,7 @@ import { publishSearchSurfaceState, subscribeWebMcpSearchCommit } from "@/lib/we
 import styles from "./search-workspace.module.css";
 
 const defaultSearch: JobSearchInput = {
-  categories: ["software_engineering", "product"],
-  workModels: ["remote"],
-  seniorities: ["senior", "staff"],
-  locations: ["Europe"],
-  excludeKeywords: ["agency"],
-  salary: {
-    minimum: 100_000,
-    currency: "EUR",
-    period: "year",
-    unknownPolicy: "include",
-  },
-  sort: "relevance",
+  sort: "newest",
   limit: 20,
 };
 
@@ -128,27 +112,6 @@ function searchFromLocation(): JobSearchInput {
   return parameters.size === 0 ? defaultSearch : searchParamsToInput(parameters);
 }
 
-function outcomeLabel(input: JobSearchInput): string {
-  if (input.query !== undefined) return input.query;
-  const seniority = input.seniorities?.map(seniorityLabel).join(" or ").toLowerCase();
-  const category = input.categories?.map(categoryLabel).join(" and ").toLowerCase();
-  const work = input.workModels?.map(workModelLabel).join(" or ").toLowerCase();
-  const location = input.locations?.join(" or ");
-  const base = [seniority, work, category ? `${category} roles` : "technology roles"]
-    .filter(Boolean)
-    .join(" ");
-  const place = location === undefined ? "" : ` across ${location}`;
-  const salary =
-    input.salary?.minimum === undefined
-      ? ""
-      : ` paying at least ${input.salary.currency ?? "EUR"} ${Intl.NumberFormat("en").format(input.salary.minimum)}`;
-  const exclusion =
-    input.excludeKeywords === undefined || input.excludeKeywords.length === 0
-      ? ""
-      : `, excluding ${input.excludeKeywords.join(" and ")}`;
-  return `${base}${place}${salary}${exclusion}.`;
-}
-
 function errorMessage(error: unknown): string {
   if (error instanceof ApiClientError) {
     if (error.code === "RATE_LIMITED") {
@@ -176,19 +139,8 @@ function SearchFilters({
       className={`${styles["filterForm"]} ${className ?? ""}`}
       onSubmit={onSubmit}
     >
-      <label className={styles["queryField"]}>
-        <span>Your outcome</span>
-        <input
-          maxLength={500}
-          onChange={(event) => onDraftChange({ ...draft, query: event.target.value })}
-          placeholder="e.g. product engineer"
-          type="search"
-          value={draft.query}
-        />
-      </label>
       <div className={styles["filterHeading"]}>
-        <span>Structured constraints</span>
-        <SlidersHorizontalIcon aria-hidden="true" size={15} />
+        <span>Filters</span>
       </div>
       <label className={styles["filterRow"]}>
         <span>Function</span>
@@ -280,8 +232,7 @@ function SearchFilters({
         />
       </label>
       <button className={styles["searchButton"]} type="submit">
-        <SparkleIcon aria-hidden="true" size={17} weight="fill" />
-        Find matching roles
+        Apply filters
       </button>
     </form>
   );
@@ -302,129 +253,31 @@ function SearchSkeleton() {
   );
 }
 
-function MatchEvidence({ evidence }: Readonly<{ evidence: readonly string[] }>) {
-  if (evidence.length === 0) return null;
-  return (
-    <section aria-label="Job evidence" className={styles["evidenceBlock"]} role="group">
-      <h3>Why this matches</h3>
-      <ul>
-        {evidence.slice(0, 4).map((item) => (
-          <li key={item}>
-            <CheckCircleIcon aria-hidden="true" size={17} weight="fill" />
-            <span>{item}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
 function JobResult({
   job,
   detailSearch,
-  expanded,
-  compared,
-  compareDisabled,
-  onExpand,
-  onCompare,
 }: Readonly<{
   job: JobSummary;
   detailSearch: string;
-  expanded: boolean;
-  compared: boolean;
-  compareDisabled: boolean;
-  onExpand: () => void;
-  onCompare: () => void;
 }>) {
   return (
-    <article
-      aria-label={`${job.title} at ${job.organizationName}`}
-      className={styles["jobResult"]}
-      data-expanded={String(expanded)}
-    >
+    <article aria-label={`${job.title} at ${job.organizationName}`} className={styles["jobResult"]}>
       <div className={styles["jobSummary"]}>
-        <button
-          aria-expanded={expanded}
-          className={styles["jobTitleButton"]}
-          onClick={onExpand}
-          type="button"
+        <Link
+          aria-label={`View details for ${job.title} at ${job.organizationName}`}
+          className={styles["jobTitleLink"]}
+          href={`/jobs/${job.id}${detailSearch}`}
         >
-          <span>
-            <strong>{job.title}</strong>
-            <small>
-              {job.organizationName} · {workModelLabel(job.workModel)} ({job.locations[0]})
-            </small>
-          </span>
-          <CaretDownIcon aria-hidden="true" size={17} />
-        </button>
+          <strong>{job.title}</strong>
+          <small>
+            {job.organizationName} · {workModelLabel(job.workModel)} ({job.locations[0]})
+          </small>
+        </Link>
         <div className={styles["jobSalary"]}>
           <strong>{salaryLabel(job.salary)}</strong>
           <small>{relativeFreshness(job.updatedAt)}</small>
         </div>
-        <div className={styles["matchScore"]}>
-          <strong>{job.matchScore ?? 50}%</strong>
-          <small>fit signal</small>
-        </div>
       </div>
-
-      {expanded ? (
-        <div className={styles["jobExpanded"]}>
-          <div className={styles["jobNarrative"]}>
-            <p>{job.summary}</p>
-            <MatchEvidence evidence={job.matchEvidence ?? []} />
-            <section className={styles["tradeoffs"]}>
-              <h3>What to verify</h3>
-              <p>
-                {job.salary === null
-                  ? "Compensation is not disclosed. Treat any salary fit as unknown."
-                  : "Confirm compensation structure and interview expectations with the employer."}
-              </p>
-            </section>
-          </div>
-          <aside className={styles["jobFacts"]} aria-label="Job facts">
-            <div>
-              <span>Employment</span>
-              <strong>{employmentLabel(job.employmentType)}</strong>
-            </div>
-            <div>
-              <span>Seniority</span>
-              <strong>
-                {job.seniority === null ? "Not specified" : seniorityLabel(job.seniority)}
-              </strong>
-            </div>
-            <div>
-              <span>Source</span>
-              <strong>{job.source.label}</strong>
-            </div>
-            <div className={styles["skills"]}>
-              <span>Skills</span>
-              <p>{job.skills.slice(0, 5).join(" · ")}</p>
-            </div>
-          </aside>
-          <div className={styles["resultActions"]}>
-            <Link
-              aria-label={`View details for ${job.title} at ${job.organizationName}`}
-              className={styles["primaryLink"]}
-              href={`/jobs/${job.id}${detailSearch}`}
-            >
-              View role
-              <ArrowSquareOutIcon aria-hidden="true" size={16} />
-            </Link>
-            <label className={styles["secondaryAction"]} data-selected={String(compared)}>
-              <input
-                aria-label={`Compare ${job.title} at ${job.organizationName}`}
-                checked={compared}
-                className={styles["compareCheckbox"]}
-                disabled={compareDisabled}
-                onChange={onCompare}
-                type="checkbox"
-              />
-              <ScalesIcon aria-hidden="true" size={16} />
-              {compared ? "Selected to compare" : "Add to compare"}
-            </label>
-          </div>
-        </div>
-      ) : null}
     </article>
   );
 }
@@ -436,10 +289,8 @@ export function SearchWorkspace() {
   const [result, setResult] = useState<SearchJobsResult | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
-  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
-  const [comparedJobIds, setComparedJobIds] = useState<readonly string[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [activityOpen, setActivityOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(true);
   const requestSequence = useRef(0);
 
   const runSearch = useCallback(async (input: JobSearchInput, history: "push" | "replace") => {
@@ -458,11 +309,6 @@ export function SearchWorkspace() {
       );
       if (requestSequence.current !== sequence) return;
       setResult(next);
-      setExpandedJobId((current) =>
-        current !== null && next.jobs.some(({ id }) => id === current)
-          ? current
-          : (next.jobs[0]?.id ?? null),
-      );
       setStatus("ready");
     } catch (searchError) {
       if (requestSequence.current !== sequence) return;
@@ -499,7 +345,6 @@ export function SearchWorkspace() {
           setApplied(input);
           setDraft(draftFromInput(input));
           setResult(committedResult);
-          setExpandedJobId(committedResult.jobs[0]?.id ?? null);
           setError(null);
           setStatus("ready");
         });
@@ -545,12 +390,6 @@ export function SearchWorkspace() {
     const parameters = searchInputToSearchParams(applied);
     return parameters.size === 0 ? "" : `?${parameters.toString()}`;
   }, [applied]);
-
-  const compareHref = useMemo(() => {
-    const parameters = searchInputToSearchParams(applied);
-    for (const id of comparedJobIds) parameters.append("id", id);
-    return `/compare?${parameters.toString()}`;
-  }, [applied, comparedJobIds]);
 
   const saveAlertHref = useMemo(() => {
     const parameters = searchInputToSearchParams(applied);
@@ -599,15 +438,7 @@ export function SearchWorkspace() {
     void runSearch(next, "push");
   }
 
-  function toggleCompare(id: string) {
-    setComparedJobIds((current) => {
-      if (current.includes(id)) return current.filter((value) => value !== id);
-      if (current.length >= 3) return current;
-      return [...current, id];
-    });
-  }
-
-  const mobileActivityStatus =
+  const activityStatus =
     webMcp.status === "error"
       ? "Needs attention"
       : webMcp.status === "checking"
@@ -619,22 +450,8 @@ export function SearchWorkspace() {
             : `${String(webMcp.activities.length)} ${webMcp.activities.length === 1 ? "event" : "events"}`;
 
   return (
-    <div className={styles["workspace"]}>
-      <aside className={styles["intentRail"]} aria-label="Search intent and filters">
-        <section className={styles["outcomeSection"]}>
-          <div className={styles["eyebrowRow"]}>
-            <p className={styles["eyebrow"]}>Your outcome</p>
-            <span className={styles["liveState"]}>
-              <CircleIcon aria-hidden="true" size={7} weight="fill" />
-              Editable
-            </span>
-          </div>
-          <h1>{outcomeLabel(applied)}</h1>
-          <p className={styles["outcomeHelp"]}>
-            Every constraint below is explicit, editable, and shareable.
-          </p>
-        </section>
-
+    <div className={styles["workspace"]} data-activity-open={String(activityOpen)}>
+      <aside className={styles["intentRail"]} aria-label="Search filters">
         <div className={styles["mobileWorkspaceActions"]}>
           <button
             className={styles["mobileFiltersButton"]}
@@ -645,17 +462,6 @@ export function SearchWorkspace() {
             Filters
             <span>{filterSummary.length} active</span>
           </button>
-          <button
-            aria-label={`Agent activity — ${mobileActivityStatus}`}
-            className={styles["mobileActivityButton"]}
-            data-status={webMcp.status}
-            onClick={() => setActivityOpen(true)}
-            type="button"
-          >
-            <CircleIcon aria-hidden="true" size={8} weight="fill" />
-            Activity
-            <span>{mobileActivityStatus}</span>
-          </button>
         </div>
         <SearchFilters
           className={styles["desktopFilters"] ?? ""}
@@ -663,19 +469,26 @@ export function SearchWorkspace() {
           onDraftChange={setDraft}
           onSubmit={submit}
         />
-
-        <AgentActivityRail
-          activities={webMcp.activities}
-          className={styles["agentActivity"] ?? ""}
-          registeredToolCount={webMcp.registeredToolCount}
-          status={<WebMcpStatus />}
-          webMcpAvailable={webMcp.supported && webMcp.status !== "error"}
-        />
       </aside>
+
+      {activityOpen ? null : (
+        <button
+          aria-expanded={activityOpen}
+          aria-label={`Agent activity — ${activityStatus}`}
+          className={styles["activityTrigger"]}
+          data-status={webMcp.status}
+          onClick={() => setActivityOpen(true)}
+          type="button"
+        >
+          <CircleIcon aria-hidden="true" size={8} weight="fill" />
+          Agent activity
+          <span>{activityStatus}</span>
+        </button>
+      )}
 
       <Sheet
         className={styles["mobileFilterSheet"] ?? ""}
-        description="Adjust the same transparent constraints used by search and WebMCP."
+        description="Adjust your filters — results update instantly."
         onOpenChange={setFiltersOpen}
         open={filtersOpen}
         side="bottom"
@@ -689,53 +502,34 @@ export function SearchWorkspace() {
         />
       </Sheet>
 
-      <Sheet
-        className={styles["mobileActivitySheet"] ?? ""}
-        description="See which route-specific tools are available and what an agent changed in this session."
-        onOpenChange={setActivityOpen}
-        open={activityOpen}
-        side="bottom"
-        title="Agent activity"
-      >
-        <AgentActivityRail
-          activities={webMcp.activities}
-          initiallyExpanded
-          registeredToolCount={webMcp.registeredToolCount}
-          status={<WebMcpStatus />}
-          webMcpAvailable={webMcp.supported && webMcp.status !== "error"}
-        />
-      </Sheet>
-
       <section className={styles["results"]} aria-labelledby="results-heading">
+        <form className={styles["searchBar"]} onSubmit={submit} role="search">
+          <MagnifyingGlassIcon aria-hidden="true" size={18} />
+          <input
+            aria-label="Search jobs"
+            maxLength={500}
+            onChange={(event) => setDraft({ ...draft, query: event.target.value })}
+            placeholder="Search roles, skills, or companies"
+            type="search"
+            value={draft.query}
+          />
+          <button type="submit">Search</button>
+        </form>
         <div className={styles["resultsHeader"]}>
           <div aria-label="Search status" role="status">
-            <p className={styles["eyebrow"]}>Curated technology roles</p>
-            <h2 id="results-heading">
-              {result === null ? "Matching jobs" : `${String(result.total)} matches`}
-            </h2>
+            <h1 id="results-heading">
+              {result === null
+                ? "Open roles"
+                : filterSummary.length === 0 && (applied.query ?? "") === ""
+                  ? `${String(result.total)} open roles`
+                  : `${String(result.total)} matches`}
+            </h1>
           </div>
           <div className={styles["resultsControls"]}>
-            <Link className={styles["compareLink"]} href={saveAlertHref}>
+            <Link className={styles["saveAlertLink"]} href={saveAlertHref}>
               <BellSimpleIcon aria-hidden="true" size={16} />
               Save alert
             </Link>
-            <span
-              aria-label="Comparison selection"
-              className={styles["selectionStatus"]}
-              role="status"
-            >
-              {comparedJobIds.length} selected
-            </span>
-            {comparedJobIds.length > 0 ? (
-              <Link
-                aria-label={`Compare ${String(comparedJobIds.length)} roles`}
-                className={styles["compareLink"]}
-                href={compareHref}
-              >
-                <ScalesIcon aria-hidden="true" size={16} />
-                Compare {comparedJobIds.length}
-              </Link>
-            ) : null}
             <label>
               <span className="sr-only">Sort jobs</span>
               <select
@@ -750,20 +544,22 @@ export function SearchWorkspace() {
           </div>
         </div>
 
-        <div aria-label="Applied filters" className={styles["filterChips"]} role="list">
-          {filterSummary.map((filter) => (
-            <span key={filter.id} role="listitem">
-              <button
-                aria-label={`Remove ${filter.label}`}
-                onClick={() => removeFilter(filter.id)}
-                type="button"
-              >
-                {filter.label}
-                <XIcon aria-hidden="true" size={11} weight="bold" />
-              </button>
-            </span>
-          ))}
-        </div>
+        {filterSummary.length > 0 ? (
+          <div aria-label="Applied filters" className={styles["filterChips"]} role="list">
+            {filterSummary.map((filter) => (
+              <span key={filter.id} role="listitem">
+                <button
+                  aria-label={`Remove ${filter.label}`}
+                  onClick={() => removeFilter(filter.id)}
+                  type="button"
+                >
+                  {filter.label}
+                  <XIcon aria-hidden="true" size={11} weight="bold" />
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
 
         <div aria-atomic="true" aria-live="polite" className="sr-only">
           {status === "ready" && result !== null
@@ -800,16 +596,7 @@ export function SearchWorkspace() {
         {result !== null && result.jobs.length > 0 ? (
           <div className={styles["resultList"]} data-loading={String(status === "loading")}>
             {result.jobs.map((job) => (
-              <JobResult
-                compareDisabled={comparedJobIds.length >= 3 && !comparedJobIds.includes(job.id)}
-                compared={comparedJobIds.includes(job.id)}
-                detailSearch={appliedSearch}
-                expanded={expandedJobId === job.id}
-                job={job}
-                key={job.id}
-                onCompare={() => toggleCompare(job.id)}
-                onExpand={() => setExpandedJobId((current) => (current === job.id ? null : job.id))}
-              />
+              <JobResult detailSearch={appliedSearch} job={job} key={job.id} />
             ))}
           </div>
         ) : null}
@@ -820,13 +607,35 @@ export function SearchWorkspace() {
               <ClockIcon aria-hidden="true" size={15} />
               Catalog updated {relativeFreshness(result.catalogUpdatedAt).replace("Updated ", "")}
             </span>
-            <span>
-              <MapPinIcon aria-hidden="true" size={15} />
-              Search state is saved in this URL
-            </span>
           </footer>
         ) : null}
       </section>
+
+      {activityOpen ? (
+        <aside aria-label="Agent activity" className={styles["activityPanel"]}>
+          <div className={styles["activityPanelHeader"]}>
+            <div>
+              <h2>Agent activity</h2>
+              <p>What an AI assistant can do on this page and what it changed.</p>
+            </div>
+            <button
+              aria-label="Close agent activity"
+              className={styles["activityPanelClose"]}
+              onClick={() => setActivityOpen(false)}
+              type="button"
+            >
+              <XIcon aria-hidden="true" size={15} />
+            </button>
+          </div>
+          <AgentActivityRail
+            activities={webMcp.activities}
+            initiallyExpanded
+            registeredToolCount={webMcp.registeredToolCount}
+            status={<WebMcpStatus />}
+            webMcpAvailable={webMcp.supported && webMcp.status !== "error"}
+          />
+        </aside>
+      ) : null}
     </div>
   );
 }

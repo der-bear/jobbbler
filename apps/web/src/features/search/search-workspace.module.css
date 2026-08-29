@@ -4,31 +4,15 @@
   min-block-size: calc(100dvh - 69px);
 }
 
+.workspace[data-activity-open="true"] {
+  grid-template-columns: minmax(290px, 23vw) minmax(0, 1fr) minmax(280px, 22vw);
+}
+
 .intentRail {
   border-inline-end: 1px solid var(--color-line);
   padding: clamp(34px, 4vw, 58px) clamp(24px, 3vw, 44px) 56px;
 }
 
-.outcomeSection h1 {
-  max-inline-size: 15ch;
-  margin: 16px 0 10px;
-  color: var(--color-ink);
-  font-size: clamp(28px, 2.55vw, 43px);
-  font-weight: 540;
-  letter-spacing: -0.052em;
-  line-height: 1.1;
-  text-wrap: balance;
-}
-
-.outcomeHelp {
-  max-inline-size: 38ch;
-  margin: 0;
-  color: var(--color-ink-subtle);
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-.eyebrowRow,
 .filterHeading,
 .resultsHeader,
 .resultsControls,
@@ -39,51 +23,170 @@
   gap: 16px;
 }
 
-.eyebrow {
-  margin: 0;
-  color: var(--color-ink-muted);
-  font-family: var(--jb-font-mono);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.105em;
-  line-height: 1.4;
-  text-transform: uppercase;
-}
-
-.liveState {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--color-signal-strong);
-  font-size: 10px;
-  font-weight: 640;
-}
-
 .filterForm {
   display: grid;
-  margin-block-start: 32px;
-  border-block-start: 1px solid var(--color-line);
 }
 
 .mobileWorkspaceActions,
-.mobileFiltersButton,
-.mobileActivityButton {
+.mobileFiltersButton {
   display: none;
 }
 
-.mobileFilterSheet,
-.mobileActivitySheet {
+.mobileFilterSheet {
   display: none;
 }
 
-.queryField {
+.activityPanel {
+  min-inline-size: 0;
+  border-inline-start: 1px solid var(--color-line);
+  padding: clamp(24px, 2.6vw, 40px) clamp(18px, 2vw, 28px) 48px;
+}
+
+.activityPanel summary {
+  display: none;
+}
+
+.activityPanel details {
+  border: 0;
+  padding: 0;
+}
+
+.activityPanel details > div {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.activityPanel header {
   display: grid;
-  gap: 7px;
-  border-block-end: 1px solid var(--color-line);
-  padding-block: 17px;
+  justify-items: start;
+  gap: 10px;
 }
 
-.queryField > span,
+.activityPanelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-block-end: 1px solid var(--color-line);
+  padding-block-end: 14px;
+  margin-block-end: 18px;
+}
+
+.activityPanelHeader h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.activityPanelHeader p {
+  margin: 6px 0 0;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.activityPanelClose {
+  display: inline-flex;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink-subtle);
+  padding: 4px;
+}
+
+.activityPanelClose:hover {
+  color: var(--color-ink);
+}
+
+.activityTrigger {
+  position: fixed;
+  inset-block-end: 18px;
+  inset-inline-end: 18px;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: 0 12px 28px -18px rgb(0 0 0 / 0.45);
+  padding: 9px 14px;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.activityTrigger:hover {
+  background: var(--color-surface-subtle);
+}
+
+.activityTrigger span {
+  color: var(--color-ink-subtle);
+  font-family: var(--jb-font-mono);
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.activityTrigger[data-status="ready"] > svg,
+.activityTrigger[data-status="preparing"] > svg {
+  color: var(--color-signal-strong);
+}
+
+.activityTrigger[data-status="error"] > svg,
+.activityTrigger[data-status="error"] span {
+  color: var(--jb-warning);
+}
+
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-block-end: 22px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  padding: 4px 6px 4px 14px;
+}
+
+.searchBar:focus-within {
+  border-color: var(--jb-signal);
+}
+
+.searchBar svg {
+  flex: 0 0 auto;
+  color: var(--color-ink-subtle);
+}
+
+.searchBar input {
+  flex: 1;
+  min-inline-size: 0;
+  min-block-size: 44px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 16px;
+}
+
+.searchBar input::placeholder {
+  color: var(--color-ink-subtle);
+}
+
+.searchBar button {
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--jb-signal);
+  color: var(--jb-signal-contrast);
+  font-size: 13px;
+  font-weight: 650;
+  padding: 10px 18px;
+}
+
+.searchBar button:hover {
+  background: var(--jb-signal-strong);
+}
+
 .filterHeading {
   color: var(--color-ink-muted);
   font-family: var(--jb-font-mono);
@@ -93,7 +196,6 @@
   text-transform: uppercase;
 }
 
-.queryField input,
 .filterRow input,
 .filterRow select,
 .resultsControls select {
@@ -104,13 +206,6 @@
   color: var(--color-ink);
 }
 
-.queryField input {
-  inline-size: 100%;
-  font-size: 15px;
-  font-weight: 560;
-}
-
-.queryField input::placeholder,
 .filterRow input::placeholder {
   color: var(--color-ink-subtle);
 }
@@ -155,8 +250,7 @@
   font-size: 12px;
 }
 
-.searchButton,
-.primaryLink {
+.searchButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -178,14 +272,9 @@
   margin-block-start: 18px;
 }
 
-.searchButton:hover,
-.primaryLink:hover {
+.searchButton:hover {
   background: var(--jb-signal-strong);
   translate: 0 -1px;
-}
-
-.agentActivity {
-  margin-block-start: 42px;
 }
 
 .results {
@@ -199,8 +288,8 @@
   padding-block-end: 18px;
 }
 
-.resultsHeader h2 {
-  margin: 6px 0 0;
+.resultsHeader h1 {
+  margin: 0;
   font-size: 19px;
   font-weight: 590;
   letter-spacing: -0.035em;
@@ -212,9 +301,7 @@
   font-size: 12px;
 }
 
-.compareLink,
-.secondaryAction,
-.ghostAction,
+.saveAlertLink,
 .errorState button {
   display: inline-flex;
   align-items: center;
@@ -230,35 +317,7 @@
   text-decoration: none;
 }
 
-.secondaryAction {
-  cursor: pointer;
-}
-
-.compareCheckbox {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-
-.secondaryAction:focus-within {
-  outline: 3px solid var(--jb-focus);
-  outline-offset: 3px;
-}
-
-.secondaryAction:has(input:disabled) {
-  cursor: not-allowed;
-  opacity: 0.46;
-}
-
-.selectionStatus {
-  color: var(--color-ink-subtle);
-  font-family: var(--jb-font-mono);
-  font-size: 9px;
-}
-
-.compareLink {
+.saveAlertLink {
   padding-inline: 11px;
 }
 
@@ -310,39 +369,24 @@
   border-block-end: 1px solid var(--color-line);
 }
 
-.jobResult[data-expanded="true"] {
-  background: color-mix(in srgb, var(--color-surface-subtle) 52%, transparent);
-}
-
 .jobSummary {
   display: grid;
-  grid-template-columns: minmax(240px, 1.45fr) minmax(150px, 0.58fr) 74px;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 22px;
   min-block-size: 92px;
   padding: 18px 20px;
 }
 
-.jobTitleButton {
-  display: flex;
-  min-inline-size: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border: 0;
-  background: transparent;
-  color: var(--color-ink);
-  padding: 0;
-  text-align: start;
-}
-
-.jobTitleButton > span {
+.jobTitleLink {
   display: grid;
   min-inline-size: 0;
   gap: 7px;
+  color: var(--color-ink);
+  text-decoration: none;
 }
 
-.jobTitleButton strong {
+.jobTitleLink strong {
   overflow: hidden;
   font-size: 16px;
   font-weight: 650;
@@ -351,28 +395,22 @@
   white-space: nowrap;
 }
 
-.jobTitleButton small,
-.jobSalary small,
-.matchScore small {
+.jobTitleLink:hover strong {
+  color: var(--color-signal-strong);
+}
+
+.jobTitleLink small,
+.jobSalary small {
   color: var(--color-ink-muted);
   font-size: 10px;
   line-height: 1.45;
 }
 
-.jobTitleButton svg {
-  flex: 0 0 auto;
-  color: var(--color-ink-subtle);
-  transition: rotate var(--motion-fast) var(--ease-standard);
-}
-
-.jobResult[data-expanded="true"] .jobTitleButton svg {
-  rotate: 180deg;
-}
-
-.jobSalary,
-.matchScore {
+.jobSalary {
   display: grid;
   gap: 5px;
+  justify-items: end;
+  text-align: end;
 }
 
 .jobSalary strong {
@@ -380,157 +418,8 @@
   font-weight: 590;
 }
 
-.matchScore {
-  justify-items: end;
-}
 
-.matchScore strong {
-  color: var(--color-signal-strong);
-  font-size: 14px;
-  font-weight: 680;
-}
-
-.matchScore small {
-  font-family: var(--jb-font-mono);
-  font-size: 8px;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.jobExpanded {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(210px, 0.65fr);
-  gap: 32px;
-  border-block-start: 1px solid var(--color-line);
-  padding: 26px 20px 22px;
-}
-
-.jobNarrative > p {
-  max-inline-size: 65ch;
-  margin: 0;
-  color: var(--color-ink-muted);
-  font-size: 13px;
-  line-height: 1.62;
-}
-
-.evidenceBlock,
-.tradeoffs {
-  margin-block-start: 24px;
-}
-
-.evidenceBlock h3,
-.tradeoffs h3 {
-  margin: 0 0 11px;
-  color: var(--color-ink);
-  font-family: var(--jb-font-mono);
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.evidenceBlock ul {
-  display: grid;
-  gap: 9px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.evidenceBlock li {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  color: var(--color-ink);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.evidenceBlock li svg {
-  flex: 0 0 auto;
-  margin-block-start: 1px;
-  color: var(--jb-signal);
-}
-
-.tradeoffs {
-  border-block-start: 1px dashed var(--color-line-strong);
-  padding-block-start: 18px;
-}
-
-.tradeoffs p {
-  margin: 0;
-  color: var(--color-ink-muted);
-  font-size: 11px;
-  line-height: 1.55;
-}
-
-.jobFacts {
-  align-self: start;
-  border-inline-start: 1px solid var(--color-line);
-  padding-inline-start: 22px;
-}
-
-.jobFacts > div {
-  display: grid;
-  grid-template-columns: 76px 1fr;
-  gap: 11px;
-  border-block-end: 1px solid var(--color-line);
-  padding-block: 10px;
-}
-
-.jobFacts span {
-  color: var(--color-ink-subtle);
-  font-size: 9px;
-  text-transform: uppercase;
-}
-
-.jobFacts strong,
-.jobFacts p {
-  margin: 0;
-  color: var(--color-ink);
-  font-size: 10px;
-  font-weight: 570;
-  line-height: 1.45;
-}
-
-.skills {
-  grid-template-columns: 1fr !important;
-}
-
-.skills p {
-  font-family: var(--jb-font-mono);
-  font-size: 9px;
-}
-
-.resultActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  grid-column: 1 / -1;
-  border-block-start: 1px solid var(--color-line);
-  padding-block-start: 18px;
-}
-
-.primaryLink,
-.secondaryAction,
-.ghostAction {
-  padding-inline: 14px;
-}
-
-.secondaryAction[data-selected="true"] {
-  border-color: var(--jb-signal);
-  background: var(--color-surface-subtle);
-  color: var(--color-signal-strong);
-}
-
-.ghostAction {
-  margin-inline-start: auto;
-  border-color: transparent;
-}
-
-.secondaryAction:hover,
-.ghostAction:hover,
-.compareLink:hover,
+.saveAlertLink:hover,
 .errorState button:hover {
   background: var(--color-surface-subtle);
 }
@@ -640,26 +529,21 @@
 }
 
 @media (max-width: 1080px) {
-  .workspace {
+  .workspace,
+  .workspace[data-activity-open="true"] {
     grid-template-columns: minmax(300px, 33vw) minmax(0, 1fr);
   }
 
+  .activityPanel {
+    grid-column: 1 / -1;
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--color-line);
+  }
+
   .jobSummary {
-    grid-template-columns: minmax(200px, 1.2fr) minmax(130px, 0.6fr) 62px;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 14px;
     padding-inline: 12px;
-  }
-
-  .jobExpanded {
-    grid-template-columns: 1fr;
-    padding-inline: 12px;
-  }
-
-  .jobFacts {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    border-inline-start: 0;
-    padding-inline-start: 0;
   }
 }
 
@@ -675,28 +559,17 @@
     padding: 28px 20px 24px;
   }
 
-  .outcomeSection h1 {
-    max-inline-size: 19ch;
-    font-size: clamp(27px, 8.2vw, 38px);
-  }
-
   .desktopFilters {
-    display: none;
-  }
-
-  .agentActivity {
     display: none;
   }
 
   .mobileWorkspaceActions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    grid-template-columns: minmax(0, 1fr);
     margin-block-start: 22px;
   }
 
-  .mobileFiltersButton,
-  .mobileActivityButton {
+  .mobileFiltersButton {
     display: flex;
     inline-size: 100%;
     align-items: center;
@@ -710,8 +583,7 @@
     font-weight: 650;
   }
 
-  .mobileFiltersButton span,
-  .mobileActivityButton span {
+  .mobileFiltersButton span {
     margin-inline-start: auto;
     color: var(--color-ink-subtle);
     font-family: var(--jb-font-mono);
@@ -722,21 +594,7 @@
     white-space: nowrap;
   }
 
-  .mobileActivityButton[data-status="ready"] > svg,
-  .mobileActivityButton[data-status="preparing"] > svg {
-    color: var(--color-signal-strong);
-  }
-
-  .mobileActivityButton[data-status="error"] > svg,
-  .mobileActivityButton[data-status="error"] span {
-    color: var(--jb-warning);
-  }
-
   .mobileFilterSheet[open] {
-    display: block;
-  }
-
-  .mobileActivitySheet[open] {
     display: block;
   }
 
@@ -751,15 +609,6 @@
     padding-block-start: 0;
   }
 
-  .mobileActivitySheet :global(.jb-dialog__surface) {
-    max-block-size: 76dvh;
-  }
-
-  .mobileActivitySheet :global(.jb-dialog__body) {
-    max-block-size: calc(76dvh - 92px);
-    overflow-y: auto;
-  }
-
   .sheetFilters {
     margin-block-start: 0;
     border-block-start: 0;
@@ -769,6 +618,7 @@
     padding: 26px 0 38px;
   }
 
+  .searchBar,
   .resultsHeader,
   .filterChips,
   .resultsFooter {
@@ -796,23 +646,6 @@
     grid-column: 1;
   }
 
-  .matchScore {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-  }
-
-  .jobExpanded {
-    padding: 22px 20px 20px;
-  }
-
-  .jobFacts {
-    grid-template-columns: 1fr;
-  }
-
-  .ghostAction {
-    margin-inline-start: 0;
-  }
-
   .skeletonRow {
     grid-template-columns: 1fr 60px;
     padding-inline: 20px;
@@ -837,18 +670,14 @@
     margin-inline-start: auto;
   }
 
-  .jobTitleButton strong {
+  .jobTitleLink strong {
     font-size: 15px;
   }
 
-  .jobTitleButton small {
+  .jobTitleLink small {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .resultActions > * {
-    flex: 1 1 auto;
   }
 }
 
@@ -857,10 +686,8 @@
     animation: none;
   }
 
-  .jobTitleButton svg,
   .resultList,
-  .searchButton,
-  .primaryLink {
+  .searchButton {
     transition: none;
   }
 }

@@ -16,17 +16,6 @@
   padding-block-end: clamp(30px, 4vw, 48px);
 }
 
-.eyebrow {
-  margin: 0;
-  color: var(--color-ink-muted);
-  font-family: var(--jb-font-mono);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  line-height: 1.4;
-  text-transform: uppercase;
-}
-
 .titleRow,
 .sectionHeading {
   display: flex;
@@ -54,30 +43,10 @@
   font-weight: 600;
 }
 
-.score,
-.matchScore {
-  display: grid;
-  flex: 0 0 auto;
-  gap: 2px;
-  margin: 0;
+.ineligibleNote {
+  margin: 8px 0 0;
   color: var(--color-ink-muted);
-  text-align: end;
-}
-
-.score strong,
-.matchScore strong {
-  color: var(--jb-signal);
-  font-size: 26px;
-  font-weight: 650;
-  letter-spacing: -0.05em;
-}
-
-.score span,
-.matchScore span {
-  font-family: var(--jb-font-mono);
-  font-size: 9px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 13px;
 }
 
 .facts {

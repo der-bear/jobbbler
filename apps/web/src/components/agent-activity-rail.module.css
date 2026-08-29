@@ -31,13 +31,6 @@
   gap: 3px;
 }
 
-.summary small {
-  color: var(--color-ink-subtle);
-  font-family: var(--jb-font-mono);
-  font-size: 8px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
 
 .summary strong {
   font-size: 12px;
@@ -78,7 +71,6 @@
   justify-content: space-between;
 }
 
-.eyebrow,
 .toolCount,
 .state,
 .entry time {
@@ -89,15 +81,11 @@
   text-transform: uppercase;
 }
 
-.eyebrow {
-  margin: 0;
-}
-
 .header h2 {
   font-size: 14px;
   font-weight: 650;
   letter-spacing: -0.025em;
-  margin: 5px 0 0;
+  margin: 0;
 }
 
 .capability {
