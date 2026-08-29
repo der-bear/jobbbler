@@ -108,7 +108,7 @@ git commit -m "chore: scaffold production workspace"
 - Produces `jobSearchInputSchema`, `JobSearchCriteria`, `JobSummary`, `SearchJobsResult`, and standard API envelopes.
 - Consumed by storage, HTTP, WebMCP, workers, and UI.
 
-- [ ] **Step 1: Write failing schema and ranking tests**
+- [x] **Step 1: Write failing schema and ranking tests**
 
 ```ts
 it("keeps unknown salary distinct from below threshold", () => {
@@ -121,7 +121,7 @@ it("keeps unknown salary distinct from below threshold", () => {
 });
 ```
 
-- [ ] **Step 2: Define shared schemas and stable error envelope**
+- [x] **Step 2: Define shared schemas and stable error envelope**
 
 ```ts
 export const apiErrorSchema = z.object({
@@ -142,7 +142,7 @@ export const apiErrorSchema = z.object({
 });
 ```
 
-- [ ] **Step 3: Implement command and context interfaces**
+- [x] **Step 3: Implement command and context interfaces**
 
 ```ts
 export interface CommandContext {
@@ -167,16 +167,16 @@ export interface ApplicationCommand<I, O> {
 }
 ```
 
-- [ ] **Step 4: Implement deterministic criteria normalization and score explanation**
+- [x] **Step 4: Implement deterministic criteria normalization and score explanation**
 
 Normalize strings, currencies, work models, seniority, locations, exclusions, and unknown-value policy. Return dimension scores and evidence without LLM authorization.
 
-- [ ] **Step 5: Run focused and workspace tests**
+- [x] **Step 5: Run focused and workspace tests**
 
 Run: `pnpm --filter @jobbbler/contracts test && pnpm --filter @jobbbler/jobs-domain test && pnpm typecheck`.  
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/contracts packages/core-domain packages/jobs-domain
