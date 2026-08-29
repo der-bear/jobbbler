@@ -37,7 +37,7 @@
   overflow: hidden;
   margin: 0;
   border: 1px solid var(--color-line-strong);
-  border-radius: var(--radius-md);
+  border-radius: var(--jb-radius-md);
   background: var(--color-surface);
   box-shadow: var(--shadow-floating);
   padding: 6px;
