@@ -21,12 +21,23 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
   {
     route: "*",
     title: "Every page",
-    note: "Registered alongside each page's own tools. Advisory only: it plans, it never acts.",
+    note: "A compact core keeps every workflow discoverable and reachable; page and state tools join it only when useful.",
     tools: [
       {
         name: "plan_job_workflow",
         purpose: "Return the recommended safe steps for one Jobbbler goal from the current page.",
         readOnly: true,
+      },
+      {
+        name: "get_site_capabilities",
+        purpose:
+          "Read Jobbbler's workflows, tool coverage, route requirements, and human boundaries.",
+        readOnly: true,
+      },
+      {
+        name: "open_jobbbler_page",
+        purpose: "Open a Jobbbler workspace from any page using explicit validated identifiers.",
+        readOnly: false,
       },
     ],
   },

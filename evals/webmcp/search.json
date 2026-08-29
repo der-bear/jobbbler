@@ -6,6 +6,8 @@
     "get_search_state",
     "get_search_filters",
     "open_job_details",
+    "get_site_capabilities",
+    "open_jobbbler_page",
     "plan_job_workflow"
   ],
   "cases": [
