@@ -30,7 +30,7 @@ export class ApiClientError extends Error {
 export interface QueryApiOptions {
   readonly fetch?: typeof globalThis.fetch;
   readonly signal?: AbortSignal;
-  readonly method?: "GET" | "POST";
+  readonly method?: "GET" | "POST" | "PATCH" | "DELETE";
   readonly body?: unknown;
   readonly headers?: HeadersInit;
 }

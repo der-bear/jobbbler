@@ -1,11 +1,12 @@
 import type { NextConfig } from "next";
 import { fileURLToPath } from "node:url";
+import { securityHeaders } from "./src/server/security-headers";
 
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: fileURLToPath(new URL("../../", import.meta.url)),
   outputFileTracingIncludes: {
-    "/*": ["../../migrations/sqlite/*.sql"],
+    "/*": ["../../migrations/sqlite/*.sql", "../../migrations/postgres/*.sql"],
   },
   poweredByHeader: false,
   reactStrictMode: true,
@@ -20,6 +21,14 @@ const nextConfig: NextConfig = {
     "@jobbbler/ui",
     "@jobbbler/webmcp",
   ],
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: Object.entries(securityHeaders()).map(([key, value]) => ({ key, value })),
+      },
+    ];
+  },
   webpack(configuration) {
     configuration.resolve.extensionAlias = {
       ".js": [".ts", ".tsx", ".js"],

@@ -14,7 +14,9 @@ import {
 
 import {
   compareJobsResultSchema,
+  jobAlertScheduleSchema,
   jobDetailResultSchema,
+  savedSearchSchema,
   searchJobsResultSchema,
   type ToolActivity,
 } from "@jobbbler/contracts";
@@ -26,13 +28,22 @@ import {
 } from "@jobbbler/webmcp";
 
 import { createCompareToolManifests } from "@/features/compare/webmcp-tools";
+import { createApplicationToolManifests } from "@/features/application/webmcp-tools";
+import {
+  readApplicationWebMcpSurface,
+  subscribeApplicationWebMcpSurface,
+} from "@/features/application/webmcp-surface";
 import { compareApiUrl } from "@/features/compare/compare-state";
 import { createJobDetailToolManifests } from "@/features/job-detail/webmcp-tools";
 import { createSearchToolManifests } from "@/features/search/webmcp-tools";
+import { createSavedToolManifests } from "@/features/saved/webmcp-tools";
 import { queryApi } from "@/lib/query-client";
+import { startOwnerActivityFeed } from "@/lib/owner-activity-feed";
 import { searchInputToSearchParams, searchParamsToInput } from "@/lib/search-url";
+import { subscribeToConfiguredSupabaseActivityWakeups } from "@/lib/supabase-activity-wakeup";
 import {
   commitWebMcpJobDetail,
+  commitWebMcpSchedule,
   commitWebMcpSearch,
   readSearchSurfaceState,
 } from "@/lib/webmcp-ui-bridge";
@@ -136,6 +147,28 @@ function routeManifests(
     });
   }
 
+  if (route.kind === "saved") {
+    return createSavedToolManifests({
+      listSavedSearches: ({ signal }) =>
+        queryApi("/api/v1/saved-searches", savedSearchSchema.array(), { signal }),
+      listSchedules: ({ signal }) =>
+        queryApi("/api/v1/schedules", jobAlertScheduleSchema.array(), { signal }),
+      setScheduleEnabled: (scheduleId, input, { signal }) =>
+        queryApi(`/api/v1/schedules/${encodeURIComponent(scheduleId)}`, jobAlertScheduleSchema, {
+          method: "PATCH",
+          body: input,
+          signal,
+        }),
+      onScheduleCommitted: commitWebMcpSchedule,
+    });
+  }
+
+  if (route.kind === "application") {
+    const surface = readApplicationWebMcpSurface();
+    if (surface === null || surface.currentState().draftId !== route.draftId) return [];
+    return createApplicationToolManifests(surface);
+  }
+
   return [];
 }
 
@@ -148,12 +181,26 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
   const [registrationRevision, setRegistrationRevision] = useState(0);
   const retry = useCallback(() => setRegistrationRevision((revision) => revision + 1), []);
 
+  useEffect(
+    () =>
+      subscribeApplicationWebMcpSurface(() => setRegistrationRevision((revision) => revision + 1)),
+    [],
+  );
+
   const subscribe = useCallback(
     (listener: () => void) => activitiesStore.subscribe(listener),
     [activitiesStore],
   );
   const getSnapshot = useCallback(() => activitiesStore.snapshot(), [activitiesStore]);
   const activities = useSyncExternalStore(subscribe, getSnapshot, () => emptyActivities);
+
+  useEffect(() => {
+    const feed = startOwnerActivityFeed({
+      activities: activitiesStore,
+      subscribeWakeups: subscribeToConfiguredSupabaseActivityWakeups,
+    });
+    return () => feed.stop();
+  }, [activitiesStore]);
 
   useEffect(() => {
     setStatus("checking");

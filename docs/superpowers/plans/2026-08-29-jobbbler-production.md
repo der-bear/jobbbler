@@ -348,28 +348,28 @@ git commit -m "feat: expose explainable job discovery API"
 - Consumes discovery API and URL state.
 - Produces accessible UI primitives, search state store, and visible events consumed by WebMCP.
 
-- [ ] **Step 1: Write Playwright acceptance tests from the visual design**
+- [x] **Step 1: Write Playwright acceptance tests from the visual design**
 
 Assert public first render, keyboard search, editable filter chips, stable skeleton geometry, result evidence, three-job compare, light/dark persistence, 390px mobile behavior, reduced motion, and usable fallback with `document.modelContext` absent.
 
-- [ ] **Step 2: Implement token system and primitives**
+- [x] **Step 2: Implement token system and primitives**
 
 Implement warm neutral light, charcoal-green dark, contrast-safe signal accent, variable sans/mono typography, spacing/radius/shadow layers, focus rings, and reduced-motion overrides. Avoid copied shadcn markup or styling.
 
-- [ ] **Step 3: Build search workspace and states**
+- [x] **Step 3: Build search workspace and states**
 
 Compose top bar, WebMCP status/pulse, outcome input, inferred/explicit filter chips, sort/count, list, result cards, point-of-effect change highlighting, accessible live announcements, empty/partial/stale/error states, and responsive sheets.
 
-- [ ] **Step 4: Build details, evidence, fit and comparison**
+- [x] **Step 4: Build details, evidence, fit and comparison**
 
 Show source/freshness, known/unknown facts, responsibilities, salary semantics, match dimensions, tradeoffs, application mode, and URL-shareable compare selection.
 
-- [ ] **Step 5: Run visual and accessibility tests**
+- [x] **Step 5: Run visual and accessibility tests**
 
 Run: `pnpm --filter @jobbbler/web test && pnpm test:e2e --grep "search|theme|mobile|fallback"`.  
 Expected: PASS at desktop and mobile viewports with no serious accessibility violations.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/ui apps/web/src/app apps/web/src/features
@@ -392,11 +392,11 @@ git commit -m "feat: create polished Jobbbler discovery experience"
 - Produces `registerToolSet(manifest, context): () => void` and `AgentActivityStore`.
 - Consumes the same typed command clients as human UI.
 
-- [ ] **Step 1: Write a fake `document.modelContext` harness and failing lifecycle tests**
+- [x] **Step 1: Write a fake `document.modelContext` harness and failing lifecycle tests**
 
 Test exact route tool names, unique purpose, abort-driven unregistration, cancellation propagation, feature absence, annotation accuracy, description/output budgets, and visible activity completion.
 
-- [ ] **Step 2: Implement feature detection and static route manifests**
+- [x] **Step 2: Implement feature detection and static route manifests**
 
 ```ts
 export interface ToolManifest<I, O> {
@@ -408,21 +408,21 @@ export interface ToolManifest<I, O> {
 }
 ```
 
-- [ ] **Step 3: Implement registration lifecycle with one `AbortController` per route set**
+- [x] **Step 3: Implement registration lifecycle with one `AbortController` per route set**
 
 Register only when `document.modelContext?.registerTool` exists; abort on route/role/resource change; do not expose cross-origin tools; preserve in-flight behavior according to the current API and ensure network calls receive `signal`.
 
 Before implementation, perform a focused current-documentation pass through Local Knowledge and the challenge's Devpost Resources. Record a capability-to-feature-to-test-to-demo matrix; do not assume WebMCP supplies a cryptographically verifiable agent identity unless the current API explicitly proves it.
 
-- [ ] **Step 4: Implement route tools and UI synchronization**
+- [x] **Step 4: Implement route tools and UI synchronization**
 
 Search, detail, compare, save, schedule, and application tools call versioned APIs, update the same client stores/URL as UI, focus a meaningful element, announce the outcome, highlight the affected state, and write concise activity records with confirmation and safe undo metadata.
 
-- [ ] **Step 5: Implement deterministic tool/eval checks**
+- [x] **Step 5: Implement deterministic tool/eval checks**
 
 Validate complete route sets against direct, paraphrased, and ambiguous prompts; verify selected tool and structured arguments. Keep model-based evals non-blocking, deterministic lifecycle tests blocking.
 
-- [ ] **Step 6: Test in local in-app browser and commit**
+- [x] **Step 6: Test in local in-app browser and commit**
 
 Run unit/integration tests, start local app, verify fetched tool list and representative read/mutation calls in ChatGPT's in-app browser, then:
 
@@ -447,23 +447,23 @@ git commit -m "feat: add transparent route-scoped WebMCP tools"
 - Produces `SavedSearchService`, `ScheduleService`, `DeltaService`, `NotificationAdapter`.
 - Produces APIs/tools for preview, schedule, latest update, pause, and management.
 
-- [ ] **Step 1: Write state-machine tests with a fake clock**
+- [x] **Step 1: Write state-machine tests with a fake clock**
 
 Cover IANA timezone daily/weekly recurrence, DST, jitter, pause/resume, browser-closed execution, endpoint verification, narrow signed links, new/updated/closed/no-longer-matching deltas, delivery dedupe, and retry.
 
-- [ ] **Step 2: Implement verified owner and management token flows**
+- [x] **Step 2: Implement verified owner and management token flows**
 
 Hash tokens at rest, bind scope/resource/expiry, rotate after use where applicable, and require re-verification for ownership expansion.
 
-- [ ] **Step 3: Implement saved-search and schedule commands/APIs**
+- [x] **Step 3: Implement saved-search and schedule commands/APIs**
 
 Preview exact filters, recurrence, timezone, threshold, endpoint, and update types before activation. Enforce optimistic version and idempotency.
 
-- [ ] **Step 4: Implement scheduler, evaluator, delta, and notification workers**
+- [x] **Step 4: Implement scheduler, evaluator, delta, and notification workers**
 
 Use leases, fake-clock-safe due calculation, deterministic digests, no-change suppression, delivery keys, bounded retries, and audit events. AI failure cannot block deterministic alerts.
 
-- [ ] **Step 5: Build saved-search and signed management UI plus WebMCP tools**
+- [x] **Step 5: Build saved-search and signed management UI plus WebMCP tools**
 
 Show next run, freshness, latest delta, pause/resume, delivery state, and exact changes. Tool activity updates the same UI.
 
@@ -492,7 +492,7 @@ git commit -m "feat: deliver durable verified job alerts"
 - Produces `AgentDelegationService.request/approve/evaluate/revoke` and `DataGrantService.request/grant/withdraw/evaluate`.
 - Produces application route WebMCP tools and a visible receipt.
 
-- [ ] **Step 1: Write the application state-machine tests first**
+- [x] **Step 1: Write the application state-machine tests first**
 
 ```ts
 it("invalidates confirmation after a material edit", async () => {
@@ -503,19 +503,19 @@ it("invalidates confirmation after a material edit", async () => {
 });
 ```
 
-- [ ] **Step 2: Implement versioned requirements, drafts, answers, and provenance**
+- [x] **Step 2: Implement versioned requirements, drafts, answers, and provenance**
 
 Distinguish candidate facts, imported facts, user-entered answers, agent suggestions, unknowns, sensitive values, and declarations. Agent suggestions remain unreviewed until the user accepts/edits them.
 
-- [ ] **Step 3: Implement immutable review and confirmation protocol**
+- [x] **Step 3: Implement immutable review and confirmation protocol**
 
 Snapshot recipient, requirement version, fields, documents, declarations, payload hash, owner, and draft version. Store only a hash of the short-lived single-use token.
 
-- [ ] **Step 4: Implement idempotent internal submission and external handoff**
+- [x] **Step 4: Implement idempotent internal submission and external handoff**
 
 Internal demo employer produces a durable receipt. External mode prepares a packet and opens the source URL but records only `handed_off`, never `submitted`.
 
-- [ ] **Step 5: Build application UI and route-scoped WebMCP tools**
+- [x] **Step 5: Build application UI and route-scoped WebMCP tools**
 
 Show provenance and missing/sensitive fields, validation, exact review, confirmation expiry, submission progress, receipt, and safe retry. No bulk tool exists.
 

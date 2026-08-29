@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { DomainError } from "@jobbbler/core-domain";
+import type { Storage } from "@jobbbler/storage";
 import { createSqliteStorage } from "@jobbbler/storage-sqlite";
 
 import { runWorkBatch } from "./work-loop.js";
@@ -75,6 +76,30 @@ describe("lease-based work loop", () => {
       lastErrorCode: "DEPENDENCY",
     });
     storage.close();
+  });
+
+  it("requests a work-item kind filter when a dispatcher is scoped to one kind", async () => {
+    const claimDue = async (input: Record<string, unknown>) => {
+      claimedWith = input;
+      return [];
+    };
+    let claimedWith: Record<string, unknown> | null = null;
+    const storage = {
+      workItems: { claimDue },
+    } as unknown as Storage;
+
+    await runWorkBatch({
+      storage,
+      workerId: "alert-worker",
+      now,
+      leaseSeconds: 120,
+      limit: 10,
+      kinds: ["alert_delivery"],
+      signal: new AbortController().signal,
+      handle: async () => undefined,
+    });
+
+    expect(claimedWith).toMatchObject({ kinds: ["alert_delivery"] });
   });
 
   it("renews a lease while a handler remains active", async () => {

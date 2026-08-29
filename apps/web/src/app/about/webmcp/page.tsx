@@ -1,6 +1,7 @@
 import {
   ArrowSquareOutIcon,
   CheckCircleIcon,
+  ClockCountdownIcon,
   CompassIcon,
   ShieldCheckIcon,
 } from "@phosphor-icons/react/dist/ssr";
@@ -11,86 +12,118 @@ export default function WebMcpAboutPage() {
   return (
     <article className={styles["page"]}>
       <header className={styles["hero"]}>
-        <p className={styles["eyebrow"]}>About WebMCP</p>
-        <h1>WebMCP helps inspect job sources. It does not decide for you.</h1>
+        <p className={styles["eyebrow"]}>One example of the agentic web</p>
+        <h1>A job portal your browser agent can understand.</h1>
         <p>
-          In Jobbbler, WebMCP is the agent-facing layer that can request the same structured job
-          discovery tools used by the app. It helps turn a clear search request into source-backed
-          results.
+          Jobbbler shows what changes when a familiar website exposes useful, structured actions
+          directly to a compatible browser agent. Open the site from your agent client. No separate
+          MCP server to install, declare, or configure.
         </p>
       </header>
 
       <section aria-labelledby="how-it-works" className={styles["section"]}>
         <div>
           <p className={styles["eyebrow"]}>How it works</p>
-          <h2 id="how-it-works">A narrow bridge between a request and verifiable records.</h2>
+          <h2 id="how-it-works">Ask once. Let the site explain what it can do.</h2>
         </div>
         <ol className={styles["steps"]}>
           <li>
             <CompassIcon aria-hidden="true" size={20} />
             <div>
-              <strong>Search with constraints</strong>
+              <strong>Describe the outcome</strong>
               <p>
-                It can express filters such as role, work model, location, skills, salary, and
-                recency.
+                The conversation stays in your agent client. You can ask for remote platform roles,
+                compare a shortlist, monitor a search, or prepare an application.
               </p>
             </div>
           </li>
           <li>
             <CheckCircleIcon aria-hidden="true" size={20} weight="fill" />
             <div>
-              <strong>Return structured evidence</strong>
+              <strong>Open Jobbbler</strong>
               <p>
-                Jobbbler returns normalized records, fit evidence, caveats, exclusions, and source
-                freshness.
+                A compatible browser agent discovers the actions available on that page and uses
+                typed inputs instead of guessing where to click.
               </p>
             </div>
           </li>
           <li>
             <ArrowSquareOutIcon aria-hidden="true" size={20} />
             <div>
-              <strong>Keep the original source in view</strong>
+              <strong>See the same result</strong>
               <p>
-                Every role links back to its observed source when one is available, so you can
-                verify it yourself.
+                The URL, filters, results, saved alert, or application state updates through the
+                same server rules as the visible interface.
+              </p>
+            </div>
+          </li>
+          <li>
+            <ShieldCheckIcon aria-hidden="true" size={20} />
+            <div>
+              <strong>Keep consequential choices explicit</strong>
+              <p>
+                Data sharing and submission use exact, review-bound requests. An agent-mediated
+                approval is stored as evidence of the action without claiming cryptographic human
+                or agent identity.
               </p>
             </div>
           </li>
         </ol>
       </section>
 
-      <section aria-labelledby="what-it-does-not-do" className={styles["section"]}>
+      <section aria-labelledby="why-jobs" className={styles["section"]}>
         <div>
-          <p className={styles["eyebrow"]}>Limits</p>
-          <h2 id="what-it-does-not-do">What WebMCP does not do</h2>
+          <p className={styles["eyebrow"]}>Why jobs</p>
+          <h2 id="why-jobs">Useful work is repetitive. Decisions should not be.</h2>
         </div>
         <div className={styles["limits"]}>
           <p>
-            It does not guarantee that a role is still open, that compensation is complete, or that
-            a source is correct.
+            Job markets change every day. People repeatedly scan new listings, rebuild the same
+            filters, compare incomplete evidence, and track what changed.
           </p>
           <p>
-            It does not infer undisclosed salary, invent missing requirements, submit applications,
-            or share account secrets.
+            WebMCP makes the live website directly operable by an agent while keeping every role,
+            source, unknown, and decision understandable to a person.
           </p>
           <p>
-            Fit scores are explanations of the active criteria, not hiring predictions or
-            recommendations.
+            This is one proof case for a broader pattern: any data-rich platform can offer a
+            focused agent interface alongside its familiar human interface.
           </p>
         </div>
       </section>
 
-      <section aria-labelledby="safe-use" className={styles["section"]}>
+      <section aria-labelledby="live-and-durable" className={styles["section"]}>
         <div>
-          <p className={styles["eyebrow"]}>Safe use</p>
-          <h2 id="safe-use">Treat it as research, not an authority.</h2>
+          <p className={styles["eyebrow"]}>Live and durable work</p>
+          <h2 id="live-and-durable">The browser starts the task. The service keeps its promises.</h2>
         </div>
         <p className={styles["safeUse"]}>
-          <ShieldCheckIcon aria-hidden="true" size={20} />
-          Review evidence and unknowns, then follow the original listing before you act. Jobbbler
-          only shows the data available in its observed record and leaves the final judgement to
-          you.
+          <ClockCountdownIcon aria-hidden="true" size={20} />
+          WebMCP actions are available while the agent has the page open. If you save a monitored
+          search, alerts keep running through Jobbbler after the tab closes and report only newly
+          observed matching roles.
         </p>
+      </section>
+
+      <section aria-labelledby="limits" className={styles["section"]}>
+        <div>
+          <p className={styles["eyebrow"]}>Clear limits</p>
+          <h2 id="limits">Assistance is not authority.</h2>
+        </div>
+        <div className={styles["limits"]}>
+          <p>
+            WebMCP does not guarantee that a role is still open, compensation is complete, or a
+            source is correct.
+          </p>
+          <p>
+            Jobbbler does not invent missing requirements, expose account secrets, or let tool
+            discovery bypass server authorization.
+          </p>
+          <p>
+            Fit explanations describe the active criteria. They are not hiring predictions, and
+            every observed role keeps its source and known unknowns in view.
+          </p>
+        </div>
       </section>
     </article>
   );

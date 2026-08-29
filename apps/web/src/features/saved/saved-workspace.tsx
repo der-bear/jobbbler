@@ -1,0 +1,943 @@
+"use client";
+
+import {
+  ArrowRightIcon,
+  BellRingingIcon,
+  CalendarDotsIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  EnvelopeSimpleIcon,
+  EyeIcon,
+  LockKeyIcon,
+  PauseIcon,
+  PlayIcon,
+  ShieldCheckIcon,
+  SparkleIcon,
+  WarningCircleIcon,
+} from "@phosphor-icons/react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { z } from "zod";
+
+import {
+  completeEmailVerificationResultSchema,
+  jobAlertScheduleSchema,
+  ownerSessionResultSchema,
+  savedSearchSchema,
+  searchJobsResultSchema,
+  startEmailVerificationResultSchema,
+  verificationEndpointSummarySchema,
+  type JobAlertSchedule,
+  type JobSearchCriteria,
+  type JobSearchInput,
+  type OwnerSummary,
+  type SavedSearch,
+  type ScheduleRecurrence,
+  type VerificationEndpointSummary,
+  type Weekday,
+} from "@jobbbler/contracts";
+import { useToast } from "@jobbbler/ui";
+
+import { ApiClientError, queryApi } from "@/lib/query-client";
+import { searchInputToSearchParams } from "@/lib/search-url";
+import { subscribeWebMcpScheduleCommit } from "@/lib/webmcp-ui-bridge";
+
+import { OwnerPrivacyControls } from "./owner-privacy-controls";
+import styles from "./saved-workspace.module.css";
+
+const savedSearchListSchema = z.array(savedSearchSchema);
+const scheduleListSchema = z.array(jobAlertScheduleSchema);
+const endpointListSchema = z.array(verificationEndpointSummarySchema);
+const previewSchema = z.strictObject({
+  recurrence: z.unknown(),
+  nextRunAt: z.iso.datetime({ offset: true }),
+  delivery: z.strictObject({
+    channel: z.literal("email"),
+    endpointId: z.string(),
+    maskedDestination: z.string(),
+  }),
+});
+const latestRunSchema = z.strictObject({
+  savedSearchId: z.string(),
+  evaluation: z
+    .strictObject({
+      id: z.string(),
+      createdAt: z.iso.datetime({ offset: true }),
+      catalogUpdatedAt: z.iso.datetime({ offset: true }).nullable(),
+      baselineCount: z.number().int().nonnegative(),
+      changes: z.strictObject({
+        total: z.number().int().nonnegative(),
+        truncated: z.boolean(),
+        items: z.array(
+          z.strictObject({
+            id: z.string(),
+            jobId: z.string(),
+            kind: z.enum(["new", "updated", "closed", "no_longer_matching"]),
+            createdAt: z.iso.datetime({ offset: true }),
+          }),
+        ),
+      }),
+    })
+    .nullable(),
+  delivery: z
+    .strictObject({
+      status: z.enum(["pending", "sending", "accepted", "failed", "dead", "cancelled"]),
+      attempt: z.number().int().nonnegative(),
+      errorCode: z.string().nullable(),
+      acceptedAt: z.iso.datetime({ offset: true }).nullable(),
+      lastAttemptAt: z.iso.datetime({ offset: true }).nullable(),
+      updatedAt: z.iso.datetime({ offset: true }),
+    })
+    .nullable(),
+});
+type LatestRun = z.infer<typeof latestRunSchema>;
+
+const weekdayOptions: readonly { readonly value: Weekday; readonly label: string }[] = [
+  { value: "monday", label: "Mon" },
+  { value: "tuesday", label: "Tue" },
+  { value: "wednesday", label: "Wed" },
+  { value: "thursday", label: "Thu" },
+  { value: "friday", label: "Fri" },
+  { value: "saturday", label: "Sat" },
+  { value: "sunday", label: "Sun" },
+];
+
+type Status = "loading" | "ready" | "working" | "error";
+
+function message(error: unknown): string {
+  if (error instanceof ApiClientError) return error.message;
+  return "Something went wrong. Your existing alerts are unchanged.";
+}
+
+function localTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
+function displayInstant(value: string): string {
+  return new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function criteriaInput(criteria: JobSearchCriteria): JobSearchInput {
+  return {
+    ...(criteria.query === null ? {} : { query: criteria.query }),
+    categories: criteria.categories,
+    workModels: criteria.workModels,
+    seniorities: criteria.seniorities,
+    locations: criteria.locations,
+    skills: criteria.skills,
+    excludeKeywords: criteria.excludeKeywords,
+    ...(criteria.salary === null
+      ? {}
+      : {
+          salary: {
+            ...(criteria.salary.minimum === null ? {} : { minimum: criteria.salary.minimum }),
+            ...(criteria.salary.maximum === null ? {} : { maximum: criteria.salary.maximum }),
+            ...(criteria.salary.currency === null ? {} : { currency: criteria.salary.currency }),
+            period: criteria.salary.period,
+            unknownPolicy: criteria.salary.unknownPolicy,
+          },
+        }),
+    ...(criteria.postedWithinDays === null ? {} : { postedWithinDays: criteria.postedWithinDays }),
+    sort: criteria.sort,
+    limit: criteria.limit,
+  };
+}
+
+function searchHref(criteria: JobSearchCriteria): string {
+  const parameters = searchInputToSearchParams(criteriaInput(criteria));
+  return parameters.size === 0 ? "/" : `/?${parameters.toString()}`;
+}
+
+function criteriaSummary(criteria: JobSearchCriteria): readonly string[] {
+  const summary: string[] = [];
+  if (criteria.query !== null) summary.push(criteria.query);
+  summary.push(...criteria.categories.map((value) => value.replaceAll("_", " ")));
+  summary.push(...criteria.workModels);
+  summary.push(...criteria.seniorities);
+  summary.push(...criteria.locations);
+  if (criteria.salary?.minimum !== null && criteria.salary?.minimum !== undefined) {
+    summary.push(
+      `${criteria.salary.currency ?? ""} ${Intl.NumberFormat("en").format(criteria.salary.minimum)}+`,
+    );
+  }
+  return summary.slice(0, 6);
+}
+
+function defaultName(criteria: JobSearchCriteria): string {
+  if (criteria.query !== null) return criteria.query.slice(0, 100);
+  const parts = [...criteria.seniorities, ...criteria.categories, ...criteria.locations];
+  return (parts.length === 0 ? "My technology roles" : parts.join(" · ")).slice(0, 100);
+}
+
+export function SavedWorkspace() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const toast = useToast();
+  const createRequested = searchParams.get("create") === "1";
+  const [status, setStatus] = useState<Status>("loading");
+  const [error, setError] = useState<string | null>(null);
+  const [owner, setOwner] = useState<OwnerSummary | null>(null);
+  const [endpoints, setEndpoints] = useState<readonly VerificationEndpointSummary[]>([]);
+  const [savedSearches, setSavedSearches] = useState<readonly SavedSearch[]>([]);
+  const [schedules, setSchedules] = useState<readonly JobAlertSchedule[]>([]);
+  const [latestRuns, setLatestRuns] = useState<ReadonlyMap<string, LatestRun>>(new Map());
+  const [criteria, setCriteria] = useState<JobSearchCriteria | null>(null);
+  const [email, setEmail] = useState("");
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [verificationHint, setVerificationHint] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [frequency, setFrequency] = useState<"daily" | "weekly">("daily");
+  const [time, setTime] = useState("09:00");
+  const [timeZone, setTimeZone] = useState(localTimeZone);
+  const [days, setDays] = useState<readonly Weekday[]>(["monday", "wednesday", "friday"]);
+  const [endpointId, setEndpointId] = useState("");
+  const [pendingRevokeId, setPendingRevokeId] = useState<string | null>(null);
+  const [pendingSaved, setPendingSaved] = useState<SavedSearch | null>(null);
+  const [preview, setPreview] = useState<z.infer<typeof previewSchema> | null>(null);
+
+  const loadPrivateResources = useCallback(async () => {
+    const [nextEndpoints, nextSaved, nextSchedules] = await Promise.all([
+      queryApi("/api/v1/owners/email", endpointListSchema),
+      queryApi("/api/v1/saved-searches", savedSearchListSchema),
+      queryApi("/api/v1/schedules", scheduleListSchema),
+    ]);
+    setEndpoints(nextEndpoints);
+    setSavedSearches(nextSaved);
+    setSchedules(nextSchedules);
+    const runs = await Promise.all(
+      nextSaved.map(async (saved) => {
+        try {
+          return await queryApi(
+            `/api/v1/saved-searches/${encodeURIComponent(saved.id)}/latest-run`,
+            latestRunSchema,
+          );
+        } catch {
+          return null;
+        }
+      }),
+    );
+    setLatestRuns(
+      new Map(
+        runs.filter((run): run is LatestRun => run !== null).map((run) => [run.savedSearchId, run]),
+      ),
+    );
+    const verified = nextEndpoints.find(
+      ({ status: endpointStatus }) => endpointStatus === "verified",
+    );
+    if (verified !== undefined) setEndpointId(verified.id);
+  }, []);
+
+  const startPrivateWorkspace = useCallback(async () => {
+    const current = await queryApi("/api/v1/owners/session", ownerSessionResultSchema, {
+      method: "POST",
+    });
+    setOwner(current.owner);
+    await loadPrivateResources();
+    return current.owner;
+  }, [loadPrivateResources]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function initialize() {
+      setStatus("loading");
+      setError(null);
+      try {
+        if (createRequested) {
+          const parameters = new URLSearchParams(searchParams.toString());
+          parameters.delete("create");
+          const result = await queryApi(
+            `/api/v1/jobs/search${parameters.size === 0 ? "" : `?${parameters.toString()}`}`,
+            searchJobsResultSchema,
+          );
+          if (!cancelled) {
+            setCriteria(result.criteria);
+            setName(defaultName(result.criteria));
+          }
+        }
+
+        try {
+          const current = await queryApi("/api/v1/owners/session", ownerSessionResultSchema);
+          if (cancelled) return;
+          setOwner(current.owner);
+          await loadPrivateResources();
+        } catch (identityError) {
+          if (!(identityError instanceof ApiClientError) || identityError.code !== "UNAUTHORIZED") {
+            throw identityError;
+          }
+          if (createRequested) await startPrivateWorkspace();
+        }
+        if (!cancelled) setStatus("ready");
+      } catch (caught) {
+        if (!cancelled) {
+          setError(message(caught));
+          setStatus("error");
+        }
+      }
+    }
+    void initialize();
+    return () => {
+      cancelled = true;
+    };
+  }, [createRequested, loadPrivateResources, searchParams, startPrivateWorkspace]);
+
+  useEffect(
+    () =>
+      subscribeWebMcpScheduleCommit((updated) => {
+        setSchedules((current) => {
+          const exists = current.some(({ id }) => id === updated.id);
+          return exists
+            ? current.map((schedule) => (schedule.id === updated.id ? updated : schedule))
+            : [updated, ...current];
+        });
+        toast.show({
+          title: updated.enabled ? "Alert resumed by agent" : "Alert paused by agent",
+          description: "The visible workspace now matches the authoritative server state.",
+          tone: "success",
+        });
+      }),
+    [toast],
+  );
+
+  const verifiedEndpoints = useMemo(
+    () => endpoints.filter(({ status: endpointStatus }) => endpointStatus === "verified"),
+    [endpoints],
+  );
+
+  async function beginWorkspaceFromButton() {
+    setStatus("working");
+    setError(null);
+    try {
+      await startPrivateWorkspace();
+      setStatus("ready");
+    } catch (caught) {
+      setError(message(caught));
+      setStatus("error");
+    }
+  }
+
+  async function revokeEndpoint(endpoint: VerificationEndpointSummary) {
+    setStatus("working");
+    setError(null);
+    try {
+      const revoked = await queryApi(
+        `/api/v1/owners/email/${encodeURIComponent(endpoint.id)}`,
+        verificationEndpointSummarySchema,
+        { method: "DELETE" },
+      );
+      setEndpoints((current) => current.map((item) => (item.id === revoked.id ? revoked : item)));
+      setPendingRevokeId(null);
+      if (endpointId === revoked.id) setEndpointId("");
+      await loadPrivateResources();
+      setStatus("ready");
+      toast.show({
+        title: "Destination revoked",
+        description:
+          "Alerts using this address were paused. Re-verification is required to resume delivery.",
+        tone: "success",
+      });
+    } catch (caught) {
+      setError(message(caught));
+      setStatus("error");
+    }
+  }
+  const scheduleBySearch = useMemo(
+    () => new Map(schedules.map((schedule) => [schedule.savedSearchId, schedule])),
+    [schedules],
+  );
+
+  async function beginVerification(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setStatus("working");
+    setError(null);
+    try {
+      const started = await queryApi(
+        "/api/v1/owners/email/start",
+        startEmailVerificationResultSchema,
+        { method: "POST", body: { email } },
+      );
+      setChallengeId(started.challengeId);
+      setVerificationHint(
+        started.developmentCode === undefined
+          ? `Code sent to ${started.maskedDestination}.`
+          : `Local capture code: ${started.developmentCode}`,
+      );
+      if (started.developmentCode !== undefined) setCode(started.developmentCode);
+      setStatus("ready");
+    } catch (caught) {
+      setError(message(caught));
+      setStatus("error");
+    }
+  }
+
+  async function completeVerification(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (challengeId === null) return;
+    setStatus("working");
+    setError(null);
+    try {
+      const completed = await queryApi(
+        "/api/v1/owners/email/complete",
+        completeEmailVerificationResultSchema,
+        { method: "POST", body: { challengeId, code } },
+      );
+      setOwner(completed.owner);
+      await loadPrivateResources();
+      setStatus("ready");
+      toast.show({
+        title: "Email verified",
+        description: "This private workspace is now recoverable and ready for durable alerts.",
+        tone: "success",
+      });
+    } catch (caught) {
+      setError(message(caught));
+      setStatus("error");
+    }
+  }
+
+  function recurrence(): ScheduleRecurrence {
+    return frequency === "daily"
+      ? { frequency, time, timeZone }
+      : { frequency, time, timeZone, days: [...days] };
+  }
+
+  async function previewAlert(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (criteria === null || endpointId.length === 0) return;
+    setStatus("working");
+    setError(null);
+    try {
+      const saved =
+        pendingSaved ??
+        (await queryApi("/api/v1/saved-searches", savedSearchSchema, {
+          method: "POST",
+          body: { name, criteria },
+        }));
+      setPendingSaved(saved);
+      if (!savedSearches.some(({ id }) => id === saved.id)) {
+        setSavedSearches((current) => [saved, ...current]);
+      }
+      const nextPreview = await queryApi("/api/v1/schedules/preview", previewSchema, {
+        method: "POST",
+        body: {
+          savedSearchId: saved.id,
+          expectedVersion: saved.version,
+          recurrence: recurrence(),
+          delivery: { channel: "email", endpointId },
+        },
+      });
+      setPreview(nextPreview);
+      setStatus("ready");
+    } catch (caught) {
+      setError(message(caught));
+      setStatus("error");
+    }
+  }
+
+  async function activateAlert() {
+    if (pendingSaved === null || preview === null) return;
+    setStatus("working");
+    setError(null);
+    try {
+      const scheduled = await queryApi("/api/v1/schedules", jobAlertScheduleSchema, {
+        method: "POST",
+        body: {
+          savedSearchId: pendingSaved.id,
+          expectedVersion: pendingSaved.version,
+          recurrence: recurrence(),
+          delivery: { channel: "email", endpointId },
+        },
+      });
+      setSchedules((current) => [scheduled, ...current]);
+      setPreview(null);
+      setPendingSaved(null);
+      setStatus("ready");
+      router.replace("/saved");
+      toast.show({
+        title: "Alert activated",
+        description: `The first check is scheduled for ${displayInstant(scheduled.nextRunAt)}.`,
+        tone: "success",
+      });
+    } catch (caught) {
+      setError(message(caught));
+      setStatus("error");
+    }
+  }
+
+  async function toggleSchedule(schedule: JobAlertSchedule) {
+    setStatus("working");
+    setError(null);
+    try {
+      const updated = await queryApi(`/api/v1/schedules/${schedule.id}`, jobAlertScheduleSchema, {
+        method: "PATCH",
+        body: { expectedVersion: schedule.version, enabled: !schedule.enabled },
+      });
+      setSchedules((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      setStatus("ready");
+      toast.show({
+        title: updated.enabled ? "Alert resumed" : "Alert paused",
+        description: updated.enabled
+          ? `Next check: ${displayInstant(updated.nextRunAt)}.`
+          : "No checks or emails will run until you resume it.",
+        tone: "success",
+      });
+    } catch (caught) {
+      setError(message(caught));
+      setStatus("error");
+    }
+  }
+
+  const composing = createRequested && criteria !== null;
+
+  return (
+    <div className={styles["workspace"]}>
+      <section className={styles["intro"]}>
+        <div>
+          <p className={styles["eyebrow"]}>Saved · monitoring</p>
+          <h1>A quiet watchlist for the roles worth your time.</h1>
+          <p className={styles["lede"]}>
+            Jobbbler checks explicit criteria in the background and only sends a digest when
+            something materially changes.
+          </p>
+        </div>
+        <aside className={styles["identityCard"]} aria-label="Private workspace status">
+          <div className={styles["identityHeading"]}>
+            <ShieldCheckIcon aria-hidden="true" size={22} weight="fill" />
+            <div>
+              <span>Private workspace</span>
+              <strong>
+                {owner === null
+                  ? "Not started"
+                  : owner.recoverable
+                    ? "Verified and recoverable"
+                    : "Private on this browser"}
+              </strong>
+            </div>
+          </div>
+          <p>
+            Search stays public. Private state begins only when you save, and email is encrypted at
+            rest. Agent authority, data permission, and final confirmation remain separate.
+          </p>
+          {owner === null && status !== "loading" ? (
+            <button
+              className={styles["secondaryButton"]}
+              disabled={status === "working"}
+              onClick={() => void beginWorkspaceFromButton()}
+              type="button"
+            >
+              <LockKeyIcon aria-hidden="true" size={16} />
+              Start private workspace
+            </button>
+          ) : null}
+          {owner?.recoverable === true && verifiedEndpoints.length > 0 ? (
+            <div className={styles["endpointList"]} aria-label="Verified delivery destinations">
+              {verifiedEndpoints.map((endpoint) => (
+                <div key={endpoint.id}>
+                  <span>
+                    <EnvelopeSimpleIcon aria-hidden="true" size={14} />
+                    {endpoint.maskedDestination}
+                  </span>
+                  {pendingRevokeId === endpoint.id ? (
+                    <span className={styles["revokeActions"]}>
+                      <button onClick={() => setPendingRevokeId(null)} type="button">
+                        Cancel
+                      </button>
+                      <button
+                        disabled={status === "working"}
+                        onClick={() => void revokeEndpoint(endpoint)}
+                        type="button"
+                      >
+                        Confirm revoke
+                      </button>
+                    </span>
+                  ) : (
+                    <button onClick={() => setPendingRevokeId(endpoint.id)} type="button">
+                      Revoke
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {status === "loading" ? null : (
+            <OwnerPrivacyControls
+              onDeleted={() => {
+                setOwner(null);
+                setEndpoints([]);
+                setSavedSearches([]);
+                setSchedules([]);
+                setLatestRuns(new Map());
+                router.replace("/saved");
+                toast.show({
+                  title: "Private data deleted",
+                  description: "The private workspace and its sessions were permanently removed.",
+                  tone: "success",
+                });
+              }}
+              onRecovered={(recoveredOwner) => {
+                setOwner(recoveredOwner);
+                void loadPrivateResources()
+                  .then(() => {
+                    toast.show({
+                      title: "Workspace recovered",
+                      description: "A new private session is active on this browser.",
+                      tone: "success",
+                    });
+                  })
+                  .catch((caught: unknown) => setError(message(caught)));
+              }}
+              owner={owner}
+            />
+          )}
+        </aside>
+      </section>
+
+      {error !== null ? (
+        <div className={styles["error"]} role="alert">
+          <WarningCircleIcon aria-hidden="true" size={20} />
+          <span>{error}</span>
+        </div>
+      ) : null}
+
+      {status === "loading" ? (
+        <div className={styles["loading"]} role="status">
+          <span />
+          Preparing your private workspace…
+        </div>
+      ) : null}
+
+      <div className={styles["content"]}>
+        {composing ? (
+          <section className={styles["composer"]} aria-labelledby="composer-title">
+            <div className={styles["sectionHeading"]}>
+              <div>
+                <p className={styles["eyebrow"]}>New alert</p>
+                <h2 id="composer-title">Turn this search into a durable signal.</h2>
+              </div>
+              <span className={styles["stepBadge"]}>
+                {verifiedEndpoints.length === 0
+                  ? "1 · Verify"
+                  : preview === null
+                    ? "2 · Shape"
+                    : "3 · Confirm"}
+              </span>
+            </div>
+
+            <div className={styles["criteria"]} aria-label="Alert criteria">
+              {criteriaSummary(criteria).map((item) => (
+                <span key={item}>{item}</span>
+              ))}
+            </div>
+
+            {verifiedEndpoints.length === 0 ? (
+              <div className={styles["verification"]}>
+                <div className={styles["privacyNote"]}>
+                  <LockKeyIcon aria-hidden="true" size={18} />
+                  <p>
+                    Your email is used only to verify ownership and deliver this alert. It is not
+                    exposed to WebMCP, agent activity, or analytics, and you can revoke it later.
+                  </p>
+                </div>
+                {challengeId === null ? (
+                  <form className={styles["form"]} onSubmit={beginVerification}>
+                    <label>
+                      <span>Delivery email</span>
+                      <input
+                        autoComplete="email"
+                        maxLength={320}
+                        onChange={(event) => setEmail(event.target.value)}
+                        placeholder="you@example.com"
+                        required
+                        type="email"
+                        value={email}
+                      />
+                    </label>
+                    <button className={styles["primaryButton"]} disabled={status === "working"}>
+                      Send verification code
+                      <ArrowRightIcon aria-hidden="true" size={16} />
+                    </button>
+                  </form>
+                ) : (
+                  <form className={styles["form"]} onSubmit={completeVerification}>
+                    <label>
+                      <span>Six-digit code</span>
+                      <input
+                        autoComplete="one-time-code"
+                        inputMode="numeric"
+                        maxLength={6}
+                        onChange={(event) => setCode(event.target.value.replace(/\D/gu, ""))}
+                        pattern="[0-9]{6}"
+                        required
+                        value={code}
+                      />
+                    </label>
+                    {verificationHint === null ? null : (
+                      <p className={styles["hint"]}>{verificationHint}</p>
+                    )}
+                    <button className={styles["primaryButton"]} disabled={status === "working"}>
+                      Verify and continue
+                      <CheckCircleIcon aria-hidden="true" size={16} />
+                    </button>
+                  </form>
+                )}
+              </div>
+            ) : preview === null ? (
+              <form className={styles["form"]} onSubmit={previewAlert}>
+                <label>
+                  <span>Alert name</span>
+                  <input
+                    maxLength={100}
+                    onChange={(event) => setName(event.target.value)}
+                    required
+                    value={name}
+                  />
+                </label>
+                <div className={styles["formGrid"]}>
+                  <label>
+                    <span>Cadence</span>
+                    <select
+                      onChange={(event) => setFrequency(event.target.value as "daily" | "weekly")}
+                      value={frequency}
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Local time</span>
+                    <input
+                      onChange={(event) => setTime(event.target.value)}
+                      required
+                      type="time"
+                      value={time}
+                    />
+                  </label>
+                </div>
+                {frequency === "weekly" ? (
+                  <fieldset className={styles["weekdayFieldset"]}>
+                    <legend>Days</legend>
+                    <div>
+                      {weekdayOptions.map((option) => (
+                        <label key={option.value}>
+                          <input
+                            checked={days.includes(option.value)}
+                            onChange={() =>
+                              setDays((current) =>
+                                current.includes(option.value)
+                                  ? current.filter((day) => day !== option.value)
+                                  : [...current, option.value],
+                              )
+                            }
+                            type="checkbox"
+                          />
+                          <span>{option.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                ) : null}
+                {frequency === "weekly" && days.length === 0 ? (
+                  <p className={styles["fieldError"]} role="alert">
+                    Select at least one day.
+                  </p>
+                ) : null}
+                <label>
+                  <span>IANA time zone</span>
+                  <input
+                    onChange={(event) => setTimeZone(event.target.value)}
+                    required
+                    value={timeZone}
+                  />
+                </label>
+                <label>
+                  <span>Verified destination</span>
+                  <select
+                    onChange={(event) => setEndpointId(event.target.value)}
+                    value={endpointId}
+                  >
+                    {verifiedEndpoints.map((endpoint) => (
+                      <option key={endpoint.id} value={endpoint.id}>
+                        {endpoint.maskedDestination}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  className={styles["primaryButton"]}
+                  disabled={status === "working" || (frequency === "weekly" && days.length === 0)}
+                >
+                  Preview exact alert
+                  <EyeIcon aria-hidden="true" size={16} />
+                </button>
+              </form>
+            ) : (
+              <div className={styles["preview"]}>
+                <div className={styles["previewRow"]}>
+                  <CalendarDotsIcon aria-hidden="true" size={19} />
+                  <span>First check</span>
+                  <strong>{displayInstant(preview.nextRunAt)}</strong>
+                </div>
+                <div className={styles["previewRow"]}>
+                  <EnvelopeSimpleIcon aria-hidden="true" size={19} />
+                  <span>Destination</span>
+                  <strong>{preview.delivery.maskedDestination}</strong>
+                </div>
+                <div className={styles["previewRow"]}>
+                  <SparkleIcon aria-hidden="true" size={19} />
+                  <span>Digest policy</span>
+                  <strong>Only material changes</strong>
+                </div>
+                <p>
+                  Activation authorizes scheduled evaluation and service email for this saved
+                  search. It does not authorize an agent to apply, disclose profile data, or submit
+                  anything.
+                </p>
+                <div className={styles["buttonRow"]}>
+                  <button
+                    className={styles["secondaryButton"]}
+                    onClick={() => setPreview(null)}
+                    type="button"
+                  >
+                    Edit schedule
+                  </button>
+                  <button
+                    className={styles["primaryButton"]}
+                    disabled={status === "working"}
+                    onClick={() => void activateAlert()}
+                    type="button"
+                  >
+                    Activate alert
+                    <BellRingingIcon aria-hidden="true" size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+        ) : null}
+
+        <section className={styles["library"]} aria-labelledby="library-title">
+          <div className={styles["sectionHeading"]}>
+            <div>
+              <p className={styles["eyebrow"]}>Watchlist</p>
+              <h2 id="library-title">Your saved signals</h2>
+            </div>
+            <Link className={styles["textLink"]} href="/">
+              Find another search <ArrowRightIcon aria-hidden="true" size={14} />
+            </Link>
+          </div>
+
+          {owner === null ? (
+            <div className={styles["empty"]}>
+              <LockKeyIcon aria-hidden="true" size={25} />
+              <h3>No account wall, no public profile.</h3>
+              <p>Start a private workspace only when you are ready to save something.</p>
+            </div>
+          ) : savedSearches.length === 0 ? (
+            <div className={styles["empty"]}>
+              <BellRingingIcon aria-hidden="true" size={25} />
+              <h3>No saved searches yet.</h3>
+              <p>Shape a search first, then choose Save alert to preview its exact schedule.</p>
+              <Link className={styles["secondaryButton"]} href="/">
+                Explore technology roles
+              </Link>
+            </div>
+          ) : (
+            <div className={styles["savedList"]}>
+              {savedSearches.map((saved) => {
+                const schedule = scheduleBySearch.get(saved.id);
+                const latestRun = latestRuns.get(saved.id);
+                return (
+                  <article className={styles["savedCard"]} key={saved.id}>
+                    <div className={styles["savedTopline"]}>
+                      <span data-active={String(schedule?.enabled === true)}>
+                        {schedule === undefined
+                          ? "Saved · not scheduled"
+                          : schedule.enabled
+                            ? "Monitoring"
+                            : "Paused"}
+                      </span>
+                      <small>v{saved.version}</small>
+                    </div>
+                    <h3>{saved.name}</h3>
+                    <div className={styles["criteria"]}>
+                      {criteriaSummary(saved.criteria).map((item) => (
+                        <span key={item}>{item}</span>
+                      ))}
+                    </div>
+                    <div className={styles["savedMeta"]}>
+                      <span>
+                        <ClockIcon aria-hidden="true" size={14} />
+                        {schedule === undefined
+                          ? "No background checks"
+                          : schedule.enabled
+                            ? `Next ${displayInstant(schedule.nextRunAt)}`
+                            : "Checks are stopped"}
+                      </span>
+                      <span>
+                        <EnvelopeSimpleIcon aria-hidden="true" size={14} />
+                        {schedule === undefined ? "No delivery" : schedule.delivery.channel}
+                      </span>
+                    </div>
+                    {schedule !== undefined ? (
+                      <div className={styles["latestRun"]} aria-live="polite">
+                        {latestRun?.evaluation === null || latestRun === undefined ? (
+                          <span>Latest run: waiting for the first completed check.</span>
+                        ) : (
+                          <span>
+                            Latest run: {latestRun.evaluation.baselineCount} matching ·{" "}
+                            {latestRun.evaluation.changes.total} changes
+                            {latestRun.evaluation.changes.truncated ? " (details capped)" : ""}
+                          </span>
+                        )}
+                        {latestRun?.delivery === null || latestRun === undefined ? null : (
+                          <span data-status={latestRun.delivery.status}>
+                            Delivery: {latestRun.delivery.status}
+                            {latestRun.delivery.status === "failed" ||
+                            latestRun.delivery.status === "sending"
+                              ? " · delivery is retrying safely"
+                              : ""}
+                          </span>
+                        )}
+                      </div>
+                    ) : null}
+                    <div className={styles["savedActions"]}>
+                      <Link className={styles["secondaryButton"]} href={searchHref(saved.criteria)}>
+                        View matches
+                      </Link>
+                      {schedule === undefined ? null : (
+                        <button
+                          className={styles["quietButton"]}
+                          disabled={status === "working"}
+                          onClick={() => void toggleSchedule(schedule)}
+                          type="button"
+                        >
+                          {schedule.enabled ? (
+                            <PauseIcon aria-hidden="true" size={15} />
+                          ) : (
+                            <PlayIcon aria-hidden="true" size={15} />
+                          )}
+                          {schedule.enabled ? "Pause" : "Resume"}
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
+      <div aria-live="polite" className="sr-only">
+        {status === "working" ? "Saving your private alert settings." : ""}
+      </div>
+    </div>
+  );
+}

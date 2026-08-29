@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { entityIdSchema } from "./common.js";
+import { entityIdSchema, isoInstantSchema } from "./common.js";
 import { jobSearchCriteriaSchema } from "./search.js";
 
 export const weekdaySchema = z.enum([
@@ -63,5 +63,40 @@ export const scheduleJobAlertInputSchema = z.strictObject({
   }),
 });
 
+export const savedSearchSchema = z.strictObject({
+  id: entityIdSchema,
+  ownerId: entityIdSchema,
+  name: z.string().trim().min(1).max(100),
+  criteria: jobSearchCriteriaSchema,
+  version: z.number().int().nonnegative(),
+  createdAt: isoInstantSchema,
+  updatedAt: isoInstantSchema,
+});
+
+export const jobAlertScheduleSchema = z.strictObject({
+  id: entityIdSchema,
+  ownerId: entityIdSchema,
+  savedSearchId: entityIdSchema,
+  recurrence: scheduleRecurrenceSchema,
+  delivery: z.strictObject({
+    channel: z.literal("email"),
+    endpointId: entityIdSchema,
+  }),
+  enabled: z.boolean(),
+  nextRunAt: isoInstantSchema,
+  version: z.number().int().nonnegative(),
+  createdAt: isoInstantSchema,
+  updatedAt: isoInstantSchema,
+});
+
+export const setJobAlertEnabledInputSchema = z.strictObject({
+  expectedVersion: z.number().int().nonnegative(),
+  enabled: z.boolean(),
+});
+
 export type ScheduleRecurrence = z.infer<typeof scheduleRecurrenceSchema>;
+export type Weekday = z.infer<typeof weekdaySchema>;
+export type SavedSearch = z.infer<typeof savedSearchSchema>;
+export type JobAlertSchedule = z.infer<typeof jobAlertScheduleSchema>;
 export type ScheduleJobAlertInput = z.infer<typeof scheduleJobAlertInputSchema>;
+export type SetJobAlertEnabledInput = z.infer<typeof setJobAlertEnabledInputSchema>;

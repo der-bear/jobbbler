@@ -1,6 +1,6 @@
 # Agent Authorization and Data Consent
 
-**Status:** Accepted architecture; exact WebMCP client capabilities must be revalidated immediately before implementation.
+**Status:** Implemented and covered by domain, route, storage, and browser journey tests.
 
 ## Decision
 
@@ -22,13 +22,17 @@ Authentication, authorization, and consent are deliberately not represented by o
 ## Progressive identity without a traditional login wall
 
 1. Public search and comparison require no identity.
-2. The first private action creates an ephemeral owner session. In production this can use a Supabase anonymous user; locally it uses the equivalent opaque session and owner record.
-3. The session may own an ephemeral application draft. Losing browser storage or the session ends recoverability; the UI states this plainly.
-4. Saving private work across devices, uploading documents, or submitting an application requires a verified channel. Email OTP or a carefully exchanged one-time magic link upgrades the same owner instead of creating a second profile.
+2. The first private action creates an ephemeral owner plus an opaque HttpOnly session. The same contract runs on SQLite locally and PostgreSQL in production; it does not depend on a third-party login provider.
+3. The session may own an ephemeral application draft. Losing the only session for an unverified owner ends recoverability; the UI states this plainly.
+4. Saving private work across devices, uploading documents, or submitting an application requires a verified channel. Email OTP upgrades the same owner instead of creating a second profile.
 5. Passkeys are an optional phishing-resistant account upgrade and step-up mechanism. A passkey never replaces action-specific review and confirmation.
 6. Anonymous-to-verified merge is transactional, idempotent, conflict-aware, audited, and revokes outstanding guest-management capabilities.
 
-Supabase documents anonymous users as authenticated principals that can later link an identity, while warning that they cannot recover the account after sign-out or cleared browser data and must be distinguished in RLS policies: [Supabase anonymous sign-ins](https://supabase.com/docs/guides/auth/auth-anonymous).
+A verified owner can recover access from `/saved` without a password. Recovery start always returns the same accepted envelope whether or not an address exists. A separate short-lived, single-use recovery challenge is delivered only to a matching verified encrypted endpoint; only its keyed hash is stored. Successful consumption and rotation to one new opaque HttpOnly session happen atomically, with every prior session revoked. Recovery identifiers, codes, email addresses, and session tokens are never exposed through WebMCP or owner activity.
+
+Private-data deletion is also human-only. The current owner session must first create a five-minute deletion intent by typing `DELETE MY PRIVATE DATA`, then consume it with a second exact `DELETE` confirmation. The storage adapter fences the live session and intent in one transaction, removes all owner-owned private rows, clears the browser session cookie, and retains only non-identifying redacted audit tombstones needed for integrity. Neither step is registered as a WebMCP tool.
+
+The current implementation keeps identity portable across both storage adapters. Supabase anonymous Auth remains a compatible future adapter, not a hidden production dependency; Supabase warns that anonymous users cannot recover an account after sign-out or cleared browser data and must be distinguished in RLS policies: [Supabase anonymous sign-ins](https://supabase.com/docs/guides/auth/auth-anonymous).
 
 ## Agent authorization flow
 
@@ -108,7 +112,7 @@ OAuth security guidance recommends sender-constrained and audience-restricted ac
 - Every grant and delegation has an accessible revoke surface and deterministic expiry.
 - Consent withdrawal stops future consent-based processing; it does not falsify a lawful historical submission receipt.
 - Deletion and retention rules cover derived AI artifacts, audit minimization, and downstream-recipient limits.
-- Rate limits, CAPTCHA/Turnstile for anonymous creation, CSRF/origin checks, and RLS protect the progressive identity path.
+- Durable IP/session rate limits, CSRF/origin checks, strict input bounds, opaque cookies, and RLS protect the progressive identity path.
 
 ## Required evidence
 

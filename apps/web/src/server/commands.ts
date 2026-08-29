@@ -6,7 +6,7 @@ import {
 } from "@jobbbler/jobs-domain";
 
 import { getServerStorage } from "./context";
-import { createMemoryRateLimiter, type RateLimiter } from "./rate-limit";
+import { createStorageRateLimiter, type RateLimiter } from "./rate-limit";
 
 export interface DiscoveryCommands {
   readonly searchJobs: ReturnType<typeof createSearchJobsCommand>;
@@ -36,9 +36,10 @@ export function getDiscoveryRouteDependencies(): DiscoveryRouteDependencies {
   const existing = globalRegistry.__jobbblerDiscoveryDependencies;
   if (existing !== undefined) return existing;
 
+  const storage = getServerStorage();
   const dependencies: DiscoveryRouteDependencies = {
-    commands: createDiscoveryCommands(getServerStorage().jobs),
-    rateLimiter: createMemoryRateLimiter(),
+    commands: createDiscoveryCommands(storage.jobs),
+    rateLimiter: createStorageRateLimiter(storage.rateLimits),
     nowMs: Date.now,
   };
   globalRegistry.__jobbblerDiscoveryDependencies = dependencies;

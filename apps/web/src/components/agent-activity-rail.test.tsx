@@ -29,13 +29,16 @@ const activities: readonly ToolActivity[] = [
 ];
 
 describe("AgentActivityRail", () => {
-  it("announces WebMCP capability and lifecycle states without exposing IDs", () => {
+  it("keeps the agent layer secondary while surfacing active work", () => {
     const markup = renderToStaticMarkup(
       <AgentActivityRail activities={activities} registeredToolCount={4} webMcpAvailable />,
     );
 
+    expect(markup).toContain("<details");
+    expect(markup).toContain('open=""');
+    expect(markup).toContain("Agent activity");
     expect(markup).toContain("WebMCP available");
-    expect(markup).toContain("4 tools registered");
+    expect(markup).toContain("4 actions available on this page");
     expect(markup).toContain('aria-live="polite"');
     expect(markup).toContain('aria-busy="true"');
     expect(markup).toContain("Approval needed");
@@ -43,12 +46,29 @@ describe("AgentActivityRail", () => {
     expect(markup).not.toContain("activity_550e8400");
   });
 
-  it("explains the empty state when no tool has acted", () => {
+  it("collapses an idle agent layer behind plain-language disclosure", () => {
     const markup = renderToStaticMarkup(
       <AgentActivityRail activities={[]} registeredToolCount={0} webMcpAvailable={false} />,
     );
 
+    expect(markup).toContain("Agent activity");
+    expect(markup).toContain("Browser mode");
     expect(markup).toContain("WebMCP unavailable");
-    expect(markup).toContain("No agent activity yet.");
+    expect(markup).toContain("Nothing changed by an agent in this session.");
+    expect(markup).not.toContain('open=""');
+  });
+
+  it("can open immediately when rendered inside an explicit activity sheet", () => {
+    const markup = renderToStaticMarkup(
+      <AgentActivityRail
+        activities={[]}
+        initiallyExpanded
+        registeredToolCount={2}
+        webMcpAvailable
+      />,
+    );
+
+    expect(markup).toContain('open=""');
+    expect(markup).toContain("2 actions available on this page");
   });
 });

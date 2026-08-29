@@ -34,10 +34,11 @@ Jobbbler is the IT and adjacent-technology jobs product. It is the only product 
 1. A human control or WebMCP tool validates an input contract.
 2. The BFF builds a command context with the human principal and, when relevant, an agent-session reference.
 3. The application command revalidates ownership, delegation, data authorization, aggregate version, and idempotency.
-4. One short transaction mutates domain state and appends audit, outbox, and idempotency records.
-5. External work is claimed after commit by a worker.
-6. A sanitized event projection reaches the Agent Activity UI over WebSocket.
-7. The UI reconciles against the authoritative API response or refetches on a version gap.
+4. The storage adapter performs the command's authoritative write with the required version, idempotency, audit, outbox, and confirmation invariants for that command. High-risk application submission claims are atomic; read and reversible preference commands do not pretend to create the same record set.
+5. External work is claimed after commit by a worker using persisted leases and bounded retries.
+6. After an eligible command commits, a best-effort publisher appends an allowlisted, redacted owner-activity projection. Failure to publish never changes the command result.
+7. The UI reads that projection through an authenticated cursor-based HTTP feed. Optional Supabase Realtime sends only an empty wake-up signal so the client can poll sooner.
+8. The UI reconciles against the authoritative API response or refetches when needed.
 
 WebSocket delivery, tool registration, a public resource identifier, and an approval task handle are never sources of authority.
 
@@ -54,9 +55,9 @@ Application-generated sortable IDs and UTC timestamps cross database boundaries 
 - [Agent authorization and data consent](./agent-authorization-and-consent.md)
 - [Realtime Agent Activity](./realtime-agent-activity.md)
 - [Source ingestion and governance](./source-ingestion.md)
-- `docs/security.md` — implementation controls and threat review, completed before release
-- `docs/privacy.md` — data inventory, purposes, retention, deletion, and user rights, completed before release
-- `docs/operations.md` — health, incident, backup, restore, and rollback procedures, completed before release
-- `docs/test-evidence.md` — reproducible release evidence, completed during final verification
+- [Product experience and visual hierarchy](../design/product-experience.md)
+- [Security](../security.md)
+- [Operations](../operations.md)
+- [Sources and availability](../sources.md)
 
-Kickoff material is design input, not permanent public architecture. These documents and the tested code become the durable source of truth before release.
+Kickoff material is design input, not permanent public architecture. These documents and the tested code are the durable source of truth for the implemented product.

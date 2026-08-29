@@ -66,6 +66,7 @@ export async function runLeasedConnectorBatch(
     now: input.now,
     leaseSeconds: 120,
     limit: Math.max(1, Math.min(100, input.connectors.length)),
+    kinds: ["catalog_ingest"],
     signal: input.signal,
     ...(input.random === undefined ? {} : { random: input.random }),
     handle: async (item, signal) => {

@@ -1,10 +1,8 @@
 import { ZodError } from "zod";
-import pino from "pino";
 
 import type { ApiErrorCode, ApiResponse } from "@jobbbler/contracts";
 import { DomainError, isDomainError } from "@jobbbler/core-domain";
-
-const logger = pino({ name: "jobbbler-web" });
+import { logger, requestLog, safeLogError } from "./logger";
 
 export interface ApiResponseOptions {
   readonly requestId: string;
@@ -71,7 +69,10 @@ export function apiErrorResponse(error: unknown, options: ApiResponseOptions): R
     !(error instanceof ZodError) &&
     (!isDomainError(error) || error.code === "INTERNAL")
   ) {
-    logger.error({ err: error, requestId: options.requestId }, "API request failed unexpectedly");
+    logger.error(
+      { ...safeLogError(error), ...requestLog(options.requestId) },
+      "API request failed unexpectedly",
+    );
   }
   const safe = safeError(error);
   const body: ApiResponse<never> = {

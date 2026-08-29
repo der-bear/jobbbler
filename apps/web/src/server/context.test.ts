@@ -20,12 +20,20 @@ describe("web server context", () => {
     const directory = await mkdtemp(join(tmpdir(), "jobbbler-web-context-"));
     temporaryDirectories.push(directory);
     const storage = createConfiguredStorage({
-      DATABASE_DRIVER: "sqlite",
       SQLITE_DATABASE_PATH: join(directory, "jobbbler.sqlite"),
     });
 
     await expect(storage.jobs.listAll()).resolves.toEqual([]);
     storage.close();
+  });
+
+  it("selects the PostgreSQL adapter when a server-only database URL is present", async () => {
+    const storage = createConfiguredStorage({
+      DATABASE_URL: "postgres://jobbbler:secret@localhost:5432/jobbbler",
+    });
+
+    expect(storage).toHaveProperty("sql");
+    await storage.close();
   });
 
   it("creates a public read context with one correlation boundary", () => {
@@ -73,5 +81,37 @@ describe("web server context", () => {
     expect(getRateLimitKey(first, "search", environment)).not.toBe(
       getRateLimitKey(second, "search", environment),
     );
+  });
+
+  it("fails closed when a production rate-limit boundary has no trusted client address", () => {
+    const request = new Request("https://jobbbler.example/api");
+
+    expect(() =>
+      getRateLimitKey(request, "identity-session", {
+        NODE_ENV: "production",
+        TOKEN_HASH_SECRET: "test-secret-that-is-at-least-32-bytes",
+      }),
+    ).toThrow("trusted proxy");
+    expect(() =>
+      getRateLimitKey(request, "identity-session", {
+        NODE_ENV: "production",
+        TRUST_PROXY_HEADERS: "true",
+        TOKEN_HASH_SECRET: "test-secret-that-is-at-least-32-bytes",
+      }),
+    ).toThrow("client address");
+  });
+
+  it("accepts provider-specific addresses only across the explicit production proxy boundary", () => {
+    const request = new Request("https://jobbbler.example/api", {
+      headers: { "cf-connecting-ip": "203.0.113.24" },
+    });
+
+    expect(
+      getRateLimitKey(request, "identity-session", {
+        NODE_ENV: "production",
+        TRUST_PROXY_HEADERS: "true",
+        TOKEN_HASH_SECRET: "test-secret-that-is-at-least-32-bytes",
+      }),
+    ).toHaveLength(64);
   });
 });

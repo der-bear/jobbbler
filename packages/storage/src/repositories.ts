@@ -1,7 +1,13 @@
 import type { ApplicationDraft, Job } from "@jobbbler/contracts";
+import type { IdentityStore } from "@jobbbler/core-domain";
 
 import type {
   AuditEventRecord,
+  AlertChangeRecord,
+  AlertDeliveryPutResult,
+  AlertDeliveryRecord,
+  AlertDeliveryUpdate,
+  AlertEvaluationRecord,
   ClaimWorkItemsInput,
   FailWorkItemInput,
   IdempotencyPutResult,
@@ -9,9 +15,15 @@ import type {
   JobSearchPage,
   JobSearchQuery,
   OrganizationRecord,
+  NewOwnerActivityEventRecord,
+  OwnerActivityEventRecord,
+  OwnerActivityWindow,
+  OwnerActivityWindowInput,
   OwnerRecord,
   PersistSourceObservationInput,
   PersistSourceObservationResult,
+  RateLimitCheckInput,
+  RateLimitDecision,
   RenewWorkItemLeaseInput,
   SavedSearchRecord,
   ScheduleRecord,
@@ -24,6 +36,16 @@ import type {
   SourceReconciliationResult,
   WorkItemRecord,
   WorkItemPutResult,
+  ApplicationReviewRecord, ApplicationConfirmationRecord, ApplicationReceiptRecord, ApplicationReceiptPutResult,
+  MaterialApplicationEditInput, SealApplicationReviewInput, CompleteApplicationSubmissionInput,
+  CompleteApplicationSubmissionResult,
+  AgentDelegationRecord, DataGrantRecord,
+  ActiveDelegationMatchInput,
+  ApproveRichDataGrantInput,
+  AgentSessionRecord,
+  ResolveAgentSessionInput,
+  RichDataGrantMatchInput,
+  RichDataGrantRecord,
 } from "./records.js";
 
 export interface OwnerRepository {
@@ -53,14 +75,88 @@ export interface SavedSearchRepository {
 export interface ScheduleRepository {
   insert(record: ScheduleRecord): Promise<ScheduleRecord>;
   getById(id: string): Promise<ScheduleRecord | null>;
+  listByOwner(ownerId: string): Promise<ScheduleRecord[]>;
   listDue(now: string, limit: number): Promise<ScheduleRecord[]>;
   update(record: ScheduleRecord, expectedVersion: number): Promise<ScheduleRecord>;
+}
+
+export interface AlertRepository {
+  getLatestEvaluation(savedSearchId: string): Promise<AlertEvaluationRecord | null>;
+  insertEvaluation(input: {
+    readonly evaluation: AlertEvaluationRecord;
+    readonly changes: readonly AlertChangeRecord[];
+  }): Promise<AlertEvaluationRecord>;
+  listChanges(evaluationId: string): Promise<AlertChangeRecord[]>;
+  putDeliveryIfAbsent(record: AlertDeliveryRecord): Promise<AlertDeliveryPutResult>;
+  getDelivery(id: string): Promise<AlertDeliveryRecord | null>;
+  getLatestDelivery(scheduleId: string): Promise<AlertDeliveryRecord | null>;
+  updateDelivery(input: AlertDeliveryUpdate, expectedVersion: number): Promise<AlertDeliveryRecord>;
+}
+
+export interface RateLimitRepository {
+  check(input: RateLimitCheckInput): Promise<RateLimitDecision>;
 }
 
 export interface ApplicationRepository {
   insert(record: ApplicationDraft): Promise<ApplicationDraft>;
   getById(id: string): Promise<ApplicationDraft | null>;
   update(record: ApplicationDraft, expectedVersion: number): Promise<ApplicationDraft>;
+  getByOwner(id: string, ownerId: string): Promise<ApplicationDraft | null>;
+  getByOwnerAndJob(ownerId: string, jobId: string): Promise<ApplicationDraft | null>;
+  getLatestReview(draftId: string, ownerId: string): Promise<ApplicationReviewRecord | null>;
+  getLatestReceipt(draftId: string, ownerId: string): Promise<ApplicationReceiptRecord | null>;
+  applyMaterialEdit(input: MaterialApplicationEditInput): Promise<ApplicationDraft>;
+  sealReview(input: SealApplicationReviewInput): Promise<{ readonly draft: ApplicationDraft; readonly review: ApplicationReviewRecord }>;
+  completeSubmission(input: CompleteApplicationSubmissionInput): Promise<CompleteApplicationSubmissionResult>;
+  insertReview(record: ApplicationReviewRecord): Promise<ApplicationReviewRecord>;
+  getReview(id: string, ownerId: string): Promise<ApplicationReviewRecord | null>;
+  invalidateReview(id: string, ownerId: string, invalidatedAt: string): Promise<ApplicationReviewRecord>;
+  insertConfirmation(record: ApplicationConfirmationRecord): Promise<ApplicationConfirmationRecord>;
+  getConfirmation(id: string, ownerId: string): Promise<ApplicationConfirmationRecord | null>;
+  invalidateConfirmation(id: string, ownerId: string): Promise<ApplicationConfirmationRecord>;
+  consumeConfirmation(id: string, ownerId: string, confirmationHash: string, consumedAt: string): Promise<ApplicationConfirmationRecord>;
+  putReceiptIfAbsent(record: ApplicationReceiptRecord): Promise<ApplicationReceiptPutResult>;
+  consumeAndPutReceipt(input: { readonly confirmationId: string; readonly ownerId: string; readonly confirmationHash: string; readonly consumedAt: string; readonly receipt: ApplicationReceiptRecord }): Promise<ApplicationReceiptPutResult>;
+}
+
+export interface DelegationRepository {
+  insert(record: AgentDelegationRecord): Promise<AgentDelegationRecord>;
+  getById(id: string, ownerId: string): Promise<AgentDelegationRecord | null>;
+  listByResource(ownerId: string, resourceId: string): Promise<AgentDelegationRecord[]>;
+  getActiveMatch(input: ActiveDelegationMatchInput): Promise<AgentDelegationRecord | null>;
+  approve(id: string, ownerId: string, approvedAt: string): Promise<AgentDelegationRecord>;
+  revoke(id: string, ownerId: string, revokedAt: string): Promise<AgentDelegationRecord>;
+}
+export interface DataGrantRepository { insert(record: DataGrantRecord): Promise<DataGrantRecord>; getById(id: string, ownerId: string): Promise<DataGrantRecord | null>; approve(id: string, ownerId: string, approvedAt: string): Promise<DataGrantRecord>; withdraw(id: string, ownerId: string, withdrawnAt: string): Promise<DataGrantRecord>; }
+export interface AgentSessionRepository {
+  insert(record: AgentSessionRecord): Promise<AgentSessionRecord>;
+  getById(id: string, ownerId: string, draftId: string): Promise<AgentSessionRecord | null>;
+  resolve(input: ResolveAgentSessionInput): Promise<AgentSessionRecord | null>;
+  revoke(
+    id: string,
+    ownerId: string,
+    draftId: string,
+    revokedAt: string,
+  ): Promise<AgentSessionRecord>;
+}
+export interface RichDataGrantRepository {
+  insert(record: RichDataGrantRecord): Promise<RichDataGrantRecord>;
+  getById(id: string, ownerId: string, draftId: string): Promise<RichDataGrantRecord | null>;
+  listByDraft(ownerId: string, draftId: string): Promise<RichDataGrantRecord[]>;
+  getCurrent(input: RichDataGrantMatchInput): Promise<RichDataGrantRecord | null>;
+  approveCurrent(input: ApproveRichDataGrantInput): Promise<RichDataGrantRecord>;
+  approve(
+    id: string,
+    ownerId: string,
+    draftId: string,
+    at: string,
+  ): Promise<RichDataGrantRecord>;
+  withdraw(
+    id: string,
+    ownerId: string,
+    draftId: string,
+    at: string,
+  ): Promise<RichDataGrantRecord>;
 }
 
 export interface WorkItemRepository {
@@ -80,6 +176,11 @@ export interface AuditRepository {
     aggregateId: string,
     limit: number,
   ): Promise<AuditEventRecord[]>;
+}
+
+export interface OwnerActivityRepository {
+  append(record: NewOwnerActivityEventRecord): Promise<OwnerActivityEventRecord>;
+  listWindow(input: OwnerActivityWindowInput): Promise<OwnerActivityWindow>;
 }
 
 export interface IdempotencyRepository {
@@ -109,14 +210,22 @@ export interface IngestionRepository {
 }
 
 export interface Storage {
+  readonly identity: IdentityStore;
   readonly owners: OwnerRepository;
   readonly organizations: OrganizationRepository;
   readonly jobs: JobRepository;
   readonly savedSearches: SavedSearchRepository;
   readonly schedules: ScheduleRepository;
+  readonly alerts: AlertRepository;
+  readonly rateLimits: RateLimitRepository;
   readonly applications: ApplicationRepository;
+  readonly delegations: DelegationRepository;
+  readonly dataGrants: DataGrantRepository;
+  readonly agentSessions: AgentSessionRepository;
+  readonly richDataGrants: RichDataGrantRepository;
   readonly workItems: WorkItemRepository;
   readonly audit: AuditRepository;
+  readonly ownerActivity: OwnerActivityRepository;
   readonly idempotency: IdempotencyRepository;
   readonly ingestion: IngestionRepository;
   close(): void;

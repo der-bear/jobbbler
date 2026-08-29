@@ -17,6 +17,13 @@ interface ResultFact {
   readonly value: boolean | number | string | null;
 }
 
+export interface UserActionPresentation {
+  readonly title: string;
+  readonly prompt: string;
+  readonly confirmLabel: string;
+  readonly facts?: readonly ResultFact[];
+}
+
 export interface CompletedWebMcpResult<TData extends JsonValue> {
   readonly [key: string]: unknown;
   readonly status: "completed";
@@ -42,6 +49,26 @@ export interface CancelledWebMcpResult {
   readonly [key: string]: unknown;
   readonly status: "cancelled";
   readonly summary: string;
+}
+
+export interface RequiresUserActionWebMcpResult {
+  readonly [key: string]: unknown;
+  readonly status: "requires_user_action";
+  readonly summary: string;
+  readonly requestId: string;
+  readonly userAction: {
+    readonly kind:
+      | "agent_authorization"
+      | "data_consent"
+      | "action_confirmation"
+      | "identity_verification";
+    readonly surface:
+      | "application_authorization"
+      | "data_consent"
+      | "application_review"
+      | "identity_verification";
+  };
+  readonly presentation?: UserActionPresentation;
 }
 
 export type SafeWebMcpErrorResult = FailedWebMcpResult | CancelledWebMcpResult;
@@ -75,6 +102,24 @@ export function completedWebMcpResult<TData extends JsonValue>(
     ...(options.facts === undefined ? {} : { facts: options.facts }),
   };
   return assertBounded(result);
+}
+
+export function requiresUserActionWebMcpResult(
+  options: Readonly<{
+    summary: string;
+    kind: RequiresUserActionWebMcpResult["userAction"]["kind"];
+    surface: RequiresUserActionWebMcpResult["userAction"]["surface"];
+    requestId?: string;
+    presentation?: UserActionPresentation;
+  }>,
+): RequiresUserActionWebMcpResult {
+  return assertBounded({
+    status: "requires_user_action",
+    summary: options.summary,
+    requestId: options.requestId ?? requestId(),
+    userAction: { kind: options.kind, surface: options.surface },
+    ...(options.presentation === undefined ? {} : { presentation: options.presentation }),
+  });
 }
 
 function requestId(): string {

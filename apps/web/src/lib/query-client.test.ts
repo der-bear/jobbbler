@@ -68,4 +68,19 @@ describe("typed API query client", () => {
       queryApi("/api/v1/jobs/search", z.object({ total: z.number() }), { fetch }),
     ).rejects.toMatchObject({ code: "DEPENDENCY", retryable: true });
   });
+
+  it("supports typed same-origin mutation methods", async () => {
+    const fetch = vi.fn(async () =>
+      Response.json({ ok: true, data: { enabled: false }, meta: { requestId } }),
+    );
+    await queryApi("/api/v1/schedules/schedule_1", z.object({ enabled: z.boolean() }), {
+      fetch,
+      method: "PATCH",
+      body: { expectedVersion: 0, enabled: false },
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/v1/schedules/schedule_1",
+      expect.objectContaining({ method: "PATCH", body: '{"expectedVersion":0,"enabled":false}' }),
+    );
+  });
 });

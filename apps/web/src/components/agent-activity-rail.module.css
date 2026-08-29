@@ -1,7 +1,74 @@
 .rail {
   border-block-start: 1px solid var(--color-line);
   color: var(--color-ink);
-  padding-block-start: 20px;
+  padding-block-start: 14px;
+}
+
+.summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  list-style: none;
+  margin: -8px;
+  min-block-size: 48px;
+  padding: 8px;
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.summary:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 3px solid color-mix(in srgb, var(--jb-focus) 32%, transparent);
+  outline-offset: 2px;
+}
+
+.summary > span:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.summary small {
+  color: var(--color-ink-subtle);
+  font-family: var(--jb-font-mono);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.summary strong {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.summaryStatus {
+  align-items: center;
+  color: var(--color-ink-subtle);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 10px;
+  gap: 6px;
+}
+
+.summaryStatus[data-attention="true"] {
+  color: var(--color-signal-strong);
+}
+
+.chevron {
+  transition: rotate 160ms ease;
+}
+
+.rail[open] .chevron {
+  rotate: 180deg;
+}
+
+.body {
+  border-block-start: 1px solid var(--color-line);
+  margin-block-start: 12px;
+  padding-block-start: 17px;
 }
 
 .header {
@@ -156,7 +223,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .spin {
+  .spin,
+  .chevron {
     animation: none;
+    transition: none;
   }
 }

@@ -1,6 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { createMemoryRateLimiter } from "./rate-limit";
+import { createMemoryRateLimiter, createStorageRateLimiter } from "./rate-limit";
+
+describe("storage rate limiter", () => {
+  it("delegates production checks to the durable repository", async () => {
+    const check = vi.fn(async () => ({
+      allowed: true,
+      remaining: 4,
+      retryAfterSeconds: 0,
+      resetAtMs: 61_000,
+    }));
+    const limiter = createStorageRateLimiter({ check });
+    const input = { key: "hmac:requester", limit: 5, windowMs: 60_000, nowMs: 1_000 };
+
+    await expect(limiter.check(input)).resolves.toMatchObject({ allowed: true, remaining: 4 });
+    expect(check).toHaveBeenCalledWith(input);
+  });
+});
 
 describe("memory rate limiter", () => {
   it("allows a bounded window and returns precise safe retry guidance", async () => {

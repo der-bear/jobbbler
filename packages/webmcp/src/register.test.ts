@@ -59,6 +59,31 @@ describe("WebMCP framework core", () => {
     ]);
   });
 
+  it("reconciles durable activity by id or correlation without duplicating local execution", () => {
+    const activities = new AgentActivityStore({
+      now: () => new Date("2026-08-29T10:00:00.000Z"),
+    });
+    activities.start("edit_application", "Updating application draft.", {
+      correlationId: "corr_550e8400-e29b-41d4-a716-446655440000",
+    });
+    const committed = {
+      id: "activity_550e8400-e29b-41d4-a716-446655440000",
+      toolName: "edit_application",
+      status: "completed" as const,
+      safeSummary: "Application draft updated.",
+      correlationId: "corr_550e8400-e29b-41d4-a716-446655440000",
+      startedAt: "2026-08-29T10:00:01.000Z",
+      completedAt: "2026-08-29T10:00:01.000Z",
+      affectedResourceIds: [],
+    };
+
+    activities.mergeCommitted([committed]);
+    expect(activities.snapshot()).toEqual([committed]);
+    const snapshot = activities.snapshot();
+    activities.mergeCommitted([committed]);
+    expect(activities.snapshot()).toBe(snapshot);
+  });
+
   it("builds bounded, JSON-serializable object schemas", () => {
     expect(
       jsonObject({

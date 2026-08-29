@@ -1,8 +1,10 @@
 import {
   jobDetailResultSchema,
+  jobAlertScheduleSchema,
   jobSearchInputSchema,
   searchJobsResultSchema,
   type JobDetailResult,
+  type JobAlertSchedule,
   type JobSearchCriteria,
   type JobSearchInput,
   type SearchJobsResult,
@@ -10,6 +12,7 @@ import {
 
 const searchCommitEvent = "jobbbler:webmcp-search-commit";
 const detailCommitEvent = "jobbbler:webmcp-detail-commit";
+const scheduleCommitEvent = "jobbbler:webmcp-schedule-commit";
 
 export interface SearchSurfaceState {
   readonly criteria: JobSearchCriteria;
@@ -64,4 +67,22 @@ export function subscribeWebMcpJobDetailCommit(
   };
   window.addEventListener(detailCommitEvent, handler);
   return () => window.removeEventListener(detailCommitEvent, handler);
+}
+
+export function commitWebMcpSchedule(schedule: JobAlertSchedule): void {
+  window.dispatchEvent(
+    new CustomEvent<JobAlertSchedule>(scheduleCommitEvent, { detail: schedule }),
+  );
+}
+
+export function subscribeWebMcpScheduleCommit(
+  listener: (schedule: JobAlertSchedule) => void,
+): () => void {
+  const handler = (event: Event) => {
+    if (!(event instanceof CustomEvent)) return;
+    const schedule = jobAlertScheduleSchema.safeParse(event.detail);
+    if (schedule.success) listener(schedule.data);
+  };
+  window.addEventListener(scheduleCommitEvent, handler);
+  return () => window.removeEventListener(scheduleCommitEvent, handler);
 }

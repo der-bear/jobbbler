@@ -7,6 +7,8 @@ export interface RunWorkBatchInput {
   readonly now: string;
   readonly leaseSeconds: number;
   readonly limit: number;
+  /** Claim only these bounded work-item kinds. */
+  readonly kinds?: readonly string[];
   readonly signal: AbortSignal;
   readonly random?: () => number;
   readonly handle: (item: WorkItemRecord, signal: AbortSignal) => Promise<void>;
@@ -70,6 +72,7 @@ export async function runWorkBatch(input: RunWorkBatchInput): Promise<WorkBatchR
     now: input.now,
     leaseExpiresAt,
     limit: input.limit,
+    ...(input.kinds === undefined ? {} : { kinds: input.kinds }),
   });
   let succeeded = 0;
   let failed = 0;

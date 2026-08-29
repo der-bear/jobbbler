@@ -2,13 +2,14 @@
 
 import {
   ArrowLeftIcon,
-  ArrowSquareOutIcon,
   CheckCircleIcon,
   ClockIcon,
   MapPinIcon,
+  PaperPlaneTiltIcon,
   WarningCircleIcon,
 } from "@phosphor-icons/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { flushSync } from "react-dom";
 
@@ -18,7 +19,9 @@ import {
   type JobDetailResult,
   type JobFit,
 } from "@jobbbler/contracts";
+import { useToast } from "@jobbbler/ui";
 
+import { startApplication } from "@/features/application/start-application";
 import {
   compactDate,
   employmentLabel,
@@ -56,6 +59,19 @@ function errorMessage(error: unknown): string {
   return "This role could not be loaded. Please retry.";
 }
 
+export function supportsJobbblerPreparation(job: Job): boolean {
+  if (job.applyMode === "internal") return true;
+  if (job.source.url === null) return false;
+  try {
+    const source = new URL(job.source.url);
+    return (
+      source.protocol === "https:" && source.username.length === 0 && source.password.length === 0
+    );
+  } catch {
+    return false;
+  }
+}
+
 function ListOrUnknown({
   items,
   empty,
@@ -90,8 +106,16 @@ function JobIdentity({
   job,
   fit,
   criteriaSearch,
-}: Readonly<{ job: Job; fit: JobFit; criteriaSearch: string }>) {
-  const sourceLabel = job.source.url === null ? job.source.label : "View original posting";
+  applicationBusy,
+  onStartApplication,
+}: Readonly<{
+  job: Job;
+  fit: JobFit;
+  criteriaSearch: string;
+  applicationBusy: boolean;
+  onStartApplication(): void;
+}>) {
+  const canPrepare = supportsJobbblerPreparation(job);
 
   return (
     <header className={styles["identity"]}>
@@ -123,18 +147,22 @@ function JobIdentity({
           <ArrowLeftIcon aria-hidden="true" size={16} />
           Back to search
         </Link>
-        {job.source.url === null ? (
-          <span className={styles["unavailableLink"]}>{sourceLabel} unavailable</span>
-        ) : (
-          <a
-            className={styles["sourceLink"]}
-            href={job.source.url}
-            rel="noreferrer"
-            target="_blank"
+        {canPrepare ? (
+          <button
+            className={styles["applyButton"]}
+            disabled={applicationBusy}
+            onClick={onStartApplication}
+            type="button"
           >
-            {sourceLabel}
-            <ArrowSquareOutIcon aria-hidden="true" size={16} />
-          </a>
+            <PaperPlaneTiltIcon aria-hidden="true" size={16} />
+            {applicationBusy
+              ? "Opening application…"
+              : job.applyMode === "external"
+                ? "Prepare external application"
+                : "Apply with Jobbbler"}
+          </button>
+        ) : (
+          <span className={styles["unavailableLink"]}>External application source unavailable</span>
         )}
       </div>
     </header>
@@ -234,10 +262,23 @@ function SourceAndFreshness({ job }: Readonly<{ job: Job }>) {
 function DetailContent({
   result,
   criteriaSearch,
-}: Readonly<{ result: JobDetailResult; criteriaSearch: string }>) {
+  applicationBusy,
+  onStartApplication,
+}: Readonly<{
+  result: JobDetailResult;
+  criteriaSearch: string;
+  applicationBusy: boolean;
+  onStartApplication(): void;
+}>) {
   return (
     <article className={styles["workspace"]}>
-      <JobIdentity criteriaSearch={criteriaSearch} fit={result.fit} job={result.job} />
+      <JobIdentity
+        applicationBusy={applicationBusy}
+        criteriaSearch={criteriaSearch}
+        fit={result.fit}
+        job={result.job}
+        onStartApplication={onStartApplication}
+      />
       <FitEvidence fit={result.fit} />
       <section className={styles["roleFacts"]}>
         <div>
@@ -264,6 +305,27 @@ export function JobDetail({
   criteriaSearch,
 }: Readonly<{ jobId: string; criteriaSearch: string }>) {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
+  const [applicationBusy, setApplicationBusy] = useState(false);
+  const router = useRouter();
+  const toast = useToast();
+
+  async function beginApplication() {
+    if (state.kind !== "ready" || applicationBusy) return;
+    setApplicationBusy(true);
+    try {
+      await startApplication(state.result.job.id, {
+        request: queryApi,
+        navigate: (href) => router.push(href),
+      });
+    } catch (error) {
+      toast.show({
+        title: "Application could not be opened",
+        description: errorMessage(error),
+        tone: "danger",
+      });
+      setApplicationBusy(false);
+    }
+  }
 
   useEffect(
     () =>
@@ -295,7 +357,14 @@ export function JobDetail({
   }, [criteriaSearch, jobId]);
 
   if (state.kind === "ready")
-    return <DetailContent criteriaSearch={criteriaSearch} result={state.result} />;
+    return (
+      <DetailContent
+        applicationBusy={applicationBusy}
+        criteriaSearch={criteriaSearch}
+        onStartApplication={() => void beginApplication()}
+        result={state.result}
+      />
+    );
 
   return (
     <section aria-live="polite" className={styles["state"]}>

@@ -1,7 +1,11 @@
 import type {
+  AgentOperation,
   ApplicationDraft,
+  DataCategory,
   Job,
   JobSearchCriteria,
+  LegalBasis,
+  OwnerActivityEvent,
   ScheduleRecurrence,
 } from "@jobbbler/contracts";
 
@@ -48,6 +52,68 @@ export interface ScheduleRecord {
   readonly updatedAt: string;
 }
 
+export interface AlertBaselineItem {
+  readonly jobId: string;
+  readonly fingerprint: string;
+}
+
+export interface AlertEvaluationRecord {
+  readonly id: string;
+  readonly ownerId: string;
+  readonly savedSearchId: string;
+  readonly scheduleId: string;
+  readonly catalogUpdatedAt: string | null;
+  readonly createdAt: string;
+  readonly baseline: readonly AlertBaselineItem[];
+}
+
+export type AlertChangeKind = "new" | "updated" | "closed" | "no_longer_matching";
+
+export interface AlertChangeRecord {
+  readonly id: string;
+  readonly evaluationId: string;
+  readonly jobId: string;
+  readonly kind: AlertChangeKind;
+  readonly createdAt: string;
+}
+
+export type AlertDeliveryStatus =
+  "pending" | "sending" | "accepted" | "failed" | "dead" | "cancelled";
+
+export interface AlertDeliveryRecord {
+  readonly id: string;
+  readonly evaluationId: string;
+  readonly ownerId: string;
+  readonly scheduleId: string;
+  readonly endpointId: string;
+  readonly contentHash: string;
+  readonly status: AlertDeliveryStatus;
+  readonly attempt: number;
+  readonly providerRef: string | null;
+  readonly errorCode: string | null;
+  readonly acceptedAt: string | null;
+  readonly lastAttemptAt: string | null;
+  readonly version: number;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface AlertDeliveryUpdate {
+  readonly id: string;
+  readonly status: AlertDeliveryStatus;
+  readonly attempt: number;
+  readonly providerRef: string | null;
+  readonly errorCode: string | null;
+  readonly acceptedAt: string | null;
+  readonly lastAttemptAt: string | null;
+  readonly updatedAt: string;
+}
+
+export interface AlertDeliveryPutResult {
+  readonly inserted: boolean;
+  readonly record: AlertDeliveryRecord;
+}
+
 export interface WorkItemRecord {
   readonly id: string;
   readonly kind: string;
@@ -75,6 +141,33 @@ export interface AuditEventRecord {
   readonly occurredAt: string;
 }
 
+/**
+ * Redacted, presentation-only projection. The owner binding and sequence are
+ * persistence concerns and are deliberately removed by the public API.
+ */
+export interface OwnerActivityEventRecord {
+  readonly sequence: number;
+  readonly ownerId: string;
+  readonly event: OwnerActivityEvent;
+}
+
+export interface NewOwnerActivityEventRecord {
+  readonly ownerId: string;
+  readonly event: OwnerActivityEvent;
+}
+
+export interface OwnerActivityWindowInput {
+  readonly ownerId: string;
+  readonly afterSequence: number | null;
+  readonly limit: number;
+}
+
+export interface OwnerActivityWindow {
+  readonly events: readonly OwnerActivityEventRecord[];
+  readonly hasMore: boolean;
+  readonly latestSequence: number;
+}
+
 export interface IdempotencyRecord {
   readonly scope: string;
   readonly key: string;
@@ -83,6 +176,148 @@ export interface IdempotencyRecord {
   readonly responseBody: unknown;
   readonly createdAt: string;
   readonly expiresAt: string;
+}
+
+export interface ApplicationReviewRecord { readonly id: string; readonly ownerId: string; readonly draftId: string; readonly draftVersion: number; readonly payloadHash: string; readonly findings: readonly string[]; readonly status: "active" | "invalidated"; readonly createdAt: string; readonly invalidatedAt: string | null; }
+export interface ApplicationConfirmationRecord { readonly id: string; readonly ownerId: string; readonly draftId: string; readonly reviewId: string; readonly payloadHash: string; /** SHA-256 (or stronger) digest only; never the confirmation token. */ readonly confirmationHash: string; readonly status: "active" | "consumed" | "invalidated"; readonly expiresAt: string; readonly createdAt: string; readonly consumedAt: string | null; }
+export interface ApplicationReceiptRecord { readonly id: string; readonly ownerId: string; readonly draftId: string; readonly reviewId: string; readonly confirmationId: string; readonly idempotencyKey: string; readonly status: "submitted" | "handed_off"; readonly externalUrl: string | null; readonly createdAt: string; }
+export interface MaterialApplicationEditInput { readonly ownerId: string; readonly expectedVersion: number; readonly draft: ApplicationDraft; readonly now: string; }
+export interface SealApplicationReviewInput { readonly ownerId: string; readonly expectedVersion: number; readonly draft: ApplicationDraft; readonly review: ApplicationReviewRecord; }
+export interface SubmissionGrantScope {
+  readonly id: string;
+  readonly version: number;
+  readonly recipientId: string;
+  readonly purpose: string;
+  readonly payloadHash: string;
+  readonly categories: readonly DataCategory[];
+  readonly fieldKeys: readonly string[];
+  readonly documentIds: readonly string[];
+  readonly noticeVersion: string;
+  readonly legalBasis: LegalBasis;
+}
+export interface CompleteApplicationSubmissionInput {
+  readonly ownerId: string;
+  readonly draftId: string;
+  readonly expectedDraftVersion: number;
+  readonly reviewId: string;
+  readonly reviewPayloadHash: string;
+  readonly confirmationId: string;
+  readonly confirmationHash: string;
+  readonly grant: SubmissionGrantScope;
+  readonly receipt: ApplicationReceiptRecord;
+  readonly now: string;
+}
+export interface CompleteApplicationSubmissionResult { readonly draft: ApplicationDraft; readonly receipt: ApplicationReceiptRecord; readonly inserted: boolean; }
+export interface AgentDelegationRecord {
+  readonly id: string;
+  readonly ownerId: string;
+  readonly agentSessionId: string;
+  readonly resourceType: "application_draft";
+  readonly resourceId: string;
+  readonly operations: readonly AgentOperation[];
+  readonly purpose: string;
+  readonly status: "requested" | "active" | "revoked";
+  readonly expiresAt: string;
+  readonly createdAt: string;
+  readonly approvedAt: string | null;
+  readonly revokedAt: string | null;
+}
+export interface DataGrantRecord { readonly id: string; readonly ownerId: string; readonly recipientId: string; readonly purpose: string; readonly payloadHash: string; readonly fields: readonly string[]; readonly status: "requested" | "active" | "withdrawn"; readonly expiresAt: string; readonly createdAt: string; readonly approvedAt: string | null; readonly withdrawnAt: string | null; }
+export interface ApplicationReceiptPutResult { readonly inserted: boolean; readonly record: ApplicationReceiptRecord; }
+export interface AgentSessionRecord {
+  readonly id: string;
+  readonly ownerId: string;
+  readonly draftId: string;
+  /** A one-way digest of the bearer token. Raw tokens must never enter persistence. */
+  readonly tokenHash: string;
+  readonly expiresAt: string;
+  readonly revokedAt: string | null;
+  readonly createdAt: string;
+}
+
+export interface ResolveAgentSessionInput {
+  readonly tokenHash: string;
+  readonly ownerId: string;
+  readonly draftId: string;
+  readonly now: string;
+}
+
+export interface ActiveDelegationMatchInput {
+  readonly ownerId: string;
+  readonly agentSessionId: string;
+  readonly resourceType: "application_draft";
+  readonly resourceId: string;
+  readonly operation: AgentOperation;
+  readonly now: string;
+}
+
+export interface RichDataGrantRecord {
+  readonly id: string;
+  readonly ownerId: string;
+  readonly draftId: string;
+  readonly recipientId: string;
+  readonly purpose: string;
+  readonly payloadHash: string;
+  readonly categories: readonly DataCategory[];
+  readonly fieldKeys: readonly string[];
+  readonly documentIds: readonly string[];
+  readonly noticeVersion: string;
+  readonly legalBasis: LegalBasis;
+  readonly status: "requested" | "active" | "withdrawn";
+  readonly expiresAt: string;
+  readonly createdAt: string;
+  readonly approvedAt: string | null;
+  readonly withdrawnAt: string | null;
+  /** Channel through which the explicit approval action was received. */
+  readonly approvalChannel?: "first_party_ui" | "agent_client" | null;
+  /** Server-issued grant request bound to the approval action. */
+  readonly approvalRequestId?: string | null;
+  /** Normalized affirmative action stored without retaining raw conversation text. */
+  readonly affirmativeAction?: "confirmed" | null;
+  /** Versioned evidence contract used to interpret the stored approval fields. */
+  readonly approvalEvidenceVersion?: "agent-interaction-v1" | null;
+  /** Incremented for every grant state transition; absent legacy rows are version zero. */
+  readonly version?: number;
+}
+
+export interface GrantApprovalEvidence {
+  readonly channel: "first_party_ui" | "agent_client";
+  readonly requestId: string;
+  readonly affirmativeAction: "confirmed";
+  readonly evidenceVersion: "agent-interaction-v1";
+}
+
+export interface RichDataGrantMatchInput {
+  readonly ownerId: string;
+  readonly draftId: string;
+  readonly recipientId: string;
+  readonly purpose: string;
+  readonly payloadHash: string;
+  readonly categories: readonly DataCategory[];
+  readonly fieldKeys: readonly string[];
+  readonly documentIds: readonly string[];
+  readonly noticeVersion: string;
+  readonly legalBasis: LegalBasis;
+  readonly now: string;
+}
+
+export interface RichDataGrantApprovalGuard {
+  readonly expectedGrantVersion: number;
+  readonly expectedDraftVersion: number;
+  readonly reviewId: string;
+  readonly reviewPayloadHash: string;
+  readonly jobId: string;
+  readonly jobOrganizationId: string;
+  readonly jobOrganizationName: string;
+  readonly jobApplyMode: Job["applyMode"];
+}
+
+export interface ApproveRichDataGrantInput extends RichDataGrantApprovalGuard {
+  readonly id: string;
+  readonly ownerId: string;
+  readonly draftId: string;
+  readonly at: string;
+  readonly approvalEvidence?: GrantApprovalEvidence;
 }
 
 export interface JobSearchQuery {
@@ -103,6 +338,22 @@ export interface ClaimWorkItemsInput {
   readonly now: string;
   readonly leaseExpiresAt: string;
   readonly limit: number;
+  /** When present, claim only these bounded work-item kinds. */
+  readonly kinds?: readonly string[];
+}
+
+export interface RateLimitCheckInput {
+  readonly key: string;
+  readonly limit: number;
+  readonly windowMs: number;
+  readonly nowMs: number;
+}
+
+export interface RateLimitDecision {
+  readonly allowed: boolean;
+  readonly remaining: number;
+  readonly retryAfterSeconds: number;
+  readonly resetAtMs: number;
 }
 
 export interface RenewWorkItemLeaseInput {

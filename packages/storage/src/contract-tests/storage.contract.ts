@@ -6,8 +6,10 @@ import type {
   AuditEventRecord,
   IdempotencyRecord,
   OrganizationRecord,
+  OwnerActivityEventRecord,
   OwnerRecord,
   SavedSearchRecord,
+  ScheduleRecord,
   Storage,
   WorkItemRecord,
 } from "../index.js";
@@ -220,7 +222,6 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
         updatedAt: now,
       };
       await current.savedSearches.insert(saved);
-
       const updated = await current.savedSearches.update(
         { ...saved, name: "Senior product engineering", updatedAt: later },
         1,
@@ -229,6 +230,218 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
 
       await expect(
         current.savedSearches.update({ ...saved, name: "Stale write", updatedAt: later }, 1),
+      ).rejects.toMatchObject({ code: "CONFLICT" });
+    });
+
+    it("lists schedules only for their owner in most-recent-first order", async () => {
+      const current = await create();
+      await current.owners.insert(owner);
+      const saved: SavedSearchRecord = {
+        id: "search_550e8400-e29b-41d4-a716-446655440010",
+        ownerId: owner.id,
+        name: "Remote product engineering",
+        criteria: emptyCriteria,
+        version: 1,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await current.savedSearches.insert(saved);
+      const secondSaved: SavedSearchRecord = {
+        ...saved,
+        id: "search_550e8400-e29b-41d4-a716-446655440011",
+        name: "Remote platform engineering",
+      };
+      await current.savedSearches.insert(secondSaved);
+      const first: ScheduleRecord = {
+        id: "schedule_550e8400-e29b-41d4-a716-446655440000",
+        ownerId: owner.id,
+        savedSearchId: saved.id,
+        recurrence: { frequency: "daily", time: "09:00", timeZone: "UTC" },
+        deliveryChannel: "email",
+        deliveryEndpointId: "endpoint_550e8400-e29b-41d4-a716-446655440000",
+        enabled: true,
+        nextRunAt: later,
+        version: 1,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const second: ScheduleRecord = {
+        ...first,
+        id: "schedule_550e8400-e29b-41d4-a716-446655440001",
+        savedSearchId: secondSaved.id,
+        updatedAt: later,
+      };
+      await current.schedules.insert(first);
+      await current.schedules.insert(second);
+
+      await expect(current.schedules.listByOwner(owner.id)).resolves.toEqual([second, first]);
+      await expect(current.schedules.listByOwner("another-owner")).resolves.toEqual([]);
+    });
+
+    it("allows only one owner schedule for a saved search", async () => {
+      const current = await create();
+      await current.owners.insert(owner);
+      const saved: SavedSearchRecord = {
+        id: "search_550e8400-e29b-41d4-a716-446655440012",
+        ownerId: owner.id,
+        name: "One schedule only",
+        criteria: emptyCriteria,
+        version: 1,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const schedule: ScheduleRecord = {
+        id: "schedule_550e8400-e29b-41d4-a716-446655440012",
+        ownerId: owner.id,
+        savedSearchId: saved.id,
+        recurrence: { frequency: "daily", time: "09:00", timeZone: "UTC" },
+        deliveryChannel: "email",
+        deliveryEndpointId: "endpoint_550e8400-e29b-41d4-a716-446655440012",
+        enabled: true,
+        nextRunAt: later,
+        version: 0,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await current.savedSearches.insert(saved);
+      await current.schedules.insert(schedule);
+
+      await expect(
+        current.schedules.insert({ ...schedule, id: "schedule_550e8400-e29b-41d4-a716-446655440013" }),
+      ).rejects.toMatchObject({ code: "CONFLICT" });
+    });
+
+    it("keeps alert evaluations immutable and deduplicates content-bound deliveries", async () => {
+      const current = await create();
+      await current.owners.insert(owner);
+      await current.organizations.upsert(organization);
+      await current.jobs.upsert(job);
+      const saved: SavedSearchRecord = {
+        id: "search_550e8400-e29b-41d4-a716-446655440020",
+        ownerId: owner.id,
+        name: "Senior remote roles",
+        criteria: emptyCriteria,
+        version: 1,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await current.savedSearches.insert(saved);
+      const schedule: ScheduleRecord = {
+        id: "schedule_550e8400-e29b-41d4-a716-446655440020",
+        ownerId: owner.id,
+        savedSearchId: saved.id,
+        recurrence: { frequency: "daily", time: "09:00", timeZone: "UTC" },
+        deliveryChannel: "email",
+        deliveryEndpointId: "endpoint_550e8400-e29b-41d4-a716-446655440020",
+        enabled: true,
+        nextRunAt: later,
+        version: 1,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await current.schedules.insert(schedule);
+      const evaluation = {
+        id: "evaluation_550e8400-e29b-41d4-a716-446655440000",
+        ownerId: owner.id,
+        savedSearchId: saved.id,
+        scheduleId: schedule.id,
+        catalogUpdatedAt: now,
+        createdAt: now,
+        baseline: [{ jobId: job.id, fingerprint: "a".repeat(64) }],
+      };
+      const change = {
+        id: "change_550e8400-e29b-41d4-a716-446655440000",
+        evaluationId: evaluation.id,
+        jobId: job.id,
+        kind: "no_longer_matching" as const,
+        createdAt: now,
+      };
+      await current.alerts.insertEvaluation({ evaluation, changes: [change] });
+
+      await expect(current.alerts.getLatestEvaluation(saved.id)).resolves.toEqual(evaluation);
+      await expect(current.alerts.listChanges(evaluation.id)).resolves.toEqual([change]);
+      await expect(
+        current.alerts.insertEvaluation({
+          evaluation: {
+            ...evaluation,
+            id: "evaluation_550e8400-e29b-41d4-a716-446655440001",
+            createdAt: later,
+          },
+          changes: [
+            {
+              ...change,
+              id: "change_550e8400-e29b-41d4-a716-446655440001",
+              evaluationId: "evaluation_550e8400-e29b-41d4-a716-446655440001",
+              jobId: "job_missing",
+              createdAt: later,
+            },
+          ],
+        }),
+      ).rejects.toThrow();
+      await expect(current.alerts.getLatestEvaluation(saved.id)).resolves.toEqual(evaluation);
+      const delivery = {
+        id: "delivery_550e8400-e29b-41d4-a716-446655440000",
+        evaluationId: evaluation.id,
+        ownerId: owner.id,
+        scheduleId: schedule.id,
+        endpointId: schedule.deliveryEndpointId,
+        contentHash: "b".repeat(64),
+        status: "pending" as const,
+        attempt: 0,
+        providerRef: null,
+        errorCode: null,
+        acceptedAt: null,
+        lastAttemptAt: null,
+        version: 0,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await expect(current.alerts.putDeliveryIfAbsent(delivery)).resolves.toEqual({
+        inserted: true,
+        record: delivery,
+      });
+      await expect(
+        current.alerts.putDeliveryIfAbsent({ ...delivery, id: "delivery_duplicate" }),
+      ).resolves.toEqual({ inserted: false, record: delivery });
+      await expect(
+        current.alerts.updateDelivery(
+          {
+            id: delivery.id,
+            status: "accepted",
+            attempt: 1,
+            providerRef: "provider-accepted-1",
+            errorCode: null,
+            acceptedAt: later,
+            lastAttemptAt: later,
+            updatedAt: later,
+          },
+          0,
+        ),
+      ).resolves.toMatchObject({
+        status: "accepted",
+        version: 1,
+        acceptedAt: later,
+        lastAttemptAt: later,
+      });
+      await expect(current.alerts.getLatestDelivery(schedule.id)).resolves.toMatchObject({
+        id: delivery.id,
+        status: "accepted",
+        version: 1,
+      });
+      await expect(
+        current.alerts.updateDelivery(
+          {
+            id: delivery.id,
+            status: "failed",
+            attempt: 1,
+            providerRef: null,
+            errorCode: "PROVIDER",
+            acceptedAt: null,
+            lastAttemptAt: later,
+            updatedAt: later,
+          },
+          0,
+        ),
       ).rejects.toMatchObject({ code: "CONFLICT" });
     });
 
@@ -273,6 +486,75 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
       expect(claimed).toHaveLength(1);
       expect(claimed[0]).toMatchObject({ status: "running", leaseOwner: "worker-a" });
       expect(secondClaim).toEqual([]);
+    });
+
+    it("claims only validated requested work-item kinds", async () => {
+      const current = await create();
+      const catalog: WorkItemRecord = {
+        id: "work_550e8400-e29b-41d4-a716-446655440020",
+        kind: "catalog_ingest",
+        payload: { source: "jobbbler_demo" },
+        status: "pending",
+        availableAt: now,
+        attempt: 0,
+        maxAttempts: 3,
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        lastErrorCode: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const alert: WorkItemRecord = {
+        ...catalog,
+        id: "work_550e8400-e29b-41d4-a716-446655440021",
+        kind: "alert_evaluate",
+      };
+      await current.workItems.insert(catalog);
+      await current.workItems.insert(alert);
+
+      await expect(
+        current.workItems.claimDue({
+          workerId: "alert-worker",
+          now,
+          leaseExpiresAt: later,
+          limit: 10,
+          kinds: ["alert_evaluate"],
+        }),
+      ).resolves.toMatchObject([{ id: alert.id, kind: "alert_evaluate" }]);
+      await expect(
+        current.workItems.claimDue({
+          workerId: "worker",
+          now,
+          leaseExpiresAt: later,
+          limit: 10,
+          kinds: [],
+        }),
+      ).rejects.toMatchObject({ code: "VALIDATION" });
+    });
+
+    it("persists atomic rate-limit windows", async () => {
+      const current = await create();
+      const input = { key: "hmac:requester", limit: 2, windowMs: 60_000, nowMs: 1_000 };
+
+      await expect(current.rateLimits.check(input)).resolves.toEqual({
+        allowed: true,
+        remaining: 1,
+        retryAfterSeconds: 0,
+        resetAtMs: 61_000,
+      });
+      await expect(current.rateLimits.check(input)).resolves.toMatchObject({
+        allowed: true,
+        remaining: 0,
+      });
+      await expect(current.rateLimits.check(input)).resolves.toEqual({
+        allowed: false,
+        remaining: 0,
+        retryAfterSeconds: 60,
+        resetAtMs: 61_000,
+      });
+      await expect(
+        current.rateLimits.check({ ...input, nowMs: 61_000 }),
+      ).resolves.toMatchObject({ allowed: true, remaining: 1, resetAtMs: 121_000 });
     });
 
     it("renews only the active owner's lease", async () => {
@@ -432,6 +714,80 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
       expect(
         await current.audit.listForAggregate(first.aggregateType, first.aggregateId, 10),
       ).toEqual([first, second]);
+    });
+
+    it("keeps the sanitized activity cursor projection strictly owner-scoped", async () => {
+      const current = await create();
+      const otherOwner: OwnerRecord = {
+        ...owner,
+        id: "owner_550e8400-e29b-41d4-a716-446655440001",
+      };
+      await current.owners.insert(owner);
+      await current.owners.insert(otherOwner);
+      const first = await current.ownerActivity.append({
+        ownerId: owner.id,
+        event: {
+          id: "activity_550e8400-e29b-41d4-a716-446655440000",
+          schemaVersion: 1,
+          kind: "tool",
+          key: "edit_application",
+          status: "completed",
+          safeSummary: "Application draft updated.",
+          correlationId: "corr_550e8400-e29b-41d4-a716-446655440000",
+          actorKind: "agent",
+          aggregate: { type: "application_draft", version: 3 },
+          occurredAt: now,
+          effects: [{ target: "application", kind: "refresh" }],
+        },
+      });
+      const other = await current.ownerActivity.append({
+        ownerId: otherOwner.id,
+        event: {
+          ...first.event,
+          id: "activity_550e8400-e29b-41d4-a716-446655440001",
+          correlationId: "corr_550e8400-e29b-41d4-a716-446655440001",
+        },
+      });
+      const second: OwnerActivityEventRecord = await current.ownerActivity.append({
+        ownerId: owner.id,
+        event: {
+          ...first.event,
+          id: "activity_550e8400-e29b-41d4-a716-446655440002",
+          key: "review_application",
+          status: "requires_user_action",
+          safeSummary: "Application review needs your approval.",
+          correlationId: "corr_550e8400-e29b-41d4-a716-446655440002",
+          aggregate: { type: "application_draft", version: 4 },
+          occurredAt: later,
+          effects: [{ target: "application", kind: "focus" }],
+        },
+      });
+
+      expect(first.sequence).toBeGreaterThan(0);
+      expect(second.sequence).toBeGreaterThan(first.sequence);
+      expect(
+        await current.ownerActivity.listWindow({ ownerId: owner.id, afterSequence: null, limit: 10 }),
+      ).toEqual({ events: [first, second], hasMore: false, latestSequence: second.sequence });
+      expect(
+        await current.ownerActivity.listWindow({
+          ownerId: owner.id,
+          afterSequence: first.sequence,
+          limit: 10,
+        }),
+      ).toEqual({ events: [second], hasMore: false, latestSequence: second.sequence });
+      expect(
+        await current.ownerActivity.listWindow({
+          ownerId: otherOwner.id,
+          afterSequence: second.sequence,
+          limit: 10,
+        }),
+      ).toEqual({ events: [], hasMore: false, latestSequence: other.sequence });
+      await expect(
+        current.ownerActivity.append({
+          ownerId: owner.id,
+          event: { ...first.event, id: "activity_550e8400-e29b-41d4-a716-446655440003", safeSummary: "Token=private-secret-with-at-least-thirty-two-characters" },
+        }),
+      ).rejects.toThrow();
     });
   });
 }

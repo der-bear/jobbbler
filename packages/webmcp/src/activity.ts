@@ -1,3 +1,5 @@
+import { toolActivitySchema } from "@jobbbler/contracts";
+
 import type { AgentActivity, AgentActivityStatus } from "./types.js";
 
 interface ActivityClock {
@@ -73,6 +75,38 @@ export class AgentActivityStore {
           : activity,
       ),
     );
+  }
+
+  mergeCommitted(activities: readonly AgentActivity[]): void {
+    const committed = activities.map((activity) => ({
+      ...toolActivitySchema.parse(activity),
+      affectedResourceIds: [],
+    }));
+    const next = [...this.#activities];
+    let changed = false;
+    for (const activity of committed) {
+      const index = next.findIndex(
+        (candidate) =>
+          candidate.id === activity.id ||
+          (candidate.correlationId === activity.correlationId &&
+            candidate.toolName === activity.toolName),
+      );
+      if (index === -1) {
+        next.push(activity);
+        changed = true;
+        continue;
+      }
+      const current = next[index]!;
+      if (JSON.stringify(current) === JSON.stringify(activity)) continue;
+      next[index] = activity;
+      changed = true;
+    }
+    if (!changed) return;
+    next.sort(
+      (left, right) =>
+        left.startedAt.localeCompare(right.startedAt) || left.id.localeCompare(right.id),
+    );
+    this.#publish(next);
   }
 
   #publish(activities: readonly AgentActivity[]): void {

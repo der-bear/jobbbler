@@ -114,6 +114,7 @@
 .backLink,
 .sourceLink,
 .unavailableLink,
+.applyButton,
 .state a {
   display: inline-flex;
   align-items: center;
@@ -122,6 +123,21 @@
   font-size: 13px;
   font-weight: 650;
   text-decoration: none;
+}
+
+.applyButton {
+  min-block-size: 40px;
+  border: 1px solid var(--jb-signal);
+  padding: 8px 13px;
+  color: var(--color-signal-on, #06170d);
+  background: var(--jb-signal);
+  font: inherit;
+  cursor: pointer;
+}
+
+.applyButton:disabled {
+  cursor: wait;
+  opacity: 0.62;
 }
 
 .backLink {

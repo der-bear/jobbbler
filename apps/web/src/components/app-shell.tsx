@@ -1,6 +1,6 @@
 "use client";
 
-import { BriefcaseIcon } from "@phosphor-icons/react";
+import { BellSimpleIcon, BriefcaseIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -9,7 +9,10 @@ import { ThemeToggle } from "@jobbbler/ui";
 
 import styles from "./app-shell.module.css";
 
-const navigation = [{ href: "/", label: "Search", icon: BriefcaseIcon }] as const;
+const navigation = [
+  { href: "/", label: "Search", icon: BriefcaseIcon },
+  { href: "/saved", label: "Saved", icon: BellSimpleIcon },
+] as const;
 
 function isCurrentRoute(pathname: string, href: string): boolean {
   return href === "/" ? pathname === href : pathname.startsWith(href);

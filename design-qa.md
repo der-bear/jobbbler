@@ -2,7 +2,7 @@
 
 ## Scope
 
-Jobbbler search, comparison, and role-detail surfaces were reviewed against the selected Editorial Workspace reference and exercised in the Codex in-app browser. The review covered desktop and mobile layouts, light and dark themes, keyboard-readable structure, core discovery interactions, and route-scoped WebMCP feedback.
+Jobbbler search, comparison, role-detail, saved-alert, and reviewed-application surfaces were reviewed against the selected Editorial Workspace reference and exercised in the Codex in-app browser. The review covered desktop and mobile layouts, light and dark themes, keyboard-readable structure, core discovery, alert, and application interactions, and route-scoped WebMCP feedback.
 
 ## Visual evidence
 
@@ -10,6 +10,13 @@ Jobbbler search, comparison, and role-detail surfaces were reviewed against the 
 - Normalized reference/implementation comparison: `docs/design/qa-task7-comparison.png`
 - Desktop implementation capture: `docs/design/qa-task7-desktop.png`
 - Mobile implementation capture at a true 390 × 844 browsing viewport: `docs/design/qa-task7-mobile.jpg`
+- Saved-alert desktop capture: `docs/design/qa-task8-saved.png`
+- Saved-alert mobile capture at a true 390 × 844 browsing viewport: `docs/design/qa-task8-saved-mobile.jpg`
+- Application disclosure capture: `docs/design/qa-task9-application-permission.png`
+- Mainstream hierarchy before refinement: `docs/design/audit-mainstream/01-search-and-activity.png`
+- Mainstream saved-workspace before refinement: `docs/design/audit-mainstream/02-saved-workspace.png`
+- Refined text-first search hierarchy: `docs/design/audit-mainstream/03-search-refined.jpg`
+- Refined privacy disclosure hierarchy: `docs/design/audit-mainstream/04-saved-refined.jpg`
 
 The combined comparison was inspected at original detail. The implementation preserves the reference's editorial hierarchy, restrained green signal color, evidence-first density, thin dividers, compact controls, and clear primary/secondary reading order while adapting the content to Jobbbler's job-discovery domain.
 
@@ -22,8 +29,18 @@ The combined comparison was inspected at original detail. The implementation pre
 - Theme switching updated the document theme and verified dark-mode canvas and text colors.
 - The mobile layout was rendered inside a genuine 390 × 844 iframe browsing context so CSS media queries, fixed positioning, and responsive overflow were exercised by the browser.
 - Mobile filters and Agent Activity are represented as labeled bottom sheets; controls remain usable without WebMCP support.
+- The saved-alert experience preserves the same editorial hierarchy while separating recoverability, encrypted delivery, scheduling, latest evaluation, and pause/revoke controls into distinct, readable surfaces.
+- Mobile saved-alert geometry was measured in the browser at a 390 px viewport with no horizontal document overflow; the active alert, masked destination, monitoring state, and latest-run status remain available without a desktop-only interaction.
+- The `/saved` route exposes exactly the two relevant WebMCP tools, `get_saved_alerts` and `set_job_alert_state`; the read tool was exercised against real local state and returned bounded alert metadata without a delivery destination or credential.
 - A real mobile P1 defect was found: the header backdrop filter created a containing block that trapped the fixed bottom navigation at the top of the header. Mobile now uses an opaque header without backdrop filtering, restoring the wordmark/theme controls at the top and navigation at the viewport bottom.
 - The shared UI barrel is explicitly client-bound, eliminating a React Server Components failure that appeared in Next.js development mode.
+- The application workspace carries the same editorial type scale, thin-rule hierarchy, restrained signal color, and compact trust rail into a four-stage safety journey without resembling a generic multi-step form.
+- The complete synthetic journey was exercised in the in-app browser: private session, accepted candidate facts, validation, immutable review, exact data permission, five-minute single-use confirmation, idempotent internal receipt, and final read-only WebMCP state.
+- Application tool registration was verified as state-bound: the initial profile surface exposed only safe state and scoped-access tools, while the completed receipt surface unregistered every mutation and retained only `get_application_state`.
+- Email values are naturally redacted by the browser accessibility snapshot during profile entry; no reusable credential, owner identifier, or private answer appears in WebMCP tool descriptions or final activity metadata.
+- The idle desktop Agent Activity surface is now one compact disclosure rather than a peer column. Running, approval, and failure states open it automatically; the mobile bottom sheet opens its contents directly.
+- Passwordless recovery and irreversible deletion remain discoverable under `Privacy & access` without presenting a destructive form in the saved-workspace hero.
+- The refined search and saved captures were reviewed at the same desktop viewport as their before states. The editorial type scale and thin-rule system remain intact while technical and destructive controls move to secondary disclosures.
 
 ## Severity review
 

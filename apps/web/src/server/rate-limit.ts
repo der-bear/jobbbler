@@ -1,19 +1,22 @@
-export interface RateLimitCheckInput {
-  readonly key: string;
-  readonly limit: number;
-  readonly windowMs: number;
-  readonly nowMs: number;
-}
+import type {
+  RateLimitCheckInput,
+  RateLimitDecision,
+  RateLimitRepository,
+} from "@jobbbler/storage";
 
-export interface RateLimitDecision {
-  readonly allowed: boolean;
-  readonly remaining: number;
-  readonly retryAfterSeconds: number;
-  readonly resetAtMs: number;
-}
+export type { RateLimitCheckInput, RateLimitDecision } from "@jobbbler/storage";
 
 export interface RateLimiter {
   check(input: RateLimitCheckInput): Promise<RateLimitDecision>;
+}
+
+/** Production adapter; memory limiting remains available only for explicit tests. */
+export function createStorageRateLimiter(repository: RateLimitRepository): RateLimiter {
+  return {
+    check(input) {
+      return repository.check(input);
+    },
+  };
 }
 
 interface WindowState {

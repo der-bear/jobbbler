@@ -4,6 +4,7 @@ import {
   ArrowClockwiseIcon,
   ArrowSquareOutIcon,
   BriefcaseIcon,
+  BellSimpleIcon,
   CaretDownIcon,
   CheckCircleIcon,
   CircleIcon,
@@ -551,6 +552,12 @@ export function SearchWorkspace() {
     return `/compare?${parameters.toString()}`;
   }, [applied, comparedJobIds]);
 
+  const saveAlertHref = useMemo(() => {
+    const parameters = searchInputToSearchParams(applied);
+    parameters.set("create", "1");
+    return `/saved?${parameters.toString()}`;
+  }, [applied]);
+
   function removeFilter(id: string) {
     const separator = id.indexOf(":");
     const kind = id.slice(0, separator);
@@ -692,6 +699,7 @@ export function SearchWorkspace() {
       >
         <AgentActivityRail
           activities={webMcp.activities}
+          initiallyExpanded
           registeredToolCount={webMcp.registeredToolCount}
           status={<WebMcpStatus />}
           webMcpAvailable={webMcp.supported && webMcp.status !== "error"}
@@ -707,6 +715,10 @@ export function SearchWorkspace() {
             </h2>
           </div>
           <div className={styles["resultsControls"]}>
+            <Link className={styles["compareLink"]} href={saveAlertHref}>
+              <BellSimpleIcon aria-hidden="true" size={16} />
+              Save alert
+            </Link>
             <span
               aria-label="Comparison selection"
               className={styles["selectionStatus"]}

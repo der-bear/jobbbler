@@ -9,8 +9,8 @@ describe("Next standalone tracing", () => {
     expect(nextConfig.outputFileTracingRoot).toBe(
       fileURLToPath(new URL("../../", import.meta.url)),
     );
-    expect(nextConfig.outputFileTracingIncludes).toMatchObject({
-      "/*": ["../../migrations/sqlite/*.sql"],
+    expect(nextConfig.outputFileTracingIncludes).toEqual({
+      "/*": ["../../migrations/sqlite/*.sql", "../../migrations/postgres/*.sql"],
     });
   });
 });

@@ -4,6 +4,7 @@ import {
   applicationDraftSchema,
   jobSchema,
   jobSearchCriteriaSchema,
+  ownerActivityEventSchema,
   scheduleRecurrenceSchema,
   type ApplicationDraft,
   type Job,
@@ -17,17 +18,32 @@ import type {
   IdempotencyRecord,
   JobSearchPage,
   OrganizationRecord,
+  OwnerActivityEventRecord,
   OwnerRecord,
   SavedSearchRecord,
   ScheduleRecord,
   Storage,
   WorkItemRecord,
+  ApplicationReviewRecord, ApplicationConfirmationRecord, ApplicationReceiptRecord,
+  MaterialApplicationEditInput, SealApplicationReviewInput, CompleteApplicationSubmissionInput,
+  CompleteApplicationSubmissionResult,
+  ActiveDelegationMatchInput,
+  ApproveRichDataGrantInput,
+  AgentDelegationRecord,
+  AgentSessionRecord,
+  DataGrantRecord,
+  ResolveAgentSessionInput,
+  RichDataGrantMatchInput,
+  RichDataGrantRecord,
 } from "@jobbbler/storage";
 
 import { openSqliteDatabase, type SqliteDatabase } from "./connection.js";
+import { createSqliteAlertRepository } from "./alert-repository.js";
 import { toFts5Query } from "./fts.js";
 import { createSqliteIngestionRepository } from "./ingestion-repository.js";
+import { createSqliteIdentityStore } from "./identity-repository.js";
 import { migrateSqlite } from "./migrate.js";
+import { createSqliteRateLimitRepository } from "./rate-limit-repository.js";
 
 type SqlParameter = string | number | bigint | null | Uint8Array;
 
@@ -151,6 +167,23 @@ interface AuditRow {
   readonly occurred_at: string;
 }
 
+interface OwnerActivityRow {
+  readonly sequence: number;
+  readonly id: string;
+  readonly owner_id: string;
+  readonly schema_version: number;
+  readonly kind: string;
+  readonly activity_key: string;
+  readonly status: string;
+  readonly safe_summary: string;
+  readonly correlation_id: string;
+  readonly actor_kind: string;
+  readonly aggregate_type: string;
+  readonly aggregate_version: number;
+  readonly occurred_at: string;
+  readonly effects_json: string;
+}
+
 interface IdempotencyRow {
   readonly scope: string;
   readonly key: string;
@@ -271,6 +304,79 @@ function applicationFromRow(row: ApplicationRow): ApplicationDraft {
   });
 }
 
+function applicationRecord<T>(row: Record<string, unknown>): T {
+  const parsed = { ...row } as Record<string, unknown>;
+  for (const key of [
+    "findings_json",
+    "operations_json",
+    "fields_json",
+    "categories_json",
+    "field_keys_json",
+    "document_ids_json",
+  ] as const) {
+    if (typeof parsed[key] === "string") parsed[key] = parseJson(parsed[key] as string);
+  }
+  const map: Record<string, string> = {
+    owner_id: "ownerId",
+    draft_id: "draftId",
+    draft_version: "draftVersion",
+    payload_hash: "payloadHash",
+    created_at: "createdAt",
+    invalidated_at: "invalidatedAt",
+    review_id: "reviewId",
+    confirmation_id: "confirmationId",
+    confirmation_hash: "confirmationHash",
+    token_hash: "tokenHash",
+    expires_at: "expiresAt",
+    consumed_at: "consumedAt",
+    idempotency_key: "idempotencyKey",
+    external_url: "externalUrl",
+    agent_id: "agentSessionId",
+    resource_type: "resourceType",
+    resource_id: "resourceId",
+    approved_at: "approvedAt",
+    approval_channel: "approvalChannel",
+    approval_request_id: "approvalRequestId",
+    affirmative_action: "affirmativeAction",
+    approval_evidence_version: "approvalEvidenceVersion",
+    revoked_at: "revokedAt",
+    recipient_id: "recipientId",
+    withdrawn_at: "withdrawnAt",
+    findings_json: "findings",
+    operations_json: "operations",
+    fields_json: "fields",
+    categories_json: "categories",
+    field_keys_json: "fieldKeys",
+    document_ids_json: "documentIds",
+    notice_version: "noticeVersion",
+    legal_basis: "legalBasis",
+  };
+  for (const [from, to] of Object.entries(map)) {
+    if (from in parsed) {
+      parsed[to] = parsed[from];
+      delete parsed[from];
+    }
+  }
+  for (const optionalEvidenceKey of [
+    "approvalChannel",
+    "approvalRequestId",
+    "affirmativeAction",
+    "approvalEvidenceVersion",
+  ] as const) {
+    if (parsed[optionalEvidenceKey] === null) delete parsed[optionalEvidenceKey];
+  }
+  return parsed as T;
+}
+
+function capabilityBase<T>(database: SqliteDatabase, table: "application_delegation_records" | "application_data_grant_records", arrayColumn: "operations_json" | "fields_json", arrayKey: "operations" | "fields") {
+  const columns = table === "application_delegation_records" ? "id,owner_id,agent_id,resource_type,resource_id,operations_json,purpose,status,expires_at,created_at,approved_at,revoked_at" : "id,owner_id,recipient_id,purpose,payload_hash,fields_json,status,expires_at,created_at,approved_at,withdrawn_at";
+  return {
+    insert(record: T) { const value = record as Record<string, unknown>; const params: Record<string, unknown> = { ...value }; params[arrayColumn.replace(/_json$/, "").replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase()) + "Json"] = json(value[arrayKey]); database.prepare(`INSERT INTO ${table}(${columns}) VALUES(${columns.split(",").map((column) => `@${column.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase())}`).join(",")})`).run(params); return record; },
+    getById(id: string, ownerId: string): T | null { const row=database.prepare(`SELECT * FROM ${table} WHERE id=? AND owner_id=?`).get(id,ownerId) as Record<string,unknown>|undefined; return row === undefined ? null : applicationRecord<T>(row); },
+    transition(id: string, ownerId: string, from: string, to: string, atColumn: string, at: string): T { const result=database.prepare(`UPDATE ${table} SET status=?, ${atColumn}=? WHERE id=? AND owner_id=? AND status=?`).run(to,at,id,ownerId,from); if(result.changes!==1) throw new DomainError({code:"CONFLICT",message:"Capability is not in the required state for owner."}); const row=database.prepare(`SELECT * FROM ${table} WHERE id=? AND owner_id=?`).get(id,ownerId) as Record<string,unknown>; return applicationRecord<T>(row); },
+  };
+}
+
 function workItemFromRow(row: WorkItemRow): WorkItemRecord {
   const payload = parseJson(row.payload_json);
   if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
@@ -312,6 +418,26 @@ function auditFromRow(row: AuditRow): AuditEventRecord {
   };
 }
 
+function ownerActivityFromRow(row: OwnerActivityRow): OwnerActivityEventRecord {
+  return {
+    sequence: row.sequence,
+    ownerId: row.owner_id,
+    event: ownerActivityEventSchema.parse({
+      id: row.id,
+      schemaVersion: row.schema_version,
+      kind: row.kind,
+      key: row.activity_key,
+      status: row.status,
+      safeSummary: row.safe_summary,
+      correlationId: row.correlation_id,
+      actorKind: row.actor_kind,
+      aggregate: { type: row.aggregate_type, version: row.aggregate_version },
+      occurredAt: row.occurred_at,
+      effects: parseJson(row.effects_json),
+    }),
+  };
+}
+
 function idempotencyFromRow(row: IdempotencyRow): IdempotencyRecord {
   return {
     scope: row.scope,
@@ -333,6 +459,36 @@ function versionConflict(entity: string): DomainError {
     code: "CONFLICT",
     message: `${entity} changed after it was read. Refresh and retry.`,
   });
+}
+
+function isUniqueConstraint(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { readonly code?: unknown }).code === "SQLITE_CONSTRAINT_UNIQUE"
+  );
+}
+
+function validatedClaimKinds(kinds: ClaimWorkItemsInput["kinds"]): readonly string[] {
+  if (kinds === undefined) return [];
+  if (!Array.isArray(kinds) || kinds.length === 0 || kinds.length > 16) {
+    throw new DomainError({
+      code: "VALIDATION",
+      message: "Work-item kinds must contain between 1 and 16 values.",
+    });
+  }
+  const values = new Set<string>();
+  for (const kind of kinds) {
+    if (typeof kind !== "string" || kind.trim().length === 0 || kind.length > 128) {
+      throw new DomainError({ code: "VALIDATION", message: "Work-item kind is invalid." });
+    }
+    if (values.has(kind)) {
+      throw new DomainError({ code: "VALIDATION", message: "Work-item kinds must be unique." });
+    }
+    values.add(kind);
+  }
+  return [...values];
 }
 
 function criteriaFingerprint(criteria: JobSearchCriteria): string {
@@ -623,7 +779,9 @@ function searchJobs(
   };
 }
 
-function createRepositories(database: SqliteDatabase): Omit<Storage, "close" | "ingestion"> {
+function createRepositories(
+  database: SqliteDatabase,
+): Omit<Storage, "close" | "identity" | "ingestion" | "alerts" | "rateLimits"> {
   return {
     owners: {
       async insert(record) {
@@ -715,27 +873,43 @@ function createRepositories(database: SqliteDatabase): Omit<Storage, "close" | "
     },
     schedules: {
       async insert(record) {
-        database
-          .prepare(
-            `INSERT INTO schedules(
+        try {
+          database
+            .prepare(
+              `INSERT INTO schedules(
                id, owner_id, saved_search_id, recurrence_json, delivery_channel,
                delivery_endpoint_id, enabled, next_run_at, version, created_at, updated_at
              ) VALUES (
                @id, @ownerId, @savedSearchId, @recurrenceJson, @deliveryChannel,
                @deliveryEndpointId, @enabled, @nextRunAt, @version, @createdAt, @updatedAt
              )`,
-          )
-          .run({
-            ...record,
-            recurrenceJson: json(record.recurrence),
-            enabled: record.enabled ? 1 : 0,
-          });
+            )
+            .run({
+              ...record,
+              recurrenceJson: json(record.recurrence),
+              enabled: record.enabled ? 1 : 0,
+            });
+        } catch (error) {
+          if (isUniqueConstraint(error)) {
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "An owner can have only one schedule for a saved search.",
+            });
+          }
+          throw error;
+        }
         return record;
       },
       async getById(id) {
         const row = database.prepare("SELECT * FROM schedules WHERE id = ?").get(id) as
           ScheduleRow | undefined;
         return row === undefined ? null : scheduleFromRow(row);
+      },
+      async listByOwner(ownerId) {
+        const rows = database
+          .prepare("SELECT * FROM schedules WHERE owner_id = ? ORDER BY updated_at DESC, id")
+          .all(ownerId) as ScheduleRow[];
+        return rows.map(scheduleFromRow);
       },
       async listDue(now, limit) {
         const rows = database
@@ -830,6 +1004,449 @@ function createRepositories(database: SqliteDatabase): Omit<Storage, "close" | "
         if (row === undefined) throw notFound("Application draft");
         return applicationFromRow(row);
       },
+      async getByOwner(id, ownerId) { const row = database.prepare("SELECT * FROM application_drafts WHERE id = ? AND owner_id = ?").get(id, ownerId) as ApplicationRow | undefined; return row === undefined ? null : applicationFromRow(row); },
+      async getByOwnerAndJob(ownerId, jobId) { const row = database.prepare("SELECT * FROM application_drafts WHERE owner_id=? AND job_id=? ORDER BY created_at DESC, id DESC LIMIT 1").get(ownerId, jobId) as ApplicationRow | undefined; return row === undefined ? null : applicationFromRow(row); },
+      async getLatestReview(draftId, ownerId) { const row = database.prepare("SELECT * FROM application_review_records WHERE draft_id=? AND owner_id=? ORDER BY created_at DESC, id DESC LIMIT 1").get(draftId, ownerId) as Record<string, unknown> | undefined; return row === undefined ? null : applicationRecord<ApplicationReviewRecord>(row); },
+      async getLatestReceipt(draftId, ownerId) { const row = database.prepare("SELECT * FROM application_submission_receipts WHERE draft_id=? AND owner_id=? ORDER BY created_at DESC, id DESC LIMIT 1").get(draftId, ownerId) as Record<string, unknown> | undefined; return row === undefined ? null : applicationRecord<ApplicationReceiptRecord>(row); },
+      async applyMaterialEdit(input: MaterialApplicationEditInput) {
+        const parsed = applicationDraftSchema.parse(input.draft);
+        if (parsed.ownerId !== input.ownerId || parsed.version !== input.expectedVersion + 1) throw new DomainError({ code: "VALIDATION", message: "Material edit must advance the owned draft by one version." });
+        const apply = database.transaction(() => {
+          const changed = database.prepare("UPDATE application_drafts SET state=@state, answers_json=@answersJson, version=version+1, updated_at=@updatedAt WHERE id=@id AND owner_id=@ownerId AND version=@expectedVersion").run({ ...parsed, answersJson: json(parsed.answers), expectedVersion: input.expectedVersion });
+          if (changed.changes !== 1) throw new DomainError({ code: "CONFLICT", message: "Application draft changed before this material edit." });
+          database.prepare("UPDATE application_review_records SET status='invalidated', invalidated_at=? WHERE owner_id=? AND draft_id=? AND status='active'").run(input.now, input.ownerId, parsed.id);
+          database.prepare("UPDATE application_confirmation_records SET status='invalidated' WHERE owner_id=? AND draft_id=? AND status='active'").run(input.ownerId, parsed.id);
+          database.prepare("DELETE FROM application_data_grant_bindings WHERE owner_id=? AND draft_id=?").run(input.ownerId, parsed.id);
+          const row = database.prepare("SELECT * FROM application_drafts WHERE id=? AND owner_id=?").get(parsed.id, input.ownerId) as ApplicationRow;
+          return applicationFromRow(row);
+        });
+        return apply();
+      },
+      async sealReview(input: SealApplicationReviewInput) {
+        const parsed = applicationDraftSchema.parse(input.draft);
+        if (parsed.ownerId !== input.ownerId || parsed.state !== "reviewed" || parsed.version !== input.expectedVersion + 1 || input.review.ownerId !== input.ownerId || input.review.draftId !== parsed.id || input.review.draftVersion !== parsed.version || input.review.status !== "active") throw new DomainError({ code: "VALIDATION", message: "Review must seal exactly the next owned draft version." });
+        const seal = database.transaction(() => {
+          const changed = database.prepare("UPDATE application_drafts SET state=@state, answers_json=@answersJson, version=version+1, updated_at=@updatedAt WHERE id=@id AND owner_id=@ownerId AND version=@expectedVersion").run({ ...parsed, answersJson: json(parsed.answers), expectedVersion: input.expectedVersion });
+          if (changed.changes !== 1) throw new DomainError({ code: "CONFLICT", message: "Application draft changed before review sealing." });
+          database.prepare("INSERT INTO application_review_records(id,owner_id,draft_id,draft_version,payload_hash,findings_json,status,created_at,invalidated_at) VALUES(@id,@ownerId,@draftId,@draftVersion,@payloadHash,@findingsJson,@status,@createdAt,@invalidatedAt)").run({ ...input.review, findingsJson: json(input.review.findings) });
+          const row = database.prepare("SELECT * FROM application_drafts WHERE id=? AND owner_id=?").get(parsed.id, input.ownerId) as ApplicationRow;
+          return { draft: applicationFromRow(row), review: input.review };
+        });
+        return seal();
+      },
+      async insertReview(record) { database.prepare("INSERT INTO application_review_records(id,owner_id,draft_id,draft_version,payload_hash,findings_json,status,created_at,invalidated_at) VALUES(@id,@ownerId,@draftId,@draftVersion,@payloadHash,@findingsJson,@status,@createdAt,@invalidatedAt)").run({ ...record, findingsJson: json(record.findings) }); return record; },
+      async getReview(id, ownerId) { const row = database.prepare("SELECT * FROM application_review_records WHERE id=? AND owner_id=?").get(id, ownerId) as Record<string, unknown> | undefined; return row === undefined ? null : applicationRecord<ApplicationReviewRecord>(row); },
+      async invalidateReview(id, ownerId, invalidatedAt) { const result = database.prepare("UPDATE application_review_records SET status='invalidated', invalidated_at=? WHERE id=? AND owner_id=? AND status='active'").run(invalidatedAt,id,ownerId); if (result.changes !== 1) throw new DomainError({ code:"CONFLICT", message:"Review is not active for owner." }); const row=database.prepare("SELECT * FROM application_review_records WHERE id=? AND owner_id=?").get(id,ownerId) as Record<string,unknown>; return applicationRecord<ApplicationReviewRecord>(row); },
+      async insertConfirmation(record) { database.prepare("INSERT INTO application_confirmation_records(id,owner_id,draft_id,review_id,payload_hash,confirmation_hash,status,expires_at,created_at,consumed_at) VALUES(@id,@ownerId,@draftId,@reviewId,@payloadHash,@confirmationHash,@status,@expiresAt,@createdAt,@consumedAt)").run(record); return record; },
+      async getConfirmation(id, ownerId) { const row=database.prepare("SELECT * FROM application_confirmation_records WHERE id=? AND owner_id=?").get(id,ownerId) as Record<string,unknown>|undefined; return row === undefined ? null : applicationRecord<ApplicationConfirmationRecord>(row); },
+      async invalidateConfirmation(id, ownerId) { const result=database.prepare("UPDATE application_confirmation_records SET status='invalidated' WHERE id=? AND owner_id=? AND status='active'").run(id,ownerId); if(result.changes!==1) throw new DomainError({code:"CONFLICT",message:"Confirmation is not active for owner."}); const row=database.prepare("SELECT * FROM application_confirmation_records WHERE id=? AND owner_id=?").get(id,ownerId) as Record<string,unknown>; return applicationRecord<ApplicationConfirmationRecord>(row); },
+      async consumeConfirmation(id, ownerId, confirmationHash, consumedAt) { const result=database.prepare("UPDATE application_confirmation_records SET status='consumed', consumed_at=? WHERE id=? AND owner_id=? AND confirmation_hash=? AND status='active' AND expires_at > ?").run(consumedAt,id,ownerId,confirmationHash,consumedAt); if(result.changes!==1) throw new DomainError({code:"CONFLICT",message:"Confirmation is invalid, expired, or already used."}); const row=database.prepare("SELECT * FROM application_confirmation_records WHERE id=? AND owner_id=?").get(id,ownerId) as Record<string,unknown>; return applicationRecord<ApplicationConfirmationRecord>(row); },
+      async putReceiptIfAbsent(record) { const found=database.prepare("SELECT * FROM application_submission_receipts WHERE owner_id=? AND draft_id=? AND idempotency_key=?").get(record.ownerId,record.draftId,record.idempotencyKey) as Record<string,unknown>|undefined; if(found) { const stored=applicationRecord<ApplicationReceiptRecord>(found); if (stored.reviewId !== record.reviewId || stored.confirmationId !== record.confirmationId) throw new DomainError({code:"CONFLICT",message:"Idempotency key is already bound to another review or confirmation."}); return {inserted:false,record:stored}; } database.prepare("INSERT INTO application_submission_receipts(id,owner_id,draft_id,review_id,confirmation_id,idempotency_key,status,external_url,created_at) VALUES(@id,@ownerId,@draftId,@reviewId,@confirmationId,@idempotencyKey,@status,@externalUrl,@createdAt)").run(record); return {inserted:true,record}; },
+      async consumeAndPutReceipt(input) { const submit=database.transaction(() => { const found=database.prepare("SELECT * FROM application_submission_receipts WHERE owner_id=? AND draft_id=? AND idempotency_key=?").get(input.receipt.ownerId,input.receipt.draftId,input.receipt.idempotencyKey) as Record<string,unknown>|undefined; if(found) return {inserted:false,record:applicationRecord<ApplicationReceiptRecord>(found)}; const used=database.prepare("UPDATE application_confirmation_records SET status='consumed', consumed_at=? WHERE id=? AND owner_id=? AND confirmation_hash=? AND status='active' AND expires_at>? ").run(input.consumedAt,input.confirmationId,input.ownerId,input.confirmationHash,input.consumedAt); if(used.changes!==1) throw new DomainError({code:"CONFLICT",message:"Confirmation is invalid, expired, or already used."}); database.prepare("INSERT INTO application_submission_receipts(id,owner_id,draft_id,review_id,confirmation_id,idempotency_key,status,external_url,created_at) VALUES(@id,@ownerId,@draftId,@reviewId,@confirmationId,@idempotencyKey,@status,@externalUrl,@createdAt)").run(input.receipt); return {inserted:true,record:input.receipt}; }); return submit(); },
+      async completeSubmission(input: CompleteApplicationSubmissionInput): Promise<CompleteApplicationSubmissionResult> {
+        const submit = database.transaction(() => {
+          const existingRow = database.prepare("SELECT * FROM application_submission_receipts WHERE owner_id=? AND draft_id=? AND idempotency_key=?").get(input.ownerId, input.draftId, input.receipt.idempotencyKey) as Record<string, unknown> | undefined;
+          if (existingRow !== undefined) {
+            const receipt = applicationRecord<ApplicationReceiptRecord>(existingRow);
+            if (receipt.reviewId !== input.reviewId || receipt.confirmationId !== input.confirmationId || receipt.status !== input.receipt.status || receipt.externalUrl !== input.receipt.externalUrl) throw new DomainError({ code: "CONFLICT", message: "Idempotency key is bound to another submission." });
+            const draftRow = database.prepare("SELECT * FROM application_drafts WHERE id=? AND owner_id=?").get(input.draftId, input.ownerId) as ApplicationRow | undefined;
+            if (draftRow === undefined) throw new DomainError({ code: "CONFLICT", message: "Application draft is unavailable for owner." });
+            return { draft: applicationFromRow(draftRow), receipt, inserted: false };
+          }
+          const draftRow = database.prepare("SELECT * FROM application_drafts WHERE id=? AND owner_id=? AND version=? AND state='reviewed'").get(input.draftId, input.ownerId, input.expectedDraftVersion) as ApplicationRow | undefined;
+          if (draftRow === undefined) throw new DomainError({ code: "CONFLICT", message: "A current reviewed draft is required." });
+          const reviewRow = database.prepare("SELECT * FROM application_review_records WHERE id=? AND owner_id=? AND draft_id=? AND draft_version=? AND payload_hash=? AND status='active'").get(input.reviewId, input.ownerId, input.draftId, input.expectedDraftVersion, input.reviewPayloadHash) as Record<string, unknown> | undefined;
+          if (reviewRow === undefined) throw new DomainError({ code: "CONFLICT", message: "A current immutable review is required." });
+          const confirmation = database.prepare("SELECT * FROM application_confirmation_records WHERE id=? AND owner_id=? AND draft_id=? AND review_id=? AND payload_hash=? AND confirmation_hash=? AND status='active' AND expires_at>?").get(input.confirmationId, input.ownerId, input.draftId, input.reviewId, input.reviewPayloadHash, input.confirmationHash, input.now) as Record<string, unknown> | undefined;
+          if (confirmation === undefined) throw new DomainError({ code: "CONFLICT", message: "A live matching confirmation is required." });
+          const grant = database.prepare("SELECT * FROM application_data_grant_bindings WHERE id=? AND owner_id=? AND draft_id=? AND recipient_id=? AND purpose=? AND payload_hash=? AND categories_json=? AND field_keys_json=? AND document_ids_json=? AND notice_version=? AND legal_basis=? AND version=? AND status='active' AND expires_at>?").get(input.grant.id, input.ownerId, input.draftId, input.grant.recipientId, input.grant.purpose, input.grant.payloadHash, json(input.grant.categories), json(input.grant.fieldKeys), json(input.grant.documentIds), input.grant.noticeVersion, input.grant.legalBasis, input.grant.version, input.now);
+          if (grant === undefined) throw new DomainError({ code: "CONFLICT", message: "An exact active data grant is required." });
+          if (input.grant.payloadHash !== input.reviewPayloadHash) throw new DomainError({ code: "CONFLICT", message: "Data grant must bind the immutable review payload." });
+          if (input.receipt.ownerId !== input.ownerId || input.receipt.draftId !== input.draftId || input.receipt.reviewId !== input.reviewId || input.receipt.confirmationId !== input.confirmationId || (input.receipt.status === "submitted" && input.receipt.externalUrl !== null) || (input.receipt.status === "handed_off" && (input.receipt.externalUrl === null || !input.receipt.externalUrl.startsWith("https://")))) throw new DomainError({ code: "VALIDATION", message: "Submission receipt must bind a safe exact submission." });
+          const consumed = database.prepare("UPDATE application_confirmation_records SET status='consumed', consumed_at=? WHERE id=? AND owner_id=? AND status='active' AND confirmation_hash=? AND expires_at>?").run(input.now, input.confirmationId, input.ownerId, input.confirmationHash, input.now);
+          if (consumed.changes !== 1) throw new DomainError({ code: "CONFLICT", message: "Confirmation was consumed concurrently." });
+          const advanced = database.prepare("UPDATE application_drafts SET state=?, version=version+1, updated_at=? WHERE id=? AND owner_id=? AND version=? AND state='reviewed'").run(input.receipt.status, input.now, input.draftId, input.ownerId, input.expectedDraftVersion);
+          if (advanced.changes !== 1) throw new DomainError({ code: "CONFLICT", message: "Application draft changed before submission." });
+          database.prepare("INSERT INTO application_submission_receipts(id,owner_id,draft_id,review_id,confirmation_id,idempotency_key,status,external_url,created_at) VALUES(@id,@ownerId,@draftId,@reviewId,@confirmationId,@idempotencyKey,@status,@externalUrl,@createdAt)").run(input.receipt);
+          const updatedRow = database.prepare("SELECT * FROM application_drafts WHERE id=? AND owner_id=?").get(input.draftId, input.ownerId) as ApplicationRow;
+          return { draft: applicationFromRow(updatedRow), receipt: input.receipt, inserted: true };
+        });
+        return submit();
+      },
+    },
+    delegations: {
+      async insert(record: AgentDelegationRecord) {
+        database
+          .prepare(
+            `INSERT INTO application_delegation_records(
+               id, owner_id, agent_id, resource_type, resource_id, operations_json, purpose,
+               status, expires_at, created_at, approved_at, revoked_at
+             ) VALUES (
+               @id, @ownerId, @agentSessionId, @resourceType, @resourceId, @operationsJson,
+               @purpose, @status, @expiresAt, @createdAt, @approvedAt, @revokedAt
+             )`,
+          )
+          .run({ ...record, operationsJson: json(record.operations) });
+        return record;
+      },
+      async getById(id, ownerId) {
+        const row = database
+          .prepare("SELECT * FROM application_delegation_records WHERE id = ? AND owner_id = ?")
+          .get(id, ownerId) as Record<string, unknown> | undefined;
+        return row === undefined ? null : applicationRecord<AgentDelegationRecord>(row);
+      },
+      async listByResource(ownerId, resourceId) {
+        const rows = database
+          .prepare(
+            `SELECT * FROM application_delegation_records
+             WHERE owner_id = ? AND resource_id = ?
+             ORDER BY created_at DESC, id DESC`,
+          )
+          .all(ownerId, resourceId) as Record<string, unknown>[];
+        return rows.map((row) => applicationRecord<AgentDelegationRecord>(row));
+      },
+      async getActiveMatch(input: ActiveDelegationMatchInput) {
+        const row = database
+          .prepare(
+            `SELECT delegation.*
+             FROM application_delegation_records AS delegation
+             INNER JOIN application_agent_sessions AS session
+               ON session.id = delegation.agent_id
+              AND session.owner_id = delegation.owner_id
+              AND session.draft_id = delegation.resource_id
+             WHERE delegation.owner_id = @ownerId
+               AND delegation.agent_id = @agentSessionId
+               AND delegation.resource_type = @resourceType
+               AND delegation.resource_id = @resourceId
+               AND delegation.status = 'active'
+               AND delegation.expires_at > @now
+               AND session.revoked_at IS NULL
+               AND session.expires_at > @now
+               AND EXISTS (
+                 SELECT 1
+                 FROM json_each(delegation.operations_json)
+                 WHERE json_each.value = @operation
+               )
+             ORDER BY delegation.approved_at DESC, delegation.created_at DESC, delegation.id
+             LIMIT 1`,
+          )
+          .get(input) as Record<string, unknown> | undefined;
+        return row === undefined ? null : applicationRecord<AgentDelegationRecord>(row);
+      },
+      async approve(id, ownerId, approvedAt) {
+        const result = database
+          .prepare(
+            `UPDATE application_delegation_records
+             SET status = 'active', approved_at = ?
+             WHERE id = ?
+               AND owner_id = ?
+               AND status = 'requested'
+               AND expires_at > ?`,
+          )
+          .run(approvedAt, id, ownerId, approvedAt);
+        if (result.changes !== 1) {
+          throw new DomainError({
+            code: "CONFLICT",
+            message: "Delegation is unavailable, expired, or not awaiting approval.",
+          });
+        }
+        const row = database
+          .prepare("SELECT * FROM application_delegation_records WHERE id = ? AND owner_id = ?")
+          .get(id, ownerId) as Record<string, unknown>;
+        return applicationRecord<AgentDelegationRecord>(row);
+      },
+      async revoke(id, ownerId, revokedAt) {
+        const existing = database
+          .prepare("SELECT * FROM application_delegation_records WHERE id = ? AND owner_id = ?")
+          .get(id, ownerId) as Record<string, unknown> | undefined;
+        if (existing === undefined) {
+          throw new DomainError({
+            code: "CONFLICT",
+            message: "Delegation is not available for this owner.",
+          });
+        }
+        const stored = applicationRecord<AgentDelegationRecord>(existing);
+        if (stored.status === "revoked") return stored;
+        database
+          .prepare(
+            `UPDATE application_delegation_records
+             SET status = 'revoked', revoked_at = ?
+             WHERE id = ? AND owner_id = ? AND status IN ('requested', 'active')`,
+          )
+          .run(revokedAt, id, ownerId);
+        const row = database
+          .prepare("SELECT * FROM application_delegation_records WHERE id = ? AND owner_id = ?")
+          .get(id, ownerId) as Record<string, unknown>;
+        return applicationRecord<AgentDelegationRecord>(row);
+      },
+    },
+    dataGrants: (() => { const base=capabilityBase<DataGrantRecord>(database,"application_data_grant_records","fields_json","fields"); return { insert: async (r: DataGrantRecord) => base.insert(r), getById: async (id:string,ownerId:string) => base.getById(id,ownerId), approve: async (id:string,ownerId:string,at:string) => base.transition(id,ownerId,"requested","active","approved_at",at), withdraw: async (id:string,ownerId:string,at:string) => base.transition(id,ownerId,"active","withdrawn","withdrawn_at",at) }; })(),
+    agentSessions: {
+      async insert(record: AgentSessionRecord) {
+        try {
+          database
+            .prepare(
+              `INSERT INTO application_agent_sessions(
+                 id, owner_id, draft_id, token_hash, expires_at, revoked_at, created_at
+               ) VALUES (
+                 @id, @ownerId, @draftId, @tokenHash, @expiresAt, @revokedAt, @createdAt
+               )`,
+            )
+            .run(record);
+        } catch (error) {
+          if (isUniqueConstraint(error)) {
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "Agent session ID or token hash is already bound.",
+            });
+          }
+          throw error;
+        }
+        return record;
+      },
+      async getById(id, ownerId, draftId) {
+        const row = database
+          .prepare(
+            `SELECT * FROM application_agent_sessions
+             WHERE id = ? AND owner_id = ? AND draft_id = ?`,
+          )
+          .get(id, ownerId, draftId) as Record<string, unknown> | undefined;
+        return row === undefined ? null : applicationRecord<AgentSessionRecord>(row);
+      },
+      async resolve(input: ResolveAgentSessionInput) {
+        const row = database
+          .prepare(
+            `SELECT * FROM application_agent_sessions
+             WHERE token_hash = @tokenHash
+               AND owner_id = @ownerId
+               AND draft_id = @draftId
+               AND revoked_at IS NULL
+               AND expires_at > @now`,
+          )
+          .get(input) as Record<string, unknown> | undefined;
+        return row === undefined ? null : applicationRecord<AgentSessionRecord>(row);
+      },
+      async revoke(id, ownerId, draftId, revokedAt) {
+        const existing = database
+          .prepare(
+            `SELECT * FROM application_agent_sessions
+             WHERE id = ? AND owner_id = ? AND draft_id = ?`,
+          )
+          .get(id, ownerId, draftId) as Record<string, unknown> | undefined;
+        if (existing === undefined) {
+          throw new DomainError({
+            code: "CONFLICT",
+            message: "Agent session is not available for this owner and draft.",
+          });
+        }
+        const stored = applicationRecord<AgentSessionRecord>(existing);
+        if (stored.revokedAt !== null) return stored;
+        database
+          .prepare(
+            `UPDATE application_agent_sessions
+             SET revoked_at = ?
+             WHERE id = ? AND owner_id = ? AND draft_id = ? AND revoked_at IS NULL`,
+          )
+          .run(revokedAt, id, ownerId, draftId);
+        return { ...stored, revokedAt };
+      },
+    },
+    richDataGrants: {
+      async insert(record: RichDataGrantRecord) {
+        try {
+          database
+            .prepare(
+              `INSERT INTO application_data_grant_bindings(
+                 id, owner_id, draft_id, recipient_id, purpose, payload_hash,
+                 categories_json, field_keys_json, document_ids_json, notice_version,
+                 legal_basis, status, expires_at, created_at, approved_at, withdrawn_at,
+                 approval_channel, approval_request_id, affirmative_action,
+                 approval_evidence_version, version
+               ) VALUES (
+                 @id, @ownerId, @draftId, @recipientId, @purpose, @payloadHash,
+                 @categoriesJson, @fieldKeysJson, @documentIdsJson, @noticeVersion,
+                 @legalBasis, @status, @expiresAt, @createdAt, @approvedAt, @withdrawnAt,
+                 @approvalChannel, @approvalRequestId, @affirmativeAction,
+                 @approvalEvidenceVersion, @version
+               )`,
+            )
+            .run({
+              ...record,
+              categoriesJson: json(record.categories),
+              fieldKeysJson: json(record.fieldKeys),
+              documentIdsJson: json(record.documentIds),
+              approvalChannel: record.approvalChannel ?? null,
+              approvalRequestId: record.approvalRequestId ?? null,
+              affirmativeAction: record.affirmativeAction ?? null,
+              approvalEvidenceVersion: record.approvalEvidenceVersion ?? null,
+              version: 0,
+            });
+        } catch (error) {
+          if (isUniqueConstraint(error)) {
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "A data grant is already bound to this disclosure payload.",
+            });
+          }
+          throw error;
+        }
+        return { ...record, version: 0 };
+      },
+      async getById(id, ownerId, draftId) {
+        const row = database
+          .prepare(
+            `SELECT * FROM application_data_grant_bindings
+             WHERE id = ? AND owner_id = ? AND draft_id = ?`,
+          )
+          .get(id, ownerId, draftId) as Record<string, unknown> | undefined;
+        return row === undefined ? null : applicationRecord<RichDataGrantRecord>(row);
+      },
+      async listByDraft(ownerId, draftId) {
+        const rows = database
+          .prepare(
+            `SELECT * FROM application_data_grant_bindings
+             WHERE owner_id = ? AND draft_id = ?
+             ORDER BY created_at DESC, id DESC`,
+          )
+          .all(ownerId, draftId) as Record<string, unknown>[];
+        return rows.map((row) => applicationRecord<RichDataGrantRecord>(row));
+      },
+      async getCurrent(input: RichDataGrantMatchInput) {
+        const row = database
+          .prepare(
+            `SELECT * FROM application_data_grant_bindings
+             WHERE owner_id = @ownerId
+               AND draft_id = @draftId
+               AND recipient_id = @recipientId
+               AND purpose = @purpose
+               AND payload_hash = @payloadHash
+               AND categories_json = @categoriesJson
+               AND field_keys_json = @fieldKeysJson
+               AND document_ids_json = @documentIdsJson
+               AND notice_version = @noticeVersion
+               AND legal_basis = @legalBasis
+               AND status = 'active'
+               AND expires_at > @now
+             ORDER BY approved_at DESC, created_at DESC, id
+             LIMIT 1`,
+          )
+          .get({
+            ...input,
+            categoriesJson: json(input.categories),
+            fieldKeysJson: json(input.fieldKeys),
+            documentIdsJson: json(input.documentIds),
+          }) as Record<string, unknown> | undefined;
+        return row === undefined ? null : applicationRecord<RichDataGrantRecord>(row);
+      },
+      async approveCurrent(input: ApproveRichDataGrantInput) {
+        const result = database
+          .prepare(
+            `UPDATE application_data_grant_bindings
+             SET status = 'active',
+                 approved_at = @at,
+                 approval_channel = @approvalChannel,
+                 approval_request_id = @approvalRequestId,
+                 affirmative_action = @affirmativeAction,
+                 approval_evidence_version = @approvalEvidenceVersion,
+                 version = version + 1
+             WHERE id = @id
+               AND owner_id = @ownerId
+               AND draft_id = @draftId
+               AND version = @expectedGrantVersion
+               AND status = 'requested'
+               AND expires_at > @at
+               AND EXISTS (
+                 SELECT 1
+                 FROM application_drafts AS draft
+                 INNER JOIN jobs AS job ON job.id = draft.job_id
+                 WHERE draft.id = @draftId
+                   AND draft.owner_id = @ownerId
+                   AND draft.version = @expectedDraftVersion
+                   AND draft.state = 'reviewed'
+                   AND draft.job_id = @jobId
+                   AND job.organization_id = @jobOrganizationId
+                   AND job.organization_name = @jobOrganizationName
+                   AND job.apply_mode = @jobApplyMode
+               )
+               AND EXISTS (
+                 SELECT 1
+                 FROM application_review_records AS review
+                 WHERE review.id = @reviewId
+                   AND review.owner_id = @ownerId
+                   AND review.draft_id = @draftId
+                   AND review.draft_version = @expectedDraftVersion
+                   AND review.payload_hash = @reviewPayloadHash
+                   AND review.status = 'active'
+                   AND review.id = (
+                     SELECT latest.id
+                     FROM application_review_records AS latest
+                     WHERE latest.owner_id = @ownerId
+                       AND latest.draft_id = @draftId
+                     ORDER BY latest.created_at DESC, latest.id DESC
+                     LIMIT 1
+                   )
+               )`,
+          )
+          .run({
+            ...input,
+            approvalChannel: input.approvalEvidence?.channel ?? null,
+            approvalRequestId: input.approvalEvidence?.requestId ?? null,
+            affirmativeAction: input.approvalEvidence?.affirmativeAction ?? null,
+            approvalEvidenceVersion: input.approvalEvidence?.evidenceVersion ?? null,
+          });
+        if (result.changes !== 1) {
+          throw new DomainError({
+            code: "CONFLICT",
+            message: "The data grant no longer matches the current reviewed disclosure.",
+          });
+        }
+        const row = database
+          .prepare(
+            `SELECT * FROM application_data_grant_bindings
+             WHERE id = ? AND owner_id = ? AND draft_id = ?`,
+          )
+          .get(input.id, input.ownerId, input.draftId) as Record<string, unknown>;
+        return applicationRecord<RichDataGrantRecord>(row);
+      },
+      async approve(id, ownerId, draftId, approvedAt) {
+        const result = database
+          .prepare(
+            `UPDATE application_data_grant_bindings
+             SET status = 'active', approved_at = ?, version = version + 1
+             WHERE id = ?
+               AND owner_id = ?
+               AND draft_id = ?
+               AND status = 'requested'
+               AND expires_at > ?`,
+          )
+          .run(approvedAt, id, ownerId, draftId, approvedAt);
+        if (result.changes !== 1) {
+          throw new DomainError({
+            code: "CONFLICT",
+            message: "Data grant is unavailable, expired, or not awaiting approval.",
+          });
+        }
+        const row = database
+          .prepare(
+            `SELECT * FROM application_data_grant_bindings
+             WHERE id = ? AND owner_id = ? AND draft_id = ?`,
+          )
+          .get(id, ownerId, draftId) as Record<string, unknown>;
+        return applicationRecord<RichDataGrantRecord>(row);
+      },
+      async withdraw(id, ownerId, draftId, withdrawnAt) {
+        const withdraw = database.transaction(() => {
+          const existing = database.prepare("SELECT * FROM application_data_grant_bindings WHERE id=? AND owner_id=? AND draft_id=?").get(id, ownerId, draftId) as Record<string, unknown> | undefined;
+          if (existing === undefined) throw new DomainError({ code: "CONFLICT", message: "Data grant is not available for this owner and draft." });
+          const stored = applicationRecord<RichDataGrantRecord>(existing);
+          if (stored.status === "withdrawn") return stored;
+          const changed = database.prepare("UPDATE application_data_grant_bindings SET status='withdrawn', withdrawn_at=?, version=version+1 WHERE id=? AND owner_id=? AND draft_id=? AND status IN ('requested','active')").run(withdrawnAt, id, ownerId, draftId);
+          if (changed.changes !== 1) throw new DomainError({ code: "CONFLICT", message: "Data grant is not withdrawable for this owner and draft." });
+          database.prepare("UPDATE application_confirmation_records SET status='invalidated' WHERE owner_id=? AND draft_id=? AND status='active'").run(ownerId, draftId);
+          return { ...stored, status: "withdrawn" as const, withdrawnAt, version: (stored.version ?? 0) + 1 };
+        });
+        return withdraw();
+      },
     },
     workItems: {
       async insert(record) {
@@ -886,19 +1503,22 @@ function createRepositories(database: SqliteDatabase): Omit<Storage, "close" | "
         return row === undefined ? null : workItemFromRow(row);
       },
       async claimDue(input: ClaimWorkItemsInput) {
+        const kinds = validatedClaimKinds(input.kinds);
         const claim = database.transaction(() => {
+          const kindFilter =
+            kinds.length === 0 ? "" : ` AND kind IN (${kinds.map(() => "?").join(", ")})`;
           const candidates = database
             .prepare(
               `SELECT id FROM work_items
                WHERE attempt < max_attempts
                  AND (
-                   (status IN ('pending', 'failed') AND available_at <= @now)
-                   OR (status = 'running' AND lease_expires_at <= @now)
-                 )
+                   (status IN ('pending', 'failed') AND available_at <= ?)
+                   OR (status = 'running' AND lease_expires_at <= ?)
+                 )${kindFilter}
                ORDER BY available_at, created_at, id
-               LIMIT @limit`,
+               LIMIT ?`,
             )
-            .all(input) as { readonly id: string }[];
+            .all(input.now, input.now, ...kinds, input.limit) as { readonly id: string }[];
 
           if (candidates.length === 0) return [];
           const update = database.prepare(
@@ -1045,6 +1665,93 @@ function createRepositories(database: SqliteDatabase): Omit<Storage, "close" | "
         return rows.map(auditFromRow);
       },
     },
+    ownerActivity: {
+      async append(record) {
+        const event = ownerActivityEventSchema.parse(record.event);
+        const inserted = database
+          .prepare(
+            `INSERT INTO owner_activity_events(
+               id, owner_id, schema_version, kind, activity_key, status, safe_summary,
+               correlation_id, actor_kind, aggregate_type, aggregate_version, occurred_at,
+               effects_json
+             ) VALUES (
+               @id, @ownerId, @schemaVersion, @kind, @key, @status, @safeSummary,
+               @correlationId, @actorKind, @aggregateType, @aggregateVersion, @occurredAt,
+               @effectsJson
+             )`,
+          )
+          .run({
+            id: event.id,
+            ownerId: record.ownerId,
+            schemaVersion: event.schemaVersion,
+            kind: event.kind,
+            key: event.key,
+            status: event.status,
+            safeSummary: event.safeSummary,
+            correlationId: event.correlationId,
+            actorKind: event.actorKind,
+            aggregateType: event.aggregate.type,
+            aggregateVersion: event.aggregate.version,
+            occurredAt: event.occurredAt,
+            effectsJson: json(event.effects),
+          });
+        const sequence = Number(inserted.lastInsertRowid);
+        if (!Number.isSafeInteger(sequence) || sequence < 1) {
+          throw new DomainError({
+            code: "INTERNAL",
+            message: "Activity cursor sequence is outside the supported range.",
+          });
+        }
+        return { sequence, ownerId: record.ownerId, event };
+      },
+      async listWindow(input) {
+        if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 100) {
+          throw new DomainError({
+            code: "VALIDATION",
+            message: "Activity window limit must be between 1 and 100.",
+          });
+        }
+        if (
+          input.afterSequence !== null &&
+          (!Number.isSafeInteger(input.afterSequence) || input.afterSequence < 0)
+        ) {
+          throw new DomainError({ code: "VALIDATION", message: "Activity cursor is invalid." });
+        }
+        const latest = database
+          .prepare(
+            "SELECT coalesce(max(sequence), 0) AS sequence FROM owner_activity_events WHERE owner_id = ?",
+          )
+          .get(input.ownerId) as { readonly sequence: number };
+        if (input.afterSequence === null) {
+          const rows = database
+            .prepare(
+              `SELECT * FROM owner_activity_events
+               WHERE owner_id = ?
+               ORDER BY sequence DESC
+               LIMIT ?`,
+            )
+            .all(input.ownerId, input.limit) as OwnerActivityRow[];
+          return {
+            events: rows.reverse().map(ownerActivityFromRow),
+            hasMore: false,
+            latestSequence: latest.sequence,
+          };
+        }
+        const rows = database
+          .prepare(
+            `SELECT * FROM owner_activity_events
+             WHERE owner_id = ? AND sequence > ?
+             ORDER BY sequence
+             LIMIT ?`,
+          )
+          .all(input.ownerId, input.afterSequence, input.limit + 1) as OwnerActivityRow[];
+        return {
+          events: rows.slice(0, input.limit).map(ownerActivityFromRow),
+          hasMore: rows.length > input.limit,
+          latestSequence: latest.sequence,
+        };
+      },
+    },
     idempotency: {
       async putIfAbsent(record) {
         const put = database.transaction(() => {
@@ -1099,7 +1806,10 @@ export function createSqliteStorage(
     const repositories = createRepositories(database);
     return {
       ...repositories,
+      identity: createSqliteIdentityStore(database),
       ingestion: createSqliteIngestionRepository(database),
+      alerts: createSqliteAlertRepository(database),
+      rateLimits: createSqliteRateLimitRepository(database),
       close() {
         database.close();
       },
