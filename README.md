@@ -1,8 +1,29 @@
 # Jobbbler
 
-**Signal over noise — with an agent you can see and authority you control.**
+**Find once. Stay updated. Apply with control.**
 
-Jobbbler is a plain, typography-first job portal for technology roles — search, filters, saved email alerts, and one deliberate application at a time. It is also a proof of value for the agentic web: the same site is immediately operable by a compatible browser agent through WebMCP, with no separately installed or declared MCP server. Each route exposes only the tools that make sense for its current state, and a built-in Agent activity panel shows judges and developers exactly which tools a page offers and what an agent changed.
+Job search is repetitive. People rerun the same queries every day, rebuild the
+same filters, and still risk missing the one meaningful change — a new role, a
+salary revision, a posting that quietly closed.
+
+Jobbbler answers that with a plain, typography-first job portal for technology
+roles: search, filters, saved alerts, and one deliberate application at a time.
+Describe what you want once, in plain words, to a compatible browser agent; the
+agent runs the search on the real site, the server keeps checking after you
+close the page, and the next answer contains only what changed. When it is time
+to apply, the flow deliberately slows down: the exact disclosure is shown,
+explicit permission is recorded, and the final confirmation stays human.
+
+The technology that makes this possible is WebMCP — no separately installed or
+declared MCP server. A global Agent layer is available on every page: six
+stable, site-wide tools make the main journeys reachable, while contextual
+tools appear only where the current route or application state makes them
+safe and useful.
+
+> Not an AI job board. A proof that any data-rich website can become safely
+> operable by an external browser agent — without a separate MCP server,
+> without hiding what changed, and without confusing tool access with human
+> authority.
 
 Built for the OpenAI WebMCP Challenge.
 
@@ -10,44 +31,97 @@ Built for the OpenAI WebMCP Challenge.
 
 ## Why it is different
 
-- **Explainable discovery.** Structured criteria, source provenance, freshness, salary semantics, known unknowns, and fit evidence stay visible in the interface.
-- **Route-scoped WebMCP.** Search, comparison, saved-alert, and application screens register small, purpose-specific tool sets. Navigation and application state remove stale tools.
-- **Observable agent work.** Every tool execution has a bounded, human-readable activity state. The normal UI remains usable if WebMCP is unavailable.
-- **No-login first run.** An ephemeral private owner session lets someone start immediately. A verified email enables passwordless recovery without turning the first visit into an account wall.
-- **Independent authority layers.** Agent delegation, request-bound data permission, immutable review, and final confirmation are separate server-enforced decisions. Agent-mediated approvals leave a versioned server receipt without pretending to cryptographically identify the human or agent vendor.
-- **Truthful actions.** Internal fictional-demo applications produce an immutable receipt. External roles can only be handed off; Jobbbler never claims an external submission it cannot prove.
-- **Durable automation.** Saved searches run in a worker with leases, deterministic deltas, delivery idempotency, bounded retries, and verified encrypted email endpoints.
+- **Explainable discovery.** Structured criteria, source provenance, freshness,
+  salary semantics, what to verify, and fit evidence stay visible in the
+  interface. Salary ranking is currency-aware (EUR, USD, GBP, and CAD at pinned
+  rates) and explains itself with evidence strings.
+- **Global agent layer.** Six stable tools are available on every page; search,
+  role, comparison, saved-alert, and application screens add small,
+  purpose-specific tool sets. Navigation and application state remove stale
+  contextual tools, and the site describes itself — an agent can read accepted
+  filter vocabulary instead of guessing enums and ask how a role accepts
+  applications before starting one.
+- **Observable agent work.** The Agent layer uses a clear **Guide**,
+  **Activity**, **Tools** hierarchy. It shows readiness, the current tools, and
+  human-readable activity without taking over the normal portal. Every activity
+  entry leads with a human sentence, followed by the tool name, status, and
+  duration. On mobile, an "Agent activity" button opens the same layer. The
+  normal UI remains usable if WebMCP is unavailable.
+- **No-login first run.** No account required: an ephemeral private owner
+  session lets someone start immediately. A verified email enables passwordless
+  recovery of saved searches without turning the first visit into an account
+  wall.
+- **Independent authority layers.** Agent delegation, payload-bound data
+  permission, immutable review, and final confirmation are separate
+  server-enforced decisions. Approvals leave an agent-mediated consent receipt
+  — a record of what you approved, bound to this exact application — without
+  pretending to cryptographically identify the human or agent vendor.
+- **Truthful actions.** Internal fictional-demo applications produce an
+  immutable receipt. External roles end in an honest handoff to the employer's
+  website (`handed_off`, never a fake `submitted`); Jobbbler never claims an
+  external submission it cannot prove.
+- **Durable automation.** Saved searches keep being checked after you close the
+  page: a worker with leases, deterministic change detection, delivery
+  idempotency, bounded retries, and verified encrypted email endpoints.
 
 ## Product tour
 
-| Discover                                                                                                             | Monitor privately                                                                               | Apply deliberately                                                                                                      |
-| -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Search and live filters — chips, multi-selects, a salary slider — with every result opening as a readable role page. | Save the exact query, preview timing, verify a delivery endpoint, and inspect the latest delta. | Accept candidate facts, seal a review, approve the exact disclosure, and issue one five-minute single-use confirmation. |
-| Evidence, trade-offs, and source freshness stay on the role page.                                                    | Pause, resume, or revoke without exposing an address or credential to WebMCP.                   | Agent suggestions remain visibly unaccepted until the human edits or approves them.                                     |
+| Find once                                                                                                            | Stay updated                                                                            | Apply with control                                                                                                      |
+| -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Search and live filters — chips, multi-selects, a salary slider — with every result opening as a readable role page. | Save the exact query, preview the timing, verify your email, and see only what changed. | Accept candidate facts, seal a review, approve the exact disclosure, and issue one five-minute single-use confirmation. |
+| Evidence, trade-offs, and source freshness stay on the role page.                                                    | Pause or resume checking without exposing an address or credential to WebMCP.           | Agent suggestions remain visibly unaccepted until the human edits or approves them.                                     |
 
 ![A role page reads like an article](docs/design/qa-role-article.png)
 
 ## WebMCP surface
 
-Jobbbler uses `document.modelContext.registerTool` with feature detection, strict JSON schemas, route/state lifecycle cleanup, cancellation propagation, explicit annotations, and concise JSON-serializable results. A browser capability is never treated as identity or authorization.
+Jobbbler uses `document.modelContext.registerTool` with feature detection,
+strict JSON schemas, route/state lifecycle cleanup, cancellation propagation,
+explicit annotations, and concise JSON-serializable results. A browser
+capability is never treated as identity or authorization.
 
-Representative tool sets:
+> Jobbbler does not only expose tools. It publishes a live workflow manifest
+> that helps an external agent compose those tools into safe, useful outcomes.
 
-- Search: `search_jobs`, `get_search_state`
-- Role detail: `get_job_details`, `compare_jobs`
-- Comparison: `get_comparison`, `remove_compared_job`
-- Saved: `get_saved_alerts`, `set_job_alert_state`
-- Application: a state-dependent subset of safe state, scoped-access, answer, validation, review, consent-request, confirmation-focus, and single-application submission tools
+`plan_job_workflow` returns recommended safe steps for a goal from the current
+page. It is advisory only: it plans, it never acts.
 
-The application flow never exposes an owner ID, candidate answer, reusable agent token, confirmation secret, email destination, or ciphertext in tool input/output.
+The catalog has **29 tools**: six stable tools on every page, plus contextual
+tools that are registered only where they apply. The stable core is
+`plan_job_workflow`, `get_site_capabilities`, `get_search_filters`,
+`search_jobs`, `open_job_details`, and `open_jobbbler_page`.
 
-See the [WebMCP capability matrix](docs/architecture/webmcp-capability-matrix.md) and [authorization and consent design](docs/architecture/agent-authorization-and-consent.md).
+- Search `/`: `get_search_state` (including an explicit truncation summary for
+  bounded criteria), plus the stable core
+- Role `/jobs/:jobId`: `get_job_details`, `get_job_application_capability`
+  (how this role accepts applications — what the agent may prepare, what stays
+  human, and whether an external handoff is required), `compare_jobs`
+- Comparison `/compare`: `get_comparison`, `add_job_to_comparison`,
+  `remove_job_from_comparison`
+- Saved `/saved`: `get_saved_alerts`, `set_job_alert_state`,
+  `open_saved_search`, `get_latest_search_update` (reads only what changed
+  since the last check, not the full result list)
+- Application `/apply/:draftId`: twelve state-gated contextual tools —
+  `get_application_state`, `request_application_access`,
+  `approve_application_access`, `set_application_answer`,
+  `validate_application`, `review_application`, `request_data_permission`,
+  `approve_data_permission`, `request_final_confirmation`,
+  `confirm_reviewed_application`, `submit_application`, and
+  `prepare_external_handoff` — with only the tools that fit the current
+  application step registered at any moment; the stable core remains available
+
+The application flow never exposes an owner ID, candidate answer, reusable
+agent token, confirmation secret, email destination, or ciphertext in tool
+input/output.
+
+See the [WebMCP capability matrix](docs/architecture/webmcp-capability-matrix.md)
+and [authorization and consent design](docs/architecture/agent-authorization-and-consent.md).
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  Browser[React interface + route-scoped WebMCP] --> API[Next.js BFF and command boundary]
+  Browser[React interface + global WebMCP core and contextual tools] --> API[Next.js BFF and command boundary]
   API --> Domain[Framework-free domain services]
   Domain --> Storage[Portable repository contracts]
   Storage --> SQLite[(SQLite local)]
@@ -58,9 +132,15 @@ flowchart LR
   Activity --> Browser
 ```
 
-The monorepo keeps contracts, domains, storage adapters, connectors, WebMCP lifecycle, workers, UI primitives, and the Next.js application independent. SQLite and PostgreSQL implement the same behavioral repository contracts. External network work is performed outside database transactions.
+The monorepo keeps contracts, domains, storage adapters, connectors, WebMCP
+lifecycle, workers, UI primitives, and the Next.js application independent.
+SQLite and PostgreSQL implement the same behavioral repository contracts.
+External network work is performed outside database transactions.
 
-More detail: [architecture index](docs/architecture/README.md), [source governance](docs/architecture/source-ingestion.md), [realtime activity](docs/architecture/realtime-agent-activity.md), and [SQLite-to-PostgreSQL migration runbook](docs/operations/postgres-cutover-and-rollback.md).
+More detail: [architecture index](docs/architecture/README.md),
+[source governance](docs/architecture/source-ingestion.md),
+[realtime activity](docs/architecture/realtime-agent-activity.md), and
+[SQLite-to-PostgreSQL migration runbook](docs/operations/postgres-cutover-and-rollback.md).
 
 ## Run locally
 
@@ -74,9 +154,14 @@ pnpm ingest -- --source all --limit 50
 pnpm dev
 ```
 
-Open the local URL printed by Next.js. Fixture ingestion is the default and does not contact upstream providers. Live ingestion is always explicit (`pnpm ingest:live`) and remains governed by the checked-in source policies.
+Open the local URL printed by Next.js. Fixture ingestion is the default and
+does not contact upstream providers. Live ingestion is always explicit
+(`pnpm ingest:live`) and remains governed by the checked-in source policies.
 
-SQLite is the zero-service development default. Set `DATABASE_URL` for PostgreSQL/Supabase; the server selects the PostgreSQL adapter without exposing that connection string to the browser. See [.env.example](.env.example) for the complete runtime contract.
+SQLite is the zero-service development default. Set `DATABASE_URL` for
+PostgreSQL/Supabase; the server selects the PostgreSQL adapter without
+exposing that connection string to the browser. See
+[.env.example](.env.example) for the complete runtime contract.
 
 ## Workers
 
@@ -88,7 +173,9 @@ JOBBBLER_WORKER_MODE=all_once pnpm dev:worker
 JOBBBLER_WORKER_MODE=all_service pnpm dev:worker
 ```
 
-Local email delivery defaults to an explicit capture adapter. Production delivery requires a configured provider, a verified owner endpoint, and server-only encryption/provider keys.
+Local email delivery defaults to an explicit capture adapter. Production
+delivery requires a configured provider, a verified owner endpoint, and
+server-only encryption/provider keys.
 
 ## Verification
 
@@ -96,7 +183,16 @@ Local email delivery defaults to an explicit capture adapter. Production deliver
 pnpm verify
 ```
 
-The release gate covers formatting/lint, strict TypeScript, domain and storage invariants, authorization races, connector policy, worker idempotency, API bounds, WebMCP registration/lifecycle/output budgets, security headers, and production builds. Browser QA evidence is recorded in [design-qa.md](design-qa.md).
+The release gate covers formatting/lint, strict TypeScript, domain and storage
+invariants, authorization races, connector policy, worker idempotency, API
+bounds, WebMCP registration/lifecycle/output budgets, security headers, and
+production builds. Browser QA evidence is recorded in
+[design-qa.md](design-qa.md).
+
+Recorded verification for the current release candidate: `pnpm verify` passed
+with 97 files passed and 1 skipped, 403 tests passed and 25 skipped, and a
+production build passed. The focused E2E run passed 11/11 checks; the local
+PostgreSQL 15 contract run passed 30/30 checks.
 
 ## Security and privacy
 

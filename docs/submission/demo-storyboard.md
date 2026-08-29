@@ -1,25 +1,42 @@
 # Jobbbler demo storyboard
 
-Target runtime: 2 minutes 35 seconds to 2 minutes 50 seconds. Record a real local or production run; do not substitute mock overlays for WebMCP or safety states.
+Target runtime: 2 minutes 40 seconds. Record a real local or production run;
+every tool call, panel entry, and state on screen must come from the live
+build.
 
-| Time      | Shot and narration                                                                                                                                                                       | Evidence to keep visible                                                                                  |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| 0:00–0:12 | Begin in the external agent client. “Jobbbler is a proof of value for the agentic web: a normal job portal a browser agent can understand without a separately configured MCP server.”   | Real agent conversation and the live Jobbbler URL; no simulated embedded chat.                            |
-| 0:12–0:27 | Let the agent open Jobbbler. “The site registers only the tools relevant to this route, and remains a complete ordinary website.”                                                        | Actual WebMCP discovery/readiness, search results, source labels, and normal browser fallback.            |
-| 0:27–0:45 | Ask the agent to narrow the search. “The agent calls the real `search_jobs` route tool; the same visible filters and results update.”                                                    | Filter changes, results update, Agent Activity row with a safe summary.                                   |
-| 0:45–1:00 | Compare up to three roles. “I can inspect the comparison in the app, while the agent uses the route’s bounded compare capability.”                                                       | Compare workspace and activity state; source/evidence context.                                            |
-| 1:00–1:22 | Save the search and show the alert setup. “A durable alert requires a verified destination—not just a typed email address.”                                                              | Saved workspace, verification prompt, schedule preview/activation.                                        |
-| 1:22–1:38 | Show the Saved card’s latest-run state. “The worker evaluates the saved search, records changes deterministically, and keeps delivery status visible.”                                   | Baseline/change counts and accepted, pending, or retrying status from a real run. Do not show an address. |
-| 1:38–1:56 | Open the fictional internal-demo employer role and create an application draft. “The agent can help prepare work, but it does not receive a reusable credential or authority to submit.” | Clearly fictional employer, draft provenance/validation view, Agent Activity.                             |
-| 1:56–2:18 | Ask the agent to share the reviewed data. “The agent client presents the exact recipient, purpose, fields, and notice. A separate request-bound action records approval.”                | Real `requires_user_action` presentation and resulting server-backed permission state; no raw chat claim. |
-| 2:18–2:37 | Request and perform the final confirmation. “Submission uses a short-lived, single-use confirmation and returns an idempotent receipt.”                                                  | Confirmation state and receipt; never show a secret/token.                                                |
-| 2:37–2:48 | Return to the activity rail. “Jobbbler makes the agent’s useful work visible, while keeping identity, notifications, and final actions under human control.”                             | Completed activity entries, safe summaries, normal UI still usable.                                       |
+Story order: problem → solution → trust → technology, told in five beats.
+
+| Time      | On screen                                                                                                                                                                                                                                                                                                           | Narration                                                                                            |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| 0:00–0:15 | An ordinary, beautiful portal. The search workspace with the "Search jobs" hero, live filters, and a role page that reads like an article — no agent anywhere yet.                                                                                                                                                  | “Finding a job should not mean repeating the same search every day.”                                 |
+| 0:15–0:45 | The user asks the external agent in plain words. Jobbbler opens; its global Agent layer shows Guide, Activity, and Tools, then the visible search and filters update as `search_jobs` runs. Activity shows a human sentence first, then `search_jobs · Complete · duration`.                                        | “The browser agent can begin safely from any page. No separate MCP server or connector is required.” |
+| 0:45–1:20 | The search is saved. The Saved page shows the alert card — “Checking daily”, schedule preview, email verification — then the tab closes.                                                                                                                                                                            | “Jobbbler keeps checking after the tab is closed and reports only meaningful changes.”               |
+| 1:20–1:55 | The delta moment. Back on Saved, the card reads “N changes since the last check · M matching”. The agent calls `get_latest_search_update` and relays its “Since the last check: …” summary — new, updated, and closed roles, never the full list again.                                                             | “Three new roles. One salary update. Two closed postings.”                                           |
+| 1:55–2:40 | The application flow stops at permission. The stepper — Your details, Review, Permission, Final confirmation — with agent-prepared answers visibly unaccepted, then the exact disclosure (recipient, purpose, fields, notice) awaiting the human decision. The final confirmation is shown as the human's own step. | “The agent can prepare. The candidate remains in control.”                                           |
+
+Finale card: **“A familiar job portal for people. A structured workflow
+surface for agents.”** Alternate closing line if the cut needs a softer end:
+**“The complicated technology stays under the hood. On the surface, Jobbbler
+simply helps people find work.”**
 
 ## Recording guardrails
 
-- Use the actual WebMCP-enabled browser context for tool shots; if it is unavailable, state that capability truthfully and use the standard UI instead.
-- Use only synthetic demo listings and a test/owned verified email endpoint.
-- Do not record cookies, OTPs, confirmation secrets, ciphertext, raw provider responses, database paths, terminal credentials, or source payloads.
-- Keep narration concrete: describe what is currently visible, not future roadmap claims.
-- State that WebMCP is live-page capability and that Jobbbler's worker, not the closed browser tab, continues saved alerts.
-- Replace these before publishing: **[PRODUCTION_URL]**, **[VIDEO_URL]**, **[REPOSITORY_URL]**.
+- No simulated chat and no mock overlays: use a real WebMCP-enabled agent
+  client, real tool calls, and the states they actually produce. If WebMCP is
+  unavailable, say so truthfully and show the ordinary UI instead.
+- The delta narration must match the recorded run. Seed the saved search so
+  the real `get_latest_search_update` result contains the changes you narrate,
+  or adjust the line to the actual counts.
+- Use only synthetic demo listings, the clearly fictional internal-demo
+  employer for application footage, and a test/owned verified email endpoint.
+  Do not show a full email address.
+- Do not record cookies, OTPs, confirmation secrets, ciphertext, raw provider
+  responses, database paths, terminal credentials, or source payloads.
+- State plainly that WebMCP is live-page capability and that Jobbbler's
+  server-side worker, not the closed browser tab, continues saved-search
+  checks.
+- If `get_search_state` is shown, include its explicit truncation summary when
+  bounded criteria omit or shorten values; do not present a partial state as a
+  complete one.
+- Replace these before publishing: **[PRODUCTION_URL]**, **[VIDEO_URL]**,
+  **[REPOSITORY_URL]**.

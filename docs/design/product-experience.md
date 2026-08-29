@@ -1,73 +1,165 @@
 # Product Experience
 
+## Marketing layer (design source of truth)
+
+Every public description of Jobbbler — README, Devpost, video narration,
+gallery captions, in-product copy — derives from this layer.
+
+- Principle: **Sophisticated underneath. Obvious on the surface.**
+- Tagline: **Find once. Stay updated. Apply with control.**
+
+What Jobbbler is:
+
+> Not an AI job board. A proof that any data-rich website can become safely
+> operable by an external browser agent — without a separate MCP server,
+> without hiding what changed, and without confusing tool access with human
+> authority.
+
+Story order everywhere: **problem** (job search is repetitive; people rerun
+the same searches and still risk missing the one meaningful change) →
+**solution** (describe it once; a compatible browser agent searches, keeps it
+current, and reports only what changed — no separate MCP server) → **trust**
+(when applying, the flow slows down: exact disclosure, explicit permission,
+final human confirmation) → **technology** (a global Agent layer and WebMCP).
+
+Translation table. Marketing copy uses the right column; the left column
+stays in architecture and design documents.
+
+| Architecture term        | Human translation                                 |
+| ------------------------ | ------------------------------------------------- |
+| WebMCP tools             | works with your browser agent                     |
+| stable Agent layer       | your agent can start safely from any page         |
+| durable scheduler        | keeps checking after you close the page           |
+| search delta             | only tells you what changed                       |
+| guest owner              | no account required                               |
+| email recovery           | restore your saved searches with email            |
+| delegated authority      | your agent can only do what you allow             |
+| consent receipt          | a record of what you approved                     |
+| payload-bound permission | permission applies only to this exact application |
+| external handoff         | continue on the employer's website                |
+| source provenance        | where this information came from                  |
+
+The same rule shapes in-product vocabulary: statuses read as human statements
+— “Checking daily”, “Checking weekly”, “Paused” — never as system vocabulary
+such as “Monitoring state”.
+
 ## Product promise
 
-Jobbbler is a conventional technology-jobs portal first. It becomes agent-operable when a browser agent opens the live site, without turning the product into a chatbot or requiring a separate MCP server.
+Jobbbler is a conventional technology-jobs portal first. It becomes
+agent-operable when a browser agent opens the live site, without turning the
+product into a chatbot or requiring a separate MCP server.
 
 The experience should be understandable in seconds:
 
 1. Search for a technology role.
-2. Inspect source-backed evidence and unknowns.
+2. Inspect source-backed evidence and what to verify.
 3. Save a useful search or start an application.
 4. Let an external browser agent accelerate the same journey when desired.
-5. Keep identity, data permission, and the final consequential action under human control.
+5. Keep identity, data permission, and the final consequential action under
+   human control.
 
-The concise narrative is: **A job portal that becomes agent-operable without becoming agent-controlled.**
+The concise narrative is: **A job portal that becomes agent-operable without
+becoming agent-controlled.**
 
 ## Two adapters, one product
 
-The human interface and route-scoped WebMCP tools are two adapters over the same server commands and policies.
+The human interface and WebMCP tools are two adapters over the same server
+commands and policies.
 
-- A person can complete every core journey through the visible interface without WebMCP.
-- A compatible browser agent can open the site, discover tools registered by the active page, and execute structured actions without simulating DOM clicks.
-- WebMCP is tab-bound and ephemeral. The tools exist while the page is loaded in the agent's live browser context; background alerts continue through the regular worker after the tab closes.
-- The conversation belongs to the external agent client. Jobbbler does not embed a second chat surface.
-- A structured `requires_user_action` response gives the agent client exact review facts and a server request ID. A separate confirmation tool can record the explicit agent-mediated action as a versioned receipt; raw chat is not stored, and the receipt does not claim cryptographic human or agent identity.
+- A person can complete every core journey through the visible interface
+  without WebMCP.
+- A compatible browser agent can start on any page with six stable, site-wide
+  tools, then discover the contextual tools registered for the active route
+  and state. It executes structured actions without simulating DOM clicks.
+- WebMCP is tab-bound and ephemeral. The tools exist while the page is loaded
+  in the agent's live browser context; background alerts continue through the
+  regular worker after the tab closes.
+- The conversation belongs to the external agent client. Jobbbler does not
+  embed a second chat surface.
+- A structured `requires_user_action` response gives the agent client exact
+  review facts and a server request ID. A separate confirmation tool records
+  the explicit agent-mediated action as a versioned consent receipt; raw chat
+  is not stored, and the receipt does not claim cryptographic human or agent
+  identity.
 
 ## Route experience
 
-| Route       | Primary human task                     | Agent capability                                                | Visible trust feedback                                                 |
-| ----------- | -------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Search      | Express an outcome and inspect matches | Read current criteria and run a validated search                | URL, filters, result count, and an optional activity receipt update    |
-| Role        | Understand one opportunity             | Read the source-backed role and prepare the next route          | Provenance, freshness, evidence, unknowns, and a clear next action     |
-| Compare     | Resolve a shortlist                    | Read and refine the active comparison                           | One evidence table with differences and missing facts                  |
-| Saved       | Monitor an explicit search             | Read saved alerts and pause or resume a schedule                | Monitoring state, next run, latest outcome, and masked delivery only   |
-| Application | Prepare one reviewed disclosure        | Fill safe draft fields, seal review, and request scoped actions | Distinct profile, review, permission, confirmation, and receipt stages |
+The catalog has **29 tools**: six stable, site-wide core tools plus 23
+contextual tools. The stable core exists on every page; only contextual tools
+change with route and application state.
+
+| Route                         | Primary human task                     | Agent tools                                                                                                                                                                                                                                                                                   | Visible trust feedback                                                                                                                    |
+| ----------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Every page `*`                | One obvious task per screen            | Stable core: `plan_job_workflow` (advisory only), `get_site_capabilities`, `get_search_filters`, `search_jobs`, `open_job_details`, `open_jobbbler_page`                                                                                                                                      | The global Agent layer starts with Guide, then Activity and Tools                                                                         |
+| Search `/`                    | Express an outcome and inspect matches | Contextual `get_search_state`, which includes an explicit truncation summary for bounded criteria                                                                                                                                                                                             | URL, filters, result count, and Agent activity receipts update together                                                                   |
+| Role `/jobs/:jobId`           | Understand one opportunity             | `get_job_details`, `get_job_application_capability` (how this role accepts applications — what the agent may prepare, what stays human, whether an external handoff is required), `compare_jobs`                                                                                              | Provenance, freshness, evidence, “What to verify”, and a clear next action                                                                |
+| Compare `/compare`            | Resolve a shortlist                    | `get_comparison`, `add_job_to_comparison`, `remove_job_from_comparison`                                                                                                                                                                                                                       | One evidence table with differences and missing facts                                                                                     |
+| Saved `/saved`                | Stay updated on an explicit search     | `get_saved_alerts`, `set_job_alert_state`, `open_saved_search`, `get_latest_search_update` (only what changed since the last check)                                                                                                                                                           | Plain-language status (“Checking daily”, “Paused”), next run, “N changes since the last check”, and a masked destination only             |
+| Application `/apply/:draftId` | Prepare one reviewed disclosure        | Twelve state-gated tools, `get_application_state` through `submit_application` and `prepare_external_handoff`; only the two or three that fit the current step are registered, and approval tools accept only a pending request ID plus the user's explicit decision made in the agent client | Distinct “Your details”, Review, Permission, and Final confirmation stages with receipts; external roles finish on the employer's website |
 
 ## Visual hierarchy
 
-Jobbbler uses an editorial utility aesthetic: closer to a well-structured document than a dashboard made of cards.
+Jobbbler uses an editorial utility aesthetic: closer to a well-structured
+document than a dashboard made of cards.
 
 - Typography, spacing, and thin rules create hierarchy.
-- Color communicates signal, action, warning, or failure; it is not decoration.
+- Color communicates meaning, action, warning, or failure; it is not
+  decoration.
 - A vacancy reads like a document row that expands into evidence and facts.
-- Controls appear where a decision is possible and disappear when they have no current function.
-- Shadows, rounded containers, decorative illustration, status badges, and dashboard chrome are kept to the minimum needed for usability.
+- Controls appear where a decision is possible and disappear when they have no
+  current function.
+- Shadows, rounded containers, decorative illustration, status badges, and
+  dashboard chrome are kept to the minimum needed for usability.
 - Light and dark themes preserve the same reading order and contrast.
 - Every screen has one obvious task and one primary next step.
 
-An element earns space only when it helps a person read, decide, act, understand state, or understand risk. Anything else is removed or placed in an explicit disclosure.
+An element earns space only when it helps a person read, decide, act,
+understand state, or understand risk. Anything else is removed or placed in an
+explicit disclosure.
 
-## Agent observability
+## The Agent panel
 
-Agent Activity is a secondary transparency layer, not a competing workspace and not a source of authority.
+The global Agent layer is available on every page. On desktop it is a
+resizable side panel; on mobile (and after being closed) a compact “Agent
+activity” button opens it. It is a transparency layer, not a competing
+workspace and not a source of authority.
 
-- The desktop search rail shows one compact, collapsed disclosure when idle.
-- Mobile exposes the same history through a labeled bottom sheet.
-- Running work, required approval, and failures elevate the disclosure automatically.
-- The expanded view states what changed using redacted summaries and never exposes reusable identifiers or private payloads.
-- Technical capability details remain inside the disclosure or the WebMCP explanation page.
-- Owner activity is a near-real-time projection. The authoritative result is always the regular API response and persisted domain state.
+- The header states the panel's purpose in one line; a status row shows the
+  live WebMCP state, the six stable tools, and any contextual tools available
+  on the current page.
+- Three tabs, in this order: **Guide**, **Activity**, and **Tools**.
+- Activity entries are two-level: the human sentence comes first, then the
+  technical line — tool name, status, and duration. Running work, required
+  approval, and failures surface automatically.
+- The Tools tab separates the six always-available tools from contextual tools
+  and then shows the 29-tool catalog grouped by page.
+- The Guide tab offers “Try it in 10 seconds”, the suggested workflows, and a
+  note that `plan_job_workflow` serves the same plans to agents — advisory
+  only.
+- Summaries stay redacted and never expose reusable identifiers or private
+  payloads. Owner activity is a near-real-time projection; the authoritative
+  result is always the regular API response and persisted domain state.
+- The ordinary page UI carries the trust feedback, whether or not a visitor
+  opens the Agent layer.
 
 ## Challenge presentation
 
-The submission should show a real external browser-agent session rather than a simulated chat inside Jobbbler:
+The submission should show a real external browser-agent session rather than a
+simulated chat inside Jobbbler:
 
 1. The user asks for a job outcome in the agent client.
-2. The agent opens Jobbbler and discovers the active route's tools.
+2. The agent opens Jobbbler, discovers the stable core on any page, and can
+   ask `plan_job_workflow` for recommended safe steps before using contextual
+   tools.
 3. It invokes `search_jobs`; the real URL, filters, and results update.
-4. Navigation replaces the search tools with role- or application-specific tools.
-5. The agent prepares an application, presents exact data permission in the agent client, and records the request-bound decision separately from final confirmation.
-6. Jobbbler displays the resulting state and a concise activity receipt when viewed.
+4. Navigation preserves the stable core and replaces only the contextual tools
+   with role- or application-specific tools.
+5. The agent prepares an application, presents exact data permission in the
+   agent client, and records the payload-bound decision separately from final
+   confirmation.
+6. Jobbbler displays the resulting state and a concise activity receipt when
+   viewed.
 
-The public `/about/webmcp` explanation may illustrate this sequence, but it must remain optional and must not add a fake agent, decorative console, or alternate product workflow.
+The public `/about/webmcp` explanation may illustrate this sequence, but it
+must remain optional and must not add a fake agent, decorative console, or
+alternate product workflow.
