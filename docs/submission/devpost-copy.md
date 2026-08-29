@@ -47,14 +47,14 @@ When the journey reaches an application, speed stops being the point.
 - Before anything starts, `get_job_application_capability` negotiates the
   ground rules for this specific role: what the agent may prepare, what stays
   human, and whether the application finishes on the employer's website.
-- The application route registers twelve state-gated tools, but only the two
-  or three that fit the current step exist at any moment. Agent suggestions
+- The application route registers nine state-gated tools, but only those that
+  fit the current step exist at any moment. Agent suggestions
   remain visibly unaccepted until the human edits or approves them.
 - Sharing reviewed data requires explicit permission bound to the exact
   reviewed payload, recipient, purpose, fields, and notice — permission
-  applies only to this exact application. The approval is recorded as an
-  agent-mediated consent receipt: a record of what you approved, deliberately
-  never presented as cryptographic proof of the human or agent vendor.
+  applies only to this exact application. The agent can request that approval
+  but cannot grant it; the visible private workspace records the exact
+  first-party decision without claiming cryptographic identity.
 - Submission needs a fresh, short-lived, single-use human confirmation.
 - External roles end in an honest handoff (`handed_off`, never a fake
   `submitted`); Jobbbler never claims an external submission it cannot prove.
@@ -66,8 +66,8 @@ When the journey reaches an application, speed stops being the point.
 > without hiding what changed, and without confusing tool access with human
 > authority.
 
-Jobbbler registers 29 WebMCP tools directly in the page: six stable, site-wide
-core tools are available on every page, and 23 contextual tools appear only
+Jobbbler registers 26 WebMCP tools directly in the page: six stable, site-wide
+core tools are available on every page, and 20 contextual tools appear only
 when their route and application state make them safe. Navigation retains the
 core and removes stale contextual tools. The visible interface and WebMCP are
 two adapters over the same server commands, so the URL, filters, results,
@@ -112,11 +112,11 @@ recovery.
 The application flow separates a draft, validation and immutable review, agent
 delegation, data permission, short-lived confirmation, and idempotent receipt.
 When permission is needed, the agent client receives the exact recipient,
-purpose, categories, fields, notice, and server request ID. A separate
-confirmation tool records the explicit agent-mediated action. The consent
-receipt is useful evidence, but it deliberately does not claim cryptographic
-human or agent-vendor identity. Sensitive values and raw chat stay out of tool
-results and stored consent evidence.
+purpose, categories, fields, notice, and server request ID. No WebMCP approval
+tool exists: the person approves the request in Jobbbler's private workspace.
+The resulting first-party receipt is useful evidence, but it deliberately does
+not claim cryptographic human identity. Sensitive values and raw chat stay out
+of tool results and stored consent evidence.
 
 ## Challenges we ran into
 
@@ -152,8 +152,8 @@ results and stored consent evidence.
   understandable without turning the portal into a developer console.
 - Progressive identity and verified-email alerts preserve a low-friction start
   while supporting durable ownership.
-- Payload-bound, agent-mediated consent receipts connect client-side consent
-  UX to an exact server record without overstating identity assurance.
+- Payload-bound first-party consent receipts connect the visible decision to
+  an exact server record without overstating identity assurance.
 - Explicit delegation, immutable review, and one-time confirmation keep final
   application actions controlled, and external roles end in an honest handoff.
 - Source-aware job ingestion, safe normalized data, and focused
@@ -164,8 +164,7 @@ results and stored consent evidence.
 Agent UX improves when a site exposes a small vocabulary of outcome-level
 actions, makes their effects legible, and tells the agent how to compose them.
 Small boundaries matter: browser capability is not authorization; WebMCP is
-not a background worker; an agent-mediated affirmative action is evidence but
-not cryptographic identity; a saved search is not permission to notify an
+not a background worker; an agent request is not human approval; a saved search is not permission to notify an
 unverified endpoint; and a reviewed application is not confirmation to submit.
 A strong non-agent fallback makes WebMCP more credible because the tool layer
 augments a working product rather than disguising a missing workflow.

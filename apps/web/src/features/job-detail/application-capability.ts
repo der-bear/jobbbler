@@ -35,7 +35,8 @@ export function applicationCapabilityData(job: Job): JsonValue {
     applyMode: job.applyMode,
     preparationAvailable: prepared,
     stages: ["your_details", "review", "data_permission", "final_confirmation"],
-    agentAccess: "Draft-bound, stage-scoped, expiring delegation; approved in the agent client.",
+    agentAccess:
+      "Draft-bound, stage-scoped, expiring delegation; requested by the agent and approved only in the private workspace.",
     humanSteps: [
       "Accept or edit every suggested answer",
       "Approve the exact data disclosure",

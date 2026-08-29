@@ -22,7 +22,7 @@ describe("AgentTools", () => {
 
     expect(markup).toContain("Active now");
     expect(markup).toContain("All capabilities");
-    expect(markup).toContain("29 tools");
+    expect(markup).toContain("26 tools");
     expect(markup).toContain("Find");
     expect(markup).toContain("Inspect and compare");
     expect(markup).toContain("Alerts");
@@ -30,6 +30,6 @@ describe("AgentTools", () => {
     expect(markup).toContain("Action");
     expect(markup).toContain("get_search_state");
     expect(markup).toContain("request_application_access");
-    expect(markup).not.toContain("View all 29 tools");
+    expect(markup).not.toContain("View all 26 tools");
   });
 });

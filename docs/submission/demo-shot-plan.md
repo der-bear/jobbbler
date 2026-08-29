@@ -13,9 +13,9 @@ This plan is the capture contract for a 2:35–2:50 submission video. Record onl
 | 7    | Show a completed worker evaluation                                       | Latest-run delta and delivery truth                | Saved item status and newly observed count                                       | Durable server-side continuation is explicit                                    |
 | 8    | Open the fictional internal role and create a draft                      | Fictional employer label and draft stage           | Application document and progress hierarchy                                      | Application-specific tools are discovered                                       |
 | 9    | Let the agent add one suggestion, then accept or edit it in the page     | Provenance and validation state                    | One field at a time; suggestion remains visibly unaccepted before the human edit | Required field becomes candidate-owned                                          |
-| 10   | Seal the review and request data permission                              | Recipient, purpose, categories, fields, notice     | Agent-client approval presentation                                               | Exact request ID is pending; no raw PII or token appears                        |
-| 11   | Confirm the permission in the agent client                               | Affirmative action and resulting application state | Agent client, then Jobbbler permission stage                                     | Server-backed grant is active and withdrawable                                  |
-| 12   | Request final confirmation and submit the fictional internal application | Review identity, short expiry, receipt state       | Final action presentation and application receipt                                | One idempotent receipt is visible                                               |
+| 10   | Seal the review and request data permission                              | Recipient, purpose, categories, fields, notice     | Agent request, then the visible private permission stage                         | Exact request is pending; no raw PII or token appears                            |
+| 11   | Approve the exact permission in Jobbbler                                 | Affirmative action and resulting application state | First-party control, then refreshed agent-visible state                          | Server-backed grant is active and withdrawable                                  |
+| 12   | Request final confirmation, confirm in Jobbbler, then submit              | Review identity, short expiry, receipt state       | First-party final check and application receipt                                  | One idempotent receipt is visible                                               |
 | 13   | Return to the normal search interface                                    | Optional Agent Activity collapsed                  | Full clean interface                                                             | End on “a portal that becomes agent-operable without becoming agent-controlled” |
 
 ## Capture rules
@@ -25,5 +25,5 @@ This plan is the capture contract for a 2:35–2:50 submission video. Record onl
 - Keep the cursor inside the final crop and derive click points from live controls.
 - Do not expose cookies, OTPs, raw email addresses, confirmation material, database URLs, provider identifiers, terminal output, or source payloads.
 - Narrate the distinction between live WebMCP tools and Jobbbler's durable alert worker.
-- Describe an agent-mediated interaction receipt as evidence of the exact action and context, not cryptographic identity.
+- Describe the first-party interaction receipt as evidence of the exact action and context, not cryptographic identity.
 - Record a clean production run first; use post-production only for pacing, crops, cursor treatment, captions, and audio.

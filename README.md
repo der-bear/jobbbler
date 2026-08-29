@@ -55,9 +55,9 @@ Built for the OpenAI WebMCP Challenge.
   wall.
 - **Independent authority layers.** Agent delegation, payload-bound data
   permission, immutable review, and final confirmation are separate
-  server-enforced decisions. Approvals leave an agent-mediated consent receipt
-  — a record of what you approved, bound to this exact application — without
-  pretending to cryptographically identify the human or agent vendor.
+  server-enforced decisions. The agent can request each decision but cannot
+  approve it; the visible private workspace records what the person approved,
+  bound to the exact application.
 - **Truthful actions.** Internal fictional-demo applications produce an
   immutable receipt. External roles end in an honest handoff to the employer's
   website (`handed_off`, never a fake `submitted`); Jobbbler never claims an
@@ -88,7 +88,7 @@ capability is never treated as identity or authorization.
 `plan_job_workflow` returns recommended safe steps for a goal from the current
 page. It is advisory only: it plans, it never acts.
 
-The catalog has **29 tools**: six stable tools on every page, plus contextual
+The catalog has **26 tools**: six stable tools on every page, plus contextual
 tools that are registered only where they apply. The stable core is
 `plan_job_workflow`, `get_site_capabilities`, `get_search_filters`,
 `search_jobs`, `open_job_details`, and `open_jobbbler_page`.
@@ -103,12 +103,10 @@ tools that are registered only where they apply. The stable core is
 - Saved `/saved`: `get_saved_alerts`, `set_job_alert_state`,
   `open_saved_search`, `get_latest_search_update` (reads only what changed
   since the last check, not the full result list)
-- Application `/apply/:draftId`: twelve state-gated contextual tools —
+- Application `/apply/:draftId`: nine state-gated contextual tools —
   `get_application_state`, `request_application_access`,
-  `approve_application_access`, `set_application_answer`,
-  `validate_application`, `review_application`, `request_data_permission`,
-  `approve_data_permission`, `request_final_confirmation`,
-  `confirm_reviewed_application`, `submit_application`, and
+  `set_application_answer`, `validate_application`, `review_application`,
+  `request_data_permission`, `request_final_confirmation`, `submit_application`, and
   `prepare_external_handoff` — with only the tools that fit the current
   application step registered at any moment; the stable core remains available
 

@@ -40,9 +40,9 @@ function toolTitle(name: string): string {
 }
 
 const approvalTools = new Set([
-  "approve_application_access",
-  "approve_data_permission",
-  "confirm_reviewed_application",
+  "request_application_access",
+  "request_data_permission",
+  "request_final_confirmation",
   "submit_application",
 ]);
 

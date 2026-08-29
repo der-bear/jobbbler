@@ -448,7 +448,7 @@ describe("application authorization route handlers", () => {
         "POST",
         {
           interaction: {
-            channel: "agent_client",
+            channel: "first_party_ui",
             requestId: grantId,
             affirmation: "confirmed",
             evidenceVersion: "agent-interaction-v1",
@@ -467,7 +467,7 @@ describe("application authorization route handlers", () => {
       draftId,
       at: now,
       approvalEvidence: {
-        channel: "agent_client",
+        channel: "first_party_ui",
         requestId: grantId,
         affirmativeAction: "confirmed",
         evidenceVersion: "agent-interaction-v1",
@@ -507,7 +507,7 @@ describe("application authorization route handlers", () => {
     });
   });
 
-  it("rejects an agent-mediated consent receipt that is not bound to the pending grant", async () => {
+  it("rejects an agent-client approval even when it names the pending grant", async () => {
     const current = dependencies();
     const response = await handleApproveDataGrantRequest(
       request(
@@ -516,7 +516,7 @@ describe("application authorization route handlers", () => {
         {
           interaction: {
             channel: "agent_client",
-            requestId: "grant_72000000-0000-7000-8000-000000000099",
+            requestId: grantId,
             affirmation: "confirmed",
             evidenceVersion: "agent-interaction-v1",
           },

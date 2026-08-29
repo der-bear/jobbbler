@@ -38,8 +38,8 @@
       state if used.
 - [ ] Use the clearly fictional internal-demo employer for application
       submission footage.
-- [ ] Demonstrate the real agent-client permission presentation, the
-      payload-bound approval, the delegation/review boundary, and the
+- [ ] Demonstrate the real agent request, the first-party payload-bound
+      approval, the delegation/review boundary, and the
       short-lived final confirmation as distinct states.
 - [ ] Describe the stored interaction as a record of what was approved in its
       exact context, never as cryptographic proof of the human, model, or

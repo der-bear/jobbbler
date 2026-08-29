@@ -106,27 +106,20 @@ describe("application-route WebMCP tools", () => {
       userAction: { kind: "agent_authorization", surface: "application_authorization" },
       presentation: {
         title: "Allow application assistance?",
-        confirmLabel: "Allow these actions",
+        confirmLabel: "Review in Jobbbler",
       },
     });
     expect(JSON.stringify(result)).not.toContain("token");
   });
 
-  it("records agent-mediated approval only after a pending authority request", async () => {
+  it("never exposes an agent-callable approval for a pending authority request", () => {
     const requested = { ...base, agentAuthorityStatus: "requested" as const };
     const deps = dependencies(requested, ["read_application"]);
     const manifests = createApplicationToolManifests(deps);
 
-    expect(names(manifests)).toEqual(["get_application_state", "approve_application_access"]);
-    const result = await manifests[1]!.execute(
-      { requestId: delegationRequestId, confirmed: true },
-      { signal: new AbortController().signal },
-    );
-
-    expect(deps.approveAgentAccess).toHaveBeenCalledWith(delegationRequestId, {
-      signal: expect.any(AbortSignal),
-    });
-    expect(result).toMatchObject({ status: "completed", data: { agentAuthorityStatus: "active" } });
+    expect(names(manifests)).toEqual(["get_application_state"]);
+    expect(names(manifests)).not.toContain("approve_application_access");
+    expect(deps.approveAgentAccess).not.toHaveBeenCalled();
   });
 
   it("exposes strict profile tools only after matching authority", async () => {
@@ -181,7 +174,7 @@ describe("application-route WebMCP tools", () => {
       userAction: { kind: "data_consent", surface: "data_consent" },
       presentation: {
         title: "Share this reviewed application?",
-        confirmLabel: "Approve this disclosure",
+        confirmLabel: "Review disclosure in Jobbbler",
         facts: expect.arrayContaining([
           { key: "Recipient", value: "Northstar Systems" },
           { key: "Notice", value: "privacy-2026-08" },
@@ -198,21 +191,9 @@ describe("application-route WebMCP tools", () => {
       "request_data_consent",
     ]);
     const requestedPermissionTools = createApplicationToolManifests(requestedPermissionDeps);
-    expect(names(requestedPermissionTools)).toEqual([
-      "get_application_state",
-      "approve_data_permission",
-    ]);
-    const approvedPermission = await requestedPermissionTools[1]!.execute(
-      { requestId: consentRequestId, confirmed: true },
-      { signal: new AbortController().signal },
-    );
-    expect(requestedPermissionDeps.approveDataPermission).toHaveBeenCalledWith(consentRequestId, {
-      signal: expect.any(AbortSignal),
-    });
-    expect(approvedPermission).toMatchObject({
-      status: "completed",
-      data: { dataPermissionStatus: "active" },
-    });
+    expect(names(requestedPermissionTools)).toEqual(["get_application_state"]);
+    expect(names(requestedPermissionTools)).not.toContain("approve_data_permission");
+    expect(requestedPermissionDeps.approveDataPermission).not.toHaveBeenCalled();
 
     const confirmation = {
       ...permission,
@@ -228,7 +209,6 @@ describe("application-route WebMCP tools", () => {
     expect(names(confirmationTools)).toEqual([
       "get_application_state",
       "request_final_confirmation",
-      "confirm_reviewed_application",
     ]);
     const confirmationResult = await confirmationTools[1]!.execute(
       {},
@@ -240,20 +220,11 @@ describe("application-route WebMCP tools", () => {
       userAction: { kind: "action_confirmation", surface: "application_review" },
       presentation: {
         title: "Confirm this exact application?",
-        confirmLabel: "Confirm reviewed application",
+        confirmLabel: "Review application in Jobbbler",
       },
     });
-    const confirmed = await confirmationTools[2]!.execute(
-      { requestId: reviewRequestId, confirmed: true },
-      { signal: new AbortController().signal },
-    );
-    expect(confirmationDeps.confirmFinalApplication).toHaveBeenCalledWith(reviewRequestId, {
-      signal: expect.any(AbortSignal),
-    });
-    expect(confirmed).toMatchObject({
-      status: "completed",
-      data: { finalConfirmationReady: true },
-    });
+    expect(names(confirmationTools)).not.toContain("confirm_reviewed_application");
+    expect(confirmationDeps.confirmFinalApplication).not.toHaveBeenCalled();
     expect(
       new TextEncoder().encode(JSON.stringify(confirmationResult)).byteLength,
     ).toBeLessThanOrEqual(1_500);

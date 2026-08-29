@@ -57,7 +57,7 @@ const createDataGrantBodySchema = requestDataGrantSchema.omit({ draftId: true })
 });
 const grantApprovalInteractionSchema = z.strictObject({
   interaction: z.strictObject({
-    channel: z.enum(["first_party_ui", "agent_client"]),
+    channel: z.literal("first_party_ui"),
     requestId: entityIdSchema,
     affirmation: z.literal("confirmed"),
     evidenceVersion: z.literal("agent-interaction-v1"),
@@ -722,10 +722,7 @@ export async function handleApproveDataGrantRequest(
       requestId,
       key: "approve_data_grant",
       status: "completed",
-      safeSummary:
-        interaction.channel === "agent_client"
-          ? "Exact reviewed data permission approved through an agent-mediated interaction."
-          : "Exact reviewed data permission approved.",
+      safeSummary: "Exact reviewed data permission approved in the private workspace.",
       actorKind: "human",
       draftVersion: human.draft.version,
       occurredAt: now,

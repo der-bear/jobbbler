@@ -16,7 +16,7 @@
 - The human-facing portal must stay understandable without WebMCP knowledge.
 - The Agent view is secondary, judge-facing, and defaults to Activity.
 - Six stable outcome-level WebMCP tools remain available on every route; contextual/state-gated tools remain contextual.
-- The full 29-tool catalog is visible in Agent view without registering all 29 tools at once.
+- The full 26-tool catalog is visible in Agent view without registering all 26 tools at once.
 - No new runtime dependency, embedded chat, continuous decorative animation, or invented external salary data.
 - Light, dark, mobile, keyboard, reduced-motion, and unsupported-browser states must remain usable.
 
@@ -190,8 +190,8 @@ git commit -m "feat: simplify navigation and agent view entry"
 expect(markup).toContain('id="agent-tab-activity"');
 expect(markup).toContain('aria-selected="true"');
 expect(markup).toContain("Waiting for an agent");
-expect(toolsMarkup).toContain("29 tools");
-expect(toolsMarkup).not.toContain("View all 29 tools");
+expect(toolsMarkup).toContain("26 tools");
+expect(toolsMarkup).not.toContain("View all 26 tools");
 ```
 
 - [ ] **Step 2: Run panel tests and confirm failure**

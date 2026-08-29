@@ -108,7 +108,7 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
       {
         intent: "Request stage-scoped access",
         tool: "request_application_access",
-        humanAction: "Approve the named operations in your agent client.",
+        humanAction: "Approve the named operations in the private application workspace.",
       },
       {
         intent: "Suggest answers for review",
@@ -124,8 +124,8 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
       },
       {
         intent: "Confirm once, within five minutes",
-        tool: "confirm_reviewed_application",
-        humanAction: "Give the final confirmation yourself.",
+        tool: "request_final_confirmation",
+        humanAction: "Give the final confirmation yourself in the private application workspace.",
       },
       { intent: "Submit the sealed application", tool: "submit_application", humanAction: false },
     ],

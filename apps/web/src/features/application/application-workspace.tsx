@@ -195,32 +195,6 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
           },
         };
       },
-      async approveAgentAccess(requestId, { signal }) {
-        const requested = workspace.delegationRequests.find(
-          (delegation) =>
-            delegation.id === requestId &&
-            delegation.agentSessionId === requireCredential().sessionId &&
-            delegation.status === "requested",
-        );
-        if (requested === undefined) throw new Error("The authority request is no longer pending.");
-        await queryApi(
-          `/api/v1/applications/${encodeURIComponent(draftId)}/delegations/${encodeURIComponent(requested.id)}/approve`,
-          applicationDelegationSummarySchema,
-          {
-            method: "POST",
-            body: {
-              interaction: {
-                channel: "agent_client",
-                requestId: requested.id,
-                affirmation: "confirmed",
-                evidenceVersion: "agent-interaction-v1",
-              },
-            },
-            signal,
-          },
-        );
-        return reloadState(signal);
-      },
       async setAnswer(input, { signal }) {
         const currentCredential = requireCredential();
         const field = workspace.requirements.find(({ fieldKey }) => fieldKey === input.fieldKey);
@@ -310,28 +284,6 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
           },
         };
       },
-      async approveDataPermission(requestId, { signal }) {
-        if (workspace.dataGrant?.id !== requestId || workspace.dataGrant.status !== "requested") {
-          throw new Error("The data-permission request is no longer pending.");
-        }
-        await queryApi(
-          `/api/v1/applications/${encodeURIComponent(draftId)}/data-grants/${encodeURIComponent(requestId)}/approve`,
-          applicationDataGrantSummarySchema,
-          {
-            method: "POST",
-            body: {
-              interaction: {
-                channel: "agent_client",
-                requestId,
-                affirmation: "confirmed",
-                evidenceVersion: "agent-interaction-v1",
-              },
-            },
-            signal,
-          },
-        );
-        return reloadState(signal);
-      },
       finalConfirmationRequest() {
         if (workspace.review === null) throw new Error("Lock the review first.");
         const disclosure = applicationDisclosure(workspace);
@@ -343,29 +295,6 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
           fieldKeys: disclosure.fieldKeys.map((fieldKey) => fieldKey.replaceAll("_", " ")),
           noticeVersion: workspace.noticeVersion,
         };
-      },
-      async confirmFinalApplication(requestId, { signal }) {
-        if (workspace.review?.id !== requestId) {
-          throw new Error("The reviewed application is no longer current.");
-        }
-        const result = await queryApi(
-          `/api/v1/applications/${encodeURIComponent(draftId)}/reviews/${encodeURIComponent(requestId)}/confirm`,
-          confirmationResultSchema,
-          {
-            method: "POST",
-            body: {
-              interaction: {
-                channel: "agent_client",
-                requestId,
-                affirmation: "confirmed",
-                evidenceVersion: "agent-interaction-v1",
-              },
-            },
-            signal,
-          },
-        );
-        setConfirmation(result);
-        return reloadState(signal, true);
       },
       async submit({ signal }) {
         const currentCredential = requireCredential();

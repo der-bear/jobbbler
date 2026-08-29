@@ -43,16 +43,13 @@ function applicationManifests(
     hasAgentCredential: () => authorized,
     isOperationAuthorized: () => authorized,
     requestAgentAccess: never,
-    approveAgentAccess: never,
     setAnswer: never,
     validate: never,
     review: never,
     requestDataPermission: never,
-    approveDataPermission: never,
     finalConfirmationRequest: () => {
       throw new Error("not called in validation tests");
     },
-    confirmFinalApplication: never,
     submit: never,
   });
 }

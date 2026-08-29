@@ -36,28 +36,7 @@ const answerInputSchema = {
   required: ["fieldKey", "value"],
 } as const satisfies JsonSchema;
 
-const confirmInteractionInputSchema = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    requestId: {
-      type: "string",
-      description: "The exact pending interaction ID returned by the matching request tool.",
-      maxLength: 80,
-    },
-    confirmed: {
-      type: "boolean",
-      description: "Must be true only after the user explicitly approves in the agent client.",
-    },
-  },
-  required: ["requestId", "confirmed"],
-} as const satisfies JsonSchema;
-
 const emptyInput = z.strictObject({});
-const confirmInteractionInput = z.strictObject({
-  requestId: z.string().min(1).max(80),
-  confirmed: z.literal(true),
-});
 
 type ApplicationToolOutput =
   CompletedWebMcpResult<JsonValue> | RequiresUserActionWebMcpResult | SafeWebMcpErrorResult;
@@ -80,10 +59,6 @@ export interface ApplicationToolDependencies {
       readonly expiresAt: string;
     };
   }>;
-  approveAgentAccess(
-    requestId: string,
-    options: Readonly<{ signal: AbortSignal }>,
-  ): Promise<ApplicationAgentState>;
   setAnswer(
     input: Readonly<{ fieldKey: string; value: string }>,
     options: Readonly<{ signal: AbortSignal }>,
@@ -94,15 +69,7 @@ export interface ApplicationToolDependencies {
     readonly state: ApplicationAgentState;
     readonly request: ApplicationInteractionRequest;
   }>;
-  approveDataPermission(
-    requestId: string,
-    options: Readonly<{ signal: AbortSignal }>,
-  ): Promise<ApplicationAgentState>;
   finalConfirmationRequest(): ApplicationInteractionRequest;
-  confirmFinalApplication(
-    requestId: string,
-    options: Readonly<{ signal: AbortSignal }>,
-  ): Promise<ApplicationAgentState>;
   submit(options: Readonly<{ signal: AbortSignal }>): Promise<ApplicationAgentState>;
 }
 
@@ -212,14 +179,14 @@ function requestAccessTool(
         emptyInput.parse(input);
         const { request } = await dependencies.requestAgentAccess(operations, { signal });
         return requiresUserActionWebMcpResult({
-          summary: "Application assistance is ready for the user's decision in the agent client.",
+          summary: "Application assistance is ready for the user's decision in Jobbbler.",
           kind: "agent_authorization",
           surface: "application_authorization",
           requestId: request.id,
           presentation: {
             title: "Allow application assistance?",
             prompt: `Allow these actions for this draft until ${request.expiresAt}: ${request.operations.join(", ")}. Purpose: ${request.purpose}`,
-            confirmLabel: "Allow these actions",
+            confirmLabel: "Review in Jobbbler",
             facts: [
               { key: "Actions", value: request.operations.join(", ") },
               { key: "Expires", value: request.expiresAt },
@@ -228,34 +195,6 @@ function requestAccessTool(
         });
       } catch (error) {
         return safeWebMcpErrorResult(error, signal, "Agent access accepts no arguments.");
-      }
-    },
-  };
-}
-
-function approveAccessTool(
-  dependencies: ApplicationToolDependencies,
-): ToolManifest<unknown, ApplicationToolOutput> {
-  return {
-    name: "approve_application_access",
-    purpose: "Record the user's agent-mediated approval of the pending application authority.",
-    description:
-      "Use only after the user explicitly approves the exact pending actions in the agent client. The request is draft-bound, short-lived, revocable, and recorded without claiming cryptographic agent identity.",
-    inputSchema: confirmInteractionInputSchema,
-    annotations: { readOnlyHint: false, untrustedContentHint: true },
-    async execute(input, { signal }) {
-      try {
-        const parsed = confirmInteractionInput.parse(input);
-        return completed(
-          "Recorded the user's agent-mediated application authority.",
-          await dependencies.approveAgentAccess(parsed.requestId, { signal }),
-        );
-      } catch (error) {
-        return safeWebMcpErrorResult(
-          error,
-          signal,
-          "Provide the exact pending request ID and confirmed: true only after user approval.",
-        );
       }
     },
   };
@@ -354,7 +293,7 @@ function permissionTool(
     name: "request_data_permission",
     purpose: "Request human permission for the exact reviewed application disclosure.",
     description:
-      "Request a purpose-bound data permission for the current review, recipient, fields, categories, notice, and payload hash. The external agent client must present the returned request and receive an explicit user decision before invoking the separate approval tool.",
+      "Request a purpose-bound data permission for the current review, recipient, fields, categories, notice, and payload hash. The candidate must approve the pending disclosure in the visible private workspace.",
     inputSchema: emptyInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -363,14 +302,14 @@ function permissionTool(
         const { request } = await dependencies.requestDataPermission({ signal });
         return requiresUserActionWebMcpResult({
           summary:
-            "The exact reviewed disclosure is ready for the user's decision in the agent client.",
+            "The exact reviewed disclosure is ready for the user's decision in Jobbbler.",
           kind: "data_consent",
           surface: "data_consent",
           requestId: request.id,
           presentation: {
             title: "Share this reviewed application?",
             prompt: `Allow ${request.recipient} to receive ${request.fieldKeys.join(", ")} for this purpose: ${request.purpose}`,
-            confirmLabel: "Approve this disclosure",
+            confirmLabel: "Review disclosure in Jobbbler",
             facts: [
               { key: "Recipient", value: request.recipient },
               { key: "Purpose", value: request.purpose },
@@ -387,34 +326,6 @@ function permissionTool(
   };
 }
 
-function approvePermissionTool(
-  dependencies: ApplicationToolDependencies,
-): ToolManifest<unknown, ApplicationToolOutput> {
-  return {
-    name: "approve_data_permission",
-    purpose: "Record explicit agent-mediated permission for the exact reviewed disclosure.",
-    description:
-      "Use only after the user explicitly approves the pending disclosure in the agent client. The server records the agent-mediated channel, request, reviewed payload, recipient, purpose, notice, and affirmative action; permission remains withdrawable before submission.",
-    inputSchema: confirmInteractionInputSchema,
-    annotations: { readOnlyHint: false, untrustedContentHint: true },
-    async execute(input, { signal }) {
-      try {
-        const parsed = confirmInteractionInput.parse(input);
-        return completed(
-          "Recorded agent-mediated permission for the exact reviewed disclosure.",
-          await dependencies.approveDataPermission(parsed.requestId, { signal }),
-        );
-      } catch (error) {
-        return safeWebMcpErrorResult(
-          error,
-          signal,
-          "Provide the exact pending consent request ID and confirmed: true only after user approval.",
-        );
-      }
-    },
-  };
-}
-
 function confirmationTool(
   dependencies: ApplicationToolDependencies,
 ): ToolManifest<unknown, ApplicationToolOutput> {
@@ -422,7 +333,7 @@ function confirmationTool(
     name: "request_final_confirmation",
     purpose: "Ask the candidate for a fresh final confirmation of the sealed application.",
     description:
-      "Return the exact final-action request for the agent client to present to the user. This does not issue a confirmation or submit anything.",
+      "Return the exact final-action request for the candidate to review in Jobbbler. This does not issue a confirmation or submit anything.",
     inputSchema: emptyInputSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -431,14 +342,14 @@ function confirmationTool(
         const request = dependencies.finalConfirmationRequest();
         return requiresUserActionWebMcpResult({
           summary:
-            "The exact reviewed application is ready for the user's final decision in the agent client.",
+            "The exact reviewed application is ready for the user's final decision in Jobbbler.",
           kind: "action_confirmation",
           surface: "application_review",
           requestId: request.id,
           presentation: {
             title: "Confirm this exact application?",
             prompt: `Confirm the sealed application to ${request.recipient} for this purpose: ${request.purpose}. This confirmation expires after five minutes and can be used once.`,
-            confirmLabel: "Confirm reviewed application",
+            confirmLabel: "Review application in Jobbbler",
             facts: [
               { key: "Recipient", value: request.recipient },
               { key: "Purpose", value: request.purpose },
@@ -450,34 +361,6 @@ function confirmationTool(
         });
       } catch (error) {
         return safeWebMcpErrorResult(error, signal, "Final confirmation accepts no arguments.");
-      }
-    },
-  };
-}
-
-function confirmApplicationTool(
-  dependencies: ApplicationToolDependencies,
-): ToolManifest<unknown, ApplicationToolOutput> {
-  return {
-    name: "confirm_reviewed_application",
-    purpose: "Record the user's final agent-mediated confirmation of the sealed application.",
-    description:
-      "Use only after the user explicitly confirms the exact request in the agent client. The server issues a five-minute single-use confirmation bound to the current review; the raw confirmation never enters tool input or output.",
-    inputSchema: confirmInteractionInputSchema,
-    annotations: { readOnlyHint: false, untrustedContentHint: true },
-    async execute(input, { signal }) {
-      try {
-        const parsed = confirmInteractionInput.parse(input);
-        return completed(
-          "Recorded the user's final confirmation for the exact sealed review.",
-          await dependencies.confirmFinalApplication(parsed.requestId, { signal }),
-        );
-      } catch (error) {
-        return safeWebMcpErrorResult(
-          error,
-          signal,
-          "Provide the exact review request ID and confirmed: true only after user confirmation.",
-        );
       }
     },
   };
@@ -544,11 +427,9 @@ export function createApplicationToolManifests(
   const allowsAgentSubmission = dependencies.allowsAgentSubmission();
   const operations = requiredOperations(state, allowsAgentSubmission);
   if (!hasRequiredAuthority(dependencies, operations)) {
-    tools.push(
-      state.agentAuthorityStatus === "requested" && dependencies.hasAgentCredential()
-        ? approveAccessTool(dependencies)
-        : requestAccessTool(dependencies, operations),
-    );
+    if (state.agentAuthorityStatus !== "requested" || !dependencies.hasAgentCredential()) {
+      tools.push(requestAccessTool(dependencies, operations));
+    }
     return tools;
   }
 
@@ -556,15 +437,13 @@ export function createApplicationToolManifests(
   else if (state.stage === "review") tools.push(reviewTool(dependencies));
   else if (state.stage === "permission" && state.dataPermissionStatus === "none") {
     tools.push(permissionTool(dependencies));
-  } else if (state.stage === "permission" && state.dataPermissionStatus === "requested") {
-    tools.push(approvePermissionTool(dependencies));
   } else if (state.stage === "confirmation") {
     if (state.finalConfirmationReady) {
       tools.push(
         allowsAgentSubmission ? submitTool(dependencies) : externalHandoffTool(dependencies),
       );
     } else {
-      tools.push(confirmationTool(dependencies), confirmApplicationTool(dependencies));
+      tools.push(confirmationTool(dependencies));
     }
   }
   return tools;

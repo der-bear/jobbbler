@@ -28,10 +28,9 @@ omit it from their case-level sets.
 
 The application surface registers different tools as the draft moves through
 its stages, so `application.json` cases carry their own `registeredTools` set;
-a case-level set always overrides the file-level default. Approval and
-confirmation cases also carry a `userDecision` context line stating whether the
-user has actually decided in the agent client, because the correct behavior
-differs on exactly that fact.
+a case-level set always overrides the file-level default. Pending approval
+cases expose no confirmation tool: the correct behavior is a safe clarification
+that sends the person to the private application workspace.
 
 ## Coverage
 
@@ -41,7 +40,7 @@ differs on exactly that fact.
 | `detail.json`      | `get_job_details`, `compare_jobs`                                          | Current-job detail, explicit and paraphrased comparison, missing second job, comparison-only action on the wrong route, invalid ID.                                                                                                                      |
 | `compare.json`     | `get_comparison`, `remove_job_from_comparison`, `add_job_to_comparison`    | Current comparison, ordinal removal and addition, ambiguous ranking, removal of an unselected job.                                                                                                                                                       |
 | `saved.json`       | `get_saved_alerts`, `set_job_alert_state`, `open_saved_search`             | Alert reading, pause and resume by schedule ID, reopening stored criteria, ambiguous alert selection, unsupported destination change, unknown schedule.                                                                                                  |
-| `application.json` | State-gated per case                                                       | Authority request before editing, user-approved access, refusal to self-approve, exact answer suggestion, unsupported field, validation, review sealing, data permission, confirmation before submission, confirmed submission, honest external handoff. |
+| `application.json` | State-gated per case                                                       | Authority request before editing, first-party approval boundary, refusal to self-approve, exact answer suggestion, unsupported field, validation, review sealing, data permission, confirmation before submission, confirmed submission, honest external handoff. |
 
 An evaluator should load the named route and fixture context, expose only the
 case's effective `registeredTools`, then compare the observed result with

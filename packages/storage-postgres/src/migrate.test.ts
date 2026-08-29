@@ -59,6 +59,7 @@ describe("PostgreSQL migration manifest", () => {
     expect(sql).toContain("entity_records_owner_recovery_token_unique");
     expect(sql).toContain("entity_records_owner_recovery_live_idx");
     expect(sql).toContain("entity_records_owner_deletion_intent_live_idx");
+    expect(sql).toContain("entity_records_session_token_unique");
     expect(sql).not.toContain("rawRecoveryCode");
     expect(sql).not.toContain("rawSessionToken");
   });

@@ -163,6 +163,19 @@ async function list<T>(sql: PostgresExecutor, kind: string, ownerId?: string): P
   return rows.map(body<T>);
 }
 
+export async function findOwnerSessionByTokenHash(
+  sql: PostgresExecutor,
+  tokenHash: string,
+): Promise<OwnerSessionRecord | null> {
+  const rows = await sql<EntityRow[]>`
+    SELECT id, owner_id, body, version
+    FROM jobbbler.entity_records
+    WHERE kind = 'owner_session'
+      AND body->>'tokenHash' = ${tokenHash}
+    LIMIT 1`;
+  return rows[0] === undefined ? null : body<OwnerSessionRecord>(rows[0]);
+}
+
 async function listByOwnerDraft<T>(
   sql: PostgresExecutor,
   kind: "delegation" | "rich_data_grant",
@@ -396,9 +409,8 @@ function createIdentityStore(sql: PostgresSql): IdentityStore {
       return { owner: input.owner, session: input.session };
     },
     async resolveSession(tokenHash, now) {
-      const sessions = await list<OwnerSessionRecord>(sql, "owner_session");
-      const session = sessions.find((item) => item.tokenHash === tokenHash);
-      if (session === undefined) return null;
+      const session = await findOwnerSessionByTokenHash(sql, tokenHash);
+      if (session === null) return null;
       if (session.status === "active" && session.expiresAt <= now)
         await write(sql, "owner_session", { ...session, status: "expired", updatedAt: now });
       const active = session.status === "active" && session.expiresAt > now ? session : null;

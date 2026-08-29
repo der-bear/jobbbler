@@ -143,7 +143,7 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
   {
     route: "/apply/:draftId",
     title: "Application",
-    note: "State-gated: only the two or three tools that fit the current application step are registered at any moment. Approval tools accept only a pending request ID plus the user's explicit decision made in the agent client.",
+    note: "State-gated: only tools that fit the current application step are registered. The agent can request approval, but only the visible private workspace can grant it.",
     tools: [
       {
         name: "get_application_state",
@@ -153,11 +153,6 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
       {
         name: "request_application_access",
         purpose: "Request the minimum agent authority needed for the current application stage.",
-        readOnly: false,
-      },
-      {
-        name: "approve_application_access",
-        purpose: "Record the user's agent-mediated approval of the pending application authority.",
         readOnly: false,
       },
       {
@@ -182,19 +177,9 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
         readOnly: false,
       },
       {
-        name: "approve_data_permission",
-        purpose: "Record explicit agent-mediated permission for the exact reviewed disclosure.",
-        readOnly: false,
-      },
-      {
         name: "request_final_confirmation",
         purpose: "Ask the candidate for a fresh final confirmation of the sealed application.",
         readOnly: true,
-      },
-      {
-        name: "confirm_reviewed_application",
-        purpose: "Record the user's final agent-mediated confirmation of the sealed application.",
-        readOnly: false,
       },
       {
         name: "submit_application",

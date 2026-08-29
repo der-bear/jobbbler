@@ -11,7 +11,7 @@ stories after the final interface pass.
 2. **`media/04-agentic-web-proof.png` — Agentic web proof of value**
    - Caption: “A familiar website can expose structured actions directly to a compatible browser agent—without a separate MCP server.”
    - Alt text: “Jobbbler About WebMCP page explaining how a user describes an outcome in an agent client, opens Jobbbler, sees the same result, and keeps consequential choices explicit.”
-3. **`media/03-application-permission.png` — Agent-mediated permission**
+3. **`media/03-application-permission.png` — Human-held permission**
    - Caption: “The exact recipient, purpose, and disclosed fields are reviewed before request-bound approval.”
    - Alt text: “Dark-mode application workspace for a synthetic Product Design Lead role, showing the data-permission stage, exact disclosure fields, recipient and purpose, plus a required final confirmation.”
 4. **`media/02-saved-alert.png` — Verified alert**

@@ -77,14 +77,13 @@ commands and policies.
 - The conversation belongs to the external agent client. Jobbbler does not
   embed a second chat surface.
 - A structured `requires_user_action` response gives the agent client exact
-  review facts and a server request ID. A separate confirmation tool records
-  the explicit agent-mediated action as a versioned consent receipt; raw chat
-  is not stored, and the receipt does not claim cryptographic human or agent
-  identity.
+  review facts and a server request ID. Approval is deliberately absent from
+  WebMCP: the person acts in the visible private workspace, which stores a
+  versioned first-party receipt without claiming cryptographic identity.
 
 ## Route experience
 
-The catalog has **29 tools**: six stable, site-wide core tools plus 23
+The catalog has **26 tools**: six stable, site-wide core tools plus 20
 contextual tools. The stable core exists on every page; only contextual tools
 change with route and application state.
 
@@ -95,7 +94,7 @@ change with route and application state.
 | Role `/jobs/:jobId`           | Understand one opportunity             | `get_job_details`, `get_job_application_capability` (how this role accepts applications — what the agent may prepare, what stays human, whether an external handoff is required), `compare_jobs`                                                                                              | Provenance, freshness, evidence, “What to verify”, and a clear next action                                                                |
 | Compare `/compare`            | Resolve a shortlist                    | `get_comparison`, `add_job_to_comparison`, `remove_job_from_comparison`                                                                                                                                                                                                                       | One evidence table with differences and missing facts                                                                                     |
 | Saved `/saved`                | Stay updated on an explicit search     | `get_saved_alerts`, `set_job_alert_state`, `open_saved_search`, `get_latest_search_update` (only what changed since the last check)                                                                                                                                                           | Plain-language status (“Checking daily”, “Paused”), next run, “N changes since the last check”, and a masked destination only             |
-| Application `/apply/:draftId` | Prepare one reviewed disclosure        | Twelve state-gated tools, `get_application_state` through `submit_application` and `prepare_external_handoff`; only the two or three that fit the current step are registered, and approval tools accept only a pending request ID plus the user's explicit decision made in the agent client | Distinct “Your details”, Review, Permission, and Final confirmation stages with receipts; external roles finish on the employer's website |
+| Application `/apply/:draftId` | Prepare one reviewed disclosure        | Nine state-gated tools, `get_application_state` through `submit_application` and `prepare_external_handoff`; only those that fit the current step are registered, and WebMCP can request but never grant human approval | Distinct “Your details”, Review, Permission, and Final confirmation stages with receipts; external roles finish on the employer's website |
 
 ## Visual hierarchy
 
@@ -154,9 +153,9 @@ simulated chat inside Jobbbler:
 3. It invokes `search_jobs`; the real URL, filters, and results update.
 4. Navigation preserves the stable core and replaces only the contextual tools
    with role- or application-specific tools.
-5. The agent prepares an application, presents exact data permission in the
-   agent client, and records the payload-bound decision separately from final
-   confirmation.
+5. The agent prepares an application and requests exact data permission. The
+   person approves the payload-bound request and final confirmation separately
+   in the visible private workspace.
 6. Jobbbler displays the resulting state and a concise activity receipt when
    viewed.
 

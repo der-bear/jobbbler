@@ -39,9 +39,9 @@ The current implementation keeps identity portable across both storage adapters.
 1. A WebMCP command reaches the Policy Enforcement Point in the BFF.
 2. The backend evaluates human owner, agent session, resource, action, state, expiry, and risk.
 3. If authority is absent but requestable, the response is a structured denial with a non-secret, server-issued request ID, exact presentation facts, and `requires_user_action` status.
-4. The external agent client presents the named resource, operations, purpose, duration, and affected data classes. The first-party Jobbbler surface remains an equivalent fallback.
-5. After an explicit affirmative user action, the agent invokes a separate confirmation tool with the exact pending request ID. Extra parameters, a mismatched ID, silence, or a free-form model claim cannot approve it.
-6. The secure Jobbbler owner session reaches the command boundary, where the server rechecks the pending request and stores a versioned interaction receipt. This proves which server request and affirmative action were recorded; it does not cryptographically identify the person, model, or agent vendor.
+4. The external agent client may present the named resource, operations, purpose, duration, and affected data classes, but it receives no approval tool.
+5. The visible private Jobbbler workspace presents the exact pending request. Only its first-party control can send the affirmative action; silence, free-form model text, and tool parameters cannot approve it.
+6. The secure Jobbbler owner session reaches the command boundary, where the server rechecks the pending request and stores a versioned first-party interaction receipt. This proves which server request and affirmative action were recorded; it does not cryptographically identify the person, model, or agent vendor.
 7. Approval creates a server-side delegation; it does not return a reusable secret through WebMCP.
 8. The original command is not automatically replayed. The agent retries, and the backend performs a fresh authorization evaluation.
 9. Revocation, expiry, resource version changes, owner changes, or risk-policy changes take effect at the next evaluation.
@@ -66,7 +66,7 @@ The browser agent session ID is a scoping handle, not a claim that Jobbbler has 
 
 ## Data authorization and consent
 
-The agent may request a data operation. Jobbbler returns the exact disclosure as a structured agent-client presentation and accepts approval only through a separate request-bound tool action reached from the secure owner session. The first-party UI uses the same command as a fallback. Jobbbler stores this as evidence of an explicit agent-mediated or first-party interaction, while deliberately avoiding a claim of cryptographically verified human or agent identity.
+The agent may request a data operation. Jobbbler returns the exact disclosure as a structured presentation, but accepts approval only through the request-bound control in the visible private workspace. There is deliberately no agent-callable approval tool. Jobbbler stores the first-party action as evidence while avoiding any claim of cryptographically verified human or agent identity.
 
 Before optional AI processing or disclosure to an employer, the presentation shows:
 
@@ -119,7 +119,7 @@ OAuth security guidance recommends sender-constrained and audience-restricted ac
 
 - Unit tests for cross-owner, cross-draft, cross-action, expired, revoked, replayed, and payload-change failures.
 - Integration tests proving a mismatched or stale interaction request cannot approve a grant and a successful approval still requires re-evaluation.
-- Browser tests for clear agent-client presentation data, first-party fallback, keyboard/focus behavior, withdrawal, revoke, and expired confirmation.
+- Browser tests for clear request presentation, first-party approval, keyboard/focus behavior, withdrawal, revoke, and expired confirmation.
 - RLS tests that distinguish anonymous and verified owners.
 - Redaction tests ensuring no raw token, application answer, or document enters tool output, realtime payload, or log.
 - A concise public threat model and an end-to-end demo of request, approval, action, revoke, and denied retry.
