@@ -21,6 +21,7 @@
 ### Task 1: Shared repository contract
 
 **Files:**
+
 - Modify: `packages/storage/src/records.ts`
 - Modify: `packages/storage/src/repositories.ts`
 - Test: `packages/storage-sqlite/src/application-authorization-repository.test.ts`
@@ -31,7 +32,10 @@
 
 ```ts
 await expect(storage.applications.getLatestReview(draftId, ownerId)).resolves.toEqual(review);
-await expect(storage.applications.completeSubmission(input)).resolves.toMatchObject({ draft, receipt });
+await expect(storage.applications.completeSubmission(input)).resolves.toMatchObject({
+  draft,
+  receipt,
+});
 ```
 
 - [ ] **Step 2: Run the focused SQLite test and verify it fails because the methods do not exist.**
@@ -43,6 +47,7 @@ await expect(storage.applications.completeSubmission(input)).resolves.toMatchObj
 ### Task 2: SQLite transactional implementation
 
 **Files:**
+
 - Modify: `packages/storage-sqlite/src/storage.ts`
 - Modify: `packages/storage-sqlite/src/application-authorization-repository.test.ts`
 - Modify: `packages/storage-sqlite/src/migrate.test.ts`
@@ -57,6 +62,7 @@ await expect(storage.applications.completeSubmission(input)).resolves.toMatchObj
 ### Task 3: PostgreSQL parity
 
 **Files:**
+
 - Modify: `packages/storage-postgres/src/storage.ts`
 - Modify: `packages/storage-postgres/src/storage.integration.test.ts`
 - Modify: `packages/storage-postgres/src/migrate.test.ts`
@@ -71,6 +77,7 @@ await expect(storage.applications.completeSubmission(input)).resolves.toMatchObj
 ### Task 4: Verification
 
 **Files:**
+
 - Test: `packages/storage-sqlite/src/application-authorization-repository.test.ts`
 - Test: `packages/storage-postgres/src/storage.integration.test.ts`
 

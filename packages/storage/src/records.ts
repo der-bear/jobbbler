@@ -178,11 +178,52 @@ export interface IdempotencyRecord {
   readonly expiresAt: string;
 }
 
-export interface ApplicationReviewRecord { readonly id: string; readonly ownerId: string; readonly draftId: string; readonly draftVersion: number; readonly payloadHash: string; readonly findings: readonly string[]; readonly status: "active" | "invalidated"; readonly createdAt: string; readonly invalidatedAt: string | null; }
-export interface ApplicationConfirmationRecord { readonly id: string; readonly ownerId: string; readonly draftId: string; readonly reviewId: string; readonly payloadHash: string; /** SHA-256 (or stronger) digest only; never the confirmation token. */ readonly confirmationHash: string; readonly status: "active" | "consumed" | "invalidated"; readonly expiresAt: string; readonly createdAt: string; readonly consumedAt: string | null; }
-export interface ApplicationReceiptRecord { readonly id: string; readonly ownerId: string; readonly draftId: string; readonly reviewId: string; readonly confirmationId: string; readonly idempotencyKey: string; readonly status: "submitted" | "handed_off"; readonly externalUrl: string | null; readonly createdAt: string; }
-export interface MaterialApplicationEditInput { readonly ownerId: string; readonly expectedVersion: number; readonly draft: ApplicationDraft; readonly now: string; }
-export interface SealApplicationReviewInput { readonly ownerId: string; readonly expectedVersion: number; readonly draft: ApplicationDraft; readonly review: ApplicationReviewRecord; }
+export interface ApplicationReviewRecord {
+  readonly id: string;
+  readonly ownerId: string;
+  readonly draftId: string;
+  readonly draftVersion: number;
+  readonly payloadHash: string;
+  readonly findings: readonly string[];
+  readonly status: "active" | "invalidated";
+  readonly createdAt: string;
+  readonly invalidatedAt: string | null;
+}
+export interface ApplicationConfirmationRecord {
+  readonly id: string;
+  readonly ownerId: string;
+  readonly draftId: string;
+  readonly reviewId: string;
+  readonly payloadHash: string;
+  /** SHA-256 (or stronger) digest only; never the confirmation token. */ readonly confirmationHash: string;
+  readonly status: "active" | "consumed" | "invalidated";
+  readonly expiresAt: string;
+  readonly createdAt: string;
+  readonly consumedAt: string | null;
+}
+export interface ApplicationReceiptRecord {
+  readonly id: string;
+  readonly ownerId: string;
+  readonly draftId: string;
+  readonly reviewId: string;
+  readonly confirmationId: string;
+  readonly idempotencyKey: string;
+  readonly status: "submitted" | "handed_off";
+  readonly externalUrl: string | null;
+  readonly createdAt: string;
+}
+export interface MaterialApplicationEditInput {
+  readonly ownerId: string;
+  readonly expectedVersion: number;
+  readonly draft: ApplicationDraft;
+  readonly now: string;
+}
+export interface SealApplicationReviewInput {
+  readonly ownerId: string;
+  readonly expectedVersion: number;
+  readonly draft: ApplicationDraft;
+  readonly review: ApplicationReviewRecord;
+}
 export interface SubmissionGrantScope {
   readonly id: string;
   readonly version: number;
@@ -207,7 +248,11 @@ export interface CompleteApplicationSubmissionInput {
   readonly receipt: ApplicationReceiptRecord;
   readonly now: string;
 }
-export interface CompleteApplicationSubmissionResult { readonly draft: ApplicationDraft; readonly receipt: ApplicationReceiptRecord; readonly inserted: boolean; }
+export interface CompleteApplicationSubmissionResult {
+  readonly draft: ApplicationDraft;
+  readonly receipt: ApplicationReceiptRecord;
+  readonly inserted: boolean;
+}
 export interface AgentDelegationRecord {
   readonly id: string;
   readonly ownerId: string;
@@ -222,8 +267,23 @@ export interface AgentDelegationRecord {
   readonly approvedAt: string | null;
   readonly revokedAt: string | null;
 }
-export interface DataGrantRecord { readonly id: string; readonly ownerId: string; readonly recipientId: string; readonly purpose: string; readonly payloadHash: string; readonly fields: readonly string[]; readonly status: "requested" | "active" | "withdrawn"; readonly expiresAt: string; readonly createdAt: string; readonly approvedAt: string | null; readonly withdrawnAt: string | null; }
-export interface ApplicationReceiptPutResult { readonly inserted: boolean; readonly record: ApplicationReceiptRecord; }
+export interface DataGrantRecord {
+  readonly id: string;
+  readonly ownerId: string;
+  readonly recipientId: string;
+  readonly purpose: string;
+  readonly payloadHash: string;
+  readonly fields: readonly string[];
+  readonly status: "requested" | "active" | "withdrawn";
+  readonly expiresAt: string;
+  readonly createdAt: string;
+  readonly approvedAt: string | null;
+  readonly withdrawnAt: string | null;
+}
+export interface ApplicationReceiptPutResult {
+  readonly inserted: boolean;
+  readonly record: ApplicationReceiptRecord;
+}
 export interface AgentSessionRecord {
   readonly id: string;
   readonly ownerId: string;

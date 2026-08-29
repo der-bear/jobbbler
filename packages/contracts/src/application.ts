@@ -88,13 +88,7 @@ export const legalBasisSchema = z.enum([
   "user_instruction",
 ]);
 
-export const applicationFieldInputSchema = z.enum([
-  "text",
-  "email",
-  "url",
-  "textarea",
-  "select",
-]);
+export const applicationFieldInputSchema = z.enum(["text", "email", "url", "textarea", "select"]);
 
 export const applicationFieldDefinitionSchema = z.strictObject({
   fieldKey: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/),

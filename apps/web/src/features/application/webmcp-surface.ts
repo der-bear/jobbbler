@@ -5,9 +5,7 @@ type Listener = () => void;
 let currentSurface: ApplicationToolDependencies | null = null;
 const listeners = new Set<Listener>();
 
-export function publishApplicationWebMcpSurface(
-  surface: ApplicationToolDependencies | null,
-): void {
+export function publishApplicationWebMcpSurface(surface: ApplicationToolDependencies | null): void {
   currentSurface = surface;
   listeners.forEach((listener) => listener());
 }

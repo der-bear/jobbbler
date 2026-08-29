@@ -246,16 +246,15 @@ describe("SQLite application authorization persistence", () => {
       withdrawnAt: null,
     };
     await expect(storage.richDataGrants.insert(grant)).resolves.toEqual({ ...grant, version: 0 });
-    await expect(storage.richDataGrants.getById(grant.id, ownerId, draftId)).resolves.toEqual(
-      { ...grant, version: 0 },
-    );
+    await expect(storage.richDataGrants.getById(grant.id, ownerId, draftId)).resolves.toEqual({
+      ...grant,
+      version: 0,
+    });
     await storage.richDataGrants.approve(grant.id, ownerId, draftId, now);
     await expect(storage.richDataGrants.listByDraft(ownerId, draftId)).resolves.toEqual([
       { ...grant, status: "active", approvedAt: now, version: 1 },
     ]);
-    await expect(storage.richDataGrants.listByDraft(otherOwnerId, draftId)).resolves.toEqual(
-      [],
-    );
+    await expect(storage.richDataGrants.listByDraft(otherOwnerId, draftId)).resolves.toEqual([]);
 
     const match = {
       ownerId,
@@ -282,7 +281,9 @@ describe("SQLite application authorization persistence", () => {
     ).resolves.toBeNull();
     await expect(storage.richDataGrants.getCurrent({ ...match, now: future })).resolves.toBeNull();
 
-    await expect(storage.richDataGrants.withdraw(grant.id, ownerId, draftId, now)).resolves.toMatchObject({
+    await expect(
+      storage.richDataGrants.withdraw(grant.id, ownerId, draftId, now),
+    ).resolves.toMatchObject({
       status: "withdrawn",
       version: 2,
     });
@@ -456,12 +457,15 @@ describe("SQLite application authorization persistence", () => {
 
   it("atomically invalidates stale authorization artifacts after a material edit", async () => {
     const { storage } = await createFixture();
-    const reviewed = await storage.applications.update({
-      ...(await storage.applications.getByOwner(draftId, ownerId))!,
-      state: "reviewed",
-      version: 1,
-      updatedAt: now,
-    }, 0);
+    const reviewed = await storage.applications.update(
+      {
+        ...(await storage.applications.getByOwner(draftId, ownerId))!,
+        state: "reviewed",
+        version: 1,
+        updatedAt: now,
+      },
+      0,
+    );
     const review = {
       id: "review_71000000-0000-7000-8000-000000000001",
       ownerId,
@@ -508,16 +512,26 @@ describe("SQLite application authorization persistence", () => {
     await storage.richDataGrants.insert(grant);
 
     await expect(storage.applications.getLatestReview(draftId, ownerId)).resolves.toEqual(review);
-    await expect(storage.richDataGrants.withdraw(grant.id, ownerId, draftId, now)).resolves.toMatchObject({ version: 1 });
-    await expect(storage.applications.getConfirmation(confirmation.id, ownerId)).resolves.toMatchObject({ status: "invalidated" });
-    await expect(storage.richDataGrants.insert({ ...grant, id: "grant_71000000-0000-7000-8000-000000000019" })).resolves.toMatchObject({ version: 0 });
-    await expect(storage.applications.applyMaterialEdit({
-      ownerId: otherOwnerId,
-      expectedVersion: reviewed.version,
-      draft: { ...reviewed, state: "draft", version: reviewed.version + 1, updatedAt: future },
-      now: future,
-    })).rejects.toMatchObject({ code: "VALIDATION" });
-    await expect(storage.applications.getReview(review.id, ownerId)).resolves.toMatchObject({ status: "active" });
+    await expect(
+      storage.richDataGrants.withdraw(grant.id, ownerId, draftId, now),
+    ).resolves.toMatchObject({ version: 1 });
+    await expect(
+      storage.applications.getConfirmation(confirmation.id, ownerId),
+    ).resolves.toMatchObject({ status: "invalidated" });
+    await expect(
+      storage.richDataGrants.insert({ ...grant, id: "grant_71000000-0000-7000-8000-000000000019" }),
+    ).resolves.toMatchObject({ version: 0 });
+    await expect(
+      storage.applications.applyMaterialEdit({
+        ownerId: otherOwnerId,
+        expectedVersion: reviewed.version,
+        draft: { ...reviewed, state: "draft", version: reviewed.version + 1, updatedAt: future },
+        now: future,
+      }),
+    ).rejects.toMatchObject({ code: "VALIDATION" });
+    await expect(storage.applications.getReview(review.id, ownerId)).resolves.toMatchObject({
+      status: "active",
+    });
     const edited = await storage.applications.applyMaterialEdit({
       ownerId,
       expectedVersion: reviewed.version,
@@ -530,7 +544,9 @@ describe("SQLite application authorization persistence", () => {
       status: "invalidated",
       invalidatedAt: future,
     });
-    await expect(storage.applications.getConfirmation(confirmation.id, ownerId)).resolves.toMatchObject({
+    await expect(
+      storage.applications.getConfirmation(confirmation.id, ownerId),
+    ).resolves.toMatchObject({
       status: "invalidated",
     });
     await expect(storage.richDataGrants.getById(grant.id, ownerId, draftId)).resolves.toBeNull();
@@ -552,71 +568,132 @@ describe("SQLite application authorization persistence", () => {
       invalidatedAt: null,
     };
 
-    await expect(storage.applications.sealReview({
-      ownerId,
-      expectedVersion: draft.version,
-      draft: { ...draft, state: "reviewed", version: draft.version + 1, updatedAt: now },
-      review,
-    })).resolves.toMatchObject({ draft: { state: "reviewed", version: 1 }, review });
+    await expect(
+      storage.applications.sealReview({
+        ownerId,
+        expectedVersion: draft.version,
+        draft: { ...draft, state: "reviewed", version: draft.version + 1, updatedAt: now },
+        review,
+      }),
+    ).resolves.toMatchObject({ draft: { state: "reviewed", version: 1 }, review });
     await expect(storage.applications.getLatestReview(draftId, ownerId)).resolves.toEqual(review);
     storage.close();
   });
 
   it("commits submission only for the exact current review, confirmation, and disclosure grant", async () => {
     const { storage } = await createFixture();
-    const reviewed = await storage.applications.update({
-      ...(await storage.applications.getByOwner(draftId, ownerId))!,
-      state: "reviewed",
-      version: 1,
-      updatedAt: now,
-    }, 0);
-    const review = { id: "review_71000000-0000-7000-8000-000000000011", ownerId, draftId, draftVersion: reviewed.version, payloadHash: "3".repeat(64), findings: [], status: "active" as const, createdAt: now, invalidatedAt: null };
-    const confirmation = { id: "confirmation_71000000-0000-7000-8000-000000000011", ownerId, draftId, reviewId: review.id, payloadHash: review.payloadHash, confirmationHash: "4".repeat(64), status: "active" as const, expiresAt: future, createdAt: now, consumedAt: null };
-    const grant = { id: "grant_71000000-0000-7000-8000-000000000011", ownerId, draftId, recipientId: agentSessionId, purpose: "Submit the selected application.", payloadHash: review.payloadHash, categories: ["identity"] as const, fieldKeys: ["full_name"] as const, documentIds: [] as const, noticeVersion: "privacy-2026-08", legalBasis: "consent" as const, status: "active" as const, expiresAt: future, createdAt: now, approvedAt: now, withdrawnAt: null };
-    const receipt = { id: "receipt_71000000-0000-7000-8000-000000000011", ownerId, draftId, reviewId: review.id, confirmationId: confirmation.id, idempotencyKey: "submit-task9-once", status: "submitted" as const, externalUrl: null, createdAt: now };
+    const reviewed = await storage.applications.update(
+      {
+        ...(await storage.applications.getByOwner(draftId, ownerId))!,
+        state: "reviewed",
+        version: 1,
+        updatedAt: now,
+      },
+      0,
+    );
+    const review = {
+      id: "review_71000000-0000-7000-8000-000000000011",
+      ownerId,
+      draftId,
+      draftVersion: reviewed.version,
+      payloadHash: "3".repeat(64),
+      findings: [],
+      status: "active" as const,
+      createdAt: now,
+      invalidatedAt: null,
+    };
+    const confirmation = {
+      id: "confirmation_71000000-0000-7000-8000-000000000011",
+      ownerId,
+      draftId,
+      reviewId: review.id,
+      payloadHash: review.payloadHash,
+      confirmationHash: "4".repeat(64),
+      status: "active" as const,
+      expiresAt: future,
+      createdAt: now,
+      consumedAt: null,
+    };
+    const grant = {
+      id: "grant_71000000-0000-7000-8000-000000000011",
+      ownerId,
+      draftId,
+      recipientId: agentSessionId,
+      purpose: "Submit the selected application.",
+      payloadHash: review.payloadHash,
+      categories: ["identity"] as const,
+      fieldKeys: ["full_name"] as const,
+      documentIds: [] as const,
+      noticeVersion: "privacy-2026-08",
+      legalBasis: "consent" as const,
+      status: "active" as const,
+      expiresAt: future,
+      createdAt: now,
+      approvedAt: now,
+      withdrawnAt: null,
+    };
+    const receipt = {
+      id: "receipt_71000000-0000-7000-8000-000000000011",
+      ownerId,
+      draftId,
+      reviewId: review.id,
+      confirmationId: confirmation.id,
+      idempotencyKey: "submit-task9-once",
+      status: "submitted" as const,
+      externalUrl: null,
+      createdAt: now,
+    };
     await storage.applications.insertReview(review);
     await storage.applications.insertConfirmation(confirmation);
     await storage.richDataGrants.insert(grant);
 
-    await expect(storage.applications.completeSubmission({
-      ownerId,
-      draftId,
-      expectedDraftVersion: reviewed.version,
-      reviewId: review.id,
-      reviewPayloadHash: review.payloadHash,
-      confirmationId: confirmation.id,
-      confirmationHash: confirmation.confirmationHash,
-      grant: { ...grant, version: 0, categories: ["contact"] },
-      receipt,
-      now,
-    })).rejects.toMatchObject({ code: "CONFLICT" });
-    await expect(storage.applications.getConfirmation(confirmation.id, ownerId)).resolves.toMatchObject({ status: "active" });
+    await expect(
+      storage.applications.completeSubmission({
+        ownerId,
+        draftId,
+        expectedDraftVersion: reviewed.version,
+        reviewId: review.id,
+        reviewPayloadHash: review.payloadHash,
+        confirmationId: confirmation.id,
+        confirmationHash: confirmation.confirmationHash,
+        grant: { ...grant, version: 0, categories: ["contact"] },
+        receipt,
+        now,
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(
+      storage.applications.getConfirmation(confirmation.id, ownerId),
+    ).resolves.toMatchObject({ status: "active" });
     await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toBeNull();
-    await expect(storage.applications.completeSubmission({
-      ownerId,
-      draftId,
-      expectedDraftVersion: reviewed.version,
-      reviewId: review.id,
-      reviewPayloadHash: review.payloadHash,
-      confirmationId: confirmation.id,
-      confirmationHash: confirmation.confirmationHash,
-      grant: { ...grant, version: 0 },
-      receipt,
-      now,
-    })).resolves.toMatchObject({ draft: { state: "submitted", version: 2 }, receipt });
+    await expect(
+      storage.applications.completeSubmission({
+        ownerId,
+        draftId,
+        expectedDraftVersion: reviewed.version,
+        reviewId: review.id,
+        reviewPayloadHash: review.payloadHash,
+        confirmationId: confirmation.id,
+        confirmationHash: confirmation.confirmationHash,
+        grant: { ...grant, version: 0 },
+        receipt,
+        now,
+      }),
+    ).resolves.toMatchObject({ draft: { state: "submitted", version: 2 }, receipt });
     await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toEqual(receipt);
-    await expect(storage.applications.completeSubmission({
-      ownerId,
-      draftId,
-      expectedDraftVersion: reviewed.version,
-      reviewId: review.id,
-      reviewPayloadHash: review.payloadHash,
-      confirmationId: confirmation.id,
-      confirmationHash: confirmation.confirmationHash,
-      grant: { ...grant, version: 0 },
-      receipt: { ...receipt, id: "receipt_71000000-0000-7000-8000-000000000012" },
-      now,
-    })).resolves.toMatchObject({ receipt });
+    await expect(
+      storage.applications.completeSubmission({
+        ownerId,
+        draftId,
+        expectedDraftVersion: reviewed.version,
+        reviewId: review.id,
+        reviewPayloadHash: review.payloadHash,
+        confirmationId: confirmation.id,
+        confirmationHash: confirmation.confirmationHash,
+        grant: { ...grant, version: 0 },
+        receipt: { ...receipt, id: "receipt_71000000-0000-7000-8000-000000000012" },
+        now,
+      }),
+    ).resolves.toMatchObject({ receipt });
     storage.close();
   });
 });

@@ -211,49 +211,49 @@ export function OwnerPrivacyControls({ owner, onRecovered, onDeleted }: OwnerPri
         </div>
         {deletionId === null ? (
           <form className={styles["form"]} onSubmit={(event) => void startDeletion(event)}>
-          <label>
-            <span>
-              Type <strong>DELETE MY PRIVATE DATA</strong>
-            </span>
-            <input
-              autoComplete="off"
-              onChange={(event) => setDeletionPhrase(event.target.value)}
-              required
-              value={deletionPhrase}
-            />
-          </label>
-          <button disabled={busy || deletionPhrase !== "DELETE MY PRIVATE DATA"} type="submit">
-            Continue to final confirmation
-          </button>
-        </form>
-      ) : (
-        <form className={styles["form"]} onSubmit={(event) => void completeDeletion(event)}>
-          <p className={styles["warning"]} role="alert">
-            Final step. This cannot be undone. Type <strong>DELETE</strong> to remove the workspace
-            now.
-          </p>
-          <label>
-            <span>Final confirmation</span>
-            <input
-              autoComplete="off"
-              onChange={(event) => setFinalPhrase(event.target.value)}
-              required
-              value={finalPhrase}
-            />
-          </label>
-          <div className={styles["actions"]}>
-            <button
-              className={styles["quiet"]}
-              disabled={busy}
-              onClick={() => setDeletionId(null)}
-              type="button"
-            >
-              Cancel
+            <label>
+              <span>
+                Type <strong>DELETE MY PRIVATE DATA</strong>
+              </span>
+              <input
+                autoComplete="off"
+                onChange={(event) => setDeletionPhrase(event.target.value)}
+                required
+                value={deletionPhrase}
+              />
+            </label>
+            <button disabled={busy || deletionPhrase !== "DELETE MY PRIVATE DATA"} type="submit">
+              Continue to final confirmation
             </button>
-            <button disabled={busy || finalPhrase !== "DELETE"} type="submit">
-              Delete all private data
-            </button>
-          </div>
+          </form>
+        ) : (
+          <form className={styles["form"]} onSubmit={(event) => void completeDeletion(event)}>
+            <p className={styles["warning"]} role="alert">
+              Final step. This cannot be undone. Type <strong>DELETE</strong> to remove the
+              workspace now.
+            </p>
+            <label>
+              <span>Final confirmation</span>
+              <input
+                autoComplete="off"
+                onChange={(event) => setFinalPhrase(event.target.value)}
+                required
+                value={finalPhrase}
+              />
+            </label>
+            <div className={styles["actions"]}>
+              <button
+                className={styles["quiet"]}
+                disabled={busy}
+                onClick={() => setDeletionId(null)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button disabled={busy || finalPhrase !== "DELETE"} type="submit">
+                Delete all private data
+              </button>
+            </div>
           </form>
         )}
         {error === null ? null : (

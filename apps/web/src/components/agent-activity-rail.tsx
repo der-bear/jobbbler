@@ -62,10 +62,7 @@ function toolCountLabel(count: number): string {
   return `${String(count)} action${count === 1 ? "" : "s"} available on this page`;
 }
 
-function disclosureStatus(
-  activities: readonly ToolActivity[],
-  webMcpAvailable: boolean,
-): string {
+function disclosureStatus(activities: readonly ToolActivity[], webMcpAvailable: boolean): string {
   if (activities.some((activity) => activity.status === "requires_user_action")) {
     return "Approval needed";
   }

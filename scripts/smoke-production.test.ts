@@ -71,7 +71,9 @@ describe("production smoke", () => {
   it("fails closed when readiness does not report a populated database", async () => {
     const request = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(new Response("<title>Jobbbler</title>", { headers: { "content-type": "text/html" } }))
+      .mockResolvedValueOnce(
+        new Response("<title>Jobbbler</title>", { headers: { "content-type": "text/html" } }),
+      )
       .mockResolvedValueOnce(jsonResponse({ ok: true, data: { status: "live" } }))
       .mockResolvedValueOnce(
         jsonResponse({

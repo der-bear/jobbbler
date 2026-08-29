@@ -8,9 +8,5 @@ export async function DELETE(
   request: Request,
   context: { readonly params: Promise<{ readonly endpointId: string }> },
 ): Promise<Response> {
-  return handleRevokeVerificationEndpointRequest(
-    request,
-    context,
-    getIdentityRouteDependencies(),
-  );
+  return handleRevokeVerificationEndpointRequest(request, context, getIdentityRouteDependencies());
 }

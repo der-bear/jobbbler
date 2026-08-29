@@ -15,17 +15,23 @@ export interface PostgresMigration {
 }
 
 export function defaultPostgresMigrationDirectory(): string {
-  const fromModule = resolve(dirname(fileURLToPath(import.meta.url)), "../../../migrations/postgres");
+  const fromModule = resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../../migrations/postgres",
+  );
   return existsSync(fromModule) ? fromModule : resolve(process.cwd(), "migrations/postgres");
 }
 
-export function postgresMigrationManifest(directory = defaultPostgresMigrationDirectory()): PostgresMigration[] {
+export function postgresMigrationManifest(
+  directory = defaultPostgresMigrationDirectory(),
+): PostgresMigration[] {
   return readdirSync(directory)
     .filter((filename) => migrationPattern.test(filename))
     .sort((left, right) => left.localeCompare(right))
     .map((filename) => {
       const match = migrationPattern.exec(filename);
-      if (match?.groups === undefined) throw new Error(`Invalid PostgreSQL migration filename: ${filename}`);
+      if (match?.groups === undefined)
+        throw new Error(`Invalid PostgreSQL migration filename: ${filename}`);
       const sql = readFileSync(join(directory, filename), "utf8");
       return {
         version: Number(match.groups["version"]),
@@ -52,7 +58,9 @@ export async function migratePostgres(
         SELECT name, checksum FROM jobbbler.schema_migrations WHERE version = ${migration.version}`;
       if (existing[0] !== undefined) {
         if (existing[0].name !== migration.name || existing[0].checksum !== migration.checksum) {
-          throw new Error(`Applied PostgreSQL migration ${migration.version} does not match its source file.`);
+          throw new Error(
+            `Applied PostgreSQL migration ${migration.version} does not match its source file.`,
+          );
         }
         return;
       }

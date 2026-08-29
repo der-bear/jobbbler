@@ -212,8 +212,7 @@ function requestAccessTool(
         emptyInput.parse(input);
         const { request } = await dependencies.requestAgentAccess(operations, { signal });
         return requiresUserActionWebMcpResult({
-          summary:
-            "Application assistance is ready for the user's decision in the agent client.",
+          summary: "Application assistance is ready for the user's decision in the agent client.",
           kind: "agent_authorization",
           surface: "application_authorization",
           requestId: request.id,
@@ -561,7 +560,9 @@ export function createApplicationToolManifests(
     tools.push(approvePermissionTool(dependencies));
   } else if (state.stage === "confirmation") {
     if (state.finalConfirmationReady) {
-      tools.push(allowsAgentSubmission ? submitTool(dependencies) : externalHandoffTool(dependencies));
+      tools.push(
+        allowsAgentSubmission ? submitTool(dependencies) : externalHandoffTool(dependencies),
+      );
     } else {
       tools.push(confirmationTool(dependencies), confirmApplicationTool(dependencies));
     }

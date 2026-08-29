@@ -36,10 +36,16 @@ import type {
   SourceReconciliationResult,
   WorkItemRecord,
   WorkItemPutResult,
-  ApplicationReviewRecord, ApplicationConfirmationRecord, ApplicationReceiptRecord, ApplicationReceiptPutResult,
-  MaterialApplicationEditInput, SealApplicationReviewInput, CompleteApplicationSubmissionInput,
+  ApplicationReviewRecord,
+  ApplicationConfirmationRecord,
+  ApplicationReceiptRecord,
+  ApplicationReceiptPutResult,
+  MaterialApplicationEditInput,
+  SealApplicationReviewInput,
+  CompleteApplicationSubmissionInput,
   CompleteApplicationSubmissionResult,
-  AgentDelegationRecord, DataGrantRecord,
+  AgentDelegationRecord,
+  DataGrantRecord,
   ActiveDelegationMatchInput,
   ApproveRichDataGrantInput,
   AgentSessionRecord,
@@ -106,17 +112,36 @@ export interface ApplicationRepository {
   getLatestReview(draftId: string, ownerId: string): Promise<ApplicationReviewRecord | null>;
   getLatestReceipt(draftId: string, ownerId: string): Promise<ApplicationReceiptRecord | null>;
   applyMaterialEdit(input: MaterialApplicationEditInput): Promise<ApplicationDraft>;
-  sealReview(input: SealApplicationReviewInput): Promise<{ readonly draft: ApplicationDraft; readonly review: ApplicationReviewRecord }>;
-  completeSubmission(input: CompleteApplicationSubmissionInput): Promise<CompleteApplicationSubmissionResult>;
+  sealReview(
+    input: SealApplicationReviewInput,
+  ): Promise<{ readonly draft: ApplicationDraft; readonly review: ApplicationReviewRecord }>;
+  completeSubmission(
+    input: CompleteApplicationSubmissionInput,
+  ): Promise<CompleteApplicationSubmissionResult>;
   insertReview(record: ApplicationReviewRecord): Promise<ApplicationReviewRecord>;
   getReview(id: string, ownerId: string): Promise<ApplicationReviewRecord | null>;
-  invalidateReview(id: string, ownerId: string, invalidatedAt: string): Promise<ApplicationReviewRecord>;
+  invalidateReview(
+    id: string,
+    ownerId: string,
+    invalidatedAt: string,
+  ): Promise<ApplicationReviewRecord>;
   insertConfirmation(record: ApplicationConfirmationRecord): Promise<ApplicationConfirmationRecord>;
   getConfirmation(id: string, ownerId: string): Promise<ApplicationConfirmationRecord | null>;
   invalidateConfirmation(id: string, ownerId: string): Promise<ApplicationConfirmationRecord>;
-  consumeConfirmation(id: string, ownerId: string, confirmationHash: string, consumedAt: string): Promise<ApplicationConfirmationRecord>;
+  consumeConfirmation(
+    id: string,
+    ownerId: string,
+    confirmationHash: string,
+    consumedAt: string,
+  ): Promise<ApplicationConfirmationRecord>;
   putReceiptIfAbsent(record: ApplicationReceiptRecord): Promise<ApplicationReceiptPutResult>;
-  consumeAndPutReceipt(input: { readonly confirmationId: string; readonly ownerId: string; readonly confirmationHash: string; readonly consumedAt: string; readonly receipt: ApplicationReceiptRecord }): Promise<ApplicationReceiptPutResult>;
+  consumeAndPutReceipt(input: {
+    readonly confirmationId: string;
+    readonly ownerId: string;
+    readonly confirmationHash: string;
+    readonly consumedAt: string;
+    readonly receipt: ApplicationReceiptRecord;
+  }): Promise<ApplicationReceiptPutResult>;
 }
 
 export interface DelegationRepository {
@@ -127,7 +152,12 @@ export interface DelegationRepository {
   approve(id: string, ownerId: string, approvedAt: string): Promise<AgentDelegationRecord>;
   revoke(id: string, ownerId: string, revokedAt: string): Promise<AgentDelegationRecord>;
 }
-export interface DataGrantRepository { insert(record: DataGrantRecord): Promise<DataGrantRecord>; getById(id: string, ownerId: string): Promise<DataGrantRecord | null>; approve(id: string, ownerId: string, approvedAt: string): Promise<DataGrantRecord>; withdraw(id: string, ownerId: string, withdrawnAt: string): Promise<DataGrantRecord>; }
+export interface DataGrantRepository {
+  insert(record: DataGrantRecord): Promise<DataGrantRecord>;
+  getById(id: string, ownerId: string): Promise<DataGrantRecord | null>;
+  approve(id: string, ownerId: string, approvedAt: string): Promise<DataGrantRecord>;
+  withdraw(id: string, ownerId: string, withdrawnAt: string): Promise<DataGrantRecord>;
+}
 export interface AgentSessionRepository {
   insert(record: AgentSessionRecord): Promise<AgentSessionRecord>;
   getById(id: string, ownerId: string, draftId: string): Promise<AgentSessionRecord | null>;
@@ -145,18 +175,8 @@ export interface RichDataGrantRepository {
   listByDraft(ownerId: string, draftId: string): Promise<RichDataGrantRecord[]>;
   getCurrent(input: RichDataGrantMatchInput): Promise<RichDataGrantRecord | null>;
   approveCurrent(input: ApproveRichDataGrantInput): Promise<RichDataGrantRecord>;
-  approve(
-    id: string,
-    ownerId: string,
-    draftId: string,
-    at: string,
-  ): Promise<RichDataGrantRecord>;
-  withdraw(
-    id: string,
-    ownerId: string,
-    draftId: string,
-    at: string,
-  ): Promise<RichDataGrantRecord>;
+  approve(id: string, ownerId: string, draftId: string, at: string): Promise<RichDataGrantRecord>;
+  withdraw(id: string, ownerId: string, draftId: string, at: string): Promise<RichDataGrantRecord>;
 }
 
 export interface WorkItemRepository {

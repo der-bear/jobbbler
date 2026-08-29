@@ -131,8 +131,7 @@ describe("application authorization contracts", () => {
 
     expect(state.stage).toBe("permission");
     expect(
-      applicationAgentStateSchema.safeParse({ ...state, answers: [{ fieldKey: "email" }] })
-        .success,
+      applicationAgentStateSchema.safeParse({ ...state, answers: [{ fieldKey: "email" }] }).success,
     ).toBe(false);
   });
 });

@@ -307,7 +307,10 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
       await current.schedules.insert(schedule);
 
       await expect(
-        current.schedules.insert({ ...schedule, id: "schedule_550e8400-e29b-41d4-a716-446655440013" }),
+        current.schedules.insert({
+          ...schedule,
+          id: "schedule_550e8400-e29b-41d4-a716-446655440013",
+        }),
       ).rejects.toMatchObject({ code: "CONFLICT" });
     });
 
@@ -552,9 +555,11 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
         retryAfterSeconds: 60,
         resetAtMs: 61_000,
       });
-      await expect(
-        current.rateLimits.check({ ...input, nowMs: 61_000 }),
-      ).resolves.toMatchObject({ allowed: true, remaining: 1, resetAtMs: 121_000 });
+      await expect(current.rateLimits.check({ ...input, nowMs: 61_000 })).resolves.toMatchObject({
+        allowed: true,
+        remaining: 1,
+        resetAtMs: 121_000,
+      });
     });
 
     it("renews only the active owner's lease", async () => {
@@ -766,7 +771,11 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
       expect(first.sequence).toBeGreaterThan(0);
       expect(second.sequence).toBeGreaterThan(first.sequence);
       expect(
-        await current.ownerActivity.listWindow({ ownerId: owner.id, afterSequence: null, limit: 10 }),
+        await current.ownerActivity.listWindow({
+          ownerId: owner.id,
+          afterSequence: null,
+          limit: 10,
+        }),
       ).toEqual({ events: [first, second], hasMore: false, latestSequence: second.sequence });
       expect(
         await current.ownerActivity.listWindow({
@@ -785,7 +794,11 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
       await expect(
         current.ownerActivity.append({
           ownerId: owner.id,
-          event: { ...first.event, id: "activity_550e8400-e29b-41d4-a716-446655440003", safeSummary: "Token=private-secret-with-at-least-thirty-two-characters" },
+          event: {
+            ...first.event,
+            id: "activity_550e8400-e29b-41d4-a716-446655440003",
+            safeSummary: "Token=private-secret-with-at-least-thirty-two-characters",
+          },
         }),
       ).rejects.toThrow();
     });

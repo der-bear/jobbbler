@@ -21,7 +21,10 @@ function realtimeConnectSources(value: string | undefined): readonly string[] {
 }
 
 function productionContentSecurityPolicy(environment: RuntimeEnvironment): string {
-  const connectSources = ["'self'", ...realtimeConnectSources(environment["NEXT_PUBLIC_SUPABASE_URL"])];
+  const connectSources = [
+    "'self'",
+    ...realtimeConnectSources(environment["NEXT_PUBLIC_SUPABASE_URL"]),
+  ];
   return [
     "default-src 'self'",
     "base-uri 'self'",

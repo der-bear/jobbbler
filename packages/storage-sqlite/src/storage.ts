@@ -24,8 +24,12 @@ import type {
   ScheduleRecord,
   Storage,
   WorkItemRecord,
-  ApplicationReviewRecord, ApplicationConfirmationRecord, ApplicationReceiptRecord,
-  MaterialApplicationEditInput, SealApplicationReviewInput, CompleteApplicationSubmissionInput,
+  ApplicationReviewRecord,
+  ApplicationConfirmationRecord,
+  ApplicationReceiptRecord,
+  MaterialApplicationEditInput,
+  SealApplicationReviewInput,
+  CompleteApplicationSubmissionInput,
   CompleteApplicationSubmissionResult,
   ActiveDelegationMatchInput,
   ApproveRichDataGrantInput,
@@ -368,12 +372,67 @@ function applicationRecord<T>(row: Record<string, unknown>): T {
   return parsed as T;
 }
 
-function capabilityBase<T>(database: SqliteDatabase, table: "application_delegation_records" | "application_data_grant_records", arrayColumn: "operations_json" | "fields_json", arrayKey: "operations" | "fields") {
-  const columns = table === "application_delegation_records" ? "id,owner_id,agent_id,resource_type,resource_id,operations_json,purpose,status,expires_at,created_at,approved_at,revoked_at" : "id,owner_id,recipient_id,purpose,payload_hash,fields_json,status,expires_at,created_at,approved_at,withdrawn_at";
+function capabilityBase<T>(
+  database: SqliteDatabase,
+  table: "application_delegation_records" | "application_data_grant_records",
+  arrayColumn: "operations_json" | "fields_json",
+  arrayKey: "operations" | "fields",
+) {
+  const columns =
+    table === "application_delegation_records"
+      ? "id,owner_id,agent_id,resource_type,resource_id,operations_json,purpose,status,expires_at,created_at,approved_at,revoked_at"
+      : "id,owner_id,recipient_id,purpose,payload_hash,fields_json,status,expires_at,created_at,approved_at,withdrawn_at";
   return {
-    insert(record: T) { const value = record as Record<string, unknown>; const params: Record<string, unknown> = { ...value }; params[arrayColumn.replace(/_json$/, "").replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase()) + "Json"] = json(value[arrayKey]); database.prepare(`INSERT INTO ${table}(${columns}) VALUES(${columns.split(",").map((column) => `@${column.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase())}`).join(",")})`).run(params); return record; },
-    getById(id: string, ownerId: string): T | null { const row=database.prepare(`SELECT * FROM ${table} WHERE id=? AND owner_id=?`).get(id,ownerId) as Record<string,unknown>|undefined; return row === undefined ? null : applicationRecord<T>(row); },
-    transition(id: string, ownerId: string, from: string, to: string, atColumn: string, at: string): T { const result=database.prepare(`UPDATE ${table} SET status=?, ${atColumn}=? WHERE id=? AND owner_id=? AND status=?`).run(to,at,id,ownerId,from); if(result.changes!==1) throw new DomainError({code:"CONFLICT",message:"Capability is not in the required state for owner."}); const row=database.prepare(`SELECT * FROM ${table} WHERE id=? AND owner_id=?`).get(id,ownerId) as Record<string,unknown>; return applicationRecord<T>(row); },
+    insert(record: T) {
+      const value = record as Record<string, unknown>;
+      const params: Record<string, unknown> = { ...value };
+      params[
+        arrayColumn
+          .replace(/_json$/, "")
+          .replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase()) + "Json"
+      ] = json(value[arrayKey]);
+      database
+        .prepare(
+          `INSERT INTO ${table}(${columns}) VALUES(${columns
+            .split(",")
+            .map(
+              (column) =>
+                `@${column.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase())}`,
+            )
+            .join(",")})`,
+        )
+        .run(params);
+      return record;
+    },
+    getById(id: string, ownerId: string): T | null {
+      const row = database
+        .prepare(`SELECT * FROM ${table} WHERE id=? AND owner_id=?`)
+        .get(id, ownerId) as Record<string, unknown> | undefined;
+      return row === undefined ? null : applicationRecord<T>(row);
+    },
+    transition(
+      id: string,
+      ownerId: string,
+      from: string,
+      to: string,
+      atColumn: string,
+      at: string,
+    ): T {
+      const result = database
+        .prepare(
+          `UPDATE ${table} SET status=?, ${atColumn}=? WHERE id=? AND owner_id=? AND status=?`,
+        )
+        .run(to, at, id, ownerId, from);
+      if (result.changes !== 1)
+        throw new DomainError({
+          code: "CONFLICT",
+          message: "Capability is not in the required state for owner.",
+        });
+      const row = database
+        .prepare(`SELECT * FROM ${table} WHERE id=? AND owner_id=?`)
+        .get(id, ownerId) as Record<string, unknown>;
+      return applicationRecord<T>(row);
+    },
   };
 }
 
@@ -1004,71 +1063,408 @@ function createRepositories(
         if (row === undefined) throw notFound("Application draft");
         return applicationFromRow(row);
       },
-      async getByOwner(id, ownerId) { const row = database.prepare("SELECT * FROM application_drafts WHERE id = ? AND owner_id = ?").get(id, ownerId) as ApplicationRow | undefined; return row === undefined ? null : applicationFromRow(row); },
-      async getByOwnerAndJob(ownerId, jobId) { const row = database.prepare("SELECT * FROM application_drafts WHERE owner_id=? AND job_id=? ORDER BY created_at DESC, id DESC LIMIT 1").get(ownerId, jobId) as ApplicationRow | undefined; return row === undefined ? null : applicationFromRow(row); },
-      async getLatestReview(draftId, ownerId) { const row = database.prepare("SELECT * FROM application_review_records WHERE draft_id=? AND owner_id=? ORDER BY created_at DESC, id DESC LIMIT 1").get(draftId, ownerId) as Record<string, unknown> | undefined; return row === undefined ? null : applicationRecord<ApplicationReviewRecord>(row); },
-      async getLatestReceipt(draftId, ownerId) { const row = database.prepare("SELECT * FROM application_submission_receipts WHERE draft_id=? AND owner_id=? ORDER BY created_at DESC, id DESC LIMIT 1").get(draftId, ownerId) as Record<string, unknown> | undefined; return row === undefined ? null : applicationRecord<ApplicationReceiptRecord>(row); },
+      async getByOwner(id, ownerId) {
+        const row = database
+          .prepare("SELECT * FROM application_drafts WHERE id = ? AND owner_id = ?")
+          .get(id, ownerId) as ApplicationRow | undefined;
+        return row === undefined ? null : applicationFromRow(row);
+      },
+      async getByOwnerAndJob(ownerId, jobId) {
+        const row = database
+          .prepare(
+            "SELECT * FROM application_drafts WHERE owner_id=? AND job_id=? ORDER BY created_at DESC, id DESC LIMIT 1",
+          )
+          .get(ownerId, jobId) as ApplicationRow | undefined;
+        return row === undefined ? null : applicationFromRow(row);
+      },
+      async getLatestReview(draftId, ownerId) {
+        const row = database
+          .prepare(
+            "SELECT * FROM application_review_records WHERE draft_id=? AND owner_id=? ORDER BY created_at DESC, id DESC LIMIT 1",
+          )
+          .get(draftId, ownerId) as Record<string, unknown> | undefined;
+        return row === undefined ? null : applicationRecord<ApplicationReviewRecord>(row);
+      },
+      async getLatestReceipt(draftId, ownerId) {
+        const row = database
+          .prepare(
+            "SELECT * FROM application_submission_receipts WHERE draft_id=? AND owner_id=? ORDER BY created_at DESC, id DESC LIMIT 1",
+          )
+          .get(draftId, ownerId) as Record<string, unknown> | undefined;
+        return row === undefined ? null : applicationRecord<ApplicationReceiptRecord>(row);
+      },
       async applyMaterialEdit(input: MaterialApplicationEditInput) {
         const parsed = applicationDraftSchema.parse(input.draft);
-        if (parsed.ownerId !== input.ownerId || parsed.version !== input.expectedVersion + 1) throw new DomainError({ code: "VALIDATION", message: "Material edit must advance the owned draft by one version." });
+        if (parsed.ownerId !== input.ownerId || parsed.version !== input.expectedVersion + 1)
+          throw new DomainError({
+            code: "VALIDATION",
+            message: "Material edit must advance the owned draft by one version.",
+          });
         const apply = database.transaction(() => {
-          const changed = database.prepare("UPDATE application_drafts SET state=@state, answers_json=@answersJson, version=version+1, updated_at=@updatedAt WHERE id=@id AND owner_id=@ownerId AND version=@expectedVersion").run({ ...parsed, answersJson: json(parsed.answers), expectedVersion: input.expectedVersion });
-          if (changed.changes !== 1) throw new DomainError({ code: "CONFLICT", message: "Application draft changed before this material edit." });
-          database.prepare("UPDATE application_review_records SET status='invalidated', invalidated_at=? WHERE owner_id=? AND draft_id=? AND status='active'").run(input.now, input.ownerId, parsed.id);
-          database.prepare("UPDATE application_confirmation_records SET status='invalidated' WHERE owner_id=? AND draft_id=? AND status='active'").run(input.ownerId, parsed.id);
-          database.prepare("DELETE FROM application_data_grant_bindings WHERE owner_id=? AND draft_id=?").run(input.ownerId, parsed.id);
-          const row = database.prepare("SELECT * FROM application_drafts WHERE id=? AND owner_id=?").get(parsed.id, input.ownerId) as ApplicationRow;
+          const changed = database
+            .prepare(
+              "UPDATE application_drafts SET state=@state, answers_json=@answersJson, version=version+1, updated_at=@updatedAt WHERE id=@id AND owner_id=@ownerId AND version=@expectedVersion",
+            )
+            .run({
+              ...parsed,
+              answersJson: json(parsed.answers),
+              expectedVersion: input.expectedVersion,
+            });
+          if (changed.changes !== 1)
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "Application draft changed before this material edit.",
+            });
+          database
+            .prepare(
+              "UPDATE application_review_records SET status='invalidated', invalidated_at=? WHERE owner_id=? AND draft_id=? AND status='active'",
+            )
+            .run(input.now, input.ownerId, parsed.id);
+          database
+            .prepare(
+              "UPDATE application_confirmation_records SET status='invalidated' WHERE owner_id=? AND draft_id=? AND status='active'",
+            )
+            .run(input.ownerId, parsed.id);
+          database
+            .prepare("DELETE FROM application_data_grant_bindings WHERE owner_id=? AND draft_id=?")
+            .run(input.ownerId, parsed.id);
+          const row = database
+            .prepare("SELECT * FROM application_drafts WHERE id=? AND owner_id=?")
+            .get(parsed.id, input.ownerId) as ApplicationRow;
           return applicationFromRow(row);
         });
         return apply();
       },
       async sealReview(input: SealApplicationReviewInput) {
         const parsed = applicationDraftSchema.parse(input.draft);
-        if (parsed.ownerId !== input.ownerId || parsed.state !== "reviewed" || parsed.version !== input.expectedVersion + 1 || input.review.ownerId !== input.ownerId || input.review.draftId !== parsed.id || input.review.draftVersion !== parsed.version || input.review.status !== "active") throw new DomainError({ code: "VALIDATION", message: "Review must seal exactly the next owned draft version." });
+        if (
+          parsed.ownerId !== input.ownerId ||
+          parsed.state !== "reviewed" ||
+          parsed.version !== input.expectedVersion + 1 ||
+          input.review.ownerId !== input.ownerId ||
+          input.review.draftId !== parsed.id ||
+          input.review.draftVersion !== parsed.version ||
+          input.review.status !== "active"
+        )
+          throw new DomainError({
+            code: "VALIDATION",
+            message: "Review must seal exactly the next owned draft version.",
+          });
         const seal = database.transaction(() => {
-          const changed = database.prepare("UPDATE application_drafts SET state=@state, answers_json=@answersJson, version=version+1, updated_at=@updatedAt WHERE id=@id AND owner_id=@ownerId AND version=@expectedVersion").run({ ...parsed, answersJson: json(parsed.answers), expectedVersion: input.expectedVersion });
-          if (changed.changes !== 1) throw new DomainError({ code: "CONFLICT", message: "Application draft changed before review sealing." });
-          database.prepare("INSERT INTO application_review_records(id,owner_id,draft_id,draft_version,payload_hash,findings_json,status,created_at,invalidated_at) VALUES(@id,@ownerId,@draftId,@draftVersion,@payloadHash,@findingsJson,@status,@createdAt,@invalidatedAt)").run({ ...input.review, findingsJson: json(input.review.findings) });
-          const row = database.prepare("SELECT * FROM application_drafts WHERE id=? AND owner_id=?").get(parsed.id, input.ownerId) as ApplicationRow;
+          const changed = database
+            .prepare(
+              "UPDATE application_drafts SET state=@state, answers_json=@answersJson, version=version+1, updated_at=@updatedAt WHERE id=@id AND owner_id=@ownerId AND version=@expectedVersion",
+            )
+            .run({
+              ...parsed,
+              answersJson: json(parsed.answers),
+              expectedVersion: input.expectedVersion,
+            });
+          if (changed.changes !== 1)
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "Application draft changed before review sealing.",
+            });
+          database
+            .prepare(
+              "INSERT INTO application_review_records(id,owner_id,draft_id,draft_version,payload_hash,findings_json,status,created_at,invalidated_at) VALUES(@id,@ownerId,@draftId,@draftVersion,@payloadHash,@findingsJson,@status,@createdAt,@invalidatedAt)",
+            )
+            .run({ ...input.review, findingsJson: json(input.review.findings) });
+          const row = database
+            .prepare("SELECT * FROM application_drafts WHERE id=? AND owner_id=?")
+            .get(parsed.id, input.ownerId) as ApplicationRow;
           return { draft: applicationFromRow(row), review: input.review };
         });
         return seal();
       },
-      async insertReview(record) { database.prepare("INSERT INTO application_review_records(id,owner_id,draft_id,draft_version,payload_hash,findings_json,status,created_at,invalidated_at) VALUES(@id,@ownerId,@draftId,@draftVersion,@payloadHash,@findingsJson,@status,@createdAt,@invalidatedAt)").run({ ...record, findingsJson: json(record.findings) }); return record; },
-      async getReview(id, ownerId) { const row = database.prepare("SELECT * FROM application_review_records WHERE id=? AND owner_id=?").get(id, ownerId) as Record<string, unknown> | undefined; return row === undefined ? null : applicationRecord<ApplicationReviewRecord>(row); },
-      async invalidateReview(id, ownerId, invalidatedAt) { const result = database.prepare("UPDATE application_review_records SET status='invalidated', invalidated_at=? WHERE id=? AND owner_id=? AND status='active'").run(invalidatedAt,id,ownerId); if (result.changes !== 1) throw new DomainError({ code:"CONFLICT", message:"Review is not active for owner." }); const row=database.prepare("SELECT * FROM application_review_records WHERE id=? AND owner_id=?").get(id,ownerId) as Record<string,unknown>; return applicationRecord<ApplicationReviewRecord>(row); },
-      async insertConfirmation(record) { database.prepare("INSERT INTO application_confirmation_records(id,owner_id,draft_id,review_id,payload_hash,confirmation_hash,status,expires_at,created_at,consumed_at) VALUES(@id,@ownerId,@draftId,@reviewId,@payloadHash,@confirmationHash,@status,@expiresAt,@createdAt,@consumedAt)").run(record); return record; },
-      async getConfirmation(id, ownerId) { const row=database.prepare("SELECT * FROM application_confirmation_records WHERE id=? AND owner_id=?").get(id,ownerId) as Record<string,unknown>|undefined; return row === undefined ? null : applicationRecord<ApplicationConfirmationRecord>(row); },
-      async invalidateConfirmation(id, ownerId) { const result=database.prepare("UPDATE application_confirmation_records SET status='invalidated' WHERE id=? AND owner_id=? AND status='active'").run(id,ownerId); if(result.changes!==1) throw new DomainError({code:"CONFLICT",message:"Confirmation is not active for owner."}); const row=database.prepare("SELECT * FROM application_confirmation_records WHERE id=? AND owner_id=?").get(id,ownerId) as Record<string,unknown>; return applicationRecord<ApplicationConfirmationRecord>(row); },
-      async consumeConfirmation(id, ownerId, confirmationHash, consumedAt) { const result=database.prepare("UPDATE application_confirmation_records SET status='consumed', consumed_at=? WHERE id=? AND owner_id=? AND confirmation_hash=? AND status='active' AND expires_at > ?").run(consumedAt,id,ownerId,confirmationHash,consumedAt); if(result.changes!==1) throw new DomainError({code:"CONFLICT",message:"Confirmation is invalid, expired, or already used."}); const row=database.prepare("SELECT * FROM application_confirmation_records WHERE id=? AND owner_id=?").get(id,ownerId) as Record<string,unknown>; return applicationRecord<ApplicationConfirmationRecord>(row); },
-      async putReceiptIfAbsent(record) { const found=database.prepare("SELECT * FROM application_submission_receipts WHERE owner_id=? AND draft_id=? AND idempotency_key=?").get(record.ownerId,record.draftId,record.idempotencyKey) as Record<string,unknown>|undefined; if(found) { const stored=applicationRecord<ApplicationReceiptRecord>(found); if (stored.reviewId !== record.reviewId || stored.confirmationId !== record.confirmationId) throw new DomainError({code:"CONFLICT",message:"Idempotency key is already bound to another review or confirmation."}); return {inserted:false,record:stored}; } database.prepare("INSERT INTO application_submission_receipts(id,owner_id,draft_id,review_id,confirmation_id,idempotency_key,status,external_url,created_at) VALUES(@id,@ownerId,@draftId,@reviewId,@confirmationId,@idempotencyKey,@status,@externalUrl,@createdAt)").run(record); return {inserted:true,record}; },
-      async consumeAndPutReceipt(input) { const submit=database.transaction(() => { const found=database.prepare("SELECT * FROM application_submission_receipts WHERE owner_id=? AND draft_id=? AND idempotency_key=?").get(input.receipt.ownerId,input.receipt.draftId,input.receipt.idempotencyKey) as Record<string,unknown>|undefined; if(found) return {inserted:false,record:applicationRecord<ApplicationReceiptRecord>(found)}; const used=database.prepare("UPDATE application_confirmation_records SET status='consumed', consumed_at=? WHERE id=? AND owner_id=? AND confirmation_hash=? AND status='active' AND expires_at>? ").run(input.consumedAt,input.confirmationId,input.ownerId,input.confirmationHash,input.consumedAt); if(used.changes!==1) throw new DomainError({code:"CONFLICT",message:"Confirmation is invalid, expired, or already used."}); database.prepare("INSERT INTO application_submission_receipts(id,owner_id,draft_id,review_id,confirmation_id,idempotency_key,status,external_url,created_at) VALUES(@id,@ownerId,@draftId,@reviewId,@confirmationId,@idempotencyKey,@status,@externalUrl,@createdAt)").run(input.receipt); return {inserted:true,record:input.receipt}; }); return submit(); },
-      async completeSubmission(input: CompleteApplicationSubmissionInput): Promise<CompleteApplicationSubmissionResult> {
+      async insertReview(record) {
+        database
+          .prepare(
+            "INSERT INTO application_review_records(id,owner_id,draft_id,draft_version,payload_hash,findings_json,status,created_at,invalidated_at) VALUES(@id,@ownerId,@draftId,@draftVersion,@payloadHash,@findingsJson,@status,@createdAt,@invalidatedAt)",
+          )
+          .run({ ...record, findingsJson: json(record.findings) });
+        return record;
+      },
+      async getReview(id, ownerId) {
+        const row = database
+          .prepare("SELECT * FROM application_review_records WHERE id=? AND owner_id=?")
+          .get(id, ownerId) as Record<string, unknown> | undefined;
+        return row === undefined ? null : applicationRecord<ApplicationReviewRecord>(row);
+      },
+      async invalidateReview(id, ownerId, invalidatedAt) {
+        const result = database
+          .prepare(
+            "UPDATE application_review_records SET status='invalidated', invalidated_at=? WHERE id=? AND owner_id=? AND status='active'",
+          )
+          .run(invalidatedAt, id, ownerId);
+        if (result.changes !== 1)
+          throw new DomainError({ code: "CONFLICT", message: "Review is not active for owner." });
+        const row = database
+          .prepare("SELECT * FROM application_review_records WHERE id=? AND owner_id=?")
+          .get(id, ownerId) as Record<string, unknown>;
+        return applicationRecord<ApplicationReviewRecord>(row);
+      },
+      async insertConfirmation(record) {
+        database
+          .prepare(
+            "INSERT INTO application_confirmation_records(id,owner_id,draft_id,review_id,payload_hash,confirmation_hash,status,expires_at,created_at,consumed_at) VALUES(@id,@ownerId,@draftId,@reviewId,@payloadHash,@confirmationHash,@status,@expiresAt,@createdAt,@consumedAt)",
+          )
+          .run(record);
+        return record;
+      },
+      async getConfirmation(id, ownerId) {
+        const row = database
+          .prepare("SELECT * FROM application_confirmation_records WHERE id=? AND owner_id=?")
+          .get(id, ownerId) as Record<string, unknown> | undefined;
+        return row === undefined ? null : applicationRecord<ApplicationConfirmationRecord>(row);
+      },
+      async invalidateConfirmation(id, ownerId) {
+        const result = database
+          .prepare(
+            "UPDATE application_confirmation_records SET status='invalidated' WHERE id=? AND owner_id=? AND status='active'",
+          )
+          .run(id, ownerId);
+        if (result.changes !== 1)
+          throw new DomainError({
+            code: "CONFLICT",
+            message: "Confirmation is not active for owner.",
+          });
+        const row = database
+          .prepare("SELECT * FROM application_confirmation_records WHERE id=? AND owner_id=?")
+          .get(id, ownerId) as Record<string, unknown>;
+        return applicationRecord<ApplicationConfirmationRecord>(row);
+      },
+      async consumeConfirmation(id, ownerId, confirmationHash, consumedAt) {
+        const result = database
+          .prepare(
+            "UPDATE application_confirmation_records SET status='consumed', consumed_at=? WHERE id=? AND owner_id=? AND confirmation_hash=? AND status='active' AND expires_at > ?",
+          )
+          .run(consumedAt, id, ownerId, confirmationHash, consumedAt);
+        if (result.changes !== 1)
+          throw new DomainError({
+            code: "CONFLICT",
+            message: "Confirmation is invalid, expired, or already used.",
+          });
+        const row = database
+          .prepare("SELECT * FROM application_confirmation_records WHERE id=? AND owner_id=?")
+          .get(id, ownerId) as Record<string, unknown>;
+        return applicationRecord<ApplicationConfirmationRecord>(row);
+      },
+      async putReceiptIfAbsent(record) {
+        const found = database
+          .prepare(
+            "SELECT * FROM application_submission_receipts WHERE owner_id=? AND draft_id=? AND idempotency_key=?",
+          )
+          .get(record.ownerId, record.draftId, record.idempotencyKey) as
+          Record<string, unknown> | undefined;
+        if (found) {
+          const stored = applicationRecord<ApplicationReceiptRecord>(found);
+          if (
+            stored.reviewId !== record.reviewId ||
+            stored.confirmationId !== record.confirmationId
+          )
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "Idempotency key is already bound to another review or confirmation.",
+            });
+          return { inserted: false, record: stored };
+        }
+        database
+          .prepare(
+            "INSERT INTO application_submission_receipts(id,owner_id,draft_id,review_id,confirmation_id,idempotency_key,status,external_url,created_at) VALUES(@id,@ownerId,@draftId,@reviewId,@confirmationId,@idempotencyKey,@status,@externalUrl,@createdAt)",
+          )
+          .run(record);
+        return { inserted: true, record };
+      },
+      async consumeAndPutReceipt(input) {
         const submit = database.transaction(() => {
-          const existingRow = database.prepare("SELECT * FROM application_submission_receipts WHERE owner_id=? AND draft_id=? AND idempotency_key=?").get(input.ownerId, input.draftId, input.receipt.idempotencyKey) as Record<string, unknown> | undefined;
+          const found = database
+            .prepare(
+              "SELECT * FROM application_submission_receipts WHERE owner_id=? AND draft_id=? AND idempotency_key=?",
+            )
+            .get(input.receipt.ownerId, input.receipt.draftId, input.receipt.idempotencyKey) as
+            Record<string, unknown> | undefined;
+          if (found)
+            return { inserted: false, record: applicationRecord<ApplicationReceiptRecord>(found) };
+          const used = database
+            .prepare(
+              "UPDATE application_confirmation_records SET status='consumed', consumed_at=? WHERE id=? AND owner_id=? AND confirmation_hash=? AND status='active' AND expires_at>? ",
+            )
+            .run(
+              input.consumedAt,
+              input.confirmationId,
+              input.ownerId,
+              input.confirmationHash,
+              input.consumedAt,
+            );
+          if (used.changes !== 1)
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "Confirmation is invalid, expired, or already used.",
+            });
+          database
+            .prepare(
+              "INSERT INTO application_submission_receipts(id,owner_id,draft_id,review_id,confirmation_id,idempotency_key,status,external_url,created_at) VALUES(@id,@ownerId,@draftId,@reviewId,@confirmationId,@idempotencyKey,@status,@externalUrl,@createdAt)",
+            )
+            .run(input.receipt);
+          return { inserted: true, record: input.receipt };
+        });
+        return submit();
+      },
+      async completeSubmission(
+        input: CompleteApplicationSubmissionInput,
+      ): Promise<CompleteApplicationSubmissionResult> {
+        const submit = database.transaction(() => {
+          const existingRow = database
+            .prepare(
+              "SELECT * FROM application_submission_receipts WHERE owner_id=? AND draft_id=? AND idempotency_key=?",
+            )
+            .get(input.ownerId, input.draftId, input.receipt.idempotencyKey) as
+            Record<string, unknown> | undefined;
           if (existingRow !== undefined) {
             const receipt = applicationRecord<ApplicationReceiptRecord>(existingRow);
-            if (receipt.reviewId !== input.reviewId || receipt.confirmationId !== input.confirmationId || receipt.status !== input.receipt.status || receipt.externalUrl !== input.receipt.externalUrl) throw new DomainError({ code: "CONFLICT", message: "Idempotency key is bound to another submission." });
-            const draftRow = database.prepare("SELECT * FROM application_drafts WHERE id=? AND owner_id=?").get(input.draftId, input.ownerId) as ApplicationRow | undefined;
-            if (draftRow === undefined) throw new DomainError({ code: "CONFLICT", message: "Application draft is unavailable for owner." });
+            if (
+              receipt.reviewId !== input.reviewId ||
+              receipt.confirmationId !== input.confirmationId ||
+              receipt.status !== input.receipt.status ||
+              receipt.externalUrl !== input.receipt.externalUrl
+            )
+              throw new DomainError({
+                code: "CONFLICT",
+                message: "Idempotency key is bound to another submission.",
+              });
+            const draftRow = database
+              .prepare("SELECT * FROM application_drafts WHERE id=? AND owner_id=?")
+              .get(input.draftId, input.ownerId) as ApplicationRow | undefined;
+            if (draftRow === undefined)
+              throw new DomainError({
+                code: "CONFLICT",
+                message: "Application draft is unavailable for owner.",
+              });
             return { draft: applicationFromRow(draftRow), receipt, inserted: false };
           }
-          const draftRow = database.prepare("SELECT * FROM application_drafts WHERE id=? AND owner_id=? AND version=? AND state='reviewed'").get(input.draftId, input.ownerId, input.expectedDraftVersion) as ApplicationRow | undefined;
-          if (draftRow === undefined) throw new DomainError({ code: "CONFLICT", message: "A current reviewed draft is required." });
-          const reviewRow = database.prepare("SELECT * FROM application_review_records WHERE id=? AND owner_id=? AND draft_id=? AND draft_version=? AND payload_hash=? AND status='active'").get(input.reviewId, input.ownerId, input.draftId, input.expectedDraftVersion, input.reviewPayloadHash) as Record<string, unknown> | undefined;
-          if (reviewRow === undefined) throw new DomainError({ code: "CONFLICT", message: "A current immutable review is required." });
-          const confirmation = database.prepare("SELECT * FROM application_confirmation_records WHERE id=? AND owner_id=? AND draft_id=? AND review_id=? AND payload_hash=? AND confirmation_hash=? AND status='active' AND expires_at>?").get(input.confirmationId, input.ownerId, input.draftId, input.reviewId, input.reviewPayloadHash, input.confirmationHash, input.now) as Record<string, unknown> | undefined;
-          if (confirmation === undefined) throw new DomainError({ code: "CONFLICT", message: "A live matching confirmation is required." });
-          const grant = database.prepare("SELECT * FROM application_data_grant_bindings WHERE id=? AND owner_id=? AND draft_id=? AND recipient_id=? AND purpose=? AND payload_hash=? AND categories_json=? AND field_keys_json=? AND document_ids_json=? AND notice_version=? AND legal_basis=? AND version=? AND status='active' AND expires_at>?").get(input.grant.id, input.ownerId, input.draftId, input.grant.recipientId, input.grant.purpose, input.grant.payloadHash, json(input.grant.categories), json(input.grant.fieldKeys), json(input.grant.documentIds), input.grant.noticeVersion, input.grant.legalBasis, input.grant.version, input.now);
-          if (grant === undefined) throw new DomainError({ code: "CONFLICT", message: "An exact active data grant is required." });
-          if (input.grant.payloadHash !== input.reviewPayloadHash) throw new DomainError({ code: "CONFLICT", message: "Data grant must bind the immutable review payload." });
-          if (input.receipt.ownerId !== input.ownerId || input.receipt.draftId !== input.draftId || input.receipt.reviewId !== input.reviewId || input.receipt.confirmationId !== input.confirmationId || (input.receipt.status === "submitted" && input.receipt.externalUrl !== null) || (input.receipt.status === "handed_off" && (input.receipt.externalUrl === null || !input.receipt.externalUrl.startsWith("https://")))) throw new DomainError({ code: "VALIDATION", message: "Submission receipt must bind a safe exact submission." });
-          const consumed = database.prepare("UPDATE application_confirmation_records SET status='consumed', consumed_at=? WHERE id=? AND owner_id=? AND status='active' AND confirmation_hash=? AND expires_at>?").run(input.now, input.confirmationId, input.ownerId, input.confirmationHash, input.now);
-          if (consumed.changes !== 1) throw new DomainError({ code: "CONFLICT", message: "Confirmation was consumed concurrently." });
-          const advanced = database.prepare("UPDATE application_drafts SET state=?, version=version+1, updated_at=? WHERE id=? AND owner_id=? AND version=? AND state='reviewed'").run(input.receipt.status, input.now, input.draftId, input.ownerId, input.expectedDraftVersion);
-          if (advanced.changes !== 1) throw new DomainError({ code: "CONFLICT", message: "Application draft changed before submission." });
-          database.prepare("INSERT INTO application_submission_receipts(id,owner_id,draft_id,review_id,confirmation_id,idempotency_key,status,external_url,created_at) VALUES(@id,@ownerId,@draftId,@reviewId,@confirmationId,@idempotencyKey,@status,@externalUrl,@createdAt)").run(input.receipt);
-          const updatedRow = database.prepare("SELECT * FROM application_drafts WHERE id=? AND owner_id=?").get(input.draftId, input.ownerId) as ApplicationRow;
+          const draftRow = database
+            .prepare(
+              "SELECT * FROM application_drafts WHERE id=? AND owner_id=? AND version=? AND state='reviewed'",
+            )
+            .get(input.draftId, input.ownerId, input.expectedDraftVersion) as
+            ApplicationRow | undefined;
+          if (draftRow === undefined)
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "A current reviewed draft is required.",
+            });
+          const reviewRow = database
+            .prepare(
+              "SELECT * FROM application_review_records WHERE id=? AND owner_id=? AND draft_id=? AND draft_version=? AND payload_hash=? AND status='active'",
+            )
+            .get(
+              input.reviewId,
+              input.ownerId,
+              input.draftId,
+              input.expectedDraftVersion,
+              input.reviewPayloadHash,
+            ) as Record<string, unknown> | undefined;
+          if (reviewRow === undefined)
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "A current immutable review is required.",
+            });
+          const confirmation = database
+            .prepare(
+              "SELECT * FROM application_confirmation_records WHERE id=? AND owner_id=? AND draft_id=? AND review_id=? AND payload_hash=? AND confirmation_hash=? AND status='active' AND expires_at>?",
+            )
+            .get(
+              input.confirmationId,
+              input.ownerId,
+              input.draftId,
+              input.reviewId,
+              input.reviewPayloadHash,
+              input.confirmationHash,
+              input.now,
+            ) as Record<string, unknown> | undefined;
+          if (confirmation === undefined)
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "A live matching confirmation is required.",
+            });
+          const grant = database
+            .prepare(
+              "SELECT * FROM application_data_grant_bindings WHERE id=? AND owner_id=? AND draft_id=? AND recipient_id=? AND purpose=? AND payload_hash=? AND categories_json=? AND field_keys_json=? AND document_ids_json=? AND notice_version=? AND legal_basis=? AND version=? AND status='active' AND expires_at>?",
+            )
+            .get(
+              input.grant.id,
+              input.ownerId,
+              input.draftId,
+              input.grant.recipientId,
+              input.grant.purpose,
+              input.grant.payloadHash,
+              json(input.grant.categories),
+              json(input.grant.fieldKeys),
+              json(input.grant.documentIds),
+              input.grant.noticeVersion,
+              input.grant.legalBasis,
+              input.grant.version,
+              input.now,
+            );
+          if (grant === undefined)
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "An exact active data grant is required.",
+            });
+          if (input.grant.payloadHash !== input.reviewPayloadHash)
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "Data grant must bind the immutable review payload.",
+            });
+          if (
+            input.receipt.ownerId !== input.ownerId ||
+            input.receipt.draftId !== input.draftId ||
+            input.receipt.reviewId !== input.reviewId ||
+            input.receipt.confirmationId !== input.confirmationId ||
+            (input.receipt.status === "submitted" && input.receipt.externalUrl !== null) ||
+            (input.receipt.status === "handed_off" &&
+              (input.receipt.externalUrl === null ||
+                !input.receipt.externalUrl.startsWith("https://")))
+          )
+            throw new DomainError({
+              code: "VALIDATION",
+              message: "Submission receipt must bind a safe exact submission.",
+            });
+          const consumed = database
+            .prepare(
+              "UPDATE application_confirmation_records SET status='consumed', consumed_at=? WHERE id=? AND owner_id=? AND status='active' AND confirmation_hash=? AND expires_at>?",
+            )
+            .run(input.now, input.confirmationId, input.ownerId, input.confirmationHash, input.now);
+          if (consumed.changes !== 1)
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "Confirmation was consumed concurrently.",
+            });
+          const advanced = database
+            .prepare(
+              "UPDATE application_drafts SET state=?, version=version+1, updated_at=? WHERE id=? AND owner_id=? AND version=? AND state='reviewed'",
+            )
+            .run(
+              input.receipt.status,
+              input.now,
+              input.draftId,
+              input.ownerId,
+              input.expectedDraftVersion,
+            );
+          if (advanced.changes !== 1)
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "Application draft changed before submission.",
+            });
+          database
+            .prepare(
+              "INSERT INTO application_submission_receipts(id,owner_id,draft_id,review_id,confirmation_id,idempotency_key,status,external_url,created_at) VALUES(@id,@ownerId,@draftId,@reviewId,@confirmationId,@idempotencyKey,@status,@externalUrl,@createdAt)",
+            )
+            .run(input.receipt);
+          const updatedRow = database
+            .prepare("SELECT * FROM application_drafts WHERE id=? AND owner_id=?")
+            .get(input.draftId, input.ownerId) as ApplicationRow;
           return { draft: applicationFromRow(updatedRow), receipt: input.receipt, inserted: true };
         });
         return submit();
@@ -1180,7 +1576,22 @@ function createRepositories(
         return applicationRecord<AgentDelegationRecord>(row);
       },
     },
-    dataGrants: (() => { const base=capabilityBase<DataGrantRecord>(database,"application_data_grant_records","fields_json","fields"); return { insert: async (r: DataGrantRecord) => base.insert(r), getById: async (id:string,ownerId:string) => base.getById(id,ownerId), approve: async (id:string,ownerId:string,at:string) => base.transition(id,ownerId,"requested","active","approved_at",at), withdraw: async (id:string,ownerId:string,at:string) => base.transition(id,ownerId,"active","withdrawn","withdrawn_at",at) }; })(),
+    dataGrants: (() => {
+      const base = capabilityBase<DataGrantRecord>(
+        database,
+        "application_data_grant_records",
+        "fields_json",
+        "fields",
+      );
+      return {
+        insert: async (r: DataGrantRecord) => base.insert(r),
+        getById: async (id: string, ownerId: string) => base.getById(id, ownerId),
+        approve: async (id: string, ownerId: string, at: string) =>
+          base.transition(id, ownerId, "requested", "active", "approved_at", at),
+        withdraw: async (id: string, ownerId: string, at: string) =>
+          base.transition(id, ownerId, "active", "withdrawn", "withdrawn_at", at),
+      };
+    })(),
     agentSessions: {
       async insert(record: AgentSessionRecord) {
         try {
@@ -1436,14 +1847,39 @@ function createRepositories(
       },
       async withdraw(id, ownerId, draftId, withdrawnAt) {
         const withdraw = database.transaction(() => {
-          const existing = database.prepare("SELECT * FROM application_data_grant_bindings WHERE id=? AND owner_id=? AND draft_id=?").get(id, ownerId, draftId) as Record<string, unknown> | undefined;
-          if (existing === undefined) throw new DomainError({ code: "CONFLICT", message: "Data grant is not available for this owner and draft." });
+          const existing = database
+            .prepare(
+              "SELECT * FROM application_data_grant_bindings WHERE id=? AND owner_id=? AND draft_id=?",
+            )
+            .get(id, ownerId, draftId) as Record<string, unknown> | undefined;
+          if (existing === undefined)
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "Data grant is not available for this owner and draft.",
+            });
           const stored = applicationRecord<RichDataGrantRecord>(existing);
           if (stored.status === "withdrawn") return stored;
-          const changed = database.prepare("UPDATE application_data_grant_bindings SET status='withdrawn', withdrawn_at=?, version=version+1 WHERE id=? AND owner_id=? AND draft_id=? AND status IN ('requested','active')").run(withdrawnAt, id, ownerId, draftId);
-          if (changed.changes !== 1) throw new DomainError({ code: "CONFLICT", message: "Data grant is not withdrawable for this owner and draft." });
-          database.prepare("UPDATE application_confirmation_records SET status='invalidated' WHERE owner_id=? AND draft_id=? AND status='active'").run(ownerId, draftId);
-          return { ...stored, status: "withdrawn" as const, withdrawnAt, version: (stored.version ?? 0) + 1 };
+          const changed = database
+            .prepare(
+              "UPDATE application_data_grant_bindings SET status='withdrawn', withdrawn_at=?, version=version+1 WHERE id=? AND owner_id=? AND draft_id=? AND status IN ('requested','active')",
+            )
+            .run(withdrawnAt, id, ownerId, draftId);
+          if (changed.changes !== 1)
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "Data grant is not withdrawable for this owner and draft.",
+            });
+          database
+            .prepare(
+              "UPDATE application_confirmation_records SET status='invalidated' WHERE owner_id=? AND draft_id=? AND status='active'",
+            )
+            .run(ownerId, draftId);
+          return {
+            ...stored,
+            status: "withdrawn" as const,
+            withdrawnAt,
+            version: (stored.version ?? 0) + 1,
+          };
         });
         return withdraw();
       },

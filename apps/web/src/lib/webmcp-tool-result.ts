@@ -58,15 +58,9 @@ export interface RequiresUserActionWebMcpResult {
   readonly requestId: string;
   readonly userAction: {
     readonly kind:
-      | "agent_authorization"
-      | "data_consent"
-      | "action_confirmation"
-      | "identity_verification";
+      "agent_authorization" | "data_consent" | "action_confirmation" | "identity_verification";
     readonly surface:
-      | "application_authorization"
-      | "data_consent"
-      | "application_review"
-      | "identity_verification";
+      "application_authorization" | "data_consent" | "application_review" | "identity_verification";
   };
   readonly presentation?: UserActionPresentation;
 }

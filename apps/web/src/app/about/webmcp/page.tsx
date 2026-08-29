@@ -63,8 +63,8 @@ export default function WebMcpAboutPage() {
               <strong>Keep consequential choices explicit</strong>
               <p>
                 Data sharing and submission use exact, review-bound requests. An agent-mediated
-                approval is stored as evidence of the action without claiming cryptographic human
-                or agent identity.
+                approval is stored as evidence of the action without claiming cryptographic human or
+                agent identity.
               </p>
             </div>
           </li>
@@ -86,8 +86,8 @@ export default function WebMcpAboutPage() {
             source, unknown, and decision understandable to a person.
           </p>
           <p>
-            This is one proof case for a broader pattern: any data-rich platform can offer a
-            focused agent interface alongside its familiar human interface.
+            This is one proof case for a broader pattern: any data-rich platform can offer a focused
+            agent interface alongside its familiar human interface.
           </p>
         </div>
       </section>
@@ -95,7 +95,9 @@ export default function WebMcpAboutPage() {
       <section aria-labelledby="live-and-durable" className={styles["section"]}>
         <div>
           <p className={styles["eyebrow"]}>Live and durable work</p>
-          <h2 id="live-and-durable">The browser starts the task. The service keeps its promises.</h2>
+          <h2 id="live-and-durable">
+            The browser starts the task. The service keeps its promises.
+          </h2>
         </div>
         <p className={styles["safeUse"]}>
           <ClockCountdownIcon aria-hidden="true" size={20} />

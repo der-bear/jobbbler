@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  jobAlertScheduleSchema,
-  savedSearchSchema,
-  scheduleRecurrenceSchema,
-} from "./schedule.js";
+import { jobAlertScheduleSchema, savedSearchSchema, scheduleRecurrenceSchema } from "./schedule.js";
 
 describe("scheduleRecurrenceSchema", () => {
   it("accepts an explicit IANA weekly schedule", () => {

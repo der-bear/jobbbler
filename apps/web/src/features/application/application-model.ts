@@ -5,12 +5,7 @@ import type {
   DataCategory,
 } from "@jobbbler/contracts";
 
-export type ApplicationStage =
-  | "profile"
-  | "review"
-  | "permission"
-  | "confirmation"
-  | "complete";
+export type ApplicationStage = "profile" | "review" | "permission" | "confirmation" | "complete";
 
 function isCompletedAnswer(answer: ApplicationAnswer | undefined): boolean {
   if (answer === undefined || !answer.acceptedByHuman || answer.value === null) return false;
@@ -24,9 +19,7 @@ export function visibleApplicationProgress(
 ): Readonly<{ completed: number; required: number }> {
   const required = workspace.requirements.filter((field) => field.required);
   const completed = required.filter((field) =>
-    isCompletedAnswer(
-      workspace.draft.answers.find((answer) => answer.fieldKey === field.fieldKey),
-    ),
+    isCompletedAnswer(workspace.draft.answers.find((answer) => answer.fieldKey === field.fieldKey)),
   ).length;
   return { completed, required: required.length };
 }
@@ -37,9 +30,7 @@ export function applicationDisclosure(workspace: ApplicationWorkspace): Readonly
   sensitiveFieldKeys: readonly string[];
 }> {
   const disclosed = workspace.requirements.filter((field) =>
-    isCompletedAnswer(
-      workspace.draft.answers.find((answer) => answer.fieldKey === field.fieldKey),
-    ),
+    isCompletedAnswer(workspace.draft.answers.find((answer) => answer.fieldKey === field.fieldKey)),
   );
   return {
     fieldKeys: disclosed.map((field) => field.fieldKey),
@@ -57,10 +48,7 @@ export function applicationStage(workspace: ApplicationWorkspace): ApplicationSt
     return "complete";
   }
   if (workspace.draft.state === "valid") return "review";
-  if (
-    workspace.draft.state === "reviewed" ||
-    workspace.draft.state === "awaiting_confirmation"
-  ) {
+  if (workspace.draft.state === "reviewed" || workspace.draft.state === "awaiting_confirmation") {
     return workspace.dataGrant?.status === "active" ? "confirmation" : "permission";
   }
   return "profile";

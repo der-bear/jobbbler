@@ -26,13 +26,13 @@ The human interface and route-scoped WebMCP tools are two adapters over the same
 
 ## Route experience
 
-| Route | Primary human task | Agent capability | Visible trust feedback |
-| --- | --- | --- | --- |
-| Search | Express an outcome and inspect matches | Read current criteria and run a validated search | URL, filters, result count, and an optional activity receipt update |
-| Role | Understand one opportunity | Read the source-backed role and prepare the next route | Provenance, freshness, evidence, unknowns, and a clear next action |
-| Compare | Resolve a shortlist | Read and refine the active comparison | One evidence table with differences and missing facts |
-| Saved | Monitor an explicit search | Read saved alerts and pause or resume a schedule | Monitoring state, next run, latest outcome, and masked delivery only |
-| Application | Prepare one reviewed disclosure | Fill safe draft fields, seal review, and request scoped actions | Distinct profile, review, permission, confirmation, and receipt stages |
+| Route       | Primary human task                     | Agent capability                                                | Visible trust feedback                                                 |
+| ----------- | -------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Search      | Express an outcome and inspect matches | Read current criteria and run a validated search                | URL, filters, result count, and an optional activity receipt update    |
+| Role        | Understand one opportunity             | Read the source-backed role and prepare the next route          | Provenance, freshness, evidence, unknowns, and a clear next action     |
+| Compare     | Resolve a shortlist                    | Read and refine the active comparison                           | One evidence table with differences and missing facts                  |
+| Saved       | Monitor an explicit search             | Read saved alerts and pause or resume a schedule                | Monitoring state, next run, latest outcome, and masked delivery only   |
+| Application | Prepare one reviewed disclosure        | Fill safe draft fields, seal review, and request scoped actions | Distinct profile, review, permission, confirmation, and receipt stages |
 
 ## Visual hierarchy
 

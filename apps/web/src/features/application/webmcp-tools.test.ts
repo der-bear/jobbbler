@@ -250,7 +250,10 @@ describe("application-route WebMCP tools", () => {
     expect(confirmationDeps.confirmFinalApplication).toHaveBeenCalledWith(reviewRequestId, {
       signal: expect.any(AbortSignal),
     });
-    expect(confirmed).toMatchObject({ status: "completed", data: { finalConfirmationReady: true } });
+    expect(confirmed).toMatchObject({
+      status: "completed",
+      data: { finalConfirmationReady: true },
+    });
     expect(
       new TextEncoder().encode(JSON.stringify(confirmationResult)).byteLength,
     ).toBeLessThanOrEqual(1_500);

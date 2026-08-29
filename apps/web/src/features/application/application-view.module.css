@@ -481,6 +481,9 @@
 @media (prefers-reduced-motion: no-preference) {
   .actions button,
   .primaryLink {
-    transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+    transition:
+      border-color 160ms ease,
+      background-color 160ms ease,
+      color 160ms ease;
   }
 }
