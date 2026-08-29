@@ -12,6 +12,12 @@ import type { ToolActivity } from "@jobbbler/contracts";
 
 import styles from "./agent-activity-rail.module.css";
 
+export interface RegisteredToolListItem {
+  readonly name: string;
+  readonly purpose: string;
+  readonly readOnly: boolean;
+}
+
 export interface AgentActivityRailProps {
   readonly activities: readonly ToolActivity[];
   readonly className?: string;
@@ -19,6 +25,7 @@ export interface AgentActivityRailProps {
   readonly maxItems?: number;
   readonly registeredToolCount: number;
   readonly status?: ReactNode;
+  readonly tools?: readonly RegisteredToolListItem[];
   readonly webMcpAvailable: boolean;
 }
 
@@ -79,6 +86,7 @@ export function AgentActivityRail({
   maxItems = 4,
   registeredToolCount,
   status,
+  tools = [],
   webMcpAvailable,
 }: AgentActivityRailProps) {
   const itemLimit = Math.max(0, maxItems);
@@ -127,6 +135,23 @@ export function AgentActivityRail({
           )}
         </header>
         <p className={styles["toolCount"]}>{toolCountLabel(registeredToolCount)}</p>
+
+        {tools.length > 0 ? (
+          <section aria-label="Available WebMCP tools" className={styles["toolList"]}>
+            <h3>Tools an agent can call here</h3>
+            <ul>
+              {tools.map((tool) => (
+                <li key={tool.name}>
+                  <div>
+                    <code>{tool.name}</code>
+                    {tool.readOnly ? <span>read-only</span> : null}
+                  </div>
+                  <p>{tool.purpose}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         {visibleActivities.length === 0 ? (
           <p className={styles["empty"]} role="status">

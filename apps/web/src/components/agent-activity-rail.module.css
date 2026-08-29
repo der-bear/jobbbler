@@ -71,6 +71,53 @@
   justify-content: space-between;
 }
 
+.toolList {
+  margin-block-start: 14px;
+  border-block-start: 1px solid var(--color-line);
+  padding-block-start: 14px;
+}
+
+.toolList h3 {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.toolList ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.toolList li > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.toolList code {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.toolList li > div > span {
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  color: var(--color-ink-subtle);
+  font-size: 9px;
+  padding: 1px 7px;
+}
+
+.toolList li p {
+  margin: 3px 0 0;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .toolCount,
 .state,
 .entry time {

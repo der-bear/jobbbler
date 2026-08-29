@@ -101,10 +101,10 @@ describe("ApplicationView", () => {
       />,
     );
 
-    expect(markup).toContain("Your application, under your control.");
-    expect(markup).toContain("Profile facts");
-    expect(markup).toContain("Data permission");
-    expect(markup).toContain("Agent authority");
+    expect(markup).toContain("Apply for this role");
+    expect(markup).toContain("Your details");
+    expect(markup).toContain("Sharing permission");
+    expect(markup).toContain("Assistant access");
     expect(markup).toContain("Final confirmation");
     expect(markup).toContain('aria-current="step"');
     expect(markup).toContain("Needs your acceptance");

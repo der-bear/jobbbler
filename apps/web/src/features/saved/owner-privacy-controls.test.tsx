@@ -18,10 +18,10 @@ describe("OwnerPrivacyControls", () => {
     );
 
     expect(markup).toContain("<details");
-    expect(markup).toContain("Recover workspace");
-    expect(markup).toContain("Recover a verified workspace");
+    expect(markup).toContain("Restore with email");
+    expect(markup).toContain("Restore your saved searches");
     expect(markup).toContain('type="email"');
-    expect(markup).toContain("If a verified workspace matches");
+    expect(markup).toContain("never reveals whether an account exists");
     expect(markup).not.toContain("Delete private data");
   });
 

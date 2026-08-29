@@ -6,8 +6,6 @@ import {
   BellSimpleIcon,
   CircleIcon,
   ClockIcon,
-  MagnifyingGlassIcon,
-  SlidersHorizontalIcon,
   WarningCircleIcon,
   XIcon,
 } from "@phosphor-icons/react";
@@ -29,8 +27,6 @@ import {
   type Seniority,
   type WorkModel,
 } from "@jobbbler/contracts";
-import { Sheet } from "@jobbbler/ui";
-
 import { AgentActivityRail } from "@/components/agent-activity-rail";
 import { useWebMcp } from "@/components/webmcp-provider";
 import { WebMcpStatus } from "@/components/webmcp-status";
@@ -56,7 +52,7 @@ const defaultSearch: JobSearchInput = {
 interface SearchDraft {
   readonly query: string;
   readonly category: JobCategory | "";
-  readonly workModel: WorkModel | "";
+  readonly workModels: readonly WorkModel[];
   readonly seniority: Seniority | "";
   readonly location: string;
   readonly minimumSalary: string;
@@ -69,7 +65,7 @@ function draftFromInput(input: JobSearchInput): SearchDraft {
   return {
     query: input.query ?? "",
     category: input.categories?.[0] ?? "",
-    workModel: input.workModels?.[0] ?? "",
+    workModels: input.workModels ?? [],
     seniority: input.seniorities?.[0] ?? "",
     location: input.locations?.[0] ?? "",
     minimumSalary: input.salary?.minimum === undefined ? "" : String(input.salary.minimum),
@@ -85,7 +81,7 @@ function inputFromDraft(draft: SearchDraft): JobSearchInput {
   return {
     ...(draft.query.trim().length === 0 ? {} : { query: draft.query.trim() }),
     categories: draft.category === "" ? [] : [draft.category],
-    workModels: draft.workModel === "" ? [] : [draft.workModel],
+    workModels: [...draft.workModels],
     seniorities: draft.seniority === "" ? [] : [draft.seniority],
     locations: draft.location.trim().length === 0 ? [] : [draft.location.trim()],
     excludeKeywords: draft.excludeKeywords
@@ -126,27 +122,55 @@ function SearchFilters({
   className,
   draft,
   onDraftChange,
-  onSubmit,
+  onCommit,
 }: Readonly<{
   className?: string;
   draft: SearchDraft;
   onDraftChange: (next: SearchDraft) => void;
-  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  onCommit: (next: SearchDraft) => void;
 }>) {
+  function toggleWorkModel(value: WorkModel) {
+    const workModels = draft.workModels.includes(value)
+      ? draft.workModels.filter((item) => item !== value)
+      : [...draft.workModels, value];
+    onCommit({ ...draft, workModels });
+  }
+
+  function commitOnEnter(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    onCommit(draft);
+  }
+
   return (
     <form
       aria-label="Job search filters"
-      className={`${styles["filterForm"]} ${className ?? ""}`}
-      onSubmit={onSubmit}
+      className={`${styles["filterBar"]} ${className ?? ""}`}
+      onSubmit={(event) => {
+        event.preventDefault();
+        onCommit(draft);
+      }}
     >
-      <div className={styles["filterHeading"]}>
-        <span>Filters</span>
-      </div>
+      <fieldset className={styles["choiceRow"]}>
+        <legend>Work model</legend>
+        <div>
+          {workModelSchema.options.map((value) => (
+            <button
+              aria-pressed={draft.workModels.includes(value)}
+              key={value}
+              onClick={() => toggleWorkModel(value)}
+              type="button"
+            >
+              {workModelLabel(value)}
+            </button>
+          ))}
+        </div>
+      </fieldset>
       <label className={styles["filterRow"]}>
         <span>Function</span>
         <select
           onChange={(event) =>
-            onDraftChange({ ...draft, category: event.target.value as JobCategory | "" })
+            onCommit({ ...draft, category: event.target.value as JobCategory | "" })
           }
           value={draft.category}
         >
@@ -159,26 +183,10 @@ function SearchFilters({
         </select>
       </label>
       <label className={styles["filterRow"]}>
-        <span>Work model</span>
-        <select
-          onChange={(event) =>
-            onDraftChange({ ...draft, workModel: event.target.value as WorkModel | "" })
-          }
-          value={draft.workModel}
-        >
-          <option value="">Any model</option>
-          {workModelSchema.options.map((value) => (
-            <option key={value} value={value}>
-              {workModelLabel(value)}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className={styles["filterRow"]}>
         <span>Seniority</span>
         <select
           onChange={(event) =>
-            onDraftChange({ ...draft, seniority: event.target.value as Seniority | "" })
+            onCommit({ ...draft, seniority: event.target.value as Seniority | "" })
           }
           value={draft.seniority}
         >
@@ -194,7 +202,9 @@ function SearchFilters({
         <span>Location</span>
         <input
           maxLength={120}
+          onBlur={() => onCommit(draft)}
           onChange={(event) => onDraftChange({ ...draft, location: event.target.value })}
+          onKeyDown={commitOnEnter}
           placeholder="Any location"
           value={draft.location}
         />
@@ -204,7 +214,7 @@ function SearchFilters({
         <span className={styles["salaryInput"]}>
           <select
             aria-label="Salary currency"
-            onChange={(event) => onDraftChange({ ...draft, currency: event.target.value })}
+            onChange={(event) => onCommit({ ...draft, currency: event.target.value })}
             value={draft.currency}
           >
             <option value="EUR">EUR</option>
@@ -215,7 +225,9 @@ function SearchFilters({
           <input
             aria-label="Minimum annual salary"
             min="0"
+            onBlur={() => onCommit(draft)}
             onChange={(event) => onDraftChange({ ...draft, minimumSalary: event.target.value })}
+            onKeyDown={commitOnEnter}
             step="1000"
             type="number"
             value={draft.minimumSalary}
@@ -226,14 +238,13 @@ function SearchFilters({
         <span>Exclude</span>
         <input
           maxLength={240}
+          onBlur={() => onCommit(draft)}
           onChange={(event) => onDraftChange({ ...draft, excludeKeywords: event.target.value })}
+          onKeyDown={commitOnEnter}
           placeholder="agency, crypto"
           value={draft.excludeKeywords}
         />
       </label>
-      <button className={styles["searchButton"]} type="submit">
-        Apply filters
-      </button>
     </form>
   );
 }
@@ -269,9 +280,10 @@ function JobResult({
           href={`/jobs/${job.id}${detailSearch}`}
         >
           <strong>{job.title}</strong>
-          <small>
-            {job.organizationName} · {workModelLabel(job.workModel)} ({job.locations[0]})
-          </small>
+          <small>{job.organizationName}</small>
+          <span className={styles["jobMeta"]}>
+            {workModelLabel(job.workModel)} · {job.locations[0]}
+          </span>
         </Link>
         <div className={styles["jobSalary"]}>
           <strong>{salaryLabel(job.salary)}</strong>
@@ -289,8 +301,26 @@ export function SearchWorkspace() {
   const [result, setResult] = useState<SearchJobsResult | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(true);
+  const [activityPanelWidth, setActivityPanelWidth] = useState(360);
+  const [activityResizing, setActivityResizing] = useState(false);
+
+  function startActivityResize(event: React.PointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = activityPanelWidth;
+    setActivityResizing(true);
+    const onMove = (moveEvent: PointerEvent) => {
+      setActivityPanelWidth(Math.min(680, Math.max(280, startWidth + startX - moveEvent.clientX)));
+    };
+    const onUp = () => {
+      setActivityResizing(false);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
   const requestSequence = useRef(0);
 
   const runSearch = useCallback(async (input: JobSearchInput, history: "push" | "replace") => {
@@ -397,38 +427,22 @@ export function SearchWorkspace() {
     return `/saved?${parameters.toString()}`;
   }, [applied]);
 
-  function removeFilter(id: string) {
-    const separator = id.indexOf(":");
-    const kind = id.slice(0, separator);
-    const value = id.slice(separator + 1);
-    let next: JobSearchInput = { ...applied, cursor: undefined };
-    if (kind === "category") {
-      next = { ...next, categories: (applied.categories ?? []).filter((item) => item !== value) };
-    } else if (kind === "work") {
-      next = { ...next, workModels: (applied.workModels ?? []).filter((item) => item !== value) };
-    } else if (kind === "seniority") {
-      next = { ...next, seniorities: (applied.seniorities ?? []).filter((item) => item !== value) };
-    } else if (kind === "location") {
-      next = { ...next, locations: (applied.locations ?? []).filter((item) => item !== value) };
-    } else if (kind === "salary") {
-      next = { ...next, salary: undefined };
-    } else if (kind === "exclude") {
-      next = {
-        ...next,
-        excludeKeywords: (applied.excludeKeywords ?? []).filter((item) => item !== value),
-      };
+  function commitDraft(next: SearchDraft) {
+    setDraft(next);
+    const input = inputFromDraft(next);
+    if (
+      searchInputToSearchParams(input).toString() ===
+      searchInputToSearchParams(applied).toString()
+    ) {
+      return;
     }
-    setApplied(next);
-    setDraft(draftFromInput(next));
-    void runSearch(next, "push");
+    setApplied(input);
+    void runSearch(input, "push");
   }
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setFiltersOpen(false);
-    const next = inputFromDraft(draft);
-    setApplied(next);
-    void runSearch(next, "push");
+    commitDraft(draft);
   }
 
   function changeSort(sort: JobSearchCriteria["sort"]) {
@@ -450,27 +464,11 @@ export function SearchWorkspace() {
             : `${String(webMcp.activities.length)} ${webMcp.activities.length === 1 ? "event" : "events"}`;
 
   return (
-    <div className={styles["workspace"]} data-activity-open={String(activityOpen)}>
-      <aside className={styles["intentRail"]} aria-label="Search filters">
-        <div className={styles["mobileWorkspaceActions"]}>
-          <button
-            className={styles["mobileFiltersButton"]}
-            onClick={() => setFiltersOpen(true)}
-            type="button"
-          >
-            <SlidersHorizontalIcon aria-hidden="true" size={17} />
-            Filters
-            <span>{filterSummary.length} active</span>
-          </button>
-        </div>
-        <SearchFilters
-          className={styles["desktopFilters"] ?? ""}
-          draft={draft}
-          onDraftChange={setDraft}
-          onSubmit={submit}
-        />
-      </aside>
-
+    <div
+      className={styles["workspace"]}
+      data-activity-open={String(activityOpen)}
+      style={{ "--activity-panel-size": `${String(activityPanelWidth)}px` } as React.CSSProperties}
+    >
       {activityOpen ? null : (
         <button
           aria-expanded={activityOpen}
@@ -486,35 +484,23 @@ export function SearchWorkspace() {
         </button>
       )}
 
-      <Sheet
-        className={styles["mobileFilterSheet"] ?? ""}
-        description="Adjust your filters — results update instantly."
-        onOpenChange={setFiltersOpen}
-        open={filtersOpen}
-        side="bottom"
-        title="Filters"
-      >
-        <SearchFilters
-          className={styles["sheetFilters"] ?? ""}
-          draft={draft}
-          onDraftChange={setDraft}
-          onSubmit={submit}
-        />
-      </Sheet>
+      <aside aria-label="Search and filters" className={styles["filterRail"]}>
+        <form onSubmit={submit} role="search">
+          <label className={styles["railSearch"]}>
+            <span>What are you looking for?</span>
+            <input
+              maxLength={500}
+              onChange={(event) => setDraft({ ...draft, query: event.target.value })}
+              placeholder="Search roles, skills, or companies"
+              type="search"
+              value={draft.query}
+            />
+          </label>
+        </form>
+        <SearchFilters draft={draft} onCommit={commitDraft} onDraftChange={setDraft} />
+      </aside>
 
       <section className={styles["results"]} aria-labelledby="results-heading">
-        <form className={styles["searchBar"]} onSubmit={submit} role="search">
-          <MagnifyingGlassIcon aria-hidden="true" size={18} />
-          <input
-            aria-label="Search jobs"
-            maxLength={500}
-            onChange={(event) => setDraft({ ...draft, query: event.target.value })}
-            placeholder="Search roles, skills, or companies"
-            type="search"
-            value={draft.query}
-          />
-          <button type="submit">Search</button>
-        </form>
         <div className={styles["resultsHeader"]}>
           <div aria-label="Search status" role="status">
             <h1 id="results-heading">
@@ -543,23 +529,6 @@ export function SearchWorkspace() {
             </label>
           </div>
         </div>
-
-        {filterSummary.length > 0 ? (
-          <div aria-label="Applied filters" className={styles["filterChips"]} role="list">
-            {filterSummary.map((filter) => (
-              <span key={filter.id} role="listitem">
-                <button
-                  aria-label={`Remove ${filter.label}`}
-                  onClick={() => removeFilter(filter.id)}
-                  type="button"
-                >
-                  {filter.label}
-                  <XIcon aria-hidden="true" size={11} weight="bold" />
-                </button>
-              </span>
-            ))}
-          </div>
-        ) : null}
 
         <div aria-atomic="true" aria-live="polite" className="sr-only">
           {status === "ready" && result !== null
@@ -613,6 +582,12 @@ export function SearchWorkspace() {
 
       {activityOpen ? (
         <aside aria-label="Agent activity" className={styles["activityPanel"]}>
+          <div
+            aria-hidden="true"
+            className={styles["activityResizer"]}
+            data-resizing={String(activityResizing)}
+            onPointerDown={startActivityResize}
+          />
           <div className={styles["activityPanelHeader"]}>
             <div>
               <h2>Agent activity</h2>
@@ -632,6 +607,7 @@ export function SearchWorkspace() {
             initiallyExpanded
             registeredToolCount={webMcp.registeredToolCount}
             status={<WebMcpStatus />}
+            tools={webMcp.registeredTools}
             webMcpAvailable={webMcp.supported && webMcp.status !== "error"}
           />
         </aside>

@@ -179,7 +179,6 @@ function EmptyComparison({ kind }: Readonly<{ kind: "missing" | "invalid" }>) {
   const invalid = kind === "invalid";
   return (
     <section className={styles["empty"]}>
-      <p className={styles["eyebrow"]}>Comparison</p>
       <h1>{invalid ? "Use one to three distinct roles" : "Choose roles to compare"}</h1>
       <p>
         {invalid
@@ -219,7 +218,6 @@ export function CompareWorkspace({
   if (state.kind === "loading") {
     return (
       <section aria-live="polite" className={styles["state"]}>
-        <p className={styles["eyebrow"]}>Comparison</p>
         <h1>Gathering source-backed facts</h1>
       </section>
     );
@@ -227,7 +225,6 @@ export function CompareWorkspace({
   if (state.kind === "error") {
     return (
       <section aria-live="polite" className={styles["state"]}>
-        <p className={styles["eyebrow"]}>Comparison unavailable</p>
         <h1>{state.message}</h1>
         <Link href="/">Return to search</Link>
       </section>
@@ -238,7 +235,6 @@ export function CompareWorkspace({
     <section className={styles["workspace"]}>
       <header className={styles["header"]}>
         <div>
-          <p className={styles["eyebrow"]}>Side-by-side</p>
           <h1>Compare roles on the facts</h1>
         </div>
         <p>

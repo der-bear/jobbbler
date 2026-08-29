@@ -589,10 +589,7 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
     return (
       <main className={styles["page"]} id="main-content">
         <section aria-live="polite" className={styles["stagePanel"]}>
-          <p className={styles["eyebrow"]}>
-            {state.kind === "loading" ? "Opening private workspace" : "Application unavailable"}
-          </p>
-          <h1>{state.kind === "loading" ? "Loading the authoritative draft…" : state.message}</h1>
+          <h1>{state.kind === "loading" ? "Loading your application…" : state.message}</h1>
           {state.kind === "error" ? (
             <Link className={styles["backLink"]} href="/">
               <ArrowLeftIcon aria-hidden="true" /> Return to search

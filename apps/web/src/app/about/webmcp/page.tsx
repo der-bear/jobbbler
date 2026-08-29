@@ -12,7 +12,6 @@ export default function WebMcpAboutPage() {
   return (
     <article className={styles["page"]}>
       <header className={styles["hero"]}>
-        <p className={styles["eyebrow"]}>One example of the agentic web</p>
         <h1>A job portal your browser agent can understand.</h1>
         <p>
           Jobbbler shows what changes when a familiar website exposes useful, structured actions
@@ -23,7 +22,6 @@ export default function WebMcpAboutPage() {
 
       <section aria-labelledby="how-it-works" className={styles["section"]}>
         <div>
-          <p className={styles["eyebrow"]}>How it works</p>
           <h2 id="how-it-works">Ask once. Let the site explain what it can do.</h2>
         </div>
         <ol className={styles["steps"]}>
@@ -73,7 +71,6 @@ export default function WebMcpAboutPage() {
 
       <section aria-labelledby="why-jobs" className={styles["section"]}>
         <div>
-          <p className={styles["eyebrow"]}>Why jobs</p>
           <h2 id="why-jobs">Useful work is repetitive. Decisions should not be.</h2>
         </div>
         <div className={styles["limits"]}>
@@ -94,7 +91,6 @@ export default function WebMcpAboutPage() {
 
       <section aria-labelledby="live-and-durable" className={styles["section"]}>
         <div>
-          <p className={styles["eyebrow"]}>Live and durable work</p>
           <h2 id="live-and-durable">
             The browser starts the task. The service keeps its promises.
           </h2>
@@ -109,7 +105,6 @@ export default function WebMcpAboutPage() {
 
       <section aria-labelledby="limits" className={styles["section"]}>
         <div>
-          <p className={styles["eyebrow"]}>Clear limits</p>
           <h2 id="limits">Assistance is not authority.</h2>
         </div>
         <div className={styles["limits"]}>

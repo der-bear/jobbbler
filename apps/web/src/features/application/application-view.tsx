@@ -111,8 +111,8 @@ function ProfilePanel({
     <section aria-labelledby="profile-heading" className={styles["stagePanel"]}>
       <div className={styles["sectionHeading"]}>
         <div>
-          <p className={styles["eyebrow"]}>01 · Candidate facts</p>
-          <h2 id="profile-heading">Profile facts</h2>
+          <p className={styles["eyebrow"]}>Step 1 of 4</p>
+          <h2 id="profile-heading">Your details</h2>
         </div>
         <p className={styles["completion"]}>
           {progress.completed}/{progress.required} required
@@ -201,7 +201,7 @@ function ReviewPanel({
 }: Pick<ApplicationViewProps, "workspace" | "busy" | "onAction">) {
   return (
     <section aria-labelledby="review-heading" className={styles["stagePanel"]}>
-      <p className={styles["eyebrow"]}>02 · Immutable review</p>
+      <p className={styles["eyebrow"]}>Step 2 of 4</p>
       <h2 id="review-heading">Review what will be shared</h2>
       <p className={styles["sectionIntro"]}>
         This snapshot becomes the reference for data permission and final confirmation. Any material
@@ -241,8 +241,8 @@ function PermissionPanel({
   const requested = workspace.dataGrant?.status === "requested";
   return (
     <section aria-labelledby="permission-heading" className={styles["stagePanel"]}>
-      <p className={styles["eyebrow"]}>03 · Purpose-bound permission</p>
-      <h2 id="permission-heading">Approve the exact disclosure</h2>
+      <p className={styles["eyebrow"]}>Step 3 of 4</p>
+      <h2 id="permission-heading">Approve what gets shared</h2>
       <p className={styles["sectionIntro"]}>
         Permission is separate from agent authority. It is limited to this reviewed payload,
         recipient, purpose, and notice version.
@@ -301,7 +301,7 @@ function ConfirmationPanel({
   const externalHandoff = job.applyMode === "external";
   return (
     <section aria-labelledby="confirmation-heading" className={styles["stagePanel"]}>
-      <p className={styles["eyebrow"]}>04 · Single-use confirmation</p>
+      <p className={styles["eyebrow"]}>Step 4 of 4</p>
       <h2 id="confirmation-heading" tabIndex={-1}>
         One last human check
       </h2>
@@ -362,7 +362,7 @@ function CompletePanel({ workspace }: Readonly<{ workspace: ApplicationWorkspace
   return (
     <section aria-labelledby="complete-heading" className={styles["stagePanel"]}>
       <CheckCircleIcon aria-hidden="true" className={styles["completeIcon"]} weight="fill" />
-      <p className={styles["eyebrow"]}>Receipt recorded</p>
+      <p className={styles["eyebrow"]}>Done</p>
       <h2 id="complete-heading">
         {workspace.receipt?.status === "handed_off"
           ? "Ready for external handoff"
@@ -406,7 +406,7 @@ function TrustRail({
     <aside aria-label="Application safeguards" className={styles["trustRail"]}>
       <div>
         <ShieldCheckIcon aria-hidden="true" />
-        <p className={styles["eyebrow"]}>Data permission</p>
+        <p className={styles["eyebrow"]}>Sharing permission</p>
         <strong>
           {workspace.dataGrant?.status === "active" ? "Approved for this payload" : "Not approved"}
         </strong>
@@ -424,7 +424,7 @@ function TrustRail({
       </div>
       <div>
         <RobotIcon aria-hidden="true" />
-        <p className={styles["eyebrow"]}>Agent authority</p>
+        <p className={styles["eyebrow"]}>Assistant access</p>
         <strong>
           {activeDelegations.length === 0
             ? "No active delegation"
@@ -479,8 +479,7 @@ export function ApplicationView({
         <Link className={styles["backLink"]} href={`/jobs/${encodeURIComponent(job.id)}`}>
           <ArrowLeftIcon aria-hidden="true" /> Back to role
         </Link>
-        <p className={styles["eyebrow"]}>Application workspace · {job.applyMode}</p>
-        <h1>Your application, under your control.</h1>
+        <h1>Apply for this role</h1>
         <p className={styles["role"]}>
           <strong>{job.title}</strong> · {job.organizationName}
         </p>

@@ -52,18 +52,27 @@ import { resolveWebMcpRoute, type WebMcpRoute } from "./webmcp-route";
 
 export type WebMcpRegistrationStatus = "checking" | "unsupported" | "preparing" | "ready" | "error";
 
+export interface RegisteredToolSummary {
+  readonly name: string;
+  readonly purpose: string;
+  readonly readOnly: boolean;
+}
+
 interface WebMcpContextValue {
   readonly activities: readonly ToolActivity[];
   readonly registeredToolCount: number;
+  readonly registeredTools: readonly RegisteredToolSummary[];
   readonly retry: () => void;
   readonly status: WebMcpRegistrationStatus;
   readonly supported: boolean;
 }
 
 const emptyActivities: readonly ToolActivity[] = Object.freeze([]);
+const emptyTools: readonly RegisteredToolSummary[] = Object.freeze([]);
 const fallbackContext: WebMcpContextValue = {
   activities: emptyActivities,
   registeredToolCount: 0,
+  registeredTools: emptyTools,
   retry: () => undefined,
   status: "checking",
   supported: false,
@@ -177,7 +186,7 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
   const router = useRouter();
   const [activitiesStore] = useState(() => new AgentActivityStore());
   const [status, setStatus] = useState<WebMcpRegistrationStatus>("checking");
-  const [registeredToolCount, setRegisteredToolCount] = useState(0);
+  const [registeredTools, setRegisteredTools] = useState<readonly RegisteredToolSummary[]>(emptyTools);
   const [registrationRevision, setRegistrationRevision] = useState(0);
   const retry = useCallback(() => setRegistrationRevision((revision) => revision + 1), []);
 
@@ -204,14 +213,14 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
 
   useEffect(() => {
     setStatus("checking");
-    setRegisteredToolCount(0);
+    setRegisteredTools(emptyTools);
     let modelContext: unknown;
     try {
       modelContext = (document as Document & { modelContext?: unknown }).modelContext;
       if (!isModelContextAvailable(modelContext)) throw new Error("WebMCP is unavailable.");
     } catch {
       setStatus("unsupported");
-      setRegisteredToolCount(0);
+      setRegisteredTools(emptyTools);
       return;
     }
 
@@ -219,7 +228,7 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
     const manifests = routeManifests(route, (href) => router.push(href, { scroll: false }));
     if (manifests.length === 0) {
       setStatus("ready");
-      setRegisteredToolCount(0);
+      setRegisteredTools(emptyTools);
       return;
     }
 
@@ -227,7 +236,7 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
     let unregister: (() => void) | undefined;
     const registrationController = new AbortController();
     setStatus("preparing");
-    setRegisteredToolCount(0);
+    setRegisteredTools(emptyTools);
 
     void registerToolSet(manifests, {
       modelContext,
@@ -240,12 +249,18 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
           return;
         }
         unregister = cleanup;
-        setRegisteredToolCount(manifests.length);
+        setRegisteredTools(
+          manifests.map((manifest) => ({
+            name: manifest.name,
+            purpose: manifest.purpose,
+            readOnly: manifest.annotations.readOnlyHint,
+          })),
+        );
         setStatus("ready");
       })
       .catch(() => {
         if (disposed) return;
-        setRegisteredToolCount(0);
+        setRegisteredTools(emptyTools);
         setStatus("error");
       });
 
@@ -259,12 +274,13 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
   const value = useMemo<WebMcpContextValue>(
     () => ({
       activities,
-      registeredToolCount,
+      registeredToolCount: registeredTools.length,
+      registeredTools,
       retry,
       status,
       supported: status !== "checking" && status !== "unsupported",
     }),
-    [activities, registeredToolCount, retry, status],
+    [activities, registeredTools, retry, status],
   );
 
   return <WebMcpContext.Provider value={value}>{children}</WebMcpContext.Provider>;

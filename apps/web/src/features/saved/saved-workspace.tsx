@@ -312,17 +312,6 @@ export function SavedWorkspace() {
     [endpoints],
   );
 
-  async function beginWorkspaceFromButton() {
-    setStatus("working");
-    setError(null);
-    try {
-      await startPrivateWorkspace();
-      setStatus("ready");
-    } catch (caught) {
-      setError(message(caught));
-      setStatus("error");
-    }
-  }
 
   async function revokeEndpoint(endpoint: VerificationEndpointSummary) {
     setStatus("working");
@@ -501,42 +490,30 @@ export function SavedWorkspace() {
     <div className={styles["workspace"]}>
       <section className={styles["intro"]}>
         <div>
-          <p className={styles["eyebrow"]}>Saved · monitoring</p>
-          <h1>A quiet watchlist for the roles worth your time.</h1>
+          <h1>Saved searches</h1>
           <p className={styles["lede"]}>
-            Jobbbler checks explicit criteria in the background and only sends a digest when
-            something materially changes.
+            Jobbbler keeps checking a saved search for you and emails a short update only when
+            something actually changes.
           </p>
         </div>
         <aside className={styles["identityCard"]} aria-label="Private workspace status">
           <div className={styles["identityHeading"]}>
             <ShieldCheckIcon aria-hidden="true" size={22} weight="fill" />
             <div>
-              <span>Private workspace</span>
+              <span>Your private space</span>
               <strong>
                 {owner === null
-                  ? "Not started"
+                  ? "Starts when you save something"
                   : owner.recoverable
-                    ? "Verified and recoverable"
-                    : "Private on this browser"}
+                    ? "Backed up to your email"
+                    : "Private to this browser"}
               </strong>
             </div>
           </div>
           <p>
-            Search stays public. Private state begins only when you save, and email is encrypted at
-            rest. Agent authority, data permission, and final confirmation remain separate.
+            No account needed. Saving creates a private space automatically, and your email is
+            stored encrypted. You approve anything important yourself.
           </p>
-          {owner === null && status !== "loading" ? (
-            <button
-              className={styles["secondaryButton"]}
-              disabled={status === "working"}
-              onClick={() => void beginWorkspaceFromButton()}
-              type="button"
-            >
-              <LockKeyIcon aria-hidden="true" size={16} />
-              Start private workspace
-            </button>
-          ) : null}
           {owner?.recoverable === true && verifiedEndpoints.length > 0 ? (
             <div className={styles["endpointList"]} aria-label="Verified delivery destinations">
               {verifiedEndpoints.map((endpoint) => (
@@ -619,8 +596,7 @@ export function SavedWorkspace() {
           <section className={styles["composer"]} aria-labelledby="composer-title">
             <div className={styles["sectionHeading"]}>
               <div>
-                <p className={styles["eyebrow"]}>New alert</p>
-                <h2 id="composer-title">Turn this search into a durable signal.</h2>
+                <h2 id="composer-title">Save this search as an email alert</h2>
               </div>
               <span className={styles["stepBadge"]}>
                 {verifiedEndpoints.length === 0
@@ -826,8 +802,7 @@ export function SavedWorkspace() {
         <section className={styles["library"]} aria-labelledby="library-title">
           <div className={styles["sectionHeading"]}>
             <div>
-              <p className={styles["eyebrow"]}>Watchlist</p>
-              <h2 id="library-title">Your saved signals</h2>
+              <h2 id="library-title">Your saved searches</h2>
             </div>
             <Link className={styles["textLink"]} href="/">
               Find another search <ArrowRightIcon aria-hidden="true" size={14} />
@@ -837,14 +812,14 @@ export function SavedWorkspace() {
           {owner === null ? (
             <div className={styles["empty"]}>
               <LockKeyIcon aria-hidden="true" size={25} />
-              <h3>No account wall, no public profile.</h3>
-              <p>Start a private workspace only when you are ready to save something.</p>
+              <h3>Nothing saved yet.</h3>
+              <p>Search for roles first, then choose Save alert. No account is required.</p>
             </div>
           ) : savedSearches.length === 0 ? (
             <div className={styles["empty"]}>
               <BellRingingIcon aria-hidden="true" size={25} />
               <h3>No saved searches yet.</h3>
-              <p>Shape a search first, then choose Save alert to preview its exact schedule.</p>
+              <p>Search for roles first, then choose Save alert to set up email updates.</p>
               <Link className={styles["secondaryButton"]} href="/">
                 Explore technology roles
               </Link>

@@ -19,7 +19,7 @@ test.describe("public job search workspace", () => {
 
     await expect(page.getByRole("main")).toBeVisible();
     await expect(page.getByRole("link", { name: "Jobbbler" })).toBeVisible();
-    await expect(page.getByRole("searchbox", { name: "Search jobs" })).toHaveValue(
+    await expect(page.getByRole("searchbox", { name: "What are you looking for?" })).toHaveValue(
       "senior full-stack engineer",
     );
     await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
@@ -37,7 +37,7 @@ test.describe("public job search workspace", () => {
   test("submits an outcome with Enter and writes shareable URL state", async ({ page }) => {
     await page.goto("/");
 
-    const outcome = page.getByRole("searchbox", { name: "Search jobs" });
+    const outcome = page.getByRole("searchbox", { name: "What are you looking for?" });
     await outcome.fill(exampleOutcome);
     await outcome.press("Enter");
 
@@ -45,10 +45,10 @@ test.describe("public job search workspace", () => {
     await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
   });
 
-  test("keeps URL-backed filters editable through removable chips", async ({ page }) => {
+  test("keeps URL-backed filters editable through the visible controls", async ({ page }) => {
     await page.goto(seededSearch);
 
-    await page.getByRole("button", { name: "Remove Remote" }).click();
+    await page.getByRole("button", { name: "Remote", pressed: true }).click();
 
     await expect(page).not.toHaveURL(/(?:\?|&)work=remote(?:&|$)/);
     await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
@@ -95,7 +95,7 @@ test.describe("public job search workspace", () => {
     await page.goto("/");
 
     await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(/unavailable/i);
-    const outcome = page.getByRole("searchbox", { name: "Search jobs" });
+    const outcome = page.getByRole("searchbox", { name: "What are you looking for?" });
     await outcome.fill(exampleOutcome);
     await outcome.press("Enter");
 
@@ -116,15 +116,12 @@ test.describe("mobile and reduced-motion public search", () => {
   }) => {
     await page.goto(seededSearch);
 
-    await expect(page.getByRole("searchbox", { name: "Search jobs" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Filters" })).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: "What are you looking for?" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Remote", pressed: true })).toBeVisible();
     await expect(resultCard(page, seededRole.title, seededRole.company)).toBeVisible();
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
       .toBe(true);
-
-    await page.getByRole("button", { name: "Filters" }).click();
-    await expect(page.getByRole("dialog", { name: "Filters" })).toBeVisible();
   });
 
   test("does not leave decorative animations running for reduced-motion users", async ({
