@@ -111,6 +111,12 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
         purpose: "Open one saved search on the results page with its exact stored criteria.",
         readOnly: false,
       },
+      {
+        name: "get_latest_search_update",
+        purpose:
+          "Read what changed since a saved search was last checked, not the full result list.",
+        readOnly: true,
+      },
     ],
   },
   {

@@ -52,6 +52,7 @@ import {
   readSearchSurfaceState,
 } from "@/lib/webmcp-ui-bridge";
 
+import { latestSearchRunSchema } from "@/lib/latest-run";
 import { createWorkflowPlannerTool } from "@/features/webmcp-workflows";
 
 import { resolveWebMcpRoute, type WebMcpRoute } from "./webmcp-route";
@@ -187,6 +188,12 @@ function routeManifests(
       onScheduleCommitted: commitWebMcpSchedule,
       savedSearchHref: (savedSearch) => searchHrefFromCriteria(savedSearch.criteria),
       onNavigate: navigate,
+      getLatestRun: (savedSearchId, { signal }) =>
+        queryApi(
+          `/api/v1/saved-searches/${encodeURIComponent(savedSearchId)}/latest-run`,
+          latestSearchRunSchema,
+          { signal },
+        ),
     });
   }
 

@@ -37,7 +37,6 @@ import { useWebMcp } from "@/components/webmcp-provider";
 import { WebMcpStatus } from "@/components/webmcp-status";
 import {
   categoryLabel,
-  employmentLabel,
   relativeFreshness,
   salaryLabel,
   seniorityLabel,

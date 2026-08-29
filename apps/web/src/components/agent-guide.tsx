@@ -53,7 +53,11 @@ export function AgentTools({ tools }: AgentToolsProps) {
       </section>
 
       <section aria-labelledby="panel-all-tools" className={styles["catalog"]}>
-        <h3 id="panel-all-tools">Available on other pages · {totalCatalogTools} tools site-wide</h3>
+        <h3 id="panel-all-tools">
+          {activeNames.size === 0
+            ? `All ${String(totalCatalogTools)} site tools by page`
+            : `Available on other pages · ${String(totalCatalogTools)} tools site-wide`}
+        </h3>
         {inactiveRoutes.map((route) => (
           <div className={styles["catalogRoute"]} key={route.route}>
             <h4>

@@ -51,6 +51,11 @@ describe("saved-route WebMCP tools", () => {
       listSchedules: vi.fn(async () => [schedule]),
       setScheduleEnabled: vi.fn(),
       savedSearchHref: () => "/",
+      getLatestRun: vi.fn(async () => ({
+        savedSearchId: savedSearch.id,
+        evaluation: null,
+        delivery: null,
+      })),
       onNavigate: () => undefined,
       onScheduleCommitted: vi.fn(),
     });
@@ -59,11 +64,13 @@ describe("saved-route WebMCP tools", () => {
       "get_saved_alerts",
       "set_job_alert_state",
       "open_saved_search",
+      "get_latest_search_update",
     ]);
     expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([
       true,
       false,
       false,
+      true,
     ]);
     const result = await manifests[0]!.execute({}, { signal: new AbortController().signal });
     expect(result).toMatchObject({
@@ -91,6 +98,11 @@ describe("saved-route WebMCP tools", () => {
       listSchedules: vi.fn(async () => [schedule]),
       setScheduleEnabled,
       savedSearchHref: () => "/",
+      getLatestRun: vi.fn(async () => ({
+        savedSearchId: savedSearch.id,
+        evaluation: null,
+        delivery: null,
+      })),
       onNavigate: () => undefined,
       onScheduleCommitted,
     });
@@ -116,6 +128,11 @@ describe("saved-route WebMCP tools", () => {
       listSchedules: vi.fn(async () => [schedule]),
       setScheduleEnabled,
       savedSearchHref: () => "/",
+      getLatestRun: vi.fn(async () => ({
+        savedSearchId: savedSearch.id,
+        evaluation: null,
+        delivery: null,
+      })),
       onNavigate: () => undefined,
       onScheduleCommitted: vi.fn(),
     });

@@ -101,7 +101,7 @@ describe("ApplicationView", () => {
       />,
     );
 
-    expect(markup).toContain("Apply for this role");
+    expect(markup).toContain("Review before you apply");
     expect(markup).toContain("Your details");
     expect(markup).toContain("Sharing permission");
     expect(markup).toContain("Assistant access");

@@ -43,6 +43,8 @@ import { ApiClientError, queryApi } from "@/lib/query-client";
 import { searchInputToSearchParams } from "@/lib/search-url";
 import { subscribeWebMcpScheduleCommit } from "@/lib/webmcp-ui-bridge";
 
+import { latestSearchRunSchema, type LatestSearchRun } from "@/lib/latest-run";
+
 import { OwnerPrivacyControls } from "./owner-privacy-controls";
 import styles from "./saved-workspace.module.css";
 
@@ -58,40 +60,6 @@ const previewSchema = z.strictObject({
     maskedDestination: z.string(),
   }),
 });
-const latestRunSchema = z.strictObject({
-  savedSearchId: z.string(),
-  evaluation: z
-    .strictObject({
-      id: z.string(),
-      createdAt: z.iso.datetime({ offset: true }),
-      catalogUpdatedAt: z.iso.datetime({ offset: true }).nullable(),
-      baselineCount: z.number().int().nonnegative(),
-      changes: z.strictObject({
-        total: z.number().int().nonnegative(),
-        truncated: z.boolean(),
-        items: z.array(
-          z.strictObject({
-            id: z.string(),
-            jobId: z.string(),
-            kind: z.enum(["new", "updated", "closed", "no_longer_matching"]),
-            createdAt: z.iso.datetime({ offset: true }),
-          }),
-        ),
-      }),
-    })
-    .nullable(),
-  delivery: z
-    .strictObject({
-      status: z.enum(["pending", "sending", "accepted", "failed", "dead", "cancelled"]),
-      attempt: z.number().int().nonnegative(),
-      errorCode: z.string().nullable(),
-      acceptedAt: z.iso.datetime({ offset: true }).nullable(),
-      lastAttemptAt: z.iso.datetime({ offset: true }).nullable(),
-      updatedAt: z.iso.datetime({ offset: true }),
-    })
-    .nullable(),
-});
-type LatestRun = z.infer<typeof latestRunSchema>;
 
 const weekdayOptions: readonly { readonly value: Weekday; readonly label: string }[] = [
   { value: "monday", label: "Mon" },
@@ -188,7 +156,7 @@ export function SavedWorkspace() {
   const [endpoints, setEndpoints] = useState<readonly VerificationEndpointSummary[]>([]);
   const [savedSearches, setSavedSearches] = useState<readonly SavedSearch[]>([]);
   const [schedules, setSchedules] = useState<readonly JobAlertSchedule[]>([]);
-  const [latestRuns, setLatestRuns] = useState<ReadonlyMap<string, LatestRun>>(new Map());
+  const [latestRuns, setLatestRuns] = useState<ReadonlyMap<string, LatestSearchRun>>(new Map());
   const [criteria, setCriteria] = useState<JobSearchCriteria | null>(null);
   const [email, setEmail] = useState("");
   const [challengeId, setChallengeId] = useState<string | null>(null);
@@ -218,7 +186,7 @@ export function SavedWorkspace() {
         try {
           return await queryApi(
             `/api/v1/saved-searches/${encodeURIComponent(saved.id)}/latest-run`,
-            latestRunSchema,
+            latestSearchRunSchema,
           );
         } catch {
           return null;
@@ -227,7 +195,9 @@ export function SavedWorkspace() {
     );
     setLatestRuns(
       new Map(
-        runs.filter((run): run is LatestRun => run !== null).map((run) => [run.savedSearchId, run]),
+        runs
+          .filter((run): run is LatestSearchRun => run !== null)
+          .map((run) => [run.savedSearchId, run]),
       ),
     );
     const verified = nextEndpoints.find(

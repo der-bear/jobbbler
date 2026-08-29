@@ -84,6 +84,7 @@ describe("route tool manifests", () => {
         setScheduleEnabled: never,
         onScheduleCommitted: () => undefined,
         savedSearchHref: () => "/",
+        getLatestRun: never,
         onNavigate: () => undefined,
       }),
     };

@@ -74,6 +74,11 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
       },
       { intent: "Review saved alerts later", tool: "get_saved_alerts", humanAction: false },
       {
+        intent: "Read only what changed since the last check",
+        tool: "get_latest_search_update",
+        humanAction: false,
+      },
+      {
         intent: "Reopen the stored criteria any time",
         tool: "open_saved_search",
         humanAction: false,
