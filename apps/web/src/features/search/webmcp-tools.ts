@@ -176,6 +176,27 @@ function short(value: string, maximum = 80): string {
 }
 
 function compactCriteria(criteria: JobSearchCriteria): JsonValue {
+  const omitted = {
+    categories: Math.max(0, criteria.categories.length - 2),
+    workModels: Math.max(0, criteria.workModels.length - 2),
+    seniorities: Math.max(0, criteria.seniorities.length - 2),
+    locations: Math.max(0, criteria.locations.length - 2),
+    skills: Math.max(0, criteria.skills.length - 1),
+    excludeKeywords: Math.max(0, criteria.excludeKeywords.length - 1),
+    unresolvedAssumptions: Math.max(0, criteria.unresolvedAssumptions.length - 1),
+  };
+  const shortened: string[] = [];
+  if (criteria.query !== null && criteria.query.length > 80) shortened.push("query");
+  if (criteria.locations.some((value) => value.length > 32)) shortened.push("locations");
+  if (criteria.skills.some((value) => value.length > 30)) shortened.push("skills");
+  if (criteria.excludeKeywords.some((value) => value.length > 30)) {
+    shortened.push("excludeKeywords");
+  }
+  if (criteria.unresolvedAssumptions.some((value) => value.length > 80)) {
+    shortened.push("unresolvedAssumptions");
+  }
+  const complete = Object.values(omitted).every((count) => count === 0) && shortened.length === 0;
+
   return {
     query: criteria.query === null ? null : short(criteria.query, 80),
     categories: criteria.categories.slice(0, 2),
@@ -184,10 +205,19 @@ function compactCriteria(criteria: JobSearchCriteria): JsonValue {
     locations: criteria.locations.slice(0, 2).map((value) => short(value, 32)),
     skills: criteria.skills.slice(0, 1).map((value) => short(value, 30)),
     excludeKeywords: criteria.excludeKeywords.slice(0, 1).map((value) => short(value, 30)),
+    unresolvedAssumptions: criteria.unresolvedAssumptions
+      .slice(0, 1)
+      .map((value) => short(value, 80)),
     salaryMinimum: criteria.salary?.minimum ?? null,
+    salaryMaximum: criteria.salary?.maximum ?? null,
     salaryCurrency: criteria.salary?.currency ?? null,
+    salaryPeriod: criteria.salary?.period ?? null,
+    unknownSalaryPolicy: criteria.salary?.unknownPolicy ?? null,
     postedWithinDays: criteria.postedWithinDays,
     sort: criteria.sort,
+    limit: criteria.limit,
+    cursorActive: criteria.cursor !== null,
+    truncation: { complete, omitted, shortened },
   };
 }
 
@@ -248,9 +278,9 @@ export function createSearchToolManifests(
   const getSearchState: ToolManifest<unknown, SearchToolOutput> = {
     name: "get_search_state",
     purpose:
-      "Read the current visible search constraints and result count without rerunning search.",
+      "Read a bounded summary of the visible search constraints and result count without rerunning search.",
     description:
-      "Read the exact filters and result count currently visible on Jobbbler. Use before refining an existing search or explaining active constraints. This does not run a new search.",
+      "Read the visible filters and result count currently shown on Jobbbler. The bounded response explicitly reports any shortened or omitted criteria. Use before refining an existing search or explaining active constraints. This does not run a new search.",
     inputSchema: emptyInputSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     async execute(input, { signal }) {

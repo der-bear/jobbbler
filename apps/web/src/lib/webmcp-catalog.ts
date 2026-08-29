@@ -64,7 +64,7 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
       {
         name: "get_search_state",
         purpose:
-          "Read the current visible search constraints and result count without rerunning search.",
+          "Read a bounded summary of the visible search and any explicitly reported truncation.",
         readOnly: true,
       },
     ],

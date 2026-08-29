@@ -221,6 +221,51 @@ describe("route-scoped WebMCP tool manifests", () => {
     );
   });
 
+  it("reports every compacted search-state field instead of silently dropping criteria", async () => {
+    const criteria: JobSearchCriteria = {
+      ...searchCriteria,
+      query: "Q".repeat(100),
+      categories: ["software_engineering", "product", "security"],
+      workModels: ["remote", "hybrid", "onsite"],
+      seniorities: ["senior", "staff", "principal"],
+      locations: ["L".repeat(40), "Europe", "Kyiv"],
+      skills: ["TypeScript", "PostgreSQL"],
+      excludeKeywords: ["agency", "crypto"],
+    };
+    const manifests = createSearchToolManifests({
+      searchJobs: async () => searchResult,
+      getSearchState: () => ({ criteria, total: 7 }),
+      onSearchCommitted: () => undefined,
+      onNavigate: () => undefined,
+    }) as readonly ToolManifest[];
+
+    const output = await tool(manifests, "get_search_state").execute(
+      {},
+      { signal: new AbortController().signal },
+    );
+
+    expect(output).toMatchObject({
+      status: "completed",
+      data: {
+        criteria: {
+          truncation: {
+            complete: false,
+            omitted: {
+              categories: 1,
+              workModels: 1,
+              seniorities: 1,
+              locations: 1,
+              skills: 1,
+              excludeKeywords: 1,
+            },
+            shortened: ["query", "locations"],
+          },
+        },
+      },
+    });
+    expectBoundedJson(output);
+  });
+
   it("creates detail route tools, forwards cancellation to typed commands, and synchronizes detail and comparison UI", async () => {
     let detailSignal: AbortSignal | undefined;
     let compareSignal: AbortSignal | undefined;
