@@ -27,6 +27,6 @@
 ## Media and Devpost readiness
 
 - [ ] Keep final video below three minutes, with intelligible audio and visible UI at normal playback speed.
-- [ ] Validate gallery image crops, captions, alt text, dimensions, and file-size limits on Devpost.
+- [x] Validate gallery crops, authored captions, 3:2 dimensions, and file-size limits on Devpost; the platform supplies project-scoped image alt labels rather than a custom alt-text field.
 - [ ] Check spelling, team/attribution fields, rules acknowledgement, and URLs immediately before submission.
 - [ ] Do not submit from this checklist. Obtain the user’s action-time confirmation on the exact Devpost project and fields first.
