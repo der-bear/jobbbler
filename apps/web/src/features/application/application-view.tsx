@@ -2,9 +2,10 @@ import {
   ArrowLeftIcon,
   CheckCircleIcon,
   FileTextIcon,
+  HandshakeIcon,
   LockKeyIcon,
   PaperPlaneTiltIcon,
-  RobotIcon,
+  PencilSimpleIcon,
   ShieldCheckIcon,
   WarningCircleIcon,
 } from "@phosphor-icons/react";
@@ -53,9 +54,9 @@ export interface ApplicationViewProps {
 const stageOrder: readonly ApplicationStage[] = ["profile", "review", "permission", "confirmation"];
 
 const stageLabels: Readonly<Record<ApplicationStage, string>> = {
-  profile: "Profile facts",
+  profile: "Your details",
   review: "Review",
-  permission: "Data permission",
+  permission: "Permission",
   confirmation: "Final confirmation",
   complete: "Complete",
 };
@@ -167,7 +168,7 @@ function ProfilePanel({
               )}
               {answer?.provenance === "agent_suggestion" && !answer.acceptedByHuman ? (
                 <span className={styles["suggestion"]}>
-                  <RobotIcon aria-hidden="true" /> Needs your acceptance
+                  <PencilSimpleIcon aria-hidden="true" /> Needs your acceptance
                 </span>
               ) : null}
             </div>
@@ -204,8 +205,8 @@ function ReviewPanel({
       <p className={styles["eyebrow"]}>Step 2 of 4</p>
       <h2 id="review-heading">Review what will be shared</h2>
       <p className={styles["sectionIntro"]}>
-        This snapshot becomes the reference for data permission and final confirmation. Any material
-        edit invalidates it.
+        This exact version is what permission and the final confirmation refer to. If you change
+        anything important, you will review again.
       </p>
       <dl className={styles["reviewList"]}>
         {workspace.requirements.map((field) => (
@@ -225,7 +226,7 @@ function ReviewPanel({
           onClick={() => onAction("review")}
           type="button"
         >
-          <FileTextIcon aria-hidden="true" /> Seal this review
+          <FileTextIcon aria-hidden="true" /> Lock this review
         </button>
       </div>
     </section>
@@ -244,8 +245,8 @@ function PermissionPanel({
       <p className={styles["eyebrow"]}>Step 3 of 4</p>
       <h2 id="permission-heading">Approve what gets shared</h2>
       <p className={styles["sectionIntro"]}>
-        Permission is separate from agent authority. It is limited to this reviewed payload,
-        recipient, purpose, and notice version.
+        Permission applies only to this exact application — what is shared, with whom, and why. It
+        is separate from what your agent may do.
       </p>
       <dl className={styles["permissionGrid"]}>
         <div>
@@ -307,8 +308,8 @@ function ConfirmationPanel({
       </h2>
       <p className={styles["sectionIntro"]}>
         {externalHandoff
-          ? "This records that your reviewed application is ready for an external handoff. Jobbbler will not submit it or open the source for you."
-          : "This action is never delegated by implication. Confirmation is bound to the sealed review, expires after five minutes, and can be used only once."}
+          ? "This records that your reviewed application is ready to continue on the employer's website. Jobbbler will not submit it or open the site for you."
+          : "Only you can do this step. The confirmation covers the locked review exactly, expires after five minutes, and works once."}
       </p>
       <div className={styles["confirmationCard"]}>
         <LockKeyIcon aria-hidden="true" weight="fill" />
@@ -346,7 +347,7 @@ function ConfirmationPanel({
             <>
               <PaperPlaneTiltIcon aria-hidden="true" />
               {externalHandoff
-                ? " Record handoff and show source link"
+                ? " Save the record and get the employer link"
                 : ` Submit to ${workspace.recipient.name}`}
             </>
           )}
@@ -365,12 +366,12 @@ function CompletePanel({ workspace }: Readonly<{ workspace: ApplicationWorkspace
       <p className={styles["eyebrow"]}>Done</p>
       <h2 id="complete-heading">
         {workspace.receipt?.status === "handed_off"
-          ? "Ready for external handoff"
+          ? "Ready to continue on the employer's website"
           : "Application submitted"}
       </h2>
       <p className={styles["sectionIntro"]}>
-        The immutable receipt is now part of your private workspace. No reusable confirmation or
-        credential was exposed to the agent.
+        A record of what you approved is saved in your private workspace. Your agent never received
+        anything it could reuse.
       </p>
       {externalUrl === null ? null : (
         <>
@@ -379,7 +380,7 @@ function CompletePanel({ workspace }: Readonly<{ workspace: ApplicationWorkspace
             are ready to continue there.
           </p>
           <a className={styles["primaryLink"]} href={externalUrl} rel="noreferrer" target="_blank">
-            Open external application
+            Continue on the employer's website
           </a>
         </>
       )}
@@ -408,9 +409,11 @@ function TrustRail({
         <ShieldCheckIcon aria-hidden="true" />
         <p className={styles["eyebrow"]}>Sharing permission</p>
         <strong>
-          {workspace.dataGrant?.status === "active" ? "Approved for this payload" : "Not approved"}
+          {workspace.dataGrant?.status === "active"
+            ? "Approved for this exact application"
+            : "Not approved"}
         </strong>
-        <span>Recipient, purpose, fields, and notice are bound independently.</span>
+        <span>Covers exactly what is shared, with whom, and why — nothing else.</span>
         {workspace.dataGrant?.status === "active" && workspace.receipt === null ? (
           <button
             className={styles["railAction"]}
@@ -423,14 +426,10 @@ function TrustRail({
         ) : null}
       </div>
       <div>
-        <RobotIcon aria-hidden="true" />
+        <HandshakeIcon aria-hidden="true" />
         <p className={styles["eyebrow"]}>Assistant access</p>
-        <strong>
-          {activeDelegations.length === 0
-            ? "No active delegation"
-            : `${activeDelegations.length} scoped delegation`}
-        </strong>
-        <span>An agent session can act only on named operations and this draft.</span>
+        <strong>{activeDelegations.length === 0 ? "No access granted" : "Access granted"}</strong>
+        <span>Your agent can only do what you allow, and only for this application.</span>
         {pendingDelegation === undefined ? null : (
           <button
             className={styles["railAction"]}
@@ -438,7 +437,7 @@ function TrustRail({
             onClick={() => onAction("approve_delegation")}
             type="button"
           >
-            Approve named operations
+            Approve your agent's request
           </button>
         )}
         {activeDelegations.length === 0 || workspace.receipt !== null ? null : (
@@ -448,15 +447,15 @@ function TrustRail({
             onClick={() => onAction("revoke_delegation")}
             type="button"
           >
-            Revoke agent authority
+            Remove agent access
           </button>
         )}
       </div>
       <div>
         <LockKeyIcon aria-hidden="true" />
         <p className={styles["eyebrow"]}>Final confirmation</p>
-        <strong>{confirmation === null ? "Required" : "Single-use token ready"}</strong>
-        <span>Material edits invalidate the review and its confirmation.</span>
+        <strong>{confirmation === null ? "Required" : "Ready — works once"}</strong>
+        <span>If anything important changes, you will confirm again.</span>
       </div>
     </aside>
   );

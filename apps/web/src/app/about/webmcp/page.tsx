@@ -99,9 +99,9 @@ export default function WebMcpAboutPage() {
         </div>
         <p className={styles["safeUse"]}>
           <ClockCountdownIcon aria-hidden="true" size={20} />
-          WebMCP actions are available while the agent has the page open. If you save a monitored
-          search, alerts keep running through Jobbbler after the tab closes and report only newly
-          observed matching roles.
+          WebMCP actions are available while the agent has the page open. If you save a search,
+          Jobbbler keeps checking after the tab closes, and the agent can later read only what
+          changed — new, updated, closed, or no-longer-matching roles — instead of the full list.
         </p>
       </section>
 
@@ -111,8 +111,10 @@ export default function WebMcpAboutPage() {
         </div>
         <p className={styles["referenceIntro"]}>
           Each page registers only the tools that make sense there, and removes them when you
-          navigate away. This is the complete reference; the Agent panel on each page shows the live
-          subset.
+          navigate away. Jobbbler does not only expose tools: through <code>plan_job_workflow</code>{" "}
+          it publishes a live workflow manifest that helps an external agent compose those tools
+          into safe, useful outcomes. This is the complete reference; the Agent panel on each page
+          shows the live subset.
         </p>
         <div className={styles["toolReference"]}>
           {webMcpCatalog.map((route) => (

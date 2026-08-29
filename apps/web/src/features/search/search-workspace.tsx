@@ -542,7 +542,7 @@ export function SearchWorkspace() {
               aria-label="Search jobs"
               maxLength={500}
               onChange={(event) => setDraft({ ...draft, query: event.target.value })}
-              placeholder="Job title, skill, or company"
+              placeholder="Role, skill or company"
               type="search"
               value={draft.query}
             />
@@ -558,7 +558,7 @@ export function SearchWorkspace() {
               value={draft.location}
             />
           </label>
-          <button type="submit">Search</button>
+          <button type="submit">Search jobs</button>
         </form>
       </header>
 

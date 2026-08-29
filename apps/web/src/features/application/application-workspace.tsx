@@ -275,7 +275,7 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
       },
       async requestDataPermission({ signal }) {
         const currentCredential = requireCredential();
-        if (workspace.review === null) throw new Error("A sealed review is required.");
+        if (workspace.review === null) throw new Error("Lock the review first.");
         const disclosure = applicationDisclosure(workspace);
         const requested = await queryApi(
           `/api/v1/applications/${encodeURIComponent(draftId)}/data-grants`,
@@ -333,7 +333,7 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
         return reloadState(signal);
       },
       finalConfirmationRequest() {
-        if (workspace.review === null) throw new Error("A sealed review is required.");
+        if (workspace.review === null) throw new Error("Lock the review first.");
         const disclosure = applicationDisclosure(workspace);
         return {
           id: workspace.review.id,
@@ -457,7 +457,7 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
         await saveProfile(current);
         toast.show({
           title: "Candidate facts saved",
-          description: "Accepted facts and their provenance are stored on this private draft.",
+          description: "Your answers are saved on this private draft, marked with who wrote them.",
           tone: "success",
         });
       } else if (action === "validate") {
@@ -474,7 +474,7 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
           { method: "POST", body: { expectedVersion: current.draft.version } },
         );
       } else if (action === "request_data_grant") {
-        if (current.review === null) throw new Error("A sealed review is required.");
+        if (current.review === null) throw new Error("Lock the review first.");
         const disclosure = applicationDisclosure(current);
         await queryApi(
           `/api/v1/applications/${encodeURIComponent(draftId)}/data-grants`,
@@ -521,7 +521,7 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
         setConfirmation(null);
       } else if (action === "approve_delegation") {
         const requested = current.delegationRequests.find(({ status }) => status === "requested");
-        if (requested === undefined) throw new Error("An agent authority request is required.");
+        if (requested === undefined) throw new Error("Your agent has not asked for access yet.");
         await queryApi(
           `/api/v1/applications/${encodeURIComponent(draftId)}/delegations/${encodeURIComponent(requested.id)}/approve`,
           applicationDelegationSummarySchema,
@@ -529,14 +529,14 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
         );
       } else if (action === "revoke_delegation") {
         const active = current.delegationRequests.find(({ status }) => status === "active");
-        if (active === undefined) throw new Error("An active agent delegation is required.");
+        if (active === undefined) throw new Error("Approve your agent's access first.");
         await queryApi(
           `/api/v1/applications/${encodeURIComponent(draftId)}/delegations/${encodeURIComponent(active.id)}`,
           applicationDelegationSummarySchema,
           { method: "DELETE" },
         );
       } else if (action === "request_confirmation") {
-        if (current.review === null) throw new Error("A sealed review is required.");
+        if (current.review === null) throw new Error("Lock the review first.");
         const result = await queryApi(
           `/api/v1/applications/${encodeURIComponent(draftId)}/reviews/${encodeURIComponent(current.review.id)}/confirm`,
           confirmationResultSchema,

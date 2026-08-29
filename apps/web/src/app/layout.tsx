@@ -11,7 +11,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(process.env["PUBLIC_BASE_URL"] ?? "http://localhost:3000"),
   title: {
-    default: "Jobbbler — Signal over noise",
+    default: "Jobbbler — Find once. Stay updated. Apply with control.",
     template: "%s · Jobbbler",
   },
   description:

@@ -93,6 +93,23 @@ function displayInstant(value: string): string {
   }).format(new Date(value));
 }
 
+function deliveryLabel(status: string): string {
+  switch (status) {
+    case "pending":
+      return "Email queued";
+    case "sending":
+      return "Sending the email…";
+    case "accepted":
+      return "Email sent";
+    case "failed":
+      return "Email failed — retrying";
+    case "dead":
+      return "Email could not be delivered";
+    default:
+      return "Email cancelled";
+  }
+}
+
 function criteriaInput(criteria: JobSearchCriteria): JobSearchInput {
   return {
     ...(criteria.query === null ? {} : { query: criteria.query }),
@@ -270,7 +287,7 @@ export function SavedWorkspace() {
         });
         toast.show({
           title: updated.enabled ? "Alert resumed by agent" : "Alert paused by agent",
-          description: "The visible workspace now matches the authoritative server state.",
+          description: "This page now shows your latest saved state.",
           tone: "success",
         });
       }),
@@ -461,8 +478,8 @@ export function SavedWorkspace() {
         <div>
           <h1>Saved searches</h1>
           <p className={styles["lede"]}>
-            Jobbbler keeps checking a saved search for you and emails a short update only when
-            something actually changes.
+            Jobbbler keeps checking for you and sends an update only when something meaningfully
+            changes.
           </p>
         </div>
         <aside className={styles["identityCard"]} aria-label="Private workspace status">
@@ -587,8 +604,9 @@ export function SavedWorkspace() {
                 <div className={styles["privacyNote"]}>
                   <LockKeyIcon aria-hidden="true" size={18} />
                   <p>
-                    Your email is used only to verify ownership and deliver this alert. It is not
-                    exposed to WebMCP, agent activity, or analytics, and you can revoke it later.
+                    Your email is used only to confirm it is yours and to send this alert. It is
+                    never shared with your browser agent or anyone else, and you can remove it
+                    later.
                   </p>
                 </div>
                 {challengeId === null ? (
@@ -695,7 +713,7 @@ export function SavedWorkspace() {
                   </p>
                 ) : null}
                 <label>
-                  <span>IANA time zone</span>
+                  <span>Time zone</span>
                   <input
                     onChange={(event) => setTimeZone(event.target.value)}
                     required
@@ -741,8 +759,8 @@ export function SavedWorkspace() {
                   <strong>Only material changes</strong>
                 </div>
                 <p>
-                  Activation authorizes scheduled evaluation and service email for this saved
-                  search. It does not authorize an agent to apply, disclose profile data, or submit
+                  Turning this on lets Jobbbler keep checking and email you about this saved search.
+                  It does not authorize an agent to apply, disclose profile data, or submit
                   anything.
                 </p>
                 <div className={styles["buttonRow"]}>
@@ -803,12 +821,11 @@ export function SavedWorkspace() {
                     <div className={styles["savedTopline"]}>
                       <span data-active={String(schedule?.enabled === true)}>
                         {schedule === undefined
-                          ? "Saved · not scheduled"
+                          ? "Saved"
                           : schedule.enabled
-                            ? "Monitoring"
+                            ? `Checking ${schedule.recurrence.frequency}`
                             : "Paused"}
                       </span>
-                      <small>v{saved.version}</small>
                     </div>
                     <h3>{saved.name}</h3>
                     <div className={styles["criteria"]}>
@@ -820,34 +837,30 @@ export function SavedWorkspace() {
                       <span>
                         <ClockIcon aria-hidden="true" size={14} />
                         {schedule === undefined
-                          ? "No background checks"
+                          ? "Not checking automatically"
                           : schedule.enabled
                             ? `Next ${displayInstant(schedule.nextRunAt)}`
                             : "Checks are stopped"}
                       </span>
                       <span>
                         <EnvelopeSimpleIcon aria-hidden="true" size={14} />
-                        {schedule === undefined ? "No delivery" : schedule.delivery.channel}
+                        {schedule === undefined ? "No email updates" : "Email updates"}
                       </span>
                     </div>
                     {schedule !== undefined ? (
                       <div className={styles["latestRun"]} aria-live="polite">
                         {latestRun?.evaluation === null || latestRun === undefined ? (
-                          <span>Latest run: waiting for the first completed check.</span>
+                          <span>Waiting for the first check.</span>
                         ) : (
                           <span>
-                            Latest run: {latestRun.evaluation.baselineCount} matching ·{" "}
-                            {latestRun.evaluation.changes.total} changes
-                            {latestRun.evaluation.changes.truncated ? " (details capped)" : ""}
+                            {latestRun.evaluation.changes.total === 0
+                              ? `No changes · ${String(latestRun.evaluation.baselineCount)} matching`
+                              : `${String(latestRun.evaluation.changes.total)} change${latestRun.evaluation.changes.total === 1 ? "" : "s"} since the last check · ${String(latestRun.evaluation.baselineCount)} matching`}
                           </span>
                         )}
                         {latestRun?.delivery === null || latestRun === undefined ? null : (
                           <span data-status={latestRun.delivery.status}>
-                            Delivery: {latestRun.delivery.status}
-                            {latestRun.delivery.status === "failed" ||
-                            latestRun.delivery.status === "sending"
-                              ? " · delivery is retrying safely"
-                              : ""}
+                            {deliveryLabel(latestRun.delivery.status)}
                           </span>
                         )}
                       </div>

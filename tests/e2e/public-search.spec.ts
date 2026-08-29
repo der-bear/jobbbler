@@ -73,7 +73,7 @@ test.describe("public job search workspace", () => {
       /Jobbbler demo|source/i,
     );
     await expect(page.getByRole("region", { name: "Source and freshness" })).toContainText(
-      "Internal application",
+      "Handled on Jobbbler",
     );
   });
 

@@ -29,7 +29,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
       <header className={styles["header"]}>
         <Link aria-label="Jobbbler" className={styles["wordmark"]} href="/">
           Jobbbler
-          <span>Signal over noise</span>
+          <span>Find once. Stay updated. Apply with control.</span>
         </Link>
         <nav aria-label="Primary navigation" className={styles["navigation"]}>
           {navigation.map(({ href, label, icon: Icon }) => (
@@ -46,7 +46,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
         </nav>
         <div className={styles["actions"]}>
           <Link className={styles["webmcpLink"]} href="/about/webmcp">
-            About WebMCP
+            Works with agents
           </Link>
           <ThemeToggle />
         </div>

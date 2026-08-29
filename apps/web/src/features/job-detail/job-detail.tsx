@@ -22,6 +22,7 @@ import {
 import { useToast } from "@jobbbler/ui";
 
 import { startApplication } from "@/features/application/start-application";
+import { supportsJobbblerPreparation } from "./application-capability";
 import {
   compactDate,
   employmentLabel,
@@ -34,6 +35,8 @@ import { ApiClientError, queryApi } from "@/lib/query-client";
 import { subscribeWebMcpJobDetailCommit } from "@/lib/webmcp-ui-bridge";
 
 import styles from "./job-detail.module.css";
+
+export { supportsJobbblerPreparation };
 
 type LoadState =
   | { readonly kind: "loading" }
@@ -57,19 +60,6 @@ function errorMessage(error: unknown): string {
   }
   if (error instanceof ApiClientError) return error.message;
   return "This role could not be loaded. Please retry.";
-}
-
-export function supportsJobbblerPreparation(job: Job): boolean {
-  if (job.applyMode === "internal") return true;
-  if (job.source.url === null) return false;
-  try {
-    const source = new URL(job.source.url);
-    return (
-      source.protocol === "https:" && source.username.length === 0 && source.password.length === 0
-    );
-  } catch {
-    return false;
-  }
 }
 
 function ListOrUnknown({
@@ -151,11 +141,13 @@ function JobIdentity({
             {applicationBusy
               ? "Opening application…"
               : job.applyMode === "external"
-                ? "Prepare external application"
+                ? "Prepare to apply on the employer's site"
                 : "Apply with Jobbbler"}
           </button>
         ) : (
-          <span className={styles["unavailableLink"]}>External application source unavailable</span>
+          <span className={styles["unavailableLink"]}>
+            The employer's application page is unavailable
+          </span>
         )}
       </div>
     </header>
@@ -211,11 +203,11 @@ function FitEvidence({ fit }: Readonly<{ fit: JobFit }>) {
         </div>
       </div>
       <div className={styles["unknowns"]}>
-        <h3>Known unknowns</h3>
+        <h3>What to verify</h3>
         <p>
           {unknownDimensions.length === 0
-            ? "No ranking dimensions are marked unknown."
-            : `The source did not establish: ${unknownDimensions.join(", ")}.`}
+            ? "The source answered everything Jobbbler checks."
+            : `The source did not say: ${unknownDimensions.join(", ")}. Confirm these with the employer.`}
         </p>
       </div>
     </section>
@@ -243,7 +235,11 @@ function SourceAndFreshness({ job }: Readonly<{ job: Job }>) {
         </div>
         <div>
           <dt>Application</dt>
-          <dd>{job.applyMode === "external" ? "External source only" : "Internal application"}</dd>
+          <dd>
+            {job.applyMode === "external"
+              ? "Finishes on the employer's website"
+              : "Handled on Jobbbler"}
+          </dd>
         </div>
       </dl>
       <p className={styles["sourceNote"]}>

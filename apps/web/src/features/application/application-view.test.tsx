@@ -141,9 +141,9 @@ describe("ApplicationView", () => {
       />,
     );
 
-    expect(markup).toContain("Ready for external handoff");
+    expect(markup).toContain("Ready to continue on the employer&#x27;s website");
     expect(markup).toContain("Jobbbler did not submit this application");
     expect(markup).toContain(`href="${externalUrl}"`);
-    expect(markup).toContain("Open external application");
+    expect(markup).toContain("Return to saved work");
   });
 });

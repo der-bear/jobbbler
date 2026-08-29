@@ -34,10 +34,9 @@ function errorMessage(error: unknown): string {
   return "The comparison could not be loaded. Please retry.";
 }
 
-function JobHeading({ job, fit }: Readonly<{ job: Job; fit: JobFit }>) {
+function JobHeading({ job }: Readonly<{ job: Job }>) {
   return (
     <div className={styles["jobHeading"]}>
-      <p className={styles["match"]}>{fit.score}% match</p>
       <h2>{job.title}</h2>
       <p>{job.organizationName}</p>
       <Link href={`/jobs/${encodeURIComponent(job.id)}`}>Open role</Link>
@@ -82,9 +81,9 @@ function ComparisonTable({ result }: Readonly<{ result: CompareJobsResult }>) {
         <thead>
           <tr>
             <th scope="col">Criterion</th>
-            {result.jobs.map(({ job, fit }) => (
+            {result.jobs.map(({ job }) => (
               <th key={job.id} scope="col">
-                <JobHeading fit={fit} job={job} />
+                <JobHeading job={job} />
               </th>
             ))}
           </tr>
@@ -163,8 +162,8 @@ function ComparisonTable({ result }: Readonly<{ result: CompareJobsResult }>) {
               return (
                 <td key={job.id}>
                   {unknown === 0
-                    ? "No ranking dimensions are unknown."
-                    : `${String(unknown)} ranking dimension${unknown === 1 ? " is" : "s are"} unknown.`}
+                    ? "The source answered everything Jobbbler checks."
+                    : `The source left ${String(unknown)} thing${unknown === 1 ? "" : "s"} unanswered — confirm with the employer.`}
                 </td>
               );
             })}
@@ -182,8 +181,8 @@ function EmptyComparison({ kind }: Readonly<{ kind: "missing" | "invalid" }>) {
       <h1>{invalid ? "Use one to three distinct roles" : "Choose roles to compare"}</h1>
       <p>
         {invalid
-          ? "The shared link contains duplicate, blank, or more than three job IDs. Return to search and select a valid set."
-          : "Comparison links are shareable. Add one to three job IDs as repeated id parameters to compare source-backed facts side by side."}
+          ? "This comparison link lists the same role twice or more than three roles. Go back to search and pick up to three."
+          : "Pick up to three roles from search to see their facts side by side. The link you get is shareable."}
       </p>
       <Link href="/">Return to search</Link>
     </section>
@@ -244,8 +243,8 @@ export function CompareWorkspace({
       </header>
       <ComparisonTable result={state.result} />
       <p className={styles["footnote"]}>
-        Scores reflect the active comparison criteria. Original listings remain the source of truth
-        for availability and application details.
+        Everything shown comes from the original listings, which remain the source of truth for
+        availability and application details.
       </p>
     </section>
   );

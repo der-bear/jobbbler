@@ -6,7 +6,8 @@ import styles from "@/features/saved/saved-workspace.module.css";
 
 export const metadata: Metadata = {
   title: "Saved searches",
-  description: "Create durable, explainable technology-job alerts with a verified delivery path.",
+  description:
+    "Save a search once and let Jobbbler keep checking — you hear only about real changes.",
 };
 
 export default function SavedPage() {

@@ -11,7 +11,7 @@ describe("WebMCP explanation", () => {
     expect(markup).toContain("No separate MCP server");
     expect(markup).toContain("discovers the actions available on that page");
     expect(markup).toContain("The conversation stays in your agent client");
-    expect(markup).toContain("alerts keep running through Jobbbler");
+    expect(markup).toContain("Jobbbler keeps checking after the tab closes");
     expect(markup).toContain("agent-mediated approval");
     expect(markup).not.toContain("chat input");
   });
