@@ -37,6 +37,7 @@ import { compareApiUrl } from "@/features/compare/compare-state";
 import { createJobDetailToolManifests } from "@/features/job-detail/webmcp-tools";
 import { createSearchToolManifests } from "@/features/search/webmcp-tools";
 import { createSavedToolManifests } from "@/features/saved/webmcp-tools";
+import { createSiteWideToolManifests } from "@/features/site-wide-webmcp-tools";
 import { queryApi } from "@/lib/query-client";
 import { startOwnerActivityFeed } from "@/lib/owner-activity-feed";
 import {
@@ -56,14 +57,15 @@ import { latestSearchRunSchema } from "@/lib/latest-run";
 import { createWorkflowPlannerTool } from "@/features/webmcp-workflows";
 
 import { resolveWebMcpRoute, type WebMcpRoute } from "./webmcp-route";
+import { mergeToolManifests, stableWebMcpCoreNames } from "./webmcp-registration";
 
-function routeLabel(route: WebMcpRoute): string {
+function routeLabel(route: WebMcpRoute, pathname: string): string {
   if (route.kind === "search") return "/";
   if (route.kind === "detail") return "/jobs/:jobId";
   if (route.kind === "compare") return "/compare";
   if (route.kind === "saved") return "/saved";
   if (route.kind === "application") return "/apply/:draftId";
-  return "/";
+  return pathname;
 }
 
 export type WebMcpRegistrationStatus = "checking" | "unsupported" | "preparing" | "ready" | "error";
@@ -122,19 +124,26 @@ function detailUrl(jobId: string): string {
   }`;
 }
 
+function searchManifests(
+  navigate: (href: string) => void,
+): readonly ToolManifest<unknown, unknown>[] {
+  return createSearchToolManifests({
+    searchJobs: (input, { signal }) =>
+      queryApi(searchUrl(input), searchJobsResultSchema, { signal }),
+    getSearchState: readSearchSurfaceState,
+    onSearchCommitted: commitWebMcpSearch,
+    onNavigate: navigate,
+    getCriteriaSearch: currentCriteriaSearch,
+  });
+}
+
 function routeManifests(
   route: WebMcpRoute,
   navigate: (href: string) => void,
+  searchTools: readonly ToolManifest<unknown, unknown>[],
 ): readonly ToolManifest<unknown, unknown>[] {
   if (route.kind === "search") {
-    return createSearchToolManifests({
-      searchJobs: (input, { signal }) =>
-        queryApi(searchUrl(input), searchJobsResultSchema, { signal }),
-      getSearchState: readSearchSurfaceState,
-      onSearchCommitted: commitWebMcpSearch,
-      onNavigate: navigate,
-      getCriteriaSearch: currentCriteriaSearch,
-    });
+    return searchTools;
   }
 
   if (route.kind === "detail") {
@@ -251,22 +260,23 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
     }
 
     const route = resolveWebMcpRoute(pathname);
-    const baseManifests = routeManifests(route, (href) => router.push(href, { scroll: false }));
-    const manifests =
-      baseManifests.length === 0
-        ? baseManifests
-        : [
-            ...baseManifests,
-            createWorkflowPlannerTool({
-              route: routeLabel(route),
-              availableTools: () => baseManifests.map(({ name }) => name),
-            }),
-          ];
-    if (manifests.length === 0) {
-      setStatus("ready");
-      setRegisteredTools(emptyTools);
-      return;
-    }
+    const navigate = (href: string) => router.push(href, { scroll: false });
+    const publicSearchTools = searchManifests(navigate);
+    const contextualManifests = routeManifests(route, navigate, publicSearchTools);
+    const siteWideManifests = createSiteWideToolManifests({ onNavigate: navigate });
+    let manifests: readonly ToolManifest<unknown, unknown>[] = [];
+    const planner = createWorkflowPlannerTool({
+      route: routeLabel(route, pathname),
+      availableTools: () => manifests.map(({ name }) => name),
+    });
+    const candidates = [planner, ...siteWideManifests, ...publicSearchTools];
+    const candidateByName = new Map(candidates.map((manifest) => [manifest.name, manifest]));
+    const coreManifests = stableWebMcpCoreNames.map((name) => {
+      const manifest = candidateByName.get(name);
+      if (manifest === undefined) throw new Error(`Missing stable WebMCP core tool: ${name}`);
+      return manifest;
+    });
+    manifests = mergeToolManifests(coreManifests, contextualManifests);
 
     let disposed = false;
     let unregister: (() => void) | undefined;

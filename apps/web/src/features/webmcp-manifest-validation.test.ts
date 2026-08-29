@@ -8,6 +8,8 @@ import { createCompareToolManifests } from "./compare/webmcp-tools";
 import { createJobDetailToolManifests } from "./job-detail/webmcp-tools";
 import { createSavedToolManifests } from "./saved/webmcp-tools";
 import { createSearchToolManifests } from "./search/webmcp-tools";
+import { createSiteWideToolManifests } from "./site-wide-webmcp-tools";
+import { createWorkflowPlannerTool } from "./webmcp-workflows";
 
 const never = () => Promise.reject(new Error("not called in validation tests"));
 
@@ -56,6 +58,37 @@ function applicationManifests(
 }
 
 describe("route tool manifests", () => {
+  it("the stable site-wide core passes the shared manifest contract", () => {
+    const search = createSearchToolManifests({
+      searchJobs: never,
+      getSearchState: () => null,
+      onSearchCommitted: () => undefined,
+      onNavigate: () => undefined,
+    });
+    const siteWide = createSiteWideToolManifests({ onNavigate: () => undefined });
+    const candidates = [
+      createWorkflowPlannerTool({ route: "/about/webmcp", availableTools: () => [] }),
+      ...siteWide,
+      ...search,
+    ];
+    const names = [
+      "plan_job_workflow",
+      "get_site_capabilities",
+      "get_search_filters",
+      "search_jobs",
+      "open_job_details",
+      "open_jobbbler_page",
+    ];
+    const core = names.map((name) => {
+      const manifest = candidates.find((candidate) => candidate.name === name);
+      if (manifest === undefined) throw new Error(`Missing ${name}.`);
+      return manifest;
+    });
+
+    expect(core.map(({ name }) => name)).toEqual(names);
+    expect(() => validateToolManifest(core)).not.toThrow();
+  });
+
   it("every route set passes the shared manifest contract", () => {
     const routeSets = {
       search: createSearchToolManifests({

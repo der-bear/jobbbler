@@ -55,22 +55,32 @@ async function callTool(page: Page, name: string, input: unknown): Promise<unkno
 }
 
 test.describe("agent journey through the live WebMCP surface", () => {
-  test("registers route tools, plans, searches, and navigates like an agent", async ({ page }) => {
+  test("keeps workflows reachable, plans, searches, and navigates like an agent", async ({
+    page,
+  }) => {
     await installModelContext(page);
-    await page.goto("/");
+    await page.goto("/about/webmcp");
 
     await expect
       .poll(() => registeredToolNames(page))
       .toEqual([
         "get_search_filters",
-        "get_search_state",
+        "get_site_capabilities",
         "open_job_details",
+        "open_jobbbler_page",
         "plan_job_workflow",
         "search_jobs",
       ]);
 
-    await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(/ready/i);
-    await expect(page.getByText("5 tools available on this page")).toBeVisible();
+    const capabilities = (await callTool(page, "get_site_capabilities", {})) as {
+      status: string;
+      data: { interactionModel: string; totalCapabilities: number };
+    };
+    expect(capabilities).toMatchObject({
+      status: "completed",
+      data: { interactionModel: "global_core_plus_context" },
+    });
+    expect(capabilities.data.totalCapabilities).toBeGreaterThan(20);
 
     const plan = (await callTool(page, "plan_job_workflow", { goal: "monitor_search" })) as {
       status: string;
@@ -93,6 +103,19 @@ test.describe("agent journey through the live WebMCP surface", () => {
       .poll(() => new URL(page.url()).searchParams.get("q"))
       .toBe("senior full-stack engineer");
     await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
+    await expect
+      .poll(() => registeredToolNames(page))
+      .toEqual([
+        "get_search_filters",
+        "get_search_state",
+        "get_site_capabilities",
+        "open_job_details",
+        "open_jobbbler_page",
+        "plan_job_workflow",
+        "search_jobs",
+      ]);
+    await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(/ready/i);
+    await expect(page.getByText("7 tools available on this page")).toBeVisible();
 
     const activityTab = page.getByRole("tab", { name: /Activity/ });
     await expect(activityTab).toHaveAttribute("aria-selected", "true");
@@ -112,7 +135,12 @@ test.describe("agent journey through the live WebMCP surface", () => {
         "compare_jobs",
         "get_job_application_capability",
         "get_job_details",
+        "get_search_filters",
+        "get_site_capabilities",
+        "open_job_details",
+        "open_jobbbler_page",
         "plan_job_workflow",
+        "search_jobs",
       ]);
   });
 
