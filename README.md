@@ -2,11 +2,11 @@
 
 **Signal over noise — with an agent you can see and authority you control.**
 
-Jobbbler is an evidence-first workspace for discovering technology roles, comparing trade-offs, monitoring a search, and preparing one deliberate application. It is a proof of value for the agentic web: a complete conventional product that a compatible browser agent can understand immediately, without a separately installed or declared MCP server. Each route exposes only the tools that make sense for its current state.
+Jobbbler is a plain, typography-first job portal for technology roles — search, filters, saved email alerts, and one deliberate application at a time. It is also a proof of value for the agentic web: the same site is immediately operable by a compatible browser agent through WebMCP, with no separately installed or declared MCP server. Each route exposes only the tools that make sense for its current state, and a built-in Agent activity panel shows judges and developers exactly which tools a page offers and what an agent changed.
 
 Built for the OpenAI WebMCP Challenge.
 
-![Jobbbler search workspace](docs/design/qa-task7-desktop.png)
+![Jobbbler search workspace](docs/design/qa-portal-filtered.png)
 
 ## Why it is different
 
@@ -20,12 +20,12 @@ Built for the OpenAI WebMCP Challenge.
 
 ## Product tour
 
-| Discover and explain                                                 | Monitor privately                                                                               | Apply deliberately                                                                                                      |
-| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Compose a human-readable outcome and edit every inferred constraint. | Save the exact query, preview timing, verify a delivery endpoint, and inspect the latest delta. | Accept candidate facts, seal a review, approve the exact disclosure, and issue one five-minute single-use confirmation. |
-| Compare up to three roles without losing provenance or unknowns.     | Pause, resume, or revoke without exposing an address or credential to WebMCP.                   | Agent suggestions remain visibly unaccepted until the human edits or approves them.                                     |
+| Discover                                                                                                             | Monitor privately                                                                               | Apply deliberately                                                                                                      |
+| -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Search and live filters — chips, multi-selects, a salary slider — with every result opening as a readable role page. | Save the exact query, preview timing, verify a delivery endpoint, and inspect the latest delta. | Accept candidate facts, seal a review, approve the exact disclosure, and issue one five-minute single-use confirmation. |
+| Evidence, trade-offs, and source freshness stay on the role page.                                                    | Pause, resume, or revoke without exposing an address or credential to WebMCP.                   | Agent suggestions remain visibly unaccepted until the human edits or approves them.                                     |
 
-![Purpose-bound application permission](docs/design/qa-task9-application-permission.png)
+![A role page reads like an article](docs/design/qa-role-article.png)
 
 ## WebMCP surface
 

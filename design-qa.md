@@ -1,51 +1,38 @@
 # Design QA
 
-## Scope
+## Current direction
 
-Jobbbler search, comparison, role-detail, saved-alert, and reviewed-application surfaces were reviewed against the selected Editorial Workspace reference and exercised in the Codex in-app browser. The review covered desktop and mobile layouts, light and dark themes, keyboard-readable structure, core discovery, alert, and application interactions, and route-scoped WebMCP feedback.
+Jobbbler's public surfaces follow a typography-first, Notion-adjacent system on a neutral
+white/near-black palette: one sans face, real form elements, thin dividers, no kickers,
+no decorative metrics, and a single restrained green signal accent. The portal reads as a
+plain job site; the agentic layer lives in a dedicated, resizable Agent activity panel
+docked to the right (open by default, closable, restored by a floating pill).
 
-## Visual evidence
+## Visual evidence (current build)
 
-- Reference: `docs/design/reference/editorial-workspace.png`
-- Normalized reference/implementation comparison: `docs/design/qa-task7-comparison.png`
-- Desktop implementation capture: `docs/design/qa-task7-desktop.png`
-- Mobile implementation capture at a true 390 × 844 browsing viewport: `docs/design/qa-task7-mobile.jpg`
-- Saved-alert desktop capture: `docs/design/qa-task8-saved.png`
-- Saved-alert mobile capture at a true 390 × 844 browsing viewport: `docs/design/qa-task8-saved-mobile.jpg`
-- Application disclosure capture: `docs/design/qa-task9-application-permission.png`
-- Mainstream hierarchy before refinement: `docs/design/audit-mainstream/01-search-and-activity.png`
-- Mainstream saved-workspace before refinement: `docs/design/audit-mainstream/02-saved-workspace.png`
-- Refined text-first search hierarchy: `docs/design/audit-mainstream/03-search-refined.jpg`
-- Refined privacy disclosure hierarchy: `docs/design/audit-mainstream/04-saved-refined.jpg`
+- Landing registry, no criteria: `docs/design/qa-portal-home.png`
+- Filtered search with chips, multi-selects, and salary slider: `docs/design/qa-portal-filtered.png`
+- Dark theme: `docs/design/qa-portal-dark.png`
+- Role page as an article (meta line: work model · location · employment · seniority · salary): `docs/design/qa-role-article.png`
+- Saved searches with plain-language private-space card: `docs/design/qa-saved.png`
 
-The combined comparison was inspected at original detail. The implementation preserves the reference's editorial hierarchy, restrained green signal color, evidence-first density, thin dividers, compact controls, and clear primary/secondary reading order while adapting the content to Jobbbler's job-discovery domain.
+Historical captures from earlier iterations remain under `docs/design/` for provenance
+(`qa-task*.png`, `audit-mainstream/*`); they do not represent the current interface.
 
-## Functional and responsive checks
+## Verified behavior (current build)
 
-- Search returned three realistic technology-role records with explicit filters, evidence, unknowns, provenance, freshness, and shareable URL state.
-- Compare selection exposed the compare action only after jobs were selected and rendered a readable two-role evidence table.
-- Role detail preserved provenance and made unavailable application/source states explicit.
-- The in-app browser discovered exactly two relevant WebMCP tools on each route and replaced the tool set after Search → Compare → Detail navigation.
-- Theme switching updated the document theme and verified dark-mode canvas and text colors.
-- The mobile layout was rendered inside a genuine 390 × 844 iframe browsing context so CSS media queries, fixed positioning, and responsive overflow were exercised by the browser.
-- Mobile filters and Agent Activity are represented as labeled bottom sheets; controls remain usable without WebMCP support.
-- The saved-alert experience preserves the same editorial hierarchy while separating recoverability, encrypted delivery, scheduling, latest evaluation, and pause/revoke controls into distinct, readable surfaces.
-- Mobile saved-alert geometry was measured in the browser at a 390 px viewport with no horizontal document overflow; the active alert, masked destination, monitoring state, and latest-run status remain available without a desktop-only interaction.
-- The `/saved` route exposes exactly the two relevant WebMCP tools, `get_saved_alerts` and `set_job_alert_state`; the read tool was exercised against real local state and returned bounded alert metadata without a delivery destination or credential.
-- A real mobile P1 defect was found: the header backdrop filter created a containing block that trapped the fixed bottom navigation at the top of the header. Mobile now uses an opaque header without backdrop filtering, restoring the wordmark/theme controls at the top and navigation at the viewport bottom.
-- The shared UI barrel is explicitly client-bound, eliminating a React Server Components failure that appeared in Next.js development mode.
-- The application workspace carries the same editorial type scale, thin-rule hierarchy, restrained signal color, and compact trust rail into a four-stage safety journey without resembling a generic multi-step form.
-- The complete synthetic journey was exercised in the in-app browser: private session, accepted candidate facts, validation, immutable review, exact data permission, five-minute single-use confirmation, idempotent internal receipt, and final read-only WebMCP state.
-- Application tool registration was verified as state-bound: the initial profile surface exposed only safe state and scoped-access tools, while the completed receipt surface unregistered every mutation and retained only `get_application_state`.
-- Email values are naturally redacted by the browser accessibility snapshot during profile entry; no reusable credential, owner identifier, or private answer appears in WebMCP tool descriptions or final activity metadata.
-- The idle desktop Agent Activity surface is now one compact disclosure rather than a peer column. Running, approval, and failure states open it automatically; the mobile bottom sheet opens its contents directly.
-- Passwordless recovery and irreversible deletion remain discoverable under `Privacy & access` without presenting a destructive form in the saved-workspace hero.
-- The refined search and saved captures were reviewed at the same desktop viewport as their before states. The editorial type scale and thin-rule system remain intact while technical and destructive controls move to secondary disclosures.
-
-## Severity review
-
-- P0 blockers: none.
-- P1 usability or structural defects: none remaining.
-- P2 visual polish defects: none remaining in the reviewed states.
-
-final result: passed
+- Landing shows every open role sorted by newest; searching or filtering switches the
+  heading to a match count. Filters commit instantly (chips, multi-select dropdowns with
+  type-to-filter, salary slider); text fields commit on Enter or blur.
+- Every result row is fully clickable with a hover state and opens the role article; the
+  registry carries title, company, work model · location, salary, and freshness only.
+- The Agent activity panel lists the exact WebMCP tools registered for the current page
+  (name, read-only tag, purpose), the live activity log, and a plain-language status; it
+  resizes by dragging its edge and collapses to a floating pill.
+- The full journey — search → role → saved alert (verified email, encrypted at rest) →
+  reviewed application with agent-mediated consent — was re-exercised after the redesign
+  through the unit, route, and Playwright suites (`pnpm verify`, `pnpm test:e2e`, 8/8).
+- Light and dark themes render from the same token set; reduced-motion leaves no running
+  decorative animations (covered by an automated Playwright check).
+- Mobile (390px) stacks search and filters above the registry with no horizontal
+  overflow (automated Playwright check).
