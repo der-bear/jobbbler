@@ -2,7 +2,7 @@
 
 **Signal over noise — with an agent you can see and authority you control.**
 
-Jobbbler is an evidence-first workspace for discovering technology roles, comparing trade-offs, monitoring a search, and preparing one deliberate application. It is a complete conventional web product that becomes faster in a WebMCP-capable browser: each route exposes only the tools that make sense for the state a person is viewing.
+Jobbbler is an evidence-first workspace for discovering technology roles, comparing trade-offs, monitoring a search, and preparing one deliberate application. It is a proof of value for the agentic web: a complete conventional product that a compatible browser agent can understand immediately, without a separately installed or declared MCP server. Each route exposes only the tools that make sense for its current state.
 
 Built for the OpenAI WebMCP Challenge.
 
@@ -14,7 +14,7 @@ Built for the OpenAI WebMCP Challenge.
 - **Route-scoped WebMCP.** Search, comparison, saved-alert, and application screens register small, purpose-specific tool sets. Navigation and application state remove stale tools.
 - **Observable agent work.** Every tool execution has a bounded, human-readable activity state. The normal UI remains usable if WebMCP is unavailable.
 - **No-login first run.** An ephemeral private owner session lets someone start immediately. A verified email enables passwordless recovery without turning the first visit into an account wall.
-- **Independent authority layers.** Agent delegation, data permission, immutable review, and final confirmation are separate server-enforced decisions.
+- **Independent authority layers.** Agent delegation, request-bound data permission, immutable review, and final confirmation are separate server-enforced decisions. Agent-mediated approvals leave a versioned server receipt without pretending to cryptographically identify the human or agent vendor.
 - **Truthful actions.** Internal fictional-demo applications produce an immutable receipt. External roles can only be handed off; Jobbbler never claims an external submission it cannot prove.
 - **Durable automation.** Saved searches run in a worker with leases, deterministic deltas, delivery idempotency, bounded retries, and verified encrypted email endpoints.
 

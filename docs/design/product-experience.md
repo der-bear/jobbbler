@@ -22,7 +22,7 @@ The human interface and route-scoped WebMCP tools are two adapters over the same
 - A compatible browser agent can open the site, discover tools registered by the active page, and execute structured actions without simulating DOM clicks.
 - WebMCP is tab-bound and ephemeral. The tools exist while the page is loaded in the agent's live browser context; background alerts continue through the regular worker after the tab closes.
 - The conversation belongs to the external agent client. Jobbbler does not embed a second chat surface.
-- A structured `requires_user_action` response tells the client when a first-party review or confirmation is necessary. Jobbbler does not treat an unverified statement in model conversation as durable consent.
+- A structured `requires_user_action` response gives the agent client exact review facts and a server request ID. A separate confirmation tool can record the explicit agent-mediated action as a versioned receipt; raw chat is not stored, and the receipt does not claim cryptographic human or agent identity.
 
 ## Route experience
 
@@ -67,7 +67,7 @@ The submission should show a real external browser-agent session rather than a s
 2. The agent opens Jobbbler and discovers the active route's tools.
 3. It invokes `search_jobs`; the real URL, filters, and results update.
 4. Navigation replaces the search tools with role- or application-specific tools.
-5. The agent prepares an application, while exact data permission and final confirmation remain separate.
+5. The agent prepares an application, presents exact data permission in the agent client, and records the request-bound decision separately from final confirmation.
 6. Jobbbler displays the resulting state and a concise activity receipt when viewed.
 
 The public `/about/webmcp` explanation may illustrate this sequence, but it must remain optional and must not add a fake agent, decorative console, or alternate product workflow.

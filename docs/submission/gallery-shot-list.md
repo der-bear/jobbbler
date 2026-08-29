@@ -6,7 +6,7 @@ Use 4–6 clean 3:2 images. Capture real application state, remove personal info
 2. **Visible agent collaboration** — Search plus Agent Activity rail showing a completed `search_jobs` tool call with safe summary and affected results. Caption: “Tool work is visible at the point of effect.”
 3. **Comparison workspace** — Three roles in the comparison view with match/evidence structure. Caption: “Compare concrete trade-offs instead of losing context across tabs.”
 4. **Verified alert** — Saved workspace with schedule state and a latest-run/delivery status. Blur or avoid all email addresses. Caption: “Durable alerts require verification and report delivery truthfully.”
-5. **Application review boundary** — Internal fictional-demo application in review/confirmation state. Caption: “Draft assistance, consent, review, and confirmation are distinct human-controlled steps.”
+5. **Agent-mediated permission** — External agent presentation beside the resulting internal fictional-demo application permission state. Caption: “The exact recipient, purpose, and fields are reviewed before a request-bound approval is recorded.”
 6. **Mobile state** — Narrow viewport showing Saved or search with the activity/filter sheet pattern. Caption: “The workflow remains usable and legible on small screens.”
 
 ## Capture checklist

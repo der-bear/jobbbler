@@ -355,7 +355,7 @@ function permissionTool(
     name: "request_data_permission",
     purpose: "Request human permission for the exact reviewed application disclosure.",
     description:
-      "Request a purpose-bound data permission for the current review, recipient, fields, categories, notice, and payload hash. A human must approve it in the visible workspace.",
+      "Request a purpose-bound data permission for the current review, recipient, fields, categories, notice, and payload hash. The external agent client must present the returned request and receive an explicit user decision before invoking the separate approval tool.",
     inputSchema: emptyInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {

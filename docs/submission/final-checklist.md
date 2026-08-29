@@ -20,7 +20,8 @@
 - [ ] Use a synthetic/owned verified endpoint; do not display its full address or OTP.
 - [ ] Show real latest-run and delivery state, including a truthful retry-safe state if used.
 - [ ] Use the clearly fictional internal-demo employer for application submission footage.
-- [ ] Demonstrate consent/delegation, review, and short-lived confirmation as separate human actions.
+- [ ] Demonstrate the real agent-client permission presentation, request-bound affirmative action, delegation/review boundary, and short-lived final confirmation as distinct states.
+- [ ] Describe the stored interaction as evidence of the exact action and context, never as cryptographic proof of the human, model, or vendor.
 - [ ] Do not display confirmation tokens, cookies, database values, provider IDs, or ciphertext.
 
 ## Media and Devpost readiness
