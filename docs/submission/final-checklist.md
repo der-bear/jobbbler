@@ -2,10 +2,10 @@
 
 ## Claims and links
 
-- [ ] Replace **[PRODUCTION_URL]**, **[VIDEO_URL]**, and **[REPOSITORY_URL]** in `devpost-copy.md`.
+- [ ] Replace **[PRODUCTION_URL]** and **[VIDEO_URL]** in `devpost-copy.md`.
 - [ ] Confirm the live URL loads signed out and the fallback UI works without WebMCP.
 - [ ] Confirm the submitted build, video, gallery, and Devpost copy describe the same implemented behavior.
-- [ ] Verify public repository, license, local-run instructions, and any required attribution.
+- [x] Verify public repository, MIT license, local-run instructions, and required attribution.
 - [ ] Remove any claim that cannot be shown in the recorded build.
 
 ## WebMCP and demo proof

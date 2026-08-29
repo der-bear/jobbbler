@@ -66,7 +66,7 @@ TypeScript, Next.js, React, WebMCP/browser model context, Zod, Vitest, pnpm work
 
 - Live project: **[PRODUCTION_URL — replace before submission]**
 - Demo video: **[VIDEO_URL — replace before submission]**
-- Source repository: **[REPOSITORY_URL — replace before submission]**
+- Source repository: https://github.com/der-bear/jobbbler
 - WebMCP capability notes: `docs/architecture/webmcp-capability-matrix.md`
 
 ## Privacy and safety
@@ -75,6 +75,6 @@ Jobbbler starts without a public profile. Email alerts use verified endpoints; e
 
 ## Open source and local run
 
-License and public repository status: **[VERIFY_AND_LINK_BEFORE_SUBMISSION]**.
+License and public repository: [MIT-licensed Jobbbler source](https://github.com/der-bear/jobbbler).
 
-Local run instructions: **[REPOSITORY_URL]/README.md** — verify this link, the documented command, required environment variables, and a clean first-run flow before publishing.
+Local run instructions: [README](https://github.com/der-bear/jobbbler#run-locally).

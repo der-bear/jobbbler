@@ -22,4 +22,4 @@ Target runtime: 2 minutes 35 seconds to 2 minutes 50 seconds. Record a real loca
 - Do not record cookies, OTPs, confirmation secrets, ciphertext, raw provider responses, database paths, terminal credentials, or source payloads.
 - Keep narration concrete: describe what is currently visible, not future roadmap claims.
 - State that WebMCP is live-page capability and that Jobbbler's worker, not the closed browser tab, continues saved alerts.
-- Replace these before publishing: **[PRODUCTION_URL]**, **[VIDEO_URL]**, **[REPOSITORY_URL]**.
+- Replace these before publishing: **[PRODUCTION_URL]** and **[VIDEO_URL]**. Repository: https://github.com/der-bear/jobbbler.

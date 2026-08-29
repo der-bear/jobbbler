@@ -1,5 +1,7 @@
 # Jobbbler
 
+[![CI](https://github.com/der-bear/jobbbler/actions/workflows/ci.yml/badge.svg)](https://github.com/der-bear/jobbbler/actions/workflows/ci.yml)
+
 **Signal over noise — with an agent you can see and authority you control.**
 
 Jobbbler is an evidence-first workspace for discovering technology roles, comparing trade-offs, monitoring a search, and preparing one deliberate application. It is a proof of value for the agentic web: a complete conventional product that a compatible browser agent can understand immediately, without a separately installed or declared MCP server. Each route exposes only the tools that make sense for its current state.
