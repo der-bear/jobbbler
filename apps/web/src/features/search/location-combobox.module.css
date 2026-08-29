@@ -24,6 +24,28 @@
   color: var(--color-ink);
 }
 
+.clearButton {
+  display: inline-grid;
+  flex: 0 0 auto;
+  inline-size: 28px;
+  block-size: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-ink-subtle);
+}
+
+.clearButton:hover {
+  background: var(--color-surface-subtle);
+  color: var(--color-ink);
+}
+
+.clearButton:focus-visible {
+  outline: 2px solid var(--jb-focus);
+  outline-offset: 1px;
+}
+
 .field > input::placeholder {
   color: var(--color-ink-subtle);
 }

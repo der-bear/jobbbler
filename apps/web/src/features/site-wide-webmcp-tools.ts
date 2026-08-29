@@ -3,21 +3,12 @@ import { z } from "zod";
 import { entityIdSchema, jobIdSchema } from "@jobbbler/contracts";
 import type { JsonSchema, JsonValue, ToolManifest } from "@jobbbler/webmcp";
 
-import { webMcpCatalog } from "@/lib/webmcp-catalog";
 import {
   completedWebMcpResult,
   safeWebMcpErrorResult,
   type CompletedWebMcpResult,
   type SafeWebMcpErrorResult,
 } from "@/lib/webmcp-tool-result";
-
-import { workflowPlans, workflowVersion, type WorkflowGoal } from "./webmcp-workflows";
-
-const emptyInputSchema = {
-  type: "object",
-  additionalProperties: false,
-  properties: {},
-} as const satisfies JsonSchema;
 
 const openPageInputSchema = {
   oneOf: [
@@ -54,7 +45,7 @@ const openPageInputSchema = {
   ],
 } as const satisfies JsonSchema;
 
-const emptyInput = z.strictObject({});
+const startApplicationInput = z.strictObject({ jobId: jobIdSchema });
 const applicationIdSchema = entityIdSchema.refine((value) => value.startsWith("application_"), {
   message: "Expected an application draft ID.",
 });
@@ -77,20 +68,23 @@ const openPageInput = z.discriminatedUnion("page", [
 
 export interface SiteWideToolDependencies {
   onNavigate(href: string): Promise<void> | void;
+  startApplication(
+    jobId: string,
+    options: Readonly<{ signal: AbortSignal }>,
+  ): Promise<
+    Readonly<{
+      draftId: string;
+      href: string;
+      disposition: "created" | "reopened";
+      nextTool: "get_application_readiness";
+    }>
+  >;
 }
 
 type SiteWideToolOutput = CompletedWebMcpResult<JsonValue> | SafeWebMcpErrorResult;
 
-const workflowOrder: readonly WorkflowGoal[] = [
-  "find_roles",
-  "compare_roles",
-  "monitor_search",
-  "prepare_application",
-  "recover_workspace",
-];
-
 function destinationHref(input: z.infer<typeof openPageInput>): string {
-  if (input.page === "search") return "/";
+  if (input.page === "search") return "/jobs";
   if (input.page === "saved") return "/saved";
   if (input.page === "webmcp_guide") return "/about/webmcp";
   if (input.page === "application") return `/apply/${encodeURIComponent(input.draftId)}`;
@@ -102,46 +96,6 @@ function destinationHref(input: z.infer<typeof openPageInput>): string {
 export function createSiteWideToolManifests(
   dependencies: SiteWideToolDependencies,
 ): readonly ToolManifest<unknown, SiteWideToolOutput>[] {
-  const getSiteCapabilities: ToolManifest<unknown, SiteWideToolOutput> = {
-    name: "get_site_capabilities",
-    purpose: "Read Jobbbler's workflows, tool coverage, route requirements, and human boundaries.",
-    description:
-      "Discover what an agent can accomplish across Jobbbler before choosing tools. Returns compact outcome workflows, the global-plus-context interaction model, and the decisions that always remain with the human.",
-    inputSchema: emptyInputSchema,
-    annotations: { readOnlyHint: true, untrustedContentHint: false },
-    async execute(input, { signal }) {
-      try {
-        emptyInput.parse(input);
-        const tools = webMcpCatalog.flatMap((surface) => surface.tools);
-        return completedWebMcpResult({
-          summary: `Jobbbler exposes ${String(tools.length)} capabilities through a global core plus contextual tools.`,
-          data: {
-            workflowVersion,
-            interactionModel: "global_core_plus_context",
-            totalCapabilities: tools.length,
-            workflows: workflowOrder.map((goal) => ({
-              goal,
-              outcome: workflowPlans[goal].title,
-            })),
-            navigation: {
-              search: "search_jobs",
-              role: "open_job_details",
-              otherWorkspace: "open_jobbbler_page",
-            },
-            contextualSurfaces: ["role", "comparison", "saved", "application_stage"],
-            humanBoundaries: [
-              "Human consent is required for exact application data disclosure.",
-              "Final application confirmation remains a fresh human decision.",
-              "External applications are prepared for handoff, never reported as submitted.",
-            ],
-          },
-        });
-      } catch (error) {
-        return safeWebMcpErrorResult(error, signal, "Site capabilities accept no arguments.");
-      }
-    },
-  };
-
   const openJobbblerPage: ToolManifest<unknown, SiteWideToolOutput> = {
     name: "open_jobbbler_page",
     purpose: "Open a Jobbbler workspace from any page using explicit validated identifiers.",
@@ -168,5 +122,45 @@ export function createSiteWideToolManifests(
     },
   };
 
-  return [getSiteCapabilities, openJobbblerPage];
+  const startApplication: ToolManifest<unknown, SiteWideToolOutput> = {
+    name: "prepare_application",
+    purpose: "Create or reopen one private application draft for an explicitly chosen role.",
+    description:
+      "Use this when the person asks to start an application. Prepare it by exact Jobbbler job ID and open its private review surface. Repeated calls reopen the same owner-bound draft; this shares no candidate data and submits nothing.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        jobId: {
+          type: "string",
+          description: "A job ID returned by search_jobs or get_job_details.",
+          pattern: "^job_[0-9a-f-]{36}$",
+        },
+      },
+      required: ["jobId"],
+    },
+    annotations: { readOnlyHint: false, untrustedContentHint: true },
+    async execute(input, { signal }) {
+      try {
+        const parsed = startApplicationInput.parse(input);
+        const workspace = await dependencies.startApplication(parsed.jobId, { signal });
+        return completedWebMcpResult({
+          summary:
+            workspace.disposition === "created"
+              ? "Application draft created and ready for preparation."
+              : "Application draft reopened and ready for preparation.",
+          data: workspace,
+          resources: [{ type: "application", id: workspace.draftId, label: "Private application" }],
+        });
+      } catch (error) {
+        return safeWebMcpErrorResult(
+          error,
+          signal,
+          "Provide one valid job ID returned by Jobbbler.",
+        );
+      }
+    },
+  };
+
+  return [openJobbblerPage, startApplication];
 }

@@ -39,10 +39,18 @@ The current implementation keeps identity portable across both storage adapters.
 1. A WebMCP command reaches the Policy Enforcement Point in the BFF.
 2. The backend evaluates human owner, agent session, resource, action, state, expiry, and risk.
 3. If authority is absent but requestable, the response is a structured denial with a non-secret, server-issued request ID, exact presentation facts, and `requires_user_action` status.
-4. The external agent client may present the named resource, operations, purpose, duration, and affected data classes, but it receives no approval tool.
-5. The visible private Jobbbler workspace presents the exact pending request. Only its first-party control can send the affirmative action; silence, free-form model text, and tool parameters cannot approve it.
-6. The secure Jobbbler owner session reaches the command boundary, where the server rechecks the pending request and stores a versioned first-party interaction receipt. This proves which server request and affirmative action were recorded; it does not cryptographically identify the person, model, or agent vendor.
-7. Approval creates a server-side delegation; it does not return a reusable secret through WebMCP.
+4. The external agent client presents the named resource, operations, purpose,
+   duration, and affected data classes through its own user-interaction surface.
+5. The person explicitly approves or declines there. Silence and unrelated
+   free-form text are not decisions.
+6. The agent invokes the matching decision tool with the exact server request
+   ID and normalized decision. The server rechecks the owner session, pending
+   request, draft, expiry, and expected state, then stores a versioned
+   `agent_client` interaction receipt. This is durable evidence of the exact
+   request and recorded decision, not cryptographic proof of the human, model,
+   or agent vendor.
+7. Approval creates server-side, draft-bound delegation; no reusable secret is
+   returned through WebMCP.
 8. The original command is not automatically replayed. The agent retries, and the backend performs a fresh authorization evaluation.
 9. Revocation, expiry, resource version changes, owner changes, or risk-policy changes take effect at the next evaluation.
 
@@ -50,23 +58,30 @@ This follows the useful AuthZEN requestable-denial principle: approval workflow 
 
 ### Delegation record
 
-At minimum it stores:
+The current record stores:
 
-- delegation ID and version;
+- delegation ID;
 - human owner ID;
-- opaque browser agent session ID or verified external client ID;
+- opaque browser agent session ID;
 - resource type and ID;
 - exact operations;
-- purpose and request correlation;
-- issued, expiry, revoked, and last-used timestamps;
-- approver action and approval-surface version;
-- risk flags and safe audit metadata.
+- purpose and the exact server-issued request ID;
+- created, expiry, approved, and revoked timestamps;
+- decision channel, normalized approve/decline/revoke action, and evidence-contract version;
+
+Separate owner-activity records keep safe summaries and request correlation without storing raw
+chat text or secrets.
 
 The browser agent session ID is a scoping handle, not a claim that Jobbbler has authenticated a particular model vendor. If a future client supplies a verifiable identity, it is stored separately as `verified_client_id`.
 
 ## Data authorization and consent
 
-The agent may request a data operation. Jobbbler returns the exact disclosure as a structured presentation, but accepts approval only through the request-bound control in the visible private workspace. There is deliberately no agent-callable approval tool. Jobbbler stores the first-party action as evidence while avoiding any claim of cryptographically verified human or agent identity.
+The agent may request a data operation. Jobbbler returns the exact disclosure
+as a structured presentation for the external agent client. The matching
+decision tool accepts only the exact live request ID, current draft version,
+and normalized decision; the server then stores the request-bound
+`agent_client` action as evidence. Jobbbler does not claim that this evidence
+cryptographically verifies the human or agent identity.
 
 Before optional AI processing or disclosure to an employer, the presentation shows:
 
@@ -79,9 +94,32 @@ Before optional AI processing or disclosure to an employer, the presentation sho
 - whether refusing is compatible with the core service;
 - a clear affirmative action that is never preselected or inferred from silence.
 
-The grant stores owner, agent session, recipient, purpose, fields, documents, payload boundary, policy versions, legal-basis classification, approval channel, server request ID, normalized affirmative action, evidence-contract version, timestamps, expiry, withdrawal, and correlation IDs. It does not retain raw chat text. A new recipient, purpose, field category, document, or materially changed payload requires a new or amended grant.
+The grant stores owner, recipient, purpose, fields, documents, payload boundary,
+policy versions, legal-basis classification, approval channel, server request
+ID, normalized affirmative action, evidence-contract version, timestamps,
+expiry, and withdrawal evidence. It does not retain raw chat text. A new
+recipient, purpose, field category, document, or materially changed payload
+requires a new grant.
 
-Consent is not used as a marketing label for every instruction. Where processing is necessary to provide a user-requested application service, the legal basis may differ; the product records that basis separately and will not claim jurisdiction-wide legal compliance without review. Where consent is the basis, it must be freely given, specific, informed, unambiguous, affirmative, and reversible, consistent with [EDPB Guidelines 05/2020](https://www.edpb.europa.eu/sites/default/files/files/file1/edpb_guidelines_202005_consent_en.pdf).
+For the Jobbbler demo application, disclosure to the hiring organization uses
+explicit consent. The review presentation states the right to withdraw before
+the person decides. `withdraw_application_consent` is available through the
+same global WebMCP surface and withdraws every live consent-based grant for the
+named application in one idempotent call. The server records the channel,
+interaction request ID, normalized withdrawal action, evidence version, and
+time. It also advances a draft-scoped consent revision included in future
+disclosure hashes, so an earlier approval cannot be replayed after withdrawal.
+Withdrawal stops future processing under that consent; it does not erase
+the application, revoke agent delegation, or retract a disclosure already sent.
+Those are deliberately separate controls.
+
+Consent is not used as a marketing label for every instruction. Agent
+delegation and submission confirmation remain authorization controls, not
+consent. Other processing may use a different lawful basis; Jobbbler records
+the classification separately and does not claim jurisdiction-wide legal
+compliance without review. Where consent is the basis, it must be freely given,
+specific, informed, unambiguous, affirmative, and reversible, consistent with
+[EDPB Guidelines 05/2020](https://www.edpb.europa.eu/sites/default/files/files/file1/edpb_guidelines_202005_consent_en.pdf).
 
 ## Submission invariant
 
@@ -119,7 +157,9 @@ OAuth security guidance recommends sender-constrained and audience-restricted ac
 
 - Unit tests for cross-owner, cross-draft, cross-action, expired, revoked, replayed, and payload-change failures.
 - Integration tests proving a mismatched or stale interaction request cannot approve a grant and a successful approval still requires re-evaluation.
-- Browser tests for clear request presentation, first-party approval, keyboard/focus behavior, withdrawal, revoke, and expired confirmation.
+- Agent-client scenario tests for clear request presentation, exact decision
+  binding, withdrawal, revoke, and expired confirmation; browser tests cover
+  the ordinary portal and judge-facing activity projection.
 - RLS tests that distinguish anonymous and verified owners.
 - Redaction tests ensuring no raw token, application answer, or document enters tool output, realtime payload, or log.
 - A concise public threat model and an end-to-end demo of request, approval, action, revoke, and denied retry.

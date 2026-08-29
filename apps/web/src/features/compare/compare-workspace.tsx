@@ -21,7 +21,7 @@ import {
 } from "@/lib/job-format";
 import { ApiClientError, queryApi } from "@/lib/query-client";
 
-import { compareApiUrl, resolveCompareSelection } from "./compare-state";
+import { compareApiUrl, comparisonRowVisibility, resolveCompareSelection } from "./compare-state";
 import styles from "./compare-workspace.module.css";
 
 type LoadState =
@@ -46,7 +46,7 @@ function JobHeading({ job }: Readonly<{ job: Job }>) {
 
 function FitNotes({ fit }: Readonly<{ fit: JobFit }>) {
   if (fit.evidence.length === 0)
-    return <p className={styles["unknown"]}>No positive evidence supplied.</p>;
+    return <p className={styles["unknown"]}>No match evidence in the selected criteria.</p>;
   return (
     <ul className={styles["fitNotes"]}>
       {fit.evidence.slice(0, 3).map((evidence, index) => (
@@ -61,7 +61,8 @@ function FitNotes({ fit }: Readonly<{ fit: JobFit }>) {
 
 function RiskNotes({ fit }: Readonly<{ fit: JobFit }>) {
   const notes = [...fit.caveats, ...fit.exclusions];
-  if (notes.length === 0) return <p className={styles["unknown"]}>No trade-offs identified.</p>;
+  if (notes.length === 0)
+    return <p className={styles["unknown"]}>No trade-offs found in the selected criteria.</p>;
   return (
     <ul className={styles["fitNotes"]}>
       {notes.slice(0, 3).map((note, index) => (
@@ -75,6 +76,7 @@ function RiskNotes({ fit }: Readonly<{ fit: JobFit }>) {
 }
 
 function ComparisonTable({ result }: Readonly<{ result: CompareJobsResult }>) {
+  const visible = comparisonRowVisibility(result.jobs.map(({ fit }) => fit));
   return (
     <div className={styles["tableScroll"]}>
       <table className={styles["comparisonTable"]}>
@@ -89,12 +91,16 @@ function ComparisonTable({ result }: Readonly<{ result: CompareJobsResult }>) {
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <th scope="row">Eligibility</th>
-            {result.jobs.map(({ job, fit }) => (
-              <td key={job.id}>{fit.eligible ? "Eligible" : "Does not meet current criteria"}</td>
-            ))}
-          </tr>
+          {visible.eligibility ? (
+            <tr>
+              <th scope="row">Eligibility</th>
+              {result.jobs.map(({ job, fit }) => (
+                <td key={job.id}>
+                  {fit.eligible ? "Meets current criteria" : "Does not meet current criteria"}
+                </td>
+              ))}
+            </tr>
+          ) : null}
           <tr>
             <th scope="row">Work and location</th>
             {result.jobs.map(({ job }) => (
@@ -118,22 +124,26 @@ function ComparisonTable({ result }: Readonly<{ result: CompareJobsResult }>) {
               <td key={job.id}>{salaryLabel(job.salary)}</td>
             ))}
           </tr>
-          <tr>
-            <th scope="row">Why it matches</th>
-            {result.jobs.map(({ job, fit }) => (
-              <td key={job.id}>
-                <FitNotes fit={fit} />
-              </td>
-            ))}
-          </tr>
-          <tr>
-            <th scope="row">Trade-offs</th>
-            {result.jobs.map(({ job, fit }) => (
-              <td key={job.id}>
-                <RiskNotes fit={fit} />
-              </td>
-            ))}
-          </tr>
+          {visible.fit ? (
+            <tr>
+              <th scope="row">Why it matches</th>
+              {result.jobs.map(({ job, fit }) => (
+                <td key={job.id}>
+                  <FitNotes fit={fit} />
+                </td>
+              ))}
+            </tr>
+          ) : null}
+          {visible.tradeOffs ? (
+            <tr>
+              <th scope="row">Trade-offs</th>
+              {result.jobs.map(({ job, fit }) => (
+                <td key={job.id}>
+                  <RiskNotes fit={fit} />
+                </td>
+              ))}
+            </tr>
+          ) : null}
           <tr>
             <th scope="row">Source and freshness</th>
             {result.jobs.map(({ job }) => (
@@ -153,21 +163,23 @@ function ComparisonTable({ result }: Readonly<{ result: CompareJobsResult }>) {
               </td>
             ))}
           </tr>
-          <tr>
-            <th scope="row">Unknowns</th>
-            {result.jobs.map(({ job, fit }) => {
-              const unknown = Object.values(fit.dimensions).filter(
-                (dimension) => dimension.status === "unknown",
-              ).length;
-              return (
-                <td key={job.id}>
-                  {unknown === 0
-                    ? "The source answered everything Jobbbler checks."
-                    : `The source left ${String(unknown)} thing${unknown === 1 ? "" : "s"} unanswered — confirm with the employer.`}
-                </td>
-              );
-            })}
-          </tr>
+          {visible.unknowns ? (
+            <tr>
+              <th scope="row">Unknowns</th>
+              {result.jobs.map(({ job, fit }) => {
+                const unknown = Object.values(fit.dimensions).filter(
+                  (dimension) => dimension.status === "unknown",
+                ).length;
+                return (
+                  <td key={job.id}>
+                    {unknown === 0
+                      ? "No missing facts in the selected criteria."
+                      : `${String(unknown)} unanswered item${unknown === 1 ? "" : "s"} — confirm with the employer.`}
+                  </td>
+                );
+              })}
+            </tr>
+          ) : null}
         </tbody>
       </table>
     </div>
@@ -184,7 +196,7 @@ function EmptyComparison({ kind }: Readonly<{ kind: "missing" | "invalid" }>) {
           ? "This comparison link lists the same role twice or more than three roles. Go back to search and pick up to three."
           : "Pick up to three roles from search to see their facts side by side. The link you get is shareable."}
       </p>
-      <Link href="/">Return to search</Link>
+      <Link href="/jobs">Return to search</Link>
     </section>
   );
 }
@@ -225,7 +237,7 @@ export function CompareWorkspace({
     return (
       <section aria-live="polite" className={styles["state"]}>
         <h1>{state.message}</h1>
-        <Link href="/">Return to search</Link>
+        <Link href="/jobs">Return to search</Link>
       </section>
     );
   }

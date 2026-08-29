@@ -12,6 +12,26 @@ function randomId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID()}`;
 }
 
+function nearestLocalActivityIndex(
+  activities: readonly AgentActivity[],
+  committed: AgentActivity,
+): number {
+  const committedStartedAt = Date.parse(committed.startedAt);
+  if (!Number.isFinite(committedStartedAt)) return -1;
+  let nearestIndex = -1;
+  let nearestDistance = 10_001;
+  activities.forEach((candidate, index) => {
+    if (!candidate.id.startsWith("act_") || candidate.toolName !== committed.toolName) return;
+    const candidateStartedAt = Date.parse(candidate.startedAt);
+    if (!Number.isFinite(candidateStartedAt)) return;
+    const distance = Math.abs(candidateStartedAt - committedStartedAt);
+    if (distance > 10_000 || distance >= nearestDistance) return;
+    nearestIndex = index;
+    nearestDistance = distance;
+  });
+  return nearestIndex;
+}
+
 export class AgentActivityStore {
   readonly #clock: ActivityClock;
   readonly #maxItems: number;
@@ -85,12 +105,13 @@ export class AgentActivityStore {
     const next = [...this.#activities];
     let changed = false;
     for (const activity of committed) {
-      const index = next.findIndex(
+      const exactIndex = next.findIndex(
         (candidate) =>
           candidate.id === activity.id ||
           (candidate.correlationId === activity.correlationId &&
             candidate.toolName === activity.toolName),
       );
+      const index = exactIndex === -1 ? nearestLocalActivityIndex(next, activity) : exactIndex;
       if (index === -1) {
         next.push(activity);
         changed = true;

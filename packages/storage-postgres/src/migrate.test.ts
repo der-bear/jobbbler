@@ -6,9 +6,9 @@ describe("PostgreSQL migration manifest", () => {
   it("contains sequential checksummed migrations including authorization bindings", () => {
     const migrations = postgresMigrationManifest();
     expect(migrations.map((migration) => migration.version)).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
     ]);
-    expect(migrations.at(-1)?.name).toBe("owner_recovery_privacy");
+    expect(migrations.at(-1)?.name).toBe("job_location_suggestions");
     expect(migrations.every((migration) => /^[a-f0-9]{64}$/.test(migration.checksum))).toBe(true);
   });
 

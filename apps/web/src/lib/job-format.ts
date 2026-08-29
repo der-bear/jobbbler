@@ -64,13 +64,14 @@ export function employmentLabel(value: EmploymentType): string {
   return employmentLabels[value];
 }
 
-function amount(value: number, currency: string): string {
-  return new Intl.NumberFormat("en", {
+function amount(value: number, currency: string, compact: boolean): string {
+  const formatted = new Intl.NumberFormat("en", {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
-    notation: value >= 100_000 ? "compact" : "standard",
+    notation: compact ? "compact" : "standard",
   }).format(value);
+  return compact ? formatted.replace(/K$/u, "k") : formatted;
 }
 
 export function salaryLabel(salary: SalaryRange | null, displayCurrency?: string): string {
@@ -91,11 +92,12 @@ export function salaryLabel(salary: SalaryRange | null, displayCurrency?: string
   const maximum = changedCurrency ? convertedMaximum : salary.maximum;
   const period = salary.period === "year" ? "yr" : salary.period === "month" ? "mo" : "hr";
   const prefix = changedCurrency ? "≈" : "";
+  const compact = salary.period === "year" && Math.max(minimum ?? 0, maximum ?? 0) >= 10_000;
   if (minimum !== null && maximum !== null) {
-    return `${prefix}${amount(minimum, currency)}–${amount(maximum, currency)} / ${period}`;
+    return `${prefix}${amount(minimum, currency, compact)}–${amount(maximum, currency, compact)} / ${period}`;
   }
-  if (minimum !== null) return `${prefix}From ${amount(minimum, currency)} / ${period}`;
-  if (maximum !== null) return `${prefix}Up to ${amount(maximum, currency)} / ${period}`;
+  if (minimum !== null) return `${prefix}From ${amount(minimum, currency, compact)} / ${period}`;
+  if (maximum !== null) return `${prefix}Up to ${amount(maximum, currency, compact)} / ${period}`;
   return "Salary not listed";
 }
 

@@ -14,7 +14,10 @@ import {
   type ApplicationDataGrantAuthorizationPolicy,
   type ApplicationAuthorizationRouteDependencies,
 } from "./application-authorization-route-handlers";
-import { assertRequestedDisclosureMatches } from "./application-policy";
+import {
+  applicationConsentPresentation,
+  assertRequestedDisclosureMatches,
+} from "./application-policy";
 import { getServerStorage } from "./context";
 import { createIdentityRouteDependencies, getIdentityRouteDependencies } from "./identity";
 import type { IdentityRouteDependencies } from "./identity-route-handlers";
@@ -54,6 +57,13 @@ export function createApplicationDataGrantAuthorizationPolicy(
   };
 
   return {
+    consentPresentation: async (ownerId, draftId) => {
+      const draft = await repositories.applications.getByOwner(draftId, ownerId);
+      if (draft === null) throw currentDisclosureUnavailable();
+      const job = await repositories.jobs.getById(draft.jobId);
+      if (job === null) throw currentDisclosureUnavailable();
+      return applicationConsentPresentation(draft, job);
+    },
     assertDataGrantRequest: async (input) => {
       await assertRequest(input);
     },
@@ -98,6 +108,7 @@ export function createApplicationAuthorizationRouteDependencies(
     agentSessions: storage.agentSessions,
     delegations: storage.delegations,
     richDataGrants: storage.richDataGrants,
+    idempotency: storage.idempotency,
     dataGrantPolicy: createApplicationDataGrantAuthorizationPolicy(storage),
     ids: createApplicationAuthorizationIds(),
     agentTokens: createAgentSessionTokenSecrets(),

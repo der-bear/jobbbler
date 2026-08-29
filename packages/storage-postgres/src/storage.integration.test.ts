@@ -262,7 +262,12 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
       revokedAt: null,
     };
     await storage.delegations.insert(delegation);
-    await storage.delegations.approve(delegation.id, ownerId, now);
+    await storage.delegations.approve(delegation.id, ownerId, now, {
+      channel: "agent_client",
+      requestId: delegation.id,
+      action: "approved",
+      evidenceVersion: "agent-interaction-v1",
+    });
 
     const expiredDelegation = {
       ...delegation,
@@ -273,6 +278,29 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
     await expect(
       storage.delegations.approve(expiredDelegation.id, ownerId, now),
     ).rejects.toMatchObject({ code: "CONFLICT" });
+
+    const racingDelegation = {
+      ...delegation,
+      id: "delegation-postgres-auth-race",
+    };
+    await storage.delegations.insert(racingDelegation);
+    await Promise.allSettled([
+      storage.delegations.approve(racingDelegation.id, ownerId, now, {
+        channel: "agent_client",
+        requestId: racingDelegation.id,
+        action: "approved",
+        evidenceVersion: "agent-interaction-v1",
+      }),
+      storage.delegations.revoke(racingDelegation.id, ownerId, now, {
+        channel: "agent_client",
+        requestId: racingDelegation.id,
+        action: "declined",
+        evidenceVersion: "agent-interaction-v1",
+      }),
+    ]);
+    await expect(storage.delegations.getById(racingDelegation.id, ownerId)).resolves.toMatchObject({
+      status: "revoked",
+    });
 
     const newerDelegation = {
       ...delegation,
@@ -285,7 +313,15 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
     await expect(storage.delegations.listByResource(ownerId, draftId)).resolves.toEqual([
       newerDelegation,
       expiredDelegation,
-      { ...delegation, status: "active", approvedAt: now },
+      {
+        ...delegation,
+        status: "active",
+        approvedAt: now,
+        decisionChannel: "agent_client",
+        decisionRequestId: delegation.id,
+        decisionAction: "approved",
+        decisionEvidenceVersion: "agent-interaction-v1",
+      },
     ]);
     await expect(storage.delegations.listByResource("other-owner", draftId)).resolves.toEqual([]);
 
@@ -312,9 +348,22 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
       { ...grant, version: 0 },
     ]);
     await expect(storage.richDataGrants.listByDraft("other-owner", draftId)).resolves.toEqual([]);
+    const withdrawalEvidence = {
+      channel: "agent_client" as const,
+      requestId: "interaction_71000000-0000-7000-8000-000000000001",
+      action: "withdrawn" as const,
+      evidenceVersion: "agent-interaction-v1" as const,
+    };
     await expect(
-      storage.richDataGrants.withdraw(grant.id, ownerId, draftId, now),
-    ).resolves.toMatchObject({ status: "withdrawn", version: 1 });
+      storage.richDataGrants.withdraw(grant.id, ownerId, draftId, now, withdrawalEvidence),
+    ).resolves.toMatchObject({
+      status: "withdrawn",
+      version: 1,
+      withdrawalChannel: "agent_client",
+      withdrawalRequestId: withdrawalEvidence.requestId,
+      withdrawalAction: "withdrawn",
+      withdrawalEvidenceVersion: "agent-interaction-v1",
+    });
     await expect(
       storage.richDataGrants.withdraw(grant.id, ownerId, draftId, now),
     ).resolves.toMatchObject({ status: "withdrawn", version: 1 });

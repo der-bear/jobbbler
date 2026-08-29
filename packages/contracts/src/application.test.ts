@@ -2,9 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   applicationAgentStateSchema,
+  applicationConsentWithdrawalSchema,
+  applicationListItemSchema,
+  applicationSubmissionDecisionReceiptSchema,
+  applicationSubmissionReviewRequestSchema,
   applicationWorkspaceSchema,
   requestAgentDelegationSchema,
   requestDataGrantSchema,
+  setApplicationAnswersInputSchema,
   submitApplicationInputSchema,
 } from "./application.js";
 
@@ -12,6 +17,25 @@ const draftId = "draft_550e8400-e29b-41d4-a716-446655440000";
 const agentSessionId = "agent_550e8400-e29b-41d4-a716-446655440000";
 
 describe("application authorization contracts", () => {
+  it("exposes a minimal private application-list item without answers or owner identity", () => {
+    const item = applicationListItemSchema.parse({
+      draftId,
+      state: "reviewed",
+      updatedAt: "2026-08-29T10:04:00.000Z",
+      job: {
+        id: "job_550e8400-e29b-41d4-a716-446655440000",
+        title: "Senior Product Engineer",
+        organizationName: "Northstar Systems",
+      },
+    });
+
+    expect(item.job.title).toBe("Senior Product Engineer");
+    expect(applicationListItemSchema.safeParse({ ...item, answers: [] }).success).toBe(false);
+    expect(applicationListItemSchema.safeParse({ ...item, ownerId: "owner_private" }).success).toBe(
+      false,
+    );
+  });
+
   it("bounds a delegation to explicit operations, resource, purpose, and expiry", () => {
     const request = requestAgentDelegationSchema.parse({
       agentSessionId,
@@ -37,11 +61,52 @@ describe("application authorization contracts", () => {
       documentIds: [],
       payloadHash: "a".repeat(64),
       noticeVersion: "privacy-2026-08-29",
-      legalBasis: "user_instruction",
+      legalBasis: "consent",
     });
 
     expect(grant.payloadHash).toHaveLength(64);
-    expect(grant.legalBasis).toBe("user_instruction");
+    expect(grant.legalBasis).toBe("consent");
+  });
+
+  it("returns a bounded receipt when consent is withdrawn", () => {
+    const receipt = applicationConsentWithdrawalSchema.parse({
+      draftId,
+      withdrawnGrantIds: ["grant_550e8400-e29b-41d4-a716-446655440000"],
+      withdrawnAt: "2026-08-29T10:05:00.000Z",
+      futureConsentProcessingStopped: true,
+      pastSubmissionUnaffected: false,
+    });
+
+    expect(receipt.futureConsentProcessingStopped).toBe(true);
+    expect(applicationConsentWithdrawalSchema.safeParse({ ...receipt, erased: true }).success).toBe(
+      false,
+    );
+  });
+
+  it("binds an agent-client submission decision to a server interaction request", () => {
+    const requestId = "interaction_550e8400-e29b-41d4-a716-446655440000";
+    const request = applicationSubmissionReviewRequestSchema.parse({
+      id: requestId,
+      draftId,
+      draftVersion: 4,
+      recipient: "Northstar Systems",
+      purpose: "Submit this reviewed application to Northstar Systems.",
+      fieldLabels: ["Full name", "Why this role"],
+      noticeVersion: "privacy-2026-08-29",
+      expiresAt: "2026-08-29T10:05:00.000Z",
+    });
+    const receipt = applicationSubmissionDecisionReceiptSchema.parse({
+      requestId,
+      draftId,
+      decision: "approved",
+      acceptedDraftVersion: 5,
+      decidedAt: "2026-08-29T10:02:00.000Z",
+      channel: "agent_client",
+      evidenceVersion: "agent-interaction-v1",
+    });
+
+    expect(request.id).toBe(receipt.requestId);
+    expect(receipt.channel).toBe("agent_client");
   });
 
   it("uses a non-secret confirmation reference for submission", () => {
@@ -55,6 +120,26 @@ describe("application authorization contracts", () => {
     expect(submitApplicationInputSchema.parse(input)).toEqual(input);
     expect(
       submitApplicationInputSchema.safeParse({ ...input, token: "model-visible-secret" }).success,
+    ).toBe(false);
+  });
+
+  it("accepts a bounded application-answer batch and rejects duplicate fields", () => {
+    const answer = {
+      fieldKey: "full_name",
+      value: "Ada Lovelace",
+      provenance: "agent_suggestion" as const,
+      sensitive: true,
+      acceptedByHuman: false,
+    };
+    const input = {
+      draftId,
+      expectedVersion: 3,
+      answers: [answer, { ...answer, fieldKey: "email", value: "ada@example.test" }],
+    };
+
+    expect(setApplicationAnswersInputSchema.parse(input)).toEqual(input);
+    expect(
+      setApplicationAnswersInputSchema.safeParse({ ...input, answers: [answer, answer] }).success,
     ).toBe(false);
   });
 
@@ -88,7 +173,7 @@ describe("application authorization contracts", () => {
       },
       purpose: "Submit this reviewed application to Northstar Systems.",
       noticeVersion: "privacy-2026-08-29",
-      legalBasis: "user_instruction",
+      legalBasis: "consent",
       review: {
         id: "review_550e8400-e29b-41d4-a716-446655440000",
         draftId,

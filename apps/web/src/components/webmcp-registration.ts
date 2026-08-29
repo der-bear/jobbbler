@@ -2,10 +2,10 @@ import type { ToolManifest } from "@jobbbler/webmcp";
 
 export const stableWebMcpCoreNames = [
   "plan_job_workflow",
-  "get_site_capabilities",
   "get_search_filters",
   "search_jobs",
   "open_job_details",
+  "prepare_application",
   "open_jobbbler_page",
 ] as const;
 
@@ -23,4 +23,25 @@ export function mergeToolManifests(
   }
 
   return merged;
+}
+
+export interface StableWebMcpManifestSets {
+  readonly core: readonly ToolManifest<unknown, unknown>[];
+  readonly search: readonly ToolManifest<unknown, unknown>[];
+  readonly detail: readonly ToolManifest<unknown, unknown>[];
+  readonly comparison: readonly ToolManifest<unknown, unknown>[];
+  readonly saved: readonly ToolManifest<unknown, unknown>[];
+  readonly application: readonly ToolManifest<unknown, unknown>[];
+}
+
+export function composeStableWebMcpManifests(
+  sets: StableWebMcpManifestSets,
+): readonly ToolManifest<unknown, unknown>[] {
+  return mergeToolManifests(sets.core, [
+    ...sets.search,
+    ...sets.detail,
+    ...sets.comparison,
+    ...sets.saved,
+    ...sets.application,
+  ]);
 }

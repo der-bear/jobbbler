@@ -198,7 +198,7 @@ export function SavedWorkspace() {
     setEndpoints(nextEndpoints);
     setSavedSearches(nextSaved);
     setSchedules(nextSchedules);
-    const runs = await Promise.all(
+    void Promise.all(
       nextSaved.map(async (saved) => {
         try {
           return await queryApi(
@@ -209,12 +209,13 @@ export function SavedWorkspace() {
           return null;
         }
       }),
-    );
-    setLatestRuns(
-      new Map(
-        runs
-          .filter((run): run is LatestSearchRun => run !== null)
-          .map((run) => [run.savedSearchId, run]),
+    ).then((runs) =>
+      setLatestRuns(
+        new Map(
+          runs
+            .filter((run): run is LatestSearchRun => run !== null)
+            .map((run) => [run.savedSearchId, run]),
+        ),
       ),
     );
     const verified = nextEndpoints.find(
@@ -476,10 +477,9 @@ export function SavedWorkspace() {
     <div className={styles["workspace"]}>
       <section className={styles["intro"]}>
         <div>
-          <h1>Saved searches</h1>
+          <h1>Alerts</h1>
           <p className={styles["lede"]}>
-            Jobbbler keeps checking for you and sends an update only when something meaningfully
-            changes.
+            Save a search once. Jobbbler checks it for meaningful changes and emails you.
           </p>
         </div>
         <aside className={styles["identityCard"]} aria-label="Private workspace status">
@@ -791,7 +791,7 @@ export function SavedWorkspace() {
             <div>
               <h2 id="library-title">Your saved searches</h2>
             </div>
-            <Link className={styles["textLink"]} href="/">
+            <Link className={styles["textLink"]} href="/jobs">
               Find another search <ArrowRightIcon aria-hidden="true" size={14} />
             </Link>
           </div>
@@ -807,7 +807,7 @@ export function SavedWorkspace() {
               <BellRingingIcon aria-hidden="true" size={25} />
               <h3>No saved searches yet.</h3>
               <p>Search for roles first, then choose Save alert to set up email updates.</p>
-              <Link className={styles["secondaryButton"]} href="/">
+              <Link className={styles["secondaryButton"]} href="/jobs">
                 Explore technology roles
               </Link>
             </div>

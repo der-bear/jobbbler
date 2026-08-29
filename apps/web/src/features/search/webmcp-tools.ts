@@ -245,7 +245,7 @@ export function createSearchToolManifests(
     name: "search_jobs",
     purpose: "Search the public technology-job catalog and synchronize the visible results.",
     description:
-      "Search Jobbbler's source-backed technology roles. Use for a new or refined job search. Applies validated criteria to the visible page and returns compact matches with IDs.",
+      "Search Jobbbler's source-backed technology roles with the preferences the person supplied. Ask for one useful preference when the request gives no role, skill, location, work model, or other search criterion. Applies validated criteria to the visible page and returns compact matches with IDs.",
     inputSchema: searchInputJsonSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -253,7 +253,7 @@ export function createSearchToolManifests(
         const parsed = publicJobSearchInput.parse(input);
         const result = await dependencies.searchJobs(parsed, { signal });
         const parameters = searchInputToSearchParams(parsed);
-        const href = parameters.size === 0 ? "/" : `/?${parameters.toString()}`;
+        const href = parameters.size === 0 ? "/jobs" : `/jobs?${parameters.toString()}`;
         await dependencies.onNavigate(href);
         await dependencies.onSearchCommitted(parsed, result);
         return completedWebMcpResult({
@@ -349,9 +349,9 @@ export function createSearchToolManifests(
 
   const openJobDetails: ToolManifest<unknown, SearchToolOutput> = {
     name: "open_job_details",
-    purpose: "Open one role's page from the current results so its detail tools become available.",
+    purpose: "Open one explicitly identified role while keeping the global toolset available.",
     description:
-      "Navigate to a role returned by search_jobs, keeping the current criteria. After this call the page exposes get_job_details and compare_jobs instead of the search tools.",
+      "Navigate to a role returned by search_jobs while preserving the current criteria. Every Jobbbler tool stays registered across the navigation.",
     inputSchema: openJobInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -362,7 +362,7 @@ export function createSearchToolManifests(
           `/jobs/${encodeURIComponent(parsed.jobId)}${criteriaSearch.length === 0 ? "" : `?${criteriaSearch}`}`,
         );
         return completedWebMcpResult({
-          summary: "Opened the role page. Its detail tools replace the search tools.",
+          summary: "Opened the role page and kept the global Jobbbler toolset available.",
           data: { jobId: parsed.jobId, route: "/jobs/:jobId" },
           resources: [{ type: "job", id: parsed.jobId, label: "Opened role" }],
         });

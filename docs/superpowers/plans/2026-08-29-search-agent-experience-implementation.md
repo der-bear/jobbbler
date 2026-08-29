@@ -4,7 +4,7 @@
 
 **Goal:** Turn Jobbbler into an award-ready, mainstream-simple job portal with a polished landing/search transition and a clear judge-facing Agent view.
 
-**Architecture:** Keep the existing Next.js App Router and CSS Modules. Split presentation-only search controls into focused components and keep URL/API state in `SearchWorkspace`; keep six stable WebMCP entry tools globally registered while the Agent view renders the full static catalog plus live availability. Use existing design tokens, Phosphor icons, and deterministic salary conversion rather than adding dependencies.
+**Architecture:** Keep the existing Next.js App Router and CSS Modules. Split presentation-only search controls into focused components and keep URL/API state in `SearchWorkspace`; keep all 24 focused WebMCP tools globally discoverable while the Agent view groups them by outcome. Use existing design tokens, Phosphor icons, and deterministic salary conversion rather than adding dependencies.
 
 **Tech Stack:** Next.js 16, React 19, TypeScript, CSS Modules, Vitest, `@jobbbler/contracts`, `@jobbbler/jobs-domain`, `@phosphor-icons/react`.
 
@@ -15,8 +15,9 @@
 - All product copy and documentation remain in English.
 - The human-facing portal must stay understandable without WebMCP knowledge.
 - The Agent view is secondary, judge-facing, and defaults to Activity.
-- Six stable outcome-level WebMCP tools remain available on every route; contextual/state-gated tools remain contextual.
-- The full 26-tool catalog is visible in Agent view without registering all 26 tools at once.
+- All 24 focused WebMCP tools remain discoverable on every route;
+  private/state-gated tools validate readiness at execution.
+- The full 24-tool catalog is visible in Agent view without extra navigation.
 - No new runtime dependency, embedded chat, continuous decorative animation, or invented external salary data.
 - Light, dark, mobile, keyboard, reduced-motion, and unsupported-browser states must remain usable.
 
@@ -25,6 +26,7 @@
 ### Task 1: Search presentation helpers and controls
 
 **Files:**
+
 - Create: `apps/web/src/features/search/location-combobox.tsx`
 - Create: `apps/web/src/features/search/location-combobox.module.css`
 - Create: `apps/web/src/features/search/currency-selector.tsx`
@@ -33,6 +35,7 @@
 - Modify: `apps/web/src/lib/job-format.ts`
 
 **Interfaces:**
+
 - Produces: `LocationCombobox({ value, onChange, onCommit, options })`; `CurrencySelector({ value, onChange })`; `salaryLabel(salary, displayCurrency?)` where `displayCurrency` is one of EUR, USD, GBP, CAD.
 - Consumes: `convertSalaryAmount(amount, fromCurrency, toCurrency)` and existing `SalaryRange`.
 
@@ -75,11 +78,13 @@ git commit -m "feat: add accessible search presentation controls"
 ### Task 2: Landing and results-state search experience
 
 **Files:**
+
 - Modify: `apps/web/src/features/search/search-workspace.tsx`
 - Modify: `apps/web/src/features/search/search-workspace.module.css`
 - Create: `apps/web/src/features/search/search-workspace.test.tsx`
 
 **Interfaces:**
+
 - Consumes: Task 1 controls and `salaryLabel(job.salary, draft.currency)`.
 - Produces: two explicit UI states derived from `landing = no query and no meaningful filter`; a landing state with up to six newest roles and a results state with compact search, filters, currency, and the complete result set.
 
@@ -100,7 +105,9 @@ Expected: FAIL because the state renderer and split layout do not exist.
 - [ ] **Step 3: Implement the state split and hierarchy**
 
 ```tsx
-{landing ? <LandingSearch latestJobs={result?.jobs.slice(0, 6) ?? []} /> : <ResultsSearch />}
+{
+  landing ? <LandingSearch latestJobs={result?.jobs.slice(0, 6) ?? []} /> : <ResultsSearch />;
+}
 ```
 
 Landing: one headline, one supporting sentence, large search/location form, six latest roles, and no filter rail. Results: compact search row, left filter rail, active result count, save-alert action, and sort. Each result orders title, company, neutral work-model tag plus location, converted salary, then freshness. Preserve URL history, WebMCP UI commits, retry, empty, loading, and live-region behavior.
@@ -125,12 +132,14 @@ git commit -m "feat: refine landing and job search experience"
 ### Task 3: Header, branding, and Agent view entry
 
 **Files:**
+
 - Modify: `apps/web/src/components/app-shell.tsx`
 - Modify: `apps/web/src/components/app-shell.module.css`
 - Create: `apps/web/src/components/app-shell.test.tsx`
 - Modify: `apps/web/src/app/globals.css`
 
 **Interfaces:**
+
 - Produces: primary navigation labels `Jobs` and `Alerts`; one `Agent view` toggle containing status dot and accessible status label; `data-agent-open` continues to drive content/panel layout.
 - Consumes: existing `useWebMcp`, `ThemeToggle`, and AgentPanel.
 
@@ -170,6 +179,7 @@ git commit -m "feat: simplify navigation and agent view entry"
 ### Task 4: Agent view information architecture
 
 **Files:**
+
 - Modify: `apps/web/src/components/agent-panel.tsx`
 - Modify: `apps/web/src/components/agent-panel.module.css`
 - Modify: `apps/web/src/components/agent-panel.test.tsx`
@@ -181,8 +191,9 @@ git commit -m "feat: simplify navigation and agent view entry"
 - Modify: `apps/web/src/components/agent-guide.test.tsx`
 
 **Interfaces:**
-- Produces: tab order `Activity`, `Tools`, `Guide`; Activity default; all 29 catalog tools rendered in grouped sections with live active state; concise guide; copyable example prompt.
-- Consumes: `webMcpCatalog`, `stableWebMcpCoreNames`, live `RegisteredToolSummary[]`, and `ToolActivity[]`.
+
+- Produces: tab order `Activity`, `Tools`, `Guide`; Activity default; all 24 catalog tools rendered in grouped sections; concise guide; self-contained copyable example prompt.
+- Consumes: `webMcpCatalog`, live `RegisteredToolSummary[]`, and `ToolActivity[]`.
 
 - [ ] **Step 1: Update tests to express the approved hierarchy**
 
@@ -190,8 +201,8 @@ git commit -m "feat: simplify navigation and agent view entry"
 expect(markup).toContain('id="agent-tab-activity"');
 expect(markup).toContain('aria-selected="true"');
 expect(markup).toContain("Waiting for an agent");
-expect(toolsMarkup).toContain("26 tools");
-expect(toolsMarkup).not.toContain("View all 26 tools");
+expect(toolsMarkup).toContain("24 tools");
+expect(toolsMarkup).not.toContain("View all 24 tools");
 ```
 
 - [ ] **Step 2: Run panel tests and confirm failure**
@@ -228,6 +239,7 @@ git commit -m "feat: make agent view activity-first and judge-ready"
 ### Task 5: WebMCP proof story and release verification
 
 **Files:**
+
 - Modify: `apps/web/src/app/about/webmcp/page.tsx`
 - Modify: `apps/web/src/app/about/webmcp/page.module.css`
 - Modify: `apps/web/src/app/about/webmcp/page.test.tsx`
@@ -235,7 +247,8 @@ git commit -m "feat: make agent view activity-first and judge-ready"
 - Modify: `docs/submission/checklist.md`
 
 **Interfaces:**
-- Produces: a concise proof-of-value narrative with outcome, mechanism, proof, and boundaries; no page-by-page 29-tool dump.
+
+- Produces: a concise proof-of-value narrative with outcome, mechanism, proof, and boundaries; no page-by-page 24-tool dump.
 - Consumes: the implemented UI, existing WebMCP registration tests, and release verification commands.
 
 - [ ] **Step 1: Update the explanation test**

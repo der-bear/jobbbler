@@ -18,10 +18,9 @@ one explicit decision — bound to that exact application — is recorded before
 anything is shared or submitted.
 
 The technology that makes this possible is WebMCP — no separately installed or
-declared MCP server. A global Agent layer is available on every page: seven
-stable, site-wide core tools make the main journeys reachable, and every
-contextual tool stays registered across navigation, gating itself on page and
-workflow state at execution time.
+declared MCP server. A global Agent layer is available on every page: the same
+24 focused tools stay discoverable across navigation, while private and
+workflow-specific actions enforce IDs, ownership, and state when executed.
 
 > Not an AI job board. A proof that any data-rich website can become safely
 > operable by an external browser agent — without a separate MCP server,
@@ -38,15 +37,15 @@ Built for the OpenAI WebMCP Challenge.
   salary semantics, what to verify, and fit evidence stay visible in the
   interface. Salary ranking is currency-aware (EUR, USD, GBP, and CAD at pinned
   rates) and explains itself with evidence strings.
-- **Global agent layer.** Seven stable core tools plus purpose-specific
-  contextual tools for search, roles, comparison, saved alerts, and
-  applications — all registered on every page, so navigation never costs an
-  agent a capability. State-gated tools answer with a clear next step when
+- **Global agent layer.** Twenty-three focused tools for search, roles,
+  comparison, saved alerts, and applications — all registered on every page,
+  so navigation never costs an agent a capability. State-gated tools answer
+  with a clear next step when
   their moment has not arrived, and the site describes itself — an agent can
   read accepted filter vocabulary instead of guessing enums and ask how a role
   accepts applications before starting one.
-- **Observable agent work.** The Agent layer uses a clear **Guide**,
-  **Activity**, **Tools** hierarchy. It shows readiness, the current tools, and
+- **Observable agent work.** The Agent layer uses a clear **Activity**,
+  **Tools**, **Guide** hierarchy. It shows readiness, the current tools, and
   human-readable activity without taking over the normal portal. Every activity
   entry leads with a human sentence, followed by the tool name, status, and
   duration. On mobile, an "Agent activity" button opens the same layer. The
@@ -57,8 +56,8 @@ Built for the OpenAI WebMCP Challenge.
   wall.
 - **Independent authority layers.** Agent delegation, payload-bound data
   permission, immutable review, and single-use confirmation are separate
-  server-enforced decisions. The agent presents each decision to the person —
-  in their agent client or on the private review page — and the server accepts
+  server-enforced decisions. The agent presents each decision to the person in
+  their external agent client, and the server accepts
   it only when it is bound to the exact server-issued request and draft
   version, recording the decision channel as evidence.
 - **Truthful actions.** Internal fictional-demo applications produce an
@@ -91,11 +90,11 @@ results. A browser capability is never treated as identity or authorization.
 `plan_job_workflow` returns recommended safe steps for a goal from the current
 page. It is advisory only: it plans, it never acts.
 
-The catalog has **24 tools**, all registered on every page. The stable core is
-`plan_job_workflow`, `get_site_capabilities`, `get_search_filters`,
-`search_jobs`, `open_job_details`, `prepare_application`, and
-`open_jobbbler_page`. The contextual tools, grouped by the page that owns
-them, gate themselves on state at execution time:
+The catalog has **24 focused tools**, all registered on every page. Six are
+clear entry points — `plan_job_workflow`, `get_search_filters`, `search_jobs`,
+`open_job_details`, `prepare_application`, and `open_jobbbler_page`. The
+remaining tools are grouped below by the product area they operate on and
+validate explicit IDs, ownership, and workflow state at execution time:
 
 - Search `/`: `get_search_state` (including an explicit truncation summary for
   bounded criteria)
@@ -107,11 +106,12 @@ them, gate themselves on state at execution time:
 - Saved `/saved`: `get_saved_alerts`, `set_job_alert_state`,
   `open_saved_search`, `get_latest_search_update` (reads only what changed
   since the last check, not the full result list)
-- Application `/apply/:draftId`: six outcome-oriented tools —
+- Application `/apply/:draftId`: seven outcome-oriented tools —
   `get_application_readiness`, `request_application_assistance`,
   `decide_application_assistance`, `propose_application_updates`,
-  `request_submission_review`, and `decide_application_submission` — each
-  answering with the next safe step when its stage has not arrived
+  `request_submission_review`, `decide_application_submission`, and
+  `withdraw_application_consent` — each answering with the next safe step when
+  its stage has not arrived
 
 The application flow never exposes an owner ID, candidate answer, reusable
 agent token, confirmation secret, email destination, or ciphertext in tool

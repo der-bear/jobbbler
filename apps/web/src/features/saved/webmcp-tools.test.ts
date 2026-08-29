@@ -72,6 +72,7 @@ describe("saved-route WebMCP tools", () => {
       false,
       true,
     ]);
+    expect(manifests[1]!.description).toContain("exact schedule ID");
     const result = await manifests[0]!.execute({}, { signal: new AbortController().signal });
     expect(result).toMatchObject({
       status: "completed",

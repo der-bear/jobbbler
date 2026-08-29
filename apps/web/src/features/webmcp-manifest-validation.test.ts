@@ -36,21 +36,26 @@ function applicationManifests(
   options: Readonly<{ authorized?: boolean; allowsAgentSubmission?: boolean }> = {},
 ) {
   const { authorized = true, allowsAgentSubmission = true } = options;
+  const state = applicationState(overrides);
+  const missing = state.completedRequiredFields < state.requiredFields;
   return createApplicationToolManifests({
-    fieldKeys: ["full_name", "email", "motivation"],
-    currentState: () => applicationState(overrides),
+    currentReadiness: () => ({
+      state,
+      missingFieldKeys: missing ? ["full_name"] : [],
+      missingFieldLabels: missing ? ["Full name"] : [],
+      nextAction: state.receiptStatus !== "none" ? "complete" : missing ? "prepare" : "review",
+    }),
     allowsAgentSubmission: () => allowsAgentSubmission,
     hasAgentCredential: () => authorized,
     isOperationAuthorized: () => authorized,
     requestAgentAccess: never,
-    setAnswer: never,
-    validate: never,
-    review: never,
-    requestDataPermission: never,
-    finalConfirmationRequest: () => {
+    decideAgentAccess: never,
+    proposeUpdates: never,
+    currentSubmissionReview: () => null,
+    requestSubmissionReview: () => {
       throw new Error("not called in validation tests");
     },
-    submit: never,
+    decideSubmission: never,
   });
 }
 
@@ -62,7 +67,15 @@ describe("route tool manifests", () => {
       onSearchCommitted: () => undefined,
       onNavigate: () => undefined,
     });
-    const siteWide = createSiteWideToolManifests({ onNavigate: () => undefined });
+    const siteWide = createSiteWideToolManifests({
+      onNavigate: () => undefined,
+      startApplication: async () => ({
+        draftId: "application_00000001-0000-7000-8000-000000000001",
+        href: "/apply/application_00000001-0000-7000-8000-000000000001",
+        disposition: "created" as const,
+        nextTool: "get_application_readiness" as const,
+      }),
+    });
     const candidates = [
       createWorkflowPlannerTool({ route: "/about/webmcp", availableTools: () => [] }),
       ...siteWide,
@@ -70,7 +83,6 @@ describe("route tool manifests", () => {
     ];
     const names = [
       "plan_job_workflow",
-      "get_site_capabilities",
       "get_search_filters",
       "search_jobs",
       "open_job_details",

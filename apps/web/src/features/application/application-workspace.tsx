@@ -3,15 +3,13 @@
 import { ArrowLeftIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { z } from "zod";
 
 import {
-  applicationDataGrantSummarySchema,
   applicationDelegationSummarySchema,
   applicationAgentSessionResultSchema,
   applicationDraftSchema,
-  applicationReceiptSummarySchema,
-  applicationReviewSummarySchema,
+  applicationSubmissionDecisionReceiptSchema,
+  applicationSubmissionReviewRequestSchema,
   applicationWorkspaceSchema,
   jobDetailResultSchema,
   type ApplicationAnswer,
@@ -28,14 +26,11 @@ import {
   type ApplicationAction,
   type ApplicationConfirmationView,
 } from "./application-view";
-import { applicationAgentState, applicationDisclosure } from "./application-model";
+import { finalizeApplication } from "./application-finalization";
+import { applicationAgentState, applicationReadiness } from "./application-model";
+import type { ApplicationSubmissionReviewRequest, ApplicationToolReadiness } from "./webmcp-tools";
 import { publishApplicationWebMcpSurface } from "./webmcp-surface";
 import styles from "./application-view.module.css";
-
-const confirmationResultSchema = z.strictObject({
-  confirmationId: z.string(),
-  expiresAt: z.iso.datetime({ offset: true }),
-});
 
 type ScreenState =
   | { readonly kind: "loading" }
@@ -72,12 +67,38 @@ function fieldValues(workspace: ApplicationWorkspaceState): Record<string, strin
   );
 }
 
+function toolReadiness(
+  workspace: ApplicationWorkspaceState,
+  finalConfirmationReady = false,
+): ApplicationToolReadiness {
+  const progress = applicationReadiness(workspace);
+  const state = applicationAgentState(workspace, finalConfirmationReady);
+  return {
+    state,
+    missingFieldKeys: progress.missingFieldKeys,
+    missingFieldLabels: progress.missingFieldKeys.map(
+      (fieldKey) =>
+        workspace.requirements.find((field) => field.fieldKey === fieldKey)?.label ?? fieldKey,
+    ),
+    nextAction:
+      state.receiptStatus !== "none"
+        ? "complete"
+        : finalConfirmationReady
+          ? "submit"
+          : progress.readyForReview
+            ? "review"
+            : "prepare",
+  };
+}
+
 export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>) {
   const toast = useToast();
   const [state, setState] = useState<ScreenState>({ kind: "loading" });
   const [values, setValues] = useState<Readonly<Record<string, string>>>({});
   const [confirmation, setConfirmation] = useState<ApplicationConfirmationView | null>(null);
   const [agentCredential, setAgentCredential] = useState<AgentCredential | null>(null);
+  const [submissionReview, setSubmissionReview] =
+    useState<ApplicationSubmissionReviewRequest | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -147,12 +168,13 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
       if (credential === null) throw new Error("Request agent authority before continuing.");
       return credential;
     };
-    const reloadState = async (signal: AbortSignal, confirmationReady = confirmation !== null) =>
-      applicationAgentState(await load(signal), confirmationReady);
+    const reloadReadiness = async (
+      signal: AbortSignal,
+      confirmationReady = confirmation !== null,
+    ) => toolReadiness(await load(signal), confirmationReady);
 
     publishApplicationWebMcpSurface({
-      fieldKeys: workspace.requirements.map(({ fieldKey }) => fieldKey),
-      currentState: () => applicationAgentState(workspace, confirmation !== null),
+      currentReadiness: () => toolReadiness(workspace, confirmation !== null),
       allowsAgentSubmission: () => job.applyMode === "internal",
       hasAgentCredential: () => credential !== null,
       isOperationAuthorized: (operation) => authorizedOperations.has(operation),
@@ -186,7 +208,7 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
           },
         );
         return {
-          state: await reloadState(signal),
+          state: (await reloadReadiness(signal)).state,
           request: {
             id: requested.id,
             operations: requested.operations,
@@ -195,168 +217,163 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
           },
         };
       },
-      async setAnswer(input, { signal }) {
+      async decideAgentAccess(requestId, decision, { signal, channel }) {
+        const requested = workspace.delegationRequests.find(({ id }) => id === requestId);
+        if (requested === undefined || requested.status !== "requested") {
+          throw new ApiClientError({
+            code: "CONFLICT",
+            message:
+              "That assistance request is no longer pending. Check application readiness for the current next step.",
+            retryable: false,
+          });
+        }
+        await queryApi(
+          `/api/v1/applications/${encodeURIComponent(draftId)}/delegations/${encodeURIComponent(requestId)}${
+            decision === "approved" ? "/approve" : ""
+          }`,
+          applicationDelegationSummarySchema,
+          {
+            method: decision === "approved" ? "POST" : "DELETE",
+            body: {
+              interaction: {
+                channel,
+                requestId,
+                affirmation: decision,
+                evidenceVersion: "agent-interaction-v1",
+              },
+            },
+            signal,
+          },
+        );
+        return {
+          state: (await reloadReadiness(signal)).state,
+          decision,
+        };
+      },
+      async proposeUpdates(patches, { signal }) {
         const currentCredential = requireCredential();
-        const field = workspace.requirements.find(({ fieldKey }) => fieldKey === input.fieldKey);
-        if (field === undefined) throw new Error("The application field is unavailable.");
+        setSubmissionReview(null);
+        const answers = patches.map((patch) => {
+          const field = workspace.requirements.find(({ fieldKey }) => fieldKey === patch.fieldKey);
+          if (field === undefined) {
+            throw new ApiClientError({
+              code: "VALIDATION",
+              message: `Unknown application field: ${patch.fieldKey}.`,
+              retryable: false,
+            });
+          }
+          return {
+            fieldKey: field.fieldKey,
+            value: patch.value,
+            provenance: "agent_suggestion" as const,
+            sensitive: field.sensitive,
+            acceptedByHuman: false,
+          };
+        });
         await queryApi(
           `/api/v1/applications/${encodeURIComponent(draftId)}/answer`,
           applicationDraftSchema,
           {
             method: "POST",
-            body: {
-              expectedVersion: workspace.draft.version,
-              answer: {
-                fieldKey: field.fieldKey,
-                value: input.value,
-                provenance: "agent_suggestion",
-                sensitive: field.sensitive,
-                acceptedByHuman: false,
-              },
-            },
+            body: { expectedVersion: workspace.draft.version, answers },
             headers: { authorization: `Bearer ${currentCredential.token}` },
             signal,
           },
         );
-        return reloadState(signal);
+        return reloadReadiness(signal);
       },
-      async validate({ signal }) {
+      currentSubmissionReview() {
+        return submissionReview !== null &&
+          submissionReview.draftVersion === workspace.draft.version &&
+          submissionReview.expiresAt > new Date().toISOString()
+          ? submissionReview
+          : null;
+      },
+      async requestSubmissionReview({ signal }) {
         const currentCredential = requireCredential();
-        await queryApi(
-          `/api/v1/applications/${encodeURIComponent(draftId)}/validate`,
-          applicationDraftSchema,
+        const current =
+          submissionReview !== null &&
+          submissionReview.draftVersion === workspace.draft.version &&
+          submissionReview.expiresAt > new Date().toISOString()
+            ? submissionReview
+            : null;
+        if (current !== null) return current;
+        const serverRequest = await queryApi(
+          `/api/v1/applications/${encodeURIComponent(draftId)}/consent`,
+          applicationSubmissionReviewRequestSchema,
           {
             method: "POST",
             headers: { authorization: `Bearer ${currentCredential.token}` },
             signal,
           },
         );
-        return reloadState(signal);
-      },
-      async review({ signal }) {
-        const currentCredential = requireCredential();
-        await queryApi(
-          `/api/v1/applications/${encodeURIComponent(draftId)}/review`,
-          applicationReviewSummarySchema,
-          {
-            method: "POST",
-            body: { expectedVersion: workspace.draft.version },
-            headers: { authorization: `Bearer ${currentCredential.token}` },
-            signal,
-          },
-        );
-        return reloadState(signal);
-      },
-      async requestDataPermission({ signal }) {
-        const currentCredential = requireCredential();
-        if (workspace.review === null) throw new Error("Lock the review first.");
-        const disclosure = applicationDisclosure(workspace);
-        const requested = await queryApi(
-          `/api/v1/applications/${encodeURIComponent(draftId)}/data-grants`,
-          applicationDataGrantSummarySchema,
-          {
-            method: "POST",
-            body: {
-              recipientId: workspace.recipient.id,
-              purpose: workspace.purpose,
-              payloadHash: workspace.review.payloadHash,
-              categories: disclosure.categories,
-              fieldKeys: disclosure.fieldKeys,
-              documentIds: [],
-              noticeVersion: workspace.noticeVersion,
-              legalBasis: workspace.legalBasis,
-              requestedTtlSeconds: 900,
-            },
-            headers: { authorization: `Bearer ${currentCredential.token}` },
-            signal,
-          },
-        );
-        return {
-          state: await reloadState(signal),
-          request: {
-            id: requested.id,
-            recipient: workspace.recipient.name,
-            purpose: workspace.purpose,
-            categories: disclosure.categories.map((category) => category.replaceAll("_", " ")),
-            fieldKeys: disclosure.fieldKeys.map((fieldKey) => fieldKey.replaceAll("_", " ")),
-            noticeVersion: workspace.noticeVersion,
-            expiresAt: requested.expiresAt,
-          },
+        const requested: ApplicationSubmissionReviewRequest = {
+          ...serverRequest,
+          href: `/apply/${encodeURIComponent(workspace.draft.id)}`,
         };
+        setSubmissionReview(requested);
+        return requested;
       },
-      finalConfirmationRequest() {
-        if (workspace.review === null) throw new Error("Lock the review first.");
-        const disclosure = applicationDisclosure(workspace);
-        return {
-          id: workspace.review.id,
-          recipient: workspace.recipient.name,
-          purpose: workspace.purpose,
-          categories: disclosure.categories.map((category) => category.replaceAll("_", " ")),
-          fieldKeys: disclosure.fieldKeys.map((fieldKey) => fieldKey.replaceAll("_", " ")),
-          noticeVersion: workspace.noticeVersion,
-        };
-      },
-      async submit({ signal }) {
+      async decideSubmission(expectedVersion, decision, { signal, channel }) {
         const currentCredential = requireCredential();
-        if (workspace.review === null || confirmation === null) {
-          throw new Error("A fresh human confirmation is required.");
+        if (workspace.draft.version !== expectedVersion) {
+          throw new ApiClientError({
+            code: "CONFLICT",
+            message: "The application changed after the review request. Ask for a fresh review.",
+            retryable: false,
+          });
+        }
+        if (
+          submissionReview === null ||
+          submissionReview.draftVersion !== expectedVersion ||
+          submissionReview.expiresAt <= new Date().toISOString()
+        ) {
+          throw new ApiClientError({
+            code: "CONFLICT",
+            message: "The submission review is no longer current. Ask for a fresh review.",
+            retryable: false,
+          });
         }
         await queryApi(
-          `/api/v1/applications/${encodeURIComponent(draftId)}`,
-          applicationReceiptSummarySchema,
+          `/api/v1/applications/${encodeURIComponent(draftId)}/consent/${encodeURIComponent(submissionReview.id)}`,
+          applicationSubmissionDecisionReceiptSchema,
           {
             method: "POST",
             body: {
-              reviewId: workspace.review.id,
-              confirmationId: confirmation.confirmationId,
-              idempotencyKey: crypto.randomUUID(),
+              expectedVersion,
+              decision,
+              interaction: {
+                channel,
+                requestId: submissionReview.id,
+                affirmation: decision,
+                evidenceVersion: "agent-interaction-v1",
+              },
             },
-            headers: { authorization: `Bearer ${currentCredential.token}` },
             signal,
           },
         );
-        setConfirmation(null);
-        return reloadState(signal, false);
+        if (decision === "declined") {
+          setSubmissionReview(null);
+          return reloadReadiness(signal, false);
+        }
+        const approvedWorkspace = await load(signal);
+        await finalizeApplication({
+          workspace: approvedWorkspace,
+          values: fieldValues(approvedWorkspace),
+          request: queryApi,
+          idempotencyKey: crypto.randomUUID(),
+          interactionChannel: channel,
+          interactionRequestId: submissionReview.id,
+          agentAuthorization: `Bearer ${currentCredential.token}`,
+          signal,
+        });
+        setSubmissionReview(null);
+        return reloadReadiness(signal, false);
       },
     });
 
     return () => publishApplicationWebMcpSurface(null);
-  }, [agentCredential, confirmation, draftId, load, state]);
-
-  async function saveProfile(workspace: ApplicationWorkspaceState): Promise<number> {
-    let version = workspace.draft.version;
-    for (const field of workspace.requirements) {
-      const value = values[field.fieldKey]?.trim() ?? "";
-      const previous = workspace.draft.answers.find((answer) => answer.fieldKey === field.fieldKey);
-      if (
-        displayValue(previous) === value &&
-        previous?.acceptedByHuman === true &&
-        previous.sensitive === field.sensitive
-      ) {
-        continue;
-      }
-      await queryApi(
-        `/api/v1/applications/${encodeURIComponent(draftId)}/answer`,
-        applicationDraftSchema,
-        {
-          method: "POST",
-          body: {
-            expectedVersion: version,
-            answer: {
-              fieldKey: field.fieldKey,
-              value,
-              provenance:
-                previous?.provenance === "agent_suggestion" ? "agent_suggestion" : "user_entered",
-              sensitive: field.sensitive,
-              acceptedByHuman: true,
-            },
-          },
-        },
-      );
-      version += 1;
-    }
-    return version;
-  }
+  }, [agentCredential, confirmation, draftId, load, state, submissionReview]);
 
   async function perform(action: ApplicationAction) {
     if (state.kind !== "ready" || busy) return;
@@ -382,79 +399,36 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
     setBusy(true);
     setActionError(null);
     try {
-      if (action === "save_profile") {
-        await saveProfile(current);
+      if (action === "review_and_submit") {
+        await finalizeApplication({
+          workspace: current,
+          values,
+          request: queryApi,
+          idempotencyKey: crypto.randomUUID(),
+        });
+        setConfirmation(null);
         toast.show({
-          title: "Candidate facts saved",
-          description: "Your answers are saved on this private draft, marked with who wrote them.",
+          title: "Application submitted",
+          description: `The exact reviewed application was sent to ${current.recipient.name}.`,
           tone: "success",
         });
-      } else if (action === "validate") {
-        await saveProfile(current);
-        await queryApi(
-          `/api/v1/applications/${encodeURIComponent(draftId)}/validate`,
-          applicationDraftSchema,
-          { method: "POST" },
-        );
-      } else if (action === "review") {
-        await queryApi(
-          `/api/v1/applications/${encodeURIComponent(draftId)}/review`,
-          applicationReviewSummarySchema,
-          { method: "POST", body: { expectedVersion: current.draft.version } },
-        );
-      } else if (action === "request_data_grant") {
-        if (current.review === null) throw new Error("Lock the review first.");
-        const disclosure = applicationDisclosure(current);
-        await queryApi(
-          `/api/v1/applications/${encodeURIComponent(draftId)}/data-grants`,
-          applicationDataGrantSummarySchema,
-          {
-            method: "POST",
-            body: {
-              recipientId: current.recipient.id,
-              purpose: current.purpose,
-              payloadHash: current.review.payloadHash,
-              categories: disclosure.categories,
-              fieldKeys: disclosure.fieldKeys,
-              documentIds: [],
-              noticeVersion: current.noticeVersion,
-              legalBasis: current.legalBasis,
-              requestedTtlSeconds: 1_800,
-            },
-          },
-        );
-      } else if (action === "approve_data_grant") {
-        if (current.dataGrant === null) throw new Error("A permission request is required.");
-        await queryApi(
-          `/api/v1/applications/${encodeURIComponent(draftId)}/data-grants/${encodeURIComponent(current.dataGrant.id)}/approve`,
-          applicationDataGrantSummarySchema,
-          {
-            method: "POST",
-            body: {
-              interaction: {
-                channel: "first_party_ui",
-                requestId: current.dataGrant.id,
-                affirmation: "confirmed",
-                evidenceVersion: "agent-interaction-v1",
-              },
-            },
-          },
-        );
-      } else if (action === "withdraw_data_grant") {
-        if (current.dataGrant === null) throw new Error("An active permission is required.");
-        await queryApi(
-          `/api/v1/applications/${encodeURIComponent(draftId)}/data-grants/${encodeURIComponent(current.dataGrant.id)}`,
-          applicationDataGrantSummarySchema,
-          { method: "DELETE" },
-        );
-        setConfirmation(null);
       } else if (action === "approve_delegation") {
         const requested = current.delegationRequests.find(({ status }) => status === "requested");
         if (requested === undefined) throw new Error("Your agent has not asked for access yet.");
         await queryApi(
           `/api/v1/applications/${encodeURIComponent(draftId)}/delegations/${encodeURIComponent(requested.id)}/approve`,
           applicationDelegationSummarySchema,
-          { method: "POST" },
+          {
+            method: "POST",
+            body: {
+              interaction: {
+                channel: "first_party_ui",
+                requestId: requested.id,
+                affirmation: "approved",
+                evidenceVersion: "agent-interaction-v1",
+              },
+            },
+          },
         );
       } else if (action === "revoke_delegation") {
         const active = current.delegationRequests.find(({ status }) => status === "active");
@@ -462,49 +436,18 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
         await queryApi(
           `/api/v1/applications/${encodeURIComponent(draftId)}/delegations/${encodeURIComponent(active.id)}`,
           applicationDelegationSummarySchema,
-          { method: "DELETE" },
-        );
-      } else if (action === "request_confirmation") {
-        if (current.review === null) throw new Error("Lock the review first.");
-        const result = await queryApi(
-          `/api/v1/applications/${encodeURIComponent(draftId)}/reviews/${encodeURIComponent(current.review.id)}/confirm`,
-          confirmationResultSchema,
           {
-            method: "POST",
+            method: "DELETE",
             body: {
               interaction: {
                 channel: "first_party_ui",
-                requestId: current.review.id,
-                affirmation: "confirmed",
+                requestId: active.id,
+                affirmation: "revoked",
                 evidenceVersion: "agent-interaction-v1",
               },
             },
           },
         );
-        setConfirmation(result);
-        toast.show({
-          title: "Confirmation ready for five minutes",
-          description: "It is bound to this sealed review and can be used only once.",
-          tone: "success",
-        });
-        return;
-      } else if (action === "submit" || action === "handoff") {
-        if (current.review === null || confirmation === null) {
-          throw new Error("A fresh confirmed review is required.");
-        }
-        await queryApi(
-          `/api/v1/applications/${encodeURIComponent(draftId)}`,
-          applicationReceiptSummarySchema,
-          {
-            method: "POST",
-            body: {
-              reviewId: current.review.id,
-              confirmationId: confirmation.confirmationId,
-              idempotencyKey: crypto.randomUUID(),
-            },
-          },
-        );
-        setConfirmation(null);
       }
       await load();
     } catch (error) {
@@ -516,16 +459,16 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
 
   if (state.kind !== "ready") {
     return (
-      <main className={styles["page"]} id="main-content">
+      <div className={styles["page"]}>
         <section aria-live="polite" className={styles["stagePanel"]}>
           <h1>{state.kind === "loading" ? "Loading your application…" : state.message}</h1>
           {state.kind === "error" ? (
-            <Link className={styles["backLink"]} href="/">
+            <Link className={styles["backLink"]} href="/jobs">
               <ArrowLeftIcon aria-hidden="true" /> Return to search
             </Link>
           ) : null}
         </section>
-      </main>
+      </div>
     );
   }
 

@@ -1,7 +1,22 @@
 "use client";
 
-import { MapPinIcon } from "@phosphor-icons/react";
-import { useId, useMemo, useState, type FocusEvent, type KeyboardEvent } from "react";
+import { MapPinIcon, XIcon } from "@phosphor-icons/react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type FocusEvent,
+  type KeyboardEvent,
+} from "react";
+
+import {
+  locationSuggestionsResultSchema,
+  type LocationSuggestionsResult,
+} from "@jobbbler/contracts";
+
+import { queryApi } from "@/lib/query-client";
 
 import styles from "./location-combobox.module.css";
 
@@ -28,37 +43,102 @@ export function locationSuggestions(options: readonly string[], query: string): 
       : uniqueLocations([...options, ...featuredLocations]).filter((option) =>
           option.toLocaleLowerCase("en").includes(normalizedQuery),
         );
+  if (normalizedQuery.length > 0 && ordered.length === 0) return [query.trim()];
   return ordered.slice(0, 7);
+}
+
+type LocationSuggestionRequest = (
+  url: string,
+  schema: typeof locationSuggestionsResultSchema,
+  options: Readonly<{ signal: AbortSignal }>,
+) => Promise<LocationSuggestionsResult>;
+
+export async function fetchLocationSuggestions(
+  query: string,
+  signal: AbortSignal,
+  request: LocationSuggestionRequest = queryApi,
+): Promise<readonly string[]> {
+  const parameters = new URLSearchParams({ q: query.trim(), limit: "8" });
+  const result = await request(
+    `/api/v1/jobs/locations?${parameters.toString()}`,
+    locationSuggestionsResultSchema,
+    { signal },
+  );
+  return result.locations;
 }
 
 export interface LocationComboboxProps {
   readonly label?: string;
+  readonly loadOptions?: (query: string, signal: AbortSignal) => Promise<readonly string[]>;
   readonly onChange: (value: string) => void;
   readonly onCommit: (value: string) => void;
-  readonly options: readonly string[];
+  readonly options?: readonly string[];
   readonly placeholder?: string;
   readonly value: string;
 }
 
 export function LocationCombobox({
   label = "Location",
+  loadOptions = fetchLocationSuggestions,
   onChange,
   onCommit,
-  options,
+  options = [],
   placeholder = "City, country, or remote",
   value,
 }: LocationComboboxProps) {
   const id = useId();
   const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const suggestions = useMemo(() => locationSuggestions(options, value), [options, value]);
-  const activeOption = suggestions[activeIndex];
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [loadedOptions, setLoadedOptions] = useState<readonly string[]>([]);
+  const [loadStatus, setLoadStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const cache = useRef(new Map<string, readonly string[]>());
+  const query = value.trim();
+  const suggestions = useMemo(
+    () => locationSuggestions([...options, ...loadedOptions], value),
+    [loadedOptions, options, value],
+  );
+  const activeOption = activeIndex < 0 ? undefined : suggestions[activeIndex];
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const cacheKey = query.toLocaleLowerCase("en");
+    const cached = cache.current.get(cacheKey);
+    if (cached !== undefined) {
+      setLoadedOptions(cached);
+      setLoadStatus("ready");
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    setLoadStatus("loading");
+    const timer = window.setTimeout(
+      () => {
+        void loadOptions(query, controller.signal)
+          .then((nextOptions) => {
+            if (controller.signal.aborted) return;
+            cache.current.set(cacheKey, nextOptions);
+            setLoadedOptions(nextOptions);
+            setLoadStatus("ready");
+          })
+          .catch(() => {
+            if (controller.signal.aborted) return;
+            setLoadedOptions([]);
+            setLoadStatus("error");
+          });
+      },
+      query.length === 0 ? 0 : 180,
+    );
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [loadOptions, open, query]);
 
   function choose(option: string) {
     onChange(option);
     onCommit(option);
     setOpen(false);
-    setActiveIndex(0);
+    setActiveIndex(-1);
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -89,9 +169,6 @@ export function LocationCombobox({
 
   return (
     <div className={styles["combobox"]} onBlur={handleBlur}>
-      <label className="sr-only" htmlFor={`${id}-input`}>
-        {label}
-      </label>
       <div className={styles["field"]}>
         <MapPinIcon aria-hidden="true" size={17} />
         <input
@@ -99,7 +176,9 @@ export function LocationCombobox({
             open && activeOption !== undefined ? `${id}-option-${String(activeIndex)}` : undefined
           }
           aria-autocomplete="list"
+          aria-busy={loadStatus === "loading"}
           aria-controls={`${id}-listbox`}
+          aria-describedby={`${id}-status`}
           aria-expanded={open}
           aria-label={label}
           autoComplete="off"
@@ -108,7 +187,7 @@ export function LocationCombobox({
           onChange={(event) => {
             onChange(event.target.value);
             setOpen(true);
-            setActiveIndex(0);
+            setActiveIndex(-1);
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
@@ -116,7 +195,31 @@ export function LocationCombobox({
           role="combobox"
           value={value}
         />
+        {value.length > 0 ? (
+          <button
+            aria-label="Clear location"
+            className={styles["clearButton"]}
+            onClick={() => {
+              onChange("");
+              onCommit("");
+              setOpen(true);
+              setActiveIndex(-1);
+            }}
+            type="button"
+          >
+            <XIcon aria-hidden="true" size={13} />
+          </button>
+        ) : null}
       </div>
+      <span className="sr-only" id={`${id}-status`} role="status">
+        {loadStatus === "loading"
+          ? "Loading location suggestions."
+          : loadStatus === "error"
+            ? "Suggestions are unavailable. You can still enter any location."
+            : open
+              ? `${String(suggestions.length)} location suggestions available.`
+              : ""}
+      </span>
       {open && suggestions.length > 0 ? (
         <ul className={styles["options"]} id={`${id}-listbox`} role="listbox">
           {suggestions.map((option, index) => (
@@ -127,6 +230,7 @@ export function LocationCombobox({
                 onClick={() => choose(option)}
                 onMouseDown={(event) => event.preventDefault()}
                 role="option"
+                tabIndex={-1}
                 type="button"
               >
                 {option}

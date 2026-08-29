@@ -5,6 +5,7 @@ import type { ApplicationReviewRecord } from "@jobbbler/storage";
 
 import {
   applicationDisclosureFor,
+  applicationConsentPresentation,
   applicationPolicy,
   applicationReviewPayloadHash,
   assertRequestedDisclosureMatches,
@@ -81,6 +82,7 @@ describe("application disclosure policy", () => {
     ]);
     expect(applicationPolicy.requirements.filter(({ required }) => required)).toHaveLength(5);
     expect(applicationPolicy.noticeVersion).toMatch(/^privacy-/);
+    expect(applicationPolicy.legalBasis).toBe("consent");
   });
 
   it("includes only accepted non-empty answers in the disclosure", () => {
@@ -89,6 +91,30 @@ describe("application disclosure policy", () => {
       fieldKeys: ["full_name"],
       documentIds: [],
     });
+  });
+
+  it("invalidates earlier consent evidence after the application consent boundary advances", () => {
+    const completeDraft = {
+      ...draft,
+      answers: [
+        ...draft.answers,
+        ...[
+          ["email", "ada@example.com"],
+          ["location", "London, UK"],
+          ["work_authorization", "Yes"],
+        ].map(([fieldKey, value]) => ({
+          fieldKey: fieldKey!,
+          value: value!,
+          provenance: "user_entered" as const,
+          sensitive: true,
+          acceptedByHuman: true,
+        })),
+      ],
+    };
+    const before = applicationConsentPresentation({ ...completeDraft, consentRevision: 0 }, job);
+    const after = applicationConsentPresentation({ ...completeDraft, consentRevision: 1 }, job);
+
+    expect(after.valuesHash).not.toBe(before.valuesHash);
   });
 
   it("rejects recipient, payload, or field drift from the current immutable review", () => {

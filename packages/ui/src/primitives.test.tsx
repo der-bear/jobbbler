@@ -1,7 +1,17 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { Button, Card, Chip, Dialog, Input, Sheet, Skeleton, ToastProvider } from "./index.js";
+import {
+  Button,
+  Card,
+  Chip,
+  Dialog,
+  Input,
+  MultiSelect,
+  Sheet,
+  Skeleton,
+  ToastProvider,
+} from "./index.js";
 
 describe("Jobbbler UI primitives", () => {
   it("renders an unavailable action as a native disabled button", () => {
@@ -62,5 +72,24 @@ describe("Jobbbler UI primitives", () => {
     expect(markup).toContain('role="dialog"');
     expect(markup).toContain('aria-modal="true"');
     expect(markup).toContain('aria-hidden="true"');
+  });
+
+  it("names selected filters instead of hiding them behind a count", () => {
+    const markup = renderToStaticMarkup(
+      <MultiSelect
+        label="Seniority"
+        onChange={() => undefined}
+        options={[
+          { value: "mid", label: "Mid-level" },
+          { value: "senior", label: "Senior" },
+          { value: "staff", label: "Staff" },
+        ]}
+        placeholder="Any level"
+        selected={["mid", "senior", "staff"]}
+      />,
+    );
+
+    expect(markup).toContain("Mid-level, Senior +1");
+    expect(markup).not.toContain("3 selected");
   });
 });

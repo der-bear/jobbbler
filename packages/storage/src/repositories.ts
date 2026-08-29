@@ -45,6 +45,8 @@ import type {
   CompleteApplicationSubmissionInput,
   CompleteApplicationSubmissionResult,
   AgentDelegationRecord,
+  DelegationApprovalEvidence,
+  DelegationRevocationEvidence,
   DataGrantRecord,
   ActiveDelegationMatchInput,
   ApproveRichDataGrantInput,
@@ -52,6 +54,7 @@ import type {
   ResolveAgentSessionInput,
   RichDataGrantMatchInput,
   RichDataGrantRecord,
+  GrantWithdrawalEvidence,
 } from "./records.js";
 
 export interface OwnerRepository {
@@ -68,6 +71,7 @@ export interface JobRepository {
   upsert(record: Job): Promise<Job>;
   getById(id: string): Promise<Job | null>;
   search(query: JobSearchQuery): Promise<JobSearchPage>;
+  suggestLocations(query: string, limit: number): Promise<readonly string[]>;
   listAll(): Promise<Job[]>;
 }
 
@@ -111,6 +115,7 @@ export interface ApplicationRepository {
   update(record: ApplicationDraft, expectedVersion: number): Promise<ApplicationDraft>;
   getByOwner(id: string, ownerId: string): Promise<ApplicationDraft | null>;
   getByOwnerAndJob(ownerId: string, jobId: string): Promise<ApplicationDraft | null>;
+  listByOwner(ownerId: string): Promise<ApplicationDraft[]>;
   getLatestReview(draftId: string, ownerId: string): Promise<ApplicationReviewRecord | null>;
   getLatestReceipt(draftId: string, ownerId: string): Promise<ApplicationReceiptRecord | null>;
   applyMaterialEdit(input: MaterialApplicationEditInput): Promise<ApplicationDraft>;
@@ -151,8 +156,18 @@ export interface DelegationRepository {
   getById(id: string, ownerId: string): Promise<AgentDelegationRecord | null>;
   listByResource(ownerId: string, resourceId: string): Promise<AgentDelegationRecord[]>;
   getActiveMatch(input: ActiveDelegationMatchInput): Promise<AgentDelegationRecord | null>;
-  approve(id: string, ownerId: string, approvedAt: string): Promise<AgentDelegationRecord>;
-  revoke(id: string, ownerId: string, revokedAt: string): Promise<AgentDelegationRecord>;
+  approve(
+    id: string,
+    ownerId: string,
+    approvedAt: string,
+    evidence?: DelegationApprovalEvidence,
+  ): Promise<AgentDelegationRecord>;
+  revoke(
+    id: string,
+    ownerId: string,
+    revokedAt: string,
+    evidence?: DelegationRevocationEvidence,
+  ): Promise<AgentDelegationRecord>;
 }
 export interface DataGrantRepository {
   insert(record: DataGrantRecord): Promise<DataGrantRecord>;
@@ -178,7 +193,13 @@ export interface RichDataGrantRepository {
   getCurrent(input: RichDataGrantMatchInput): Promise<RichDataGrantRecord | null>;
   approveCurrent(input: ApproveRichDataGrantInput): Promise<RichDataGrantRecord>;
   approve(id: string, ownerId: string, draftId: string, at: string): Promise<RichDataGrantRecord>;
-  withdraw(id: string, ownerId: string, draftId: string, at: string): Promise<RichDataGrantRecord>;
+  withdraw(
+    id: string,
+    ownerId: string,
+    draftId: string,
+    at: string,
+    evidence?: GrantWithdrawalEvidence,
+  ): Promise<RichDataGrantRecord>;
 }
 
 export interface WorkItemRepository {

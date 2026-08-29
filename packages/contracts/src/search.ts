@@ -96,7 +96,12 @@ export const searchJobsResultSchema = z.strictObject({
   warnings: z.array(z.string().max(240)).max(12),
 });
 
+export const locationSuggestionsResultSchema = z.strictObject({
+  locations: z.array(filterTextSchema).max(20),
+});
+
 export type JobSearchInput = z.input<typeof jobSearchInputSchema>;
 export type ParsedJobSearchInput = z.output<typeof jobSearchInputSchema>;
 export type JobSearchCriteria = z.infer<typeof jobSearchCriteriaSchema>;
 export type SearchJobsResult = z.infer<typeof searchJobsResultSchema>;
+export type LocationSuggestionsResult = z.infer<typeof locationSuggestionsResultSchema>;

@@ -47,7 +47,7 @@ When the journey reaches an application, speed stops being the point.
 - Before anything starts, `get_job_application_capability` negotiates the
   ground rules for this specific role: what the agent may prepare, what stays
   human, and whether the application finishes on the employer's website.
-- Six outcome-oriented application tools are discoverable from every page and
+- Seven outcome-oriented application tools are discoverable from every page and
   state-gated at execution: each answers with the next safe step when its
   moment has not arrived. Agent-prepared answers keep their provenance and
   stay editable until the person's final review.
@@ -57,6 +57,9 @@ When the journey reaches an application, speed stops being the point.
   the person; Jobbbler binds the recorded decision to the exact server-issued
   request ID and draft version and stores the decision channel as evidence,
   without claiming cryptographic identity.
+- The person can withdraw consent through the same agent interface in one tool
+  call. Future consent-based processing stops immediately; any lawful
+  historical submission receipt remains intact.
 - Submission needs a fresh, short-lived, single-use confirmation, and the
   sealed payload cannot change between the person's review and the submit.
 - External roles end in an honest handoff (`handed_off`, never a fake
@@ -69,20 +72,20 @@ When the journey reaches an application, speed stops being the point.
 > without hiding what changed, and without confusing tool access with human
 > authority.
 
-Jobbbler registers 24 WebMCP tools directly in the page: seven stable,
-site-wide core tools plus 17 contextual tools, all registered on every page so
-an agent never loses a capability by navigating. Contextual tools are
-state-gated at execution — when their page or workflow state is not ready they
-return a clear next step instead of failing. The visible interface and WebMCP are
+Jobbbler registers 24 focused WebMCP tools directly in the page. The same set
+stays discoverable on every page, so an agent never loses a capability by
+navigating. Private and workflow-specific tools are state-gated at execution —
+when their required ID, ownership, or stage is not ready they return a clear
+next step instead of pretending to succeed. The visible interface and WebMCP are
 two adapters over the same server commands, so the URL, filters, results,
 alerts, permissions, and receipts stay consistent whether a person or an agent
 acted.
 
-`plan_job_workflow` is part of that stable core. It returns recommended safe
+`plan_job_workflow` is an optional advisory tool. It returns recommended safe
 steps toward a goal from the current page and is advisory only — it plans, it
 never acts. The global Agent layer makes the same story visible to people in a
-plain hierarchy: Guide explains how to begin, Activity shows what happened,
-and Tools separates the seven always-available tools from context-specific ones.
+plain hierarchy: Activity shows what happened, Tools groups the discoverable
+capabilities, and Guide explains how to begin from an external agent client.
 `get_search_state` also makes bounded output honest by explicitly reporting
 when criteria have been omitted or shortened.
 
@@ -102,9 +105,9 @@ Jobbbler is a TypeScript monorepo with a Next.js web app, domain packages,
 portable SQLite/PostgreSQL storage adapters, connector workers, and an
 accessible shared UI system. Its catalog normalizes policy-controlled job
 records, retains source evidence, and ranks salaries currency-aware (EUR, USD,
-GBP, CAD at pinned rates) with human-readable evidence strings. All 24 WebMCP
-tools are registered on every page — a seven-tool stable core plus contextual
-tools that gate themselves on route and workflow state at execution time.
+GBP, CAD at pinned rates) with human-readable evidence strings. All 24 focused
+WebMCP tools are registered on every page and gate private or state-specific
+behavior at execution time.
 
 WebMCP capability is live while the page is open; durable alerts are an honest
 server-side continuation, not a claim that the browser agent remains alive.
@@ -117,13 +120,15 @@ The application flow is agent-first with one human review: the agent checks
 readiness, asks once for short-lived draft-bound assistance, proposes truthful
 answers in bounded batches, and then presents one exact submission review —
 recipient, purpose, fields, and privacy notice. The person decides in their
-agent client or on the private review page; either way the server accepts the
+external agent client; the server accepts the
 decision only when it is bound to the exact request ID and draft version,
 seals the reviewed payload, and issues a single-use confirmation before the
 idempotent submit. The stored consent receipt records the decision channel as
 evidence and deliberately does not claim cryptographic human identity.
 Sensitive values and raw chat stay out of tool results and stored consent
-evidence.
+evidence. The same global tool surface lets the person withdraw that consent
+in one call; future consent-based processing stops while historical submission
+receipts remain honest.
 
 ## Challenges we ran into
 
@@ -140,12 +145,11 @@ evidence.
 
 ## Accomplishments we are proud of
 
-- A real WebMCP surface: a seven-tool stable core and 17 contextual tools for
-  job, comparison, saved-search, and application work — all reachable from any
-  page, each honest about when its moment has not arrived.
+- A real WebMCP surface: 24 focused tools for job, comparison, saved-search,
+  and application work — all discoverable from any page, each honest about
+  when its prerequisites have not arrived.
 - A zero-configuration website encounter: the agent opens Jobbbler and
-  discovers the active page's actions without a separate MCP-server
-  declaration.
+  discovers the site's actions without a separate MCP-server declaration.
 - An advisory planner (`plan_job_workflow`) and self-describing filters
   (`get_search_filters`) that let an agent compose valid actions instead of
   guessing.
@@ -156,12 +160,12 @@ evidence.
   front what an agent may prepare and what stays human.
 - Search, comparison, saved alerts, and an internal demo application form
   connect into one coherent journey.
-- The global Agent layer — Guide, Activity, and Tools — makes tool work
+- The global Agent layer — Activity, Tools, and Guide — makes tool work
   understandable without turning the portal into a developer console.
 - Progressive identity and verified-email alerts preserve a low-friction start
   while supporting durable ownership.
-- Payload-bound first-party consent receipts connect the visible decision to
-  an exact server record without overstating identity assurance.
+- Request-bound consent receipts connect the agent-client decision to an exact
+  server record without overstating identity assurance.
 - Explicit delegation, immutable review, and one-time confirmation keep final
   application actions controlled, and external roles end in an honest handoff.
 - Source-aware job ingestion, safe normalized data, and focused

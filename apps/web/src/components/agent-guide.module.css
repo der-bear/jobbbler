@@ -36,7 +36,7 @@
 }
 
 .guideText,
-.control p,
+.panelNote,
 .note {
   margin: 0;
   color: var(--color-ink-muted);
@@ -44,21 +44,87 @@
   line-height: 1.55;
 }
 
+.guideSteps {
+  display: grid;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guideSteps li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border-block-start: 1px solid var(--color-line);
+  padding-block: 8px;
+}
+
+.guideSteps li:last-child {
+  border-block-end: 1px solid var(--color-line);
+}
+
+.guideSteps span {
+  color: var(--color-signal-strong);
+  font-family: var(--jb-font-mono);
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.guideSteps p {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 11px;
+}
+
 .prompt {
-  display: block;
+  display: grid;
+  gap: 10px;
   margin: 2px 0 0;
   border-inline-start: 2px solid var(--jb-signal);
-  color: var(--color-ink);
   padding: 3px 0 3px 12px;
+}
+
+.promptText {
+  margin: 0;
+  color: var(--color-ink);
   font-size: 12px;
   font-weight: 560;
   line-height: 1.55;
 }
 
-.control,
-.catalog {
+.prompt button {
+  justify-self: start;
+}
+
+.guideColumns {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
   border-block-start: 1px solid var(--color-line);
   padding-block-start: 20px;
+}
+
+.guideColumns section {
+  align-content: start;
+}
+
+.guideColumns ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-inline-start: 15px;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.guideColumns li::marker {
+  color: var(--color-line-strong);
+}
+
+.panelNote {
+  margin-block-start: -10px;
 }
 
 .sectionHeading,
@@ -83,13 +149,11 @@
   margin-block-start: -3px;
 }
 
-.activeGroups,
 .capabilityGroups {
   display: grid;
   gap: 20px;
 }
 
-.activeGroups > div,
 .capabilityGroups > section {
   display: grid;
   gap: 7px;
@@ -114,37 +178,22 @@
   border-block-end: 1px solid var(--color-line);
 }
 
-.toolList > li[data-active="true"]::before {
-  position: absolute;
-  inset-block: 11px;
-  inset-inline-start: -10px;
-  inline-size: 2px;
-  border-radius: 999px;
-  background: var(--jb-signal);
-  content: "";
-}
-
 .toolTitle {
   justify-content: space-between;
 }
 
 .toolTitle strong {
   color: var(--color-ink);
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.activeMark {
-  color: var(--color-signal-strong);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 650;
 }
 
 .guide code {
   overflow: hidden;
-  color: var(--color-ink-subtle);
+  color: var(--color-ink-muted);
   font-family: var(--jb-font-mono);
-  font-size: 9px;
+  font-size: 10px;
+  line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -160,7 +209,7 @@
   margin-block-start: 3px;
   color: var(--color-ink-subtle);
   font-family: var(--jb-font-mono);
-  font-size: 8px;
+  font-size: 9px;
   text-transform: uppercase;
 }
 

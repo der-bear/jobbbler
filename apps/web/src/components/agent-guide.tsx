@@ -1,20 +1,16 @@
+"use client";
+
 import { ArrowRightIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 
 import { webMcpCatalog } from "@/lib/webmcp-catalog";
 
 import type { RegisteredToolSummary } from "./webmcp-provider";
-import { stableWebMcpCoreNames } from "./webmcp-registration";
+import { AgentExamplePrompt } from "./agent-example-prompt";
 
 import styles from "./agent-guide.module.css";
 
 const totalCatalogTools = webMcpCatalog.reduce((count, route) => count + route.tools.length, 0);
-const catalogTools = new Map(
-  webMcpCatalog.flatMap((route) => route.tools.map((tool) => [tool.name, tool] as const)),
-);
-
-export const agentExamplePrompt =
-  "Find senior remote product roles in Europe over €100k, compare the strongest three, and save this search.";
 
 export interface AgentToolsProps {
   readonly tools: readonly RegisteredToolSummary[];
@@ -23,10 +19,10 @@ export interface AgentToolsProps {
 
 const compactPurposes: Readonly<Record<string, string>> = {
   plan_job_workflow: "Get the safe steps for a Jobbbler goal.",
-  get_site_capabilities: "See what the site can do and where approval stays required.",
   get_search_filters: "Learn the exact search filters Jobbbler accepts.",
   search_jobs: "Search the public technology-job catalog.",
   open_job_details: "Open a known role and its source-backed facts.",
+  prepare_application: "Prepare one private application without sharing or submitting data.",
   open_jobbbler_page: "Open another Jobbbler workspace.",
 };
 
@@ -40,10 +36,10 @@ function toolTitle(name: string): string {
 }
 
 const approvalTools = new Set([
-  "request_application_access",
-  "request_data_permission",
-  "request_final_confirmation",
-  "submit_application",
+  "request_application_assistance",
+  "decide_application_assistance",
+  "request_submission_review",
+  "decide_application_submission",
 ]);
 
 const capabilityGroups = [
@@ -54,17 +50,14 @@ const capabilityGroups = [
 ] as const;
 
 function ToolRow({
-  active = false,
   tool,
 }: Readonly<{
-  active?: boolean;
   tool: RegisteredToolSummary;
 }>) {
   return (
-    <li data-active={active || undefined}>
+    <li>
       <div className={styles["toolTitle"]}>
         <strong>{toolTitle(tool.name)}</strong>
-        {active ? <span className={styles["activeMark"]}>Available now</span> : null}
       </div>
       <code>{tool.name}</code>
       <p>{toolPurpose(tool)}</p>
@@ -78,53 +71,19 @@ function ToolRow({
 
 export function AgentTools({ tools, webMcpAvailable }: AgentToolsProps) {
   const registeredByName = new Map(tools.map((tool) => [tool.name, tool]));
-  const alwaysTools = stableWebMcpCoreNames.flatMap((name) => {
-    const tool = registeredByName.get(name) ?? catalogTools.get(name);
-    return tool === undefined ? [] : [tool];
-  });
-  const coreNames = new Set<string>(stableWebMcpCoreNames);
-  const contextTools = tools.filter((tool) => !coreNames.has(tool.name));
-  const activeNames = new Set(tools.map((tool) => tool.name));
 
   return (
     <div className={styles["guide"]}>
-      <section aria-labelledby="panel-active-tools">
+      <section aria-labelledby="panel-available-tools">
         <div className={styles["sectionHeading"]}>
-          <h3 id="panel-active-tools">Active now</h3>
-          <span>{String(tools.length)} tools</span>
+          <h3 id="panel-available-tools">Available tools</h3>
+          <span>{String(totalCatalogTools)} tools</span>
         </div>
         <p className={styles["note"]}>
           {webMcpAvailable
-            ? "These are registered for the current page and state."
-            : "A compatible agent browser registers this set automatically."}
+            ? "The same capability set stays discoverable across Jobbbler. Private actions still require an owned draft and the correct stage."
+            : "A compatible agent browser discovers this capability set automatically."}
         </p>
-        <div className={styles["activeGroups"]}>
-          <div>
-            <h4>Everywhere</h4>
-            <ul className={styles["toolList"]}>
-              {alwaysTools.map((tool) => (
-                <ToolRow active key={tool.name} tool={tool} />
-              ))}
-            </ul>
-          </div>
-          {contextTools.length === 0 ? null : (
-            <div>
-              <h4>This page</h4>
-              <ul className={styles["toolList"]}>
-                {contextTools.map((tool) => (
-                  <ToolRow active key={tool.name} tool={tool} />
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section aria-labelledby="panel-all-tools" className={styles["catalog"]}>
-        <div className={styles["sectionHeading"]}>
-          <h3 id="panel-all-tools">All capabilities</h3>
-          <span>{String(totalCatalogTools)} tools</span>
-        </div>
         <div className={styles["capabilityGroups"]}>
           {capabilityGroups.map((group) => {
             const groupTools = webMcpCatalog
@@ -134,9 +93,10 @@ export function AgentTools({ tools, webMcpAvailable }: AgentToolsProps) {
               <section aria-label={`${group.title} capabilities`} key={group.title}>
                 <h4>{group.title}</h4>
                 <ul className={styles["toolList"]}>
-                  {groupTools.map((tool) => (
-                    <ToolRow active={activeNames.has(tool.name)} key={tool.name} tool={tool} />
-                  ))}
+                  {groupTools.map((tool) => {
+                    const registered = registeredByName.get(tool.name);
+                    return <ToolRow key={tool.name} tool={registered ?? tool} />;
+                  })}
                 </ul>
               </section>
             );
@@ -151,21 +111,51 @@ export function AgentGuide() {
   return (
     <div className={styles["guide"]}>
       <section aria-labelledby="guide-try">
-        <p className={styles["promise"]}>No separate server or connector setup.</p>
-        <h3 id="guide-try">Ask for the outcome</h3>
+        <p className={styles["promise"]}>No separate MCP server to install.</p>
+        <h3 id="guide-try">Use Jobbbler from your agent chat</h3>
         <p className={styles["guideText"]}>
-          Open Jobbbler in a WebMCP-compatible browser and use one plain-language request.
+          The example includes this site&apos;s address. Once the agent opens Jobbbler, it discovers
+          the available actions automatically.
         </p>
-        <q className={styles["prompt"]}>{agentExamplePrompt}</q>
+        <ol className={styles["guideSteps"]}>
+          <li>
+            <span>1</span>
+            <p>Copy the complete request</p>
+          </li>
+          <li>
+            <span>2</span>
+            <p>Paste it into your agent client</p>
+          </li>
+          <li>
+            <span>3</span>
+            <p>Review the exact application in your agent client</p>
+          </li>
+        </ol>
+        <AgentExamplePrompt className={styles["prompt"]} promptClassName={styles["promptText"]} />
       </section>
 
-      <section aria-labelledby="guide-control" className={styles["control"]}>
-        <h3 id="guide-control">The person stays in control</h3>
-        <p>
-          Data sharing and final application submission require separate, explicit decisions. The
-          agent can prepare the work; it cannot grant itself permission.
-        </p>
-      </section>
+      <div className={styles["guideColumns"]}>
+        <section aria-labelledby="guide-tools">
+          <h3 id="guide-tools">What the tools handle</h3>
+          <ul>
+            <li>Search, inspect, and compare roles</li>
+            <li>Monitor saved searches for changes</li>
+            <li>Prepare answers and a cover letter</li>
+          </ul>
+        </section>
+        <section aria-labelledby="guide-control">
+          <h3 id="guide-control">What stays with you</h3>
+          <ul>
+            <li>Missing facts the agent asks for</li>
+            <li>Consent to process your data — and the right to withdraw it</li>
+            <li>One final submission decision</li>
+          </ul>
+        </section>
+      </div>
+
+      <p className={styles["panelNote"]}>
+        Activity shows what was called. Tools shows what the agent discovered.
+      </p>
 
       <Link className={styles["moreLink"]} href="/about/webmcp">
         See how it works <ArrowRightIcon aria-hidden="true" size={14} />

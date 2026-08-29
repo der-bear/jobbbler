@@ -18,9 +18,9 @@
 
 - [ ] Verify WebMCP in a supported browser context using the real registered
       tools.
-- [ ] Verify the global Agent layer on more than one route: the stable
-      seven-tool core and the contextual tools stay registered everywhere, and
-      state-gated tools answer with a clear next step when they are not ready.
+- [ ] Verify the global Agent layer on more than one route: the same 24 focused
+      tools stay registered everywhere, and state-gated tools answer with a
+      clear next step when they are not ready.
 - [ ] Record actual registration/readiness, tool activity, search, compare,
       saved alert, and application boundaries.
 - [ ] Confirm the video matches the storyboard's 0–160s beats and narration

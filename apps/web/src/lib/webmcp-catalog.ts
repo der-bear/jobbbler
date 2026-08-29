@@ -21,17 +21,11 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
   {
     route: "*",
     title: "Every page",
-    note: "A compact core keeps every workflow discoverable and reachable; page and state tools join it only when useful.",
+    note: "Every capability stays registered across navigation. The groups below explain their purpose; state-gated tools return a clear next step when they are not ready.",
     tools: [
       {
         name: "plan_job_workflow",
         purpose: "Return the recommended safe steps for one Jobbbler goal from the current page.",
-        readOnly: true,
-      },
-      {
-        name: "get_site_capabilities",
-        purpose:
-          "Read Jobbbler's workflows, tool coverage, route requirements, and human boundaries.",
         readOnly: true,
       },
       {
@@ -47,7 +41,12 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
       {
         name: "open_job_details",
         purpose:
-          "Open a known role from any page so its source-backed detail tools become available.",
+          "Open a known role from any page while keeping every Jobbbler capability available.",
+        readOnly: false,
+      },
+      {
+        name: "prepare_application",
+        purpose: "Create or reopen one private application draft for an explicitly chosen role.",
         readOnly: false,
       },
       {
@@ -142,54 +141,42 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
   },
   {
     route: "/apply/:draftId",
-    title: "Application",
-    note: "State-gated: only tools that fit the current application step are registered. The agent can request approval, but only the visible private workspace can grant it.",
+    title: "Apply",
+    note: "Discoverable on every page and state-gated at execution. In the agent flow, decisions stay in the agent client and Jobbbler stores the resulting consent evidence.",
     tools: [
       {
-        name: "get_application_state",
-        purpose: "Read the current private application's workflow state without candidate answers.",
+        name: "get_application_readiness",
+        purpose: "Check what one private application still needs without returning its answers.",
         readOnly: true,
       },
       {
-        name: "request_application_access",
-        purpose: "Request the minimum agent authority needed for the current application stage.",
+        name: "request_application_assistance",
+        purpose: "Ask once for short-lived permission to prepare one private application.",
         readOnly: false,
       },
       {
-        name: "set_application_answer",
-        purpose:
-          "Suggest one answer in the current application for the candidate to accept or edit.",
+        name: "decide_application_assistance",
+        purpose: "Record the person's assistance decision from the agent client.",
         readOnly: false,
       },
       {
-        name: "validate_application",
-        purpose: "Validate accepted candidate facts in the current application draft.",
+        name: "propose_application_updates",
+        purpose: "Prepare several truthful answers from facts the person supplied.",
         readOnly: false,
       },
       {
-        name: "review_application",
-        purpose: "Seal the validated application into an immutable review snapshot.",
+        name: "request_submission_review",
+        purpose: "Present one exact completed application for a decision in the agent client.",
         readOnly: false,
       },
       {
-        name: "request_data_permission",
-        purpose: "Request human permission for the exact reviewed application disclosure.",
+        name: "decide_application_submission",
+        purpose: "Record the decision, store consent evidence, and submit once if approved.",
         readOnly: false,
       },
       {
-        name: "request_final_confirmation",
-        purpose: "Ask the candidate for a fresh final confirmation of the sealed application.",
-        readOnly: true,
-      },
-      {
-        name: "submit_application",
-        purpose: "Submit the current sealed application using its fresh human confirmation.",
-        readOnly: false,
-      },
-      {
-        name: "prepare_external_handoff",
-        purpose:
-          "Leave an external application ready for the candidate to open from the visible workspace.",
+        name: "withdraw_application_consent",
+        purpose: "Stop future consent-based processing for one application in a single action.",
         readOnly: false,
       },
     ],

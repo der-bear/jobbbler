@@ -2,17 +2,13 @@
 
 import {
   ArrowClockwiseIcon,
-  CheckIcon,
   CheckCircleIcon,
-  CopyIcon,
   WarningCircleIcon,
   XIcon,
 } from "@phosphor-icons/react";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import type { ToolActivity } from "@jobbbler/contracts";
-
-import { agentExamplePrompt } from "./agent-guide";
 
 import styles from "./agent-activity-rail.module.css";
 
@@ -54,8 +50,47 @@ const activityPresentation: Readonly<Record<ToolActivity["status"], ActivityPres
 function durationLabel(startedAt: string, completedAt: string | null): string | null {
   if (completedAt === null) return null;
   const elapsed = Date.parse(completedAt) - Date.parse(startedAt);
-  if (!Number.isFinite(elapsed) || elapsed < 0) return null;
+  if (!Number.isFinite(elapsed) || elapsed <= 0) return null;
   return elapsed < 1_000 ? String(elapsed) + " ms" : (elapsed / 1_000).toFixed(1) + " s";
+}
+
+export function groupedActivities(activities: readonly ToolActivity[]): readonly Readonly<{
+  activity: ToolActivity;
+  count: number;
+}>[] {
+  const groups: { activity: ToolActivity; count: number }[] = [];
+  for (const sourceActivity of activities) {
+    const activity = normalizeLegacyActivity(sourceActivity);
+    const previous = groups.at(-1);
+    if (
+      previous !== undefined &&
+      previous.activity.toolName === activity.toolName &&
+      previous.activity.status === activity.status &&
+      previous.activity.safeSummary === activity.safeSummary
+    ) {
+      previous.activity = activity;
+      previous.count += 1;
+    } else {
+      groups.push({ activity, count: 1 });
+    }
+  }
+  return groups;
+}
+
+function normalizeLegacyActivity(activity: ToolActivity): ToolActivity {
+  if (activity.toolName !== "start_application") return activity;
+  return {
+    ...activity,
+    toolName: "prepare_application",
+    safeSummary:
+      activity.safeSummary === "Application workspace created."
+        ? "Application prepared."
+        : activity.safeSummary,
+  };
+}
+
+export function activityReceiptCount(activities: readonly ToolActivity[]): number {
+  return groupedActivities(activities).length;
 }
 
 export function AgentActivityRail({
@@ -65,16 +100,11 @@ export function AgentActivityRail({
   webMcpAvailable,
 }: AgentActivityRailProps) {
   const itemLimit = Math.max(0, maxItems);
-  const visibleActivities = itemLimit === 0 ? [] : activities.slice(-itemLimit).reverse();
-  const latestActivity = activities.at(-1);
-  const [copied, setCopied] = useState(false);
-
-  async function copyPrompt() {
-    if (navigator.clipboard === undefined) return;
-    await navigator.clipboard.writeText(agentExamplePrompt);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1_600);
-  }
+  const visibleActivities =
+    itemLimit === 0 ? [] : groupedActivities(activities).slice(-itemLimit).reverse();
+  const latestSourceActivity = activities.at(-1);
+  const latestActivity =
+    latestSourceActivity === undefined ? undefined : normalizeLegacyActivity(latestSourceActivity);
 
   return (
     <section
@@ -89,29 +119,16 @@ export function AgentActivityRail({
 
       {visibleActivities.length === 0 ? (
         <div className={styles["empty"]} role="status">
-          <p>{webMcpAvailable ? "Waiting for an agent" : "No agent actions in this browser."}</p>
+          <p>{webMcpAvailable ? "No agent activity yet" : "No agent actions in this browser."}</p>
           {webMcpAvailable ? (
-            <>
-              <span>Tool calls and their visible results will appear here.</span>
-              <div className={styles["prompt"]}>
-                <q>{agentExamplePrompt}</q>
-                <button onClick={() => void copyPrompt()} type="button">
-                  {copied ? (
-                    <CheckIcon aria-hidden="true" size={14} />
-                  ) : (
-                    <CopyIcon aria-hidden="true" size={14} />
-                  )}
-                  {copied ? "Copied" : "Copy prompt"}
-                </button>
-              </div>
-            </>
+            <span>Tool calls and visible results will appear here.</span>
           ) : (
             <span>The job portal still works normally.</span>
           )}
         </div>
       ) : (
         <ol className={styles["timeline"]}>
-          {visibleActivities.map((activity) => {
+          {visibleActivities.map(({ activity, count }) => {
             const presentation = activityPresentation[activity.status];
             const duration = durationLabel(activity.startedAt, activity.completedAt);
             return (
@@ -123,9 +140,10 @@ export function AgentActivityRail({
                 <span className={styles["marker"]}>{presentation.icon}</span>
                 <div className={styles["entry"]}>
                   <p>{activity.safeSummary}</p>
+                  <code>{activity.toolName}</code>
                   <div className={styles["meta"]}>
                     <span>{presentation.label}</span>
-                    <code>{activity.toolName}</code>
+                    {count > 1 ? <span>{String(count)} calls</span> : null}
                     {duration === null ? null : <span>{duration}</span>}
                   </div>
                 </div>

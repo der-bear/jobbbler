@@ -11,7 +11,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } fr
 
 import type { ToolActivity } from "@jobbbler/contracts";
 
-import { AgentActivityRail } from "./agent-activity-rail";
+import { activityReceiptCount, AgentActivityRail } from "./agent-activity-rail";
 import { AgentGuide, AgentTools } from "./agent-guide";
 import {
   useWebMcp,
@@ -89,6 +89,7 @@ export function AgentPanelSurface({
   const tabRefs = useRef<Partial<Record<PanelTab, HTMLButtonElement | null>>>({});
   const userSelectedTab = useRef(false);
   const latestActivity = activities.at(-1);
+  const receiptCount = activityReceiptCount(activities);
   const connection = connectionCopy(status, registeredTools.length);
 
   useEffect(() => {
@@ -237,7 +238,7 @@ export function AgentPanelSurface({
         {panelTabs.map((tab) => {
           const label =
             tab === "activity"
-              ? `Activity${activities.length === 0 ? "" : ` · ${String(activities.length)}`}`
+              ? `Activity${receiptCount === 0 ? "" : ` · ${String(receiptCount)}`}`
               : tab === "tools"
                 ? "Tools"
                 : "Guide";

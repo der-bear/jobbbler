@@ -191,6 +191,7 @@ describe("route-scoped WebMCP tool manifests", () => {
       true,
       false,
     ]);
+    expect(tool(manifests, "search_jobs").description).toContain("Ask for one useful preference");
 
     const controller = new AbortController();
     const success = await tool(manifests, "search_jobs").execute(
@@ -305,6 +306,9 @@ describe("route-scoped WebMCP tool manifests", () => {
       true,
       false,
     ]);
+    expect(tool(manifests, "compare_jobs").description).toContain(
+      "after two or three exact job IDs are known",
+    );
 
     const controller = new AbortController();
     const detail = await tool(manifests, "get_job_details").execute(
@@ -400,6 +404,30 @@ describe("route-scoped WebMCP tool manifests", () => {
       ),
     );
     expect(removeJobFromComparison).toHaveBeenCalledOnce();
+  });
+
+  it("reads an explicitly identified role without requiring its page to be open", async () => {
+    const getJobDetails = vi.fn(async (): Promise<JobDetailResult> => ({
+      job: secondJob,
+      fit,
+    }));
+    const manifests = createJobDetailToolManifests({
+      getJobDetails,
+      compareJobs: async () => comparisonResult,
+      onDetailCommitted: () => undefined,
+      onNavigate: () => undefined,
+    }) as readonly ToolManifest[];
+
+    const result = await tool(manifests, "get_job_details").execute(
+      { jobId: secondJobId },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result.status).toBe("completed");
+    expect(getJobDetails).toHaveBeenCalledWith(
+      { jobId: secondJobId },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 
   it("keeps successful outputs inside the browser budget at contract field maxima", async () => {

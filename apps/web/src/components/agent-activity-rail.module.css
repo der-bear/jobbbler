@@ -58,6 +58,24 @@
   line-height: 1.5;
 }
 
+.entry > code {
+  display: inline-block;
+  max-inline-size: 100%;
+  overflow: hidden;
+  margin-block-start: 8px;
+  border: 1px solid var(--color-line);
+  border-radius: 5px;
+  background: var(--color-surface-subtle);
+  color: var(--color-ink);
+  padding: 4px 7px;
+  font-family: var(--jb-font-mono);
+  font-size: 10px;
+  font-weight: 560;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .meta {
   display: flex;
   flex-wrap: wrap;
@@ -67,15 +85,6 @@
   color: var(--color-ink-subtle);
   font-family: var(--jb-font-mono);
   font-size: 9px;
-}
-
-.meta code {
-  min-inline-size: 0;
-  overflow: hidden;
-  color: var(--color-ink-muted);
-  font-family: inherit;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .timeline li[data-status="requires_user_action"] .meta span:first-child {
@@ -103,41 +112,6 @@
   color: var(--color-ink-muted);
   font-size: 12px;
   line-height: 1.5;
-}
-
-.prompt {
-  display: grid;
-  gap: 11px;
-  margin-block-start: 18px;
-  border: 1px solid var(--color-line);
-  border-radius: var(--jb-radius-md);
-  background: var(--color-surface-subtle);
-  padding: 14px;
-}
-
-.prompt q {
-  color: var(--color-ink);
-  font-size: 11px;
-  font-weight: 550;
-  line-height: 1.5;
-}
-
-.prompt button {
-  display: inline-flex;
-  min-block-size: 36px;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  border: 1px solid var(--color-line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-ink);
-  font-size: 10px;
-  font-weight: 630;
-}
-
-.prompt button:hover {
-  background: var(--color-canvas);
 }
 
 .spin {

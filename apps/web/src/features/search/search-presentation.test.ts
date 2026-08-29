@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { SalaryRange } from "@jobbbler/contracts";
 
 import { salaryLabel } from "@/lib/job-format";
 
-import { locationSuggestions } from "./location-combobox";
+import { fetchLocationSuggestions, locationSuggestions } from "./location-combobox";
 
 describe("locationSuggestions", () => {
   it("returns a short, case-insensitive set of relevant locations without duplicates", () => {
@@ -21,6 +21,26 @@ describe("locationSuggestions", () => {
       "Kyiv, Ukraine",
       "Berlin, Germany",
     ]);
+  });
+
+  it("keeps an unmatched typed location available as valid free text", () => {
+    expect(locationSuggestions(["Europe", "Remote"], "Tallinn, Estonia")).toEqual([
+      "Tallinn, Estonia",
+    ]);
+  });
+
+  it("requests a small encoded suggestion page instead of loading the whole catalog", async () => {
+    const signal = new AbortController().signal;
+    const request = vi.fn(async () => ({ locations: ["Kyiv, Ukraine"] }));
+
+    await expect(fetchLocationSuggestions("Kyiv & remote", signal, request)).resolves.toEqual([
+      "Kyiv, Ukraine",
+    ]);
+    expect(request).toHaveBeenCalledWith(
+      "/api/v1/jobs/locations?q=Kyiv+%26+remote&limit=8",
+      expect.anything(),
+      { signal },
+    );
   });
 });
 
@@ -43,6 +63,20 @@ describe("salaryLabel", () => {
 
   it("does not mark an unchanged currency as approximate", () => {
     expect(salaryLabel(salary, "USD")).toMatch(/^\$/);
+  });
+
+  it("formats both ends of an annual range with one compact scale", () => {
+    expect(
+      salaryLabel(
+        {
+          minimum: 95_000,
+          maximum: 125_000,
+          currency: "USD",
+          period: "year",
+        },
+        "USD",
+      ),
+    ).toBe("$95k–$125k / yr");
   });
 
   it("uses plain language when compensation is missing", () => {

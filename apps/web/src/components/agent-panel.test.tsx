@@ -6,7 +6,6 @@ import { AgentPanelSurface } from "./agent-panel";
 
 const coreTools: readonly RegisteredToolSummary[] = [
   { name: "plan_job_workflow", purpose: "Plan a safe outcome.", readOnly: true },
-  { name: "get_site_capabilities", purpose: "Read the capability guide.", readOnly: true },
   { name: "get_search_filters", purpose: "Read accepted filters.", readOnly: true },
   { name: "search_jobs", purpose: "Search technology roles.", readOnly: false },
   { name: "open_job_details", purpose: "Open a role.", readOnly: false },
@@ -37,7 +36,7 @@ describe("AgentPanelSurface", () => {
 
     expect(markup).toContain("Agent view");
     expect(markup).toContain("WebMCP ready");
-    expect(markup).toContain("7 tools active. Discovery is automatic.");
+    expect(markup).toContain("6 tools active. Discovery is automatic.");
     expect(markup.indexOf('id="agent-tab-activity"')).toBeLessThan(
       markup.indexOf('id="agent-tab-tools"'),
     );
@@ -45,7 +44,8 @@ describe("AgentPanelSurface", () => {
       markup.indexOf('id="agent-tab-guide"'),
     );
     expect(markup).toContain('aria-controls="agent-panel-activity" aria-selected="true"');
-    expect(markup).toContain("Waiting for an agent");
+    expect(markup).toContain("No agent activity yet");
+    expect(markup).toContain("Tool calls and visible results will appear here.");
   });
 
   it("exposes a keyboard-operable resize separator with its current width", () => {

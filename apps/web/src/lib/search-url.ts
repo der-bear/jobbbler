@@ -124,5 +124,5 @@ export function criteriaToSearchInput(criteria: JobSearchCriteria): JobSearchInp
 
 export function searchHrefFromCriteria(criteria: JobSearchCriteria): string {
   const parameters = searchInputToSearchParams(criteriaToSearchInput(criteria));
-  return parameters.size === 0 ? "/" : `/?${parameters.toString()}`;
+  return parameters.size === 0 ? "/jobs" : `/jobs?${parameters.toString()}`;
 }

@@ -69,32 +69,32 @@ commands and policies.
 - A person can complete every core journey through the visible interface
   without WebMCP.
 - A compatible browser agent can start on any page with six stable, site-wide
-  tools, then discover the contextual tools registered for the active route
-  and state. It executes structured actions without simulating DOM clicks.
+  tools and execute structured actions without simulating DOM clicks. The same
+  capability set remains discoverable across navigation.
 - WebMCP is tab-bound and ephemeral. The tools exist while the page is loaded
   in the agent's live browser context; background alerts continue through the
   regular worker after the tab closes.
 - The conversation belongs to the external agent client. Jobbbler does not
   embed a second chat surface.
-- A structured `requires_user_action` response gives the agent client exact
-  review facts and a server request ID. Approval is deliberately absent from
-  WebMCP: the person acts in the visible private workspace, which stores a
-  versioned first-party receipt without claiming cryptographic identity.
+- A structured `requires_user_action` response gives the external agent client
+  exact review facts and a server request ID. The person decides in that agent
+  client; Jobbbler binds the decision to the exact request and stores a
+  versioned server-side consent record without claiming cryptographic identity.
 
 ## Route experience
 
-The catalog has **26 tools**: six stable, site-wide core tools plus 20
-contextual tools. The stable core exists on every page; only contextual tools
-change with route and application state.
+The catalog has **24 focused tools**, all registered on every page. Six are
+clear entry points; private and stage-specific tools remain state-gated at
+execution.
 
-| Route                         | Primary human task                     | Agent tools                                                                                                                                                                                                                                                                                   | Visible trust feedback                                                                                                                    |
-| ----------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Every page `*`                | One obvious task per screen            | Stable core: `plan_job_workflow` (advisory only), `get_site_capabilities`, `get_search_filters`, `search_jobs`, `open_job_details`, `open_jobbbler_page`                                                                                                                                      | The global Agent layer starts with Guide, then Activity and Tools                                                                         |
-| Search `/`                    | Express an outcome and inspect matches | Contextual `get_search_state`, which includes an explicit truncation summary for bounded criteria                                                                                                                                                                                             | URL, filters, result count, and Agent activity receipts update together                                                                   |
-| Role `/jobs/:jobId`           | Understand one opportunity             | `get_job_details`, `get_job_application_capability` (how this role accepts applications — what the agent may prepare, what stays human, whether an external handoff is required), `compare_jobs`                                                                                              | Provenance, freshness, evidence, “What to verify”, and a clear next action                                                                |
-| Compare `/compare`            | Resolve a shortlist                    | `get_comparison`, `add_job_to_comparison`, `remove_job_from_comparison`                                                                                                                                                                                                                       | One evidence table with differences and missing facts                                                                                     |
-| Saved `/saved`                | Stay updated on an explicit search     | `get_saved_alerts`, `set_job_alert_state`, `open_saved_search`, `get_latest_search_update` (only what changed since the last check)                                                                                                                                                           | Plain-language status (“Checking daily”, “Paused”), next run, “N changes since the last check”, and a masked destination only             |
-| Application `/apply/:draftId` | Prepare one reviewed disclosure        | Nine state-gated tools, `get_application_state` through `submit_application` and `prepare_external_handoff`; only those that fit the current step are registered, and WebMCP can request but never grant human approval | Distinct “Your details”, Review, Permission, and Final confirmation stages with receipts; external roles finish on the employer's website |
+| Route                         | Primary human task                     | Agent tools                                                                                                                                                                                                                             | Visible trust feedback                                                                                                        |
+| ----------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Every page `*`                | One obvious task per screen            | Entry tools: `plan_job_workflow` (advisory only), `get_search_filters`, `search_jobs`, `open_job_details`, `prepare_application`, `open_jobbbler_page`                                                                                  | The global Agent layer starts with Activity, then Tools and Guide                                                             |
+| Search `/`                    | Express an outcome and inspect matches | Contextual `get_search_state`, which includes an explicit truncation summary for bounded criteria                                                                                                                                       | URL, filters, result count, and Agent activity receipts update together                                                       |
+| Role `/jobs/:jobId`           | Understand one opportunity             | `get_job_details`, `get_job_application_capability` (how this role accepts applications — what the agent may prepare, what stays human, whether an external handoff is required), `compare_jobs`                                        | Provenance, freshness, evidence, “What to verify”, and a clear next action                                                    |
+| Compare `/compare`            | Resolve a shortlist                    | `get_comparison`, `add_job_to_comparison`, `remove_job_from_comparison`                                                                                                                                                                 | One evidence table with differences and missing facts                                                                         |
+| Saved `/saved`                | Stay updated on an explicit search     | `get_saved_alerts`, `set_job_alert_state`, `open_saved_search`, `get_latest_search_update` (only what changed since the last check)                                                                                                     | Plain-language status (“Checking daily”, “Paused”), next run, “N changes since the last check”, and a masked destination only |
+| Application `/apply/:draftId` | Prepare one reviewed disclosure        | Seven outcome tools: readiness, one assistance decision, bounded answer preparation, one exact review, one submission decision, and one-call consent withdrawal. They stay discoverable but enforce owner and stage checks when called. | The agent client owns questions and decisions; Jobbbler stores the exact consent evidence and receipt                         |
 
 ## Visual hierarchy
 
@@ -124,14 +124,13 @@ activity” button opens it. It is a transparency layer, not a competing
 workspace and not a source of authority.
 
 - The header states the panel's purpose in one line; a status row shows the
-  live WebMCP state, the six stable tools, and any contextual tools available
-  on the current page.
-- Three tabs, in this order: **Guide**, **Activity**, and **Tools**.
+  live WebMCP state and the 24 capabilities discoverable across Jobbbler.
+- Three tabs, in this order: **Activity**, **Tools**, and **Guide**.
 - Activity entries are two-level: the human sentence comes first, then the
   technical line — tool name, status, and duration. Running work, required
   approval, and failures surface automatically.
-- The Tools tab separates the six always-available tools from contextual tools
-  and then shows the 29-tool catalog grouped by page.
+- The Tools tab shows all 24 tools grouped by outcome and explains that private
+  actions still require an owned draft and the correct stage.
 - The Guide tab offers “Try it in 10 seconds”, the suggested workflows, and a
   note that `plan_job_workflow` serves the same plans to agents — advisory
   only.
@@ -147,15 +146,14 @@ The submission should show a real external browser-agent session rather than a
 simulated chat inside Jobbbler:
 
 1. The user asks for a job outcome in the agent client.
-2. The agent opens Jobbbler, discovers the stable core on any page, and can
-   ask `plan_job_workflow` for recommended safe steps before using contextual
-   tools.
+2. The agent opens Jobbbler, discovers the same 24 focused tools on any page,
+   and may ask `plan_job_workflow` for recommended safe steps when useful.
 3. It invokes `search_jobs`; the real URL, filters, and results update.
-4. Navigation preserves the stable core and replaces only the contextual tools
-   with role- or application-specific tools.
+4. Navigation preserves the entire tool set; role and application actions
+   validate their explicit IDs and workflow state when invoked.
 5. The agent prepares an application and requests exact data permission. The
-   person approves the payload-bound request and final confirmation separately
-   in the visible private workspace.
+   person gives the draft-scoped assistance decision and final exact submission
+   decision in the external agent client.
 6. Jobbbler displays the resulting state and a concise activity receipt when
    viewed.
 

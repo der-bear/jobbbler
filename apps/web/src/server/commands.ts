@@ -4,6 +4,7 @@ import {
   createSearchJobsCommand,
   type JobCatalogRepository,
 } from "@jobbbler/jobs-domain";
+import type { JobRepository } from "@jobbbler/storage";
 
 import { getServerStorage } from "./context";
 import { createStorageRateLimiter, type RateLimiter } from "./rate-limit";
@@ -16,6 +17,7 @@ export interface DiscoveryCommands {
 
 export interface DiscoveryRouteDependencies {
   readonly commands: DiscoveryCommands;
+  readonly jobs: Pick<JobRepository, "suggestLocations">;
   readonly rateLimiter: RateLimiter;
   readonly nowMs: () => number;
 }
@@ -39,6 +41,7 @@ export function getDiscoveryRouteDependencies(): DiscoveryRouteDependencies {
   const storage = getServerStorage();
   const dependencies: DiscoveryRouteDependencies = {
     commands: createDiscoveryCommands(storage.jobs),
+    jobs: storage.jobs,
     rateLimiter: createStorageRateLimiter(storage.rateLimits),
     nowMs: Date.now,
   };

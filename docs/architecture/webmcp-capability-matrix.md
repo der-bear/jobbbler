@@ -1,61 +1,78 @@
 # WebMCP Capability Matrix
 
-Status: implementation baseline, 2026-08-29
+Status: release candidate, 2026-08-30
 
-This matrix binds current WebMCP capabilities to one Jobbbler product behavior, one blocking verification, and one concise judge-facing demo moment. It prevents the browser API from becoming a decorative wrapper around ordinary HTTP endpoints.
+This matrix ties the WebMCP draft to one Jobbbler behavior, one blocking
+verification, and one judge-visible proof. WebMCP is an agent interface over
+the real product, not a decorative wrapper or a separate MCP server.
 
-| Current capability or limit                                                                                   | Jobbbler feature                                                                                                                         | Blocking verification                                                                                                | Demo evidence                                                                                   |
-| ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `document.modelContext` is a secure-context API and may be absent                                             | Feature detection with a fully usable browser-only fallback                                                                              | Missing or malformed `modelContext` registers nothing and leaves search usable                                       | Open the same public search with and without WebMCP support                                     |
-| `registerTool()` is asynchronous and rejects invalid or duplicate tools                                       | Registration status becomes connected only after the complete route set succeeds                                                         | Fake context records the exact route set; partial failure unregisters the set and reports unavailable                | Agent Activity changes from preparing to ready with the exposed tool count                      |
-| Registration accepts an `AbortSignal`                                                                         | One controller owns each route/resource tool set and aborts it on lifecycle change                                                       | Route change aborts every registration signal exactly once                                                           | Move from search to a role and show the discovered tool list narrowing                          |
-| Registration-signal abort unregisters tools without cancelling in-flight execution in current Chrome guidance | Navigation removes stale discovery while an already-started read can finish safely                                                       | A pending execution survives registration cleanup; its own execution signal still cancels its network request        | Start a search call, navigate, and show a completed or explicitly cancelled activity receipt    |
-| Tool execution receives `{ signal }`                                                                          | Every BFF request receives the browser execution signal                                                                                  | Cancellation aborts the request and produces a concise cancelled result/activity state                               | Cancel an agent search and show no stale result overwrite                                       |
-| Same-origin tools are the default; cross-origin exposure is opt-in                                            | Jobbbler does not set `exposedTo` for public, owner, or application tools                                                                | Registration options never contain `exposedTo`                                                                       | Explain that tools stay bound to the Jobbbler origin                                            |
-| `readOnlyHint` and `untrustedContentHint` are security hints, not enforcement                                 | Discovery reads declare read-only; local comparison removal declares a UI mutation; job/source results are untrusted                     | Manifest validation requires explicit booleans and route tests assert every tool's accurate value                    | Inspect a search tool and its source-backed result warning                                      |
-| Input is JSON Schema but runtime constraints still need code validation                                       | Zod parses every execution input before a command or URL change                                                                          | Invalid enum, unknown field, oversized string, and malformed ID fail deterministically                               | Send one invalid request and show an actionable safe error                                      |
-| Tool results must be JSON-serializable and should stay concise                                                | Stable result envelopes contain summary, facts, resources, activity ID, and bounded data                                                 | Schema/size tests cap descriptions, parameter text, and serialized outputs                                           | Search returns only decision-useful job facts and IDs                                           |
-| Page state should update after a tool finishes                                                                | Tool calls use the same URL/query clients and emit state/activity events consumed by React                                               | A successful call updates URL/results before its completed activity is announced                                     | Ask the agent to refine remote Europe roles and watch the visible chips/results change          |
-| Tool registration should match the useful page state and avoid overlapping purposes                           | Search, detail, and compare expose small, distinct route manifests                                                                       | Exact-name and unique-purpose tests cover every route                                                                | Show search tools on `/`, role inspection on `/jobs/:id`, and comparison on `/compare`          |
-| Model behavior is probabilistic even when tool code is deterministic                                          | Deterministic lifecycle tests gate release; prompt eval fixtures cover direct, paraphrased, and ambiguous intent                         | Expected-call fixtures validate selected tool and structured arguments without making model evals a build dependency | Demonstrate a paraphrased request resolving to the same typed search call                       |
-| `requestUserInteraction()` and multi-party consent remain evolving work                                       | State-changing tools return `requires_user_action` with exact presentation facts; approval remains a visible first-party action           | No WebMCP tool can approve delegation, data permission, identity, or final submission on the person's behalf         | Agent presents scope/data/purpose; the person approves the exact request in Jobbbler             |
-| WebMCP does not provide cryptographic agent identity to the application                                       | Browser tool access and server authorization remain separate layers                                                                      | Server-side delegation/consent tests ignore claimed tool caller identity                                             | Explain the purpose-bound delegation receipt rather than claiming WebMCP authenticates an agent |
-| External job content can contain prompt injection                                                             | Job facts are normalized, outputs are marked untrusted, and raw source HTML never enters tool results                                    | Output allowlist and redaction tests reject raw connector payloads or HTML                                           | Inspect provenance and known unknowns without exposing source instructions                      |
+| WebMCP capability or limit                                           | Jobbbler behavior                                                                                                                                        | Blocking verification                                                                  | Demo proof                                                           |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `document.modelContext` is a secure-context API and may be absent    | Feature detection leaves the ordinary job portal fully usable                                                                                            | Unsupported and malformed contexts register nothing and do not break search            | Open the same page with and without WebMCP support                   |
+| `registerTool()` is asynchronous                                     | One provider registers the complete 24-tool set before reporting ready                                                                                   | Partial failure cleans up the set and reports a recoverable unavailable state          | Agent view changes from preparing to ready with the exact count      |
+| Tools are discovered from the live page                              | The same focused set remains registered on Home, Jobs, Role, Compare, Alerts, Applications, and How it works                                             | Navigation tests compare exact tool names across routes                                | Move between pages without losing a capability                       |
+| More and overlapping tools increase model cost and selection errors  | Lifecycle primitives were consolidated into outcome tools and the redundant capability-dump tool was removed                                             | Catalog and eval fixtures agree on 23 unique purposes                                  | Tools tab shows a readable outcome-grouped catalog                   |
+| Tool execution receives an `AbortSignal`                             | Every request and long-running operation receives the browser cancellation signal                                                                        | Cancellation produces a bounded cancelled result and no stale UI overwrite             | Cancel one search and show the activity receipt                      |
+| `readOnlyHint` and `untrustedContentHint` are hints, not authority   | Every manifest declares honest annotations; normalized job content is treated as untrusted                                                               | Shared manifest validation checks every tool and application state                     | Inspect one read and one action tool in Agent view                   |
+| JSON Schema guides the model but does not replace runtime validation | Zod rejects unknown fields, malformed IDs, duplicates, stale versions, and invalid ranges before mutation                                                | Deterministic invalid-input and atomicity tests pass on SQLite and PostgreSQL adapters | Send one invalid request and show a concise self-correction hint     |
+| Tool output should be concise and useful for the next action         | Every result is JSON-serializable and capped at 1.5 KB; workflow results include `nextTool` and required inputs                                          | Size tests cover every workflow and representative success/error result                | Search returns compact role facts and exact IDs                      |
+| Page state should reflect completed tools                            | Search, comparison, alerts, and navigation reuse the same commands and UI bridges as the human interface                                                 | Tests assert URL and visible state update before completion                            | Ask for a search and watch URL, filters, results, and Activity agree |
+| WebMCP does not provide cryptographic agent identity                 | Browser capability, loginless owner session, draft ownership, and operation authority are separate server boundaries                                     | Server tests ignore claimed caller identity and validate owner-bound IDs               | Explain global discovery without claiming global authorization       |
+| Human interaction APIs and consent semantics are still evolving      | `requires_user_action` returns a server request ID plus exact presentation facts for the external agent client                                           | The server accepts only a decision bound to the live request and current draft version | The agent asks once for assistance and once for the exact submission |
+| Consent evidence is application responsibility                       | On approval, Jobbbler stores recipient, purpose, fields, notice version, decision channel, request evidence, and reviewed version before submitting once | Stale, replayed, mismatched, or declined decisions cannot submit                       | Show the receipt after one approved internal demo application        |
+| External job content may contain prompt injection                    | Raw source HTML and instructions never enter tool results; normalized facts are marked untrusted                                                         | Output allowlists and redaction tests reject source payloads and secrets               | Inspect provenance and known unknowns without source instructions    |
+| Browser WebMCP is tab-bound                                          | Durable job alerts continue in the worker; the site never claims the browser agent stays alive                                                           | Worker, lease, idempotency, and delta tests pass                                       | Close the tab, then show a later saved-search delta                  |
 
-## Route strategy
+## Stable global tool strategy
 
-The initial public route sets stay deliberately small:
+All 24 tools are registered on every route. Six are natural entry points:
 
-- Search: `search_jobs`, `get_search_state`, `open_job_details`.
-- Job detail: `get_job_details`, `compare_jobs`.
-- Compare: `get_comparison`, `remove_job_from_comparison`, `add_job_to_comparison`.
-- Saved: `get_saved_alerts`, `set_job_alert_state`, `open_saved_search`.
-- Every route additionally registers `plan_job_workflow`, a read-only advisor that
-  returns the recommended safe composition of tools for one goal. It executes
-  nothing and grants nothing; navigation tools carry `readOnlyHint: false` because
-  they change the visible route and therefore the registered tool set.
+- `plan_job_workflow` — optional, read-only, route-aware advice for five goals;
+- `get_search_filters` — accepted vocabulary for exact schemas;
+- `search_jobs` — source-backed catalog search;
+- `open_job_details` — navigate to a known role;
+- `prepare_application` — create or reopen one owner-bound draft;
+- `open_jobbbler_page` — explicit navigation to another workspace.
 
-`remove_job_from_comparison` changes visible URL state, so it declares `readOnlyHint: false` even though it does not persist server data.
+The other tools remain discoverable but validate their prerequisites at
+execution: exact job, saved-search, schedule, or draft IDs; owner access; and
+the current workflow version or stage. Global discovery never grants global
+application authority.
 
-Saved searches, schedules, consent, delegation, and application tools register only when their backing server commands and secure owner-session boundary exist. Tool names distinguish requests from completed effects. An agent may create a narrowly scoped pending request and read its safe state, but no WebMCP tool approves that request. The person approves the exact pending delegation, disclosure, or final review in the visible private application workspace; the agent then re-reads state and continues only if authority is active.
+`plan_job_workflow` is deliberately advisory. It returns a compact sequence,
+the best next tool for the current route, required inputs, and human decision
+points. It executes nothing, grants nothing, and does not replace clear direct
+tool descriptions. There is no workflow engine, DSL, generic execute tool, or
+MCP Resource dependency.
 
-## Imperative versus declarative registration
+## Agent-first application sequence
 
-WebMCP offers two registration surfaces: the imperative `document.modelContext.registerTool`
-API and the declarative `toolname`/`tooldescription` form annotations. Jobbbler deliberately
-uses only the imperative API:
+1. `prepare_application` creates or reopens the chosen private draft.
+2. `get_application_readiness` reports only counts, missing field keys, and the
+   next safe tool; it does not return private answers.
+3. `request_application_assistance` asks once for draft-bound, short-lived
+   preparation authority in the external agent client.
+4. `decide_application_assistance` records the exact approved or declined
+   decision.
+5. `propose_application_updates` writes one atomic batch from supplied facts;
+   the agent asks only for missing facts and never invents sensitive data.
+6. `request_submission_review` presents recipient, purpose, included fields,
+   privacy notice, request ID, and draft version in the agent client.
+7. `decide_application_submission` records consent and submits the unchanged
+   internal application once, or records no submission on decline.
 
-- Every conventional form on the site either already has a richer imperative tool bound to the
-  same server command (search, alerts, application answers) or exists precisely to keep private
-  values — a delivery email, a one-time code — out of agent tool input and output. A declarative
-  annotation on those forms would route the private value through the agent, which the privacy
-  model forbids.
-- Imperative registration lets each route register a small, state-gated tool set with typed
-  results, cancellation, and activity records; a duplicated declarative twin of the same form
-  would only make agent tool choice more ambiguous.
+External-source roles are never falsely reported as submitted. Their capability
+response explains that Jobbbler can prepare the information but the employer's
+own site remains the system of record.
 
-The decision is revisited if a new, non-sensitive form appears that has no imperative
-counterpart.
+## Why imperative registration
+
+Jobbbler uses only the imperative API. The same server commands power the human
+interface and WebMCP, while imperative manifests provide typed inputs, bounded
+results, cancellation, annotations, activity receipts, and precise state-gated
+errors. Duplicating the same actions as declarative form tools would add
+overlap, and annotating private email or recovery forms would route values
+through the agent contrary to the privacy model.
 
 ## Source baseline
 
@@ -66,4 +83,6 @@ counterpart.
 - [Chrome WebMCP eval guidance](https://developer.chrome.com/docs/ai/webmcp/evals)
 - [WebMCP Challenge resources](https://webmcp.devpost.com/resources)
 
-The source baseline is re-checked before release because WebMCP is an emerging draft. The current implementation never treats annotations, browser presence, or tool access as authorization.
+The sources are re-checked before release because WebMCP is an emerging draft.
+Jobbbler never treats annotations, browser presence, or tool discovery as
+identity, consent, or authorization.

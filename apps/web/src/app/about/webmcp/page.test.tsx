@@ -9,11 +9,20 @@ describe("WebMCP explanation", () => {
 
     expect(markup).toContain("Ask for an outcome");
     expect(markup).toContain("No separate MCP server");
-    expect(markup).toContain("The site becomes the interface");
+    expect(markup).toContain("One request, a complete workflow");
+    expect(markup).toContain("Open this Jobbbler site");
+    expect(markup).toContain("compare the strongest options");
+    expect(markup).toContain("show me exactly what will be submitted");
+    expect(markup).toContain("Copy prompt");
+    expect(markup).toContain("Search");
+    expect(markup).toContain("Compare");
+    expect(markup).toContain("Monitor");
+    expect(markup).toContain("Apply");
     expect(markup).toContain("Proof you can see");
     expect(markup).toContain("The conversation stays in your agent client");
     expect(markup).toContain("Jobbbler keeps checking after the tab closes");
-    expect(markup).toContain("The person stays in control");
+    expect(markup).toContain("You approve the important parts");
+    expect(markup).toContain("Only you can");
     expect(markup).not.toContain("Every tool, page by page");
     expect(markup).not.toContain("request_application_access");
     expect(markup).not.toContain("chat input");

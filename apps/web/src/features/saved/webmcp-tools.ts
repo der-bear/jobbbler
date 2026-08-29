@@ -143,7 +143,7 @@ export function createSavedToolManifests(
     name: "set_job_alert_state",
     purpose: "Pause or resume one existing saved job alert in the current private workspace.",
     description:
-      "Pause or resume an alert returned by get_saved_alerts. This reversible action updates the visible workspace and never changes its criteria or email destination.",
+      "Pause or resume one alert using the exact schedule ID returned by get_saved_alerts. If several alerts exist and the person did not identify one, ask which alert. This reversible action never changes its criteria or email destination.",
     inputSchema: stateInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {

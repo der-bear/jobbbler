@@ -9,6 +9,10 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+.workspace[data-landing="false"] {
+  grid-template-rows: 1fr;
+}
+
 .hero {
   grid-column: 1 / -1;
   display: grid;
@@ -41,36 +45,6 @@
   color: var(--color-ink-muted);
   font-size: 13px;
   text-align: center;
-}
-
-.hero[data-compact="true"] .heroSub {
-  display: none;
-}
-
-.hero[data-compact="true"] {
-  justify-items: start;
-  gap: 0;
-  padding-block: 14px;
-}
-
-.hero[data-compact="true"] h1 {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-}
-
-.hero[data-compact="true"] .heroSearch {
-  inline-size: min(560px, 100%);
-}
-
-.hero[data-compact="true"] .heroField input {
-  min-block-size: 34px;
-}
-
-.hero[data-compact="true"] .heroSearch > button {
-  padding: 8px 16px;
 }
 
 .heroSearch {
@@ -165,7 +139,7 @@
 }
 
 .filterRail {
-  grid-row: 2;
+  grid-row: 1;
   border-inline-end: 1px solid var(--color-line);
   padding: clamp(22px, 3vw, 32px) clamp(20px, 2vw, 32px) 48px;
 }
@@ -190,12 +164,42 @@
   display: grid;
 }
 
-.resultsControls select {
+.railSearch,
+.railLocation {
+  display: flex;
   min-inline-size: 0;
+  min-block-size: 38px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  padding-inline: 9px;
+}
+
+.railSearch:focus-within,
+.railLocation:focus-within {
+  border-color: var(--jb-signal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--jb-signal) 12%, transparent);
+}
+
+.railSearch > svg {
+  flex: 0 0 auto;
+  color: var(--color-ink-subtle);
+}
+
+.filterRow .railSearch input,
+.filterRow .railLocation input {
+  min-block-size: 36px;
   border: 0;
   outline: 0;
   background: transparent;
-  color: var(--color-ink);
+  padding: 0;
+  box-shadow: none;
+}
+
+.railLocation > div {
+  inline-size: 100%;
 }
 
 .filterRow input::placeholder,
@@ -294,7 +298,7 @@
 }
 
 .results {
-  grid-row: 2;
+  grid-row: 1;
   min-inline-size: 0;
   inline-size: 100%;
   max-inline-size: 1100px;
@@ -355,10 +359,47 @@
   letter-spacing: -0.035em;
 }
 
-.resultsControls select {
+.sortControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-ink-subtle);
+  font-size: 11px;
+}
+
+.sortSelect {
+  position: relative;
+  display: inline-flex;
+  min-block-size: 36px;
+  align-items: center;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.sortSelect select {
+  min-inline-size: 108px;
   min-block-size: 34px;
-  color: var(--color-ink-muted);
+  appearance: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-ink);
+  padding: 7px 30px 7px 11px;
   font-size: 12px;
+  font-weight: 580;
+}
+
+.sortSelect svg {
+  position: absolute;
+  inset-inline-end: 10px;
+  color: var(--color-ink-muted);
+  pointer-events: none;
+}
+
+.sortSelect:focus-within {
+  border-color: var(--jb-signal);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--jb-signal) 14%, transparent);
 }
 
 .saveAlertLink,
@@ -403,7 +444,41 @@
 }
 
 .resultList[data-loading="true"] {
-  opacity: 0.58;
+  opacity: 0.82;
+}
+
+.resultList[data-layout="cards"] {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+  padding-block-start: 16px;
+}
+
+.resultList[data-layout="cards"] .jobResult {
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: var(--jb-radius-md);
+}
+
+.resultList[data-layout="cards"] .jobSummary {
+  grid-template-columns: 1fr;
+  align-content: space-between;
+  gap: 14px;
+  min-block-size: 156px;
+  padding: 16px;
+}
+
+.resultList[data-layout="cards"] .jobTitleLink strong {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+}
+
+.resultList[data-layout="cards"] .jobSalary {
+  justify-items: start;
+  text-align: start;
 }
 
 .jobResult {

@@ -4,11 +4,13 @@ import {
   ArrowClockwiseIcon,
   BriefcaseIcon,
   BellSimpleIcon,
+  CaretDownIcon,
   ClockIcon,
   MagnifyingGlassIcon,
   WarningCircleIcon,
 } from "@phosphor-icons/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
@@ -49,6 +51,10 @@ const defaultSearch: JobSearchInput = {
   sort: "newest",
   limit: 20,
 };
+
+const salaryThresholds = [
+  40_000, 60_000, 80_000, 100_000, 120_000, 150_000, 200_000, 250_000,
+] as const;
 
 interface SearchDraft {
   readonly query: string;
@@ -143,19 +149,35 @@ function hasMeaningfulSearchCriteria(input: JobSearchInput): boolean {
 export function deriveSearchPresentation(
   input: JobSearchInput,
   result: SearchJobsResult | null,
+  mode: "home" | "catalog" = "home",
 ): Readonly<{
   heading: string;
   landing: boolean;
+  resultLayout: "cards" | "list";
+  showHeroSearch: boolean;
   showFilters: boolean;
   visibleJobs: readonly JobSummary[];
 }> {
-  const landing = !hasMeaningfulSearchCriteria(input);
+  const hasCriteria = hasMeaningfulSearchCriteria(input);
+  const landing = mode === "home" && !hasCriteria;
   return {
-    heading: landing ? "Latest technology roles" : `${String(result?.total ?? 0)} matches`,
+    heading: landing
+      ? "Latest technology roles"
+      : hasCriteria
+        ? `${String(result?.total ?? 0)} matches`
+        : "All technology roles",
     landing,
+    resultLayout: landing ? "cards" : "list",
+    showHeroSearch: landing,
     showFilters: !landing,
     visibleJobs: result === null ? [] : landing ? result.jobs.slice(0, 6) : result.jobs,
   };
+}
+
+export function searchWorkspaceHref(input: JobSearchInput, mode: "home" | "catalog"): string {
+  if (mode === "home") return "/";
+  const parameters = searchInputToSearchParams(input);
+  return parameters.size === 0 ? "/jobs" : `/jobs?${parameters.toString()}`;
 }
 
 function SearchFilters({
@@ -192,6 +214,31 @@ function SearchFilters({
       }}
     >
       <p className={styles["railTitle"]}>Filters</p>
+      <label className={styles["filterRow"]}>
+        <span>Search</span>
+        <span className={styles["railSearch"]}>
+          <MagnifyingGlassIcon aria-hidden="true" size={15} />
+          <input
+            maxLength={500}
+            onBlur={() => onCommit(draft)}
+            onChange={(event) => onDraftChange({ ...draft, query: event.target.value })}
+            onKeyDown={commitOnEnter}
+            placeholder="Role, skill or company"
+            type="search"
+            value={draft.query}
+          />
+        </span>
+      </label>
+      <div className={styles["filterRow"]}>
+        <span>Location</span>
+        <div className={styles["railLocation"]}>
+          <LocationCombobox
+            onChange={(location) => onDraftChange({ ...draft, location })}
+            onCommit={(location) => onCommit({ ...draft, location })}
+            value={draft.location}
+          />
+        </div>
+      </div>
       <fieldset className={styles["choiceRow"]}>
         <legend>Work model</legend>
         <div>
@@ -264,23 +311,29 @@ function SearchFilters({
             onChange={(currency) => onCommit({ ...draft, currency })}
             value={draft.currency}
           />
-          <input
+          <select
             aria-label="Minimum annual salary"
-            className="jb-range"
-            max="250000"
-            min="0"
-            onChange={(event) => onDraftChange({ ...draft, minimumSalary: event.target.value })}
-            onKeyUp={() => onCommit(draft)}
-            onPointerUp={() => onCommit(draft)}
-            step="10000"
-            style={
-              {
-                "--jb-range-progress": `${String((Number(draft.minimumSalary || "0") / 250000) * 100)}%`,
-              } as React.CSSProperties
-            }
-            type="range"
-            value={draft.minimumSalary === "" ? "0" : draft.minimumSalary}
-          />
+            onChange={(event) => onCommit({ ...draft, minimumSalary: event.target.value })}
+            value={draft.minimumSalary}
+          >
+            <option value="">Any salary</option>
+            {draft.minimumSalary !== "" &&
+            !salaryThresholds.includes(
+              Number(draft.minimumSalary) as (typeof salaryThresholds)[number],
+            ) ? (
+              <option value={draft.minimumSalary}>
+                {Intl.NumberFormat("en", { notation: "compact" }).format(
+                  Number(draft.minimumSalary),
+                )}
+                +
+              </option>
+            ) : null}
+            {salaryThresholds.map((amount) => (
+              <option key={amount} value={String(amount)}>
+                {Intl.NumberFormat("en", { notation: "compact" }).format(amount)}+
+              </option>
+            ))}
+          </select>
         </span>
       </div>
       <label className={styles["filterRow"]}>
@@ -355,7 +408,8 @@ function JobResult({
   );
 }
 
-export function SearchWorkspace() {
+export function SearchWorkspace({ mode }: Readonly<{ mode: "home" | "catalog" }>) {
+  const router = useRouter();
   const webMcp = useWebMcp();
   const [applied, setApplied] = useState<JobSearchInput>(defaultSearch);
   const [draft, setDraft] = useState<SearchDraft>(() => draftFromInput(defaultSearch));
@@ -378,30 +432,43 @@ export function SearchWorkspace() {
     return undefined;
   }, [activityCount]);
   const requestSequence = useRef(0);
+  const activeSearch = useRef<AbortController | null>(null);
 
-  const runSearch = useCallback(async (input: JobSearchInput, history: "push" | "replace") => {
-    const sequence = requestSequence.current + 1;
-    requestSequence.current = sequence;
-    const parameters = searchInputToSearchParams(input);
-    const target = parameters.size === 0 ? "/" : `/?${parameters.toString()}`;
-    window.history[history === "push" ? "pushState" : "replaceState"]({}, "", target);
-    setStatus("loading");
-    setError(null);
+  const runSearch = useCallback(
+    async (input: JobSearchInput, history: "push" | "replace") => {
+      activeSearch.current?.abort();
+      const controller = new AbortController();
+      activeSearch.current = controller;
+      const sequence = requestSequence.current + 1;
+      requestSequence.current = sequence;
+      const parameters = searchInputToSearchParams(input);
+      const target = searchWorkspaceHref(input, mode);
+      window.history[history === "push" ? "pushState" : "replaceState"]({}, "", target);
+      setStatus("loading");
+      setError(null);
 
-    try {
-      const next = await queryApi(
-        `/api/v1/jobs/search${parameters.size === 0 ? "" : `?${parameters.toString()}`}`,
-        searchJobsResultSchema,
-      );
-      if (requestSequence.current !== sequence) return;
-      setResult(next);
-      setStatus("ready");
-    } catch (searchError) {
-      if (requestSequence.current !== sequence) return;
-      setError(errorMessage(searchError));
-      setStatus("error");
-    }
-  }, []);
+      try {
+        const next = await queryApi(
+          `/api/v1/jobs/search${parameters.size === 0 ? "" : `?${parameters.toString()}`}`,
+          searchJobsResultSchema,
+          { signal: controller.signal },
+        );
+        if (requestSequence.current !== sequence) return;
+        setResult(next);
+        setStatus("ready");
+      } catch (searchError) {
+        if (controller.signal.aborted) return;
+        if (requestSequence.current !== sequence) return;
+        setError(errorMessage(searchError));
+        setStatus("error");
+      } finally {
+        if (activeSearch.current === controller) activeSearch.current = null;
+      }
+    },
+    [mode],
+  );
+
+  useEffect(() => () => activeSearch.current?.abort(), []);
 
   useEffect(() => {
     const initial = searchFromLocation();
@@ -422,6 +489,7 @@ export function SearchWorkspace() {
   useEffect(
     () =>
       subscribeWebMcpSearchCommit(({ input, result: committedResult }) => {
+        activeSearch.current?.abort();
         requestSequence.current += 1;
         publishSearchSurfaceState({
           criteria: committedResult.criteria,
@@ -457,18 +525,21 @@ export function SearchWorkspace() {
     return `/saved?${parameters.toString()}`;
   }, [applied]);
 
-  const presentation = useMemo(() => deriveSearchPresentation(applied, result), [applied, result]);
-  const locationOptions = useMemo(
-    () => result?.jobs.flatMap((job) => job.locations) ?? [],
-    [result],
+  const presentation = useMemo(
+    () => deriveSearchPresentation(applied, result, mode),
+    [applied, mode, result],
   );
-
   function commitDraft(next: SearchDraft) {
     setDraft(next);
     const input = inputFromDraft(next);
     if (
       searchInputToSearchParams(input).toString() === searchInputToSearchParams(applied).toString()
     ) {
+      return;
+    }
+    if (mode === "home") {
+      const parameters = searchInputToSearchParams(input);
+      router.push(parameters.size === 0 ? "/jobs" : `/jobs?${parameters.toString()}`);
       return;
     }
     setApplied(input);
@@ -489,35 +560,36 @@ export function SearchWorkspace() {
 
   return (
     <div className={styles["workspace"]} data-landing={String(presentation.landing)}>
-      <header className={styles["hero"]} data-compact={String(!presentation.landing)}>
-        <h1>Find your next technology role</h1>
-        <p className={styles["heroSub"]}>
-          One clear search for roles that fit how you want to work.
-        </p>
-        <form className={styles["heroSearch"]} onSubmit={submit} role="search">
-          <label className={styles["heroField"]}>
-            <MagnifyingGlassIcon aria-hidden="true" size={17} />
-            <input
-              aria-label="Search jobs"
-              maxLength={500}
-              onChange={(event) => setDraft({ ...draft, query: event.target.value })}
-              placeholder="Role, skill or company"
-              type="search"
-              value={draft.query}
-            />
-          </label>
-          <span aria-hidden="true" className={styles["heroDivider"]} />
-          <div className={styles["heroLocation"]}>
-            <LocationCombobox
-              onChange={(location) => setDraft((current) => ({ ...current, location }))}
-              onCommit={(location) => setDraft((current) => ({ ...current, location }))}
-              options={locationOptions}
-              value={draft.location}
-            />
-          </div>
-          <button type="submit">Search</button>
-        </form>
-      </header>
+      {presentation.showHeroSearch ? (
+        <header className={styles["hero"]}>
+          <h1>Find your next technology role</h1>
+          <p className={styles["heroSub"]}>
+            One clear search for roles that fit how you want to work.
+          </p>
+          <form className={styles["heroSearch"]} onSubmit={submit} role="search">
+            <label className={styles["heroField"]}>
+              <MagnifyingGlassIcon aria-hidden="true" size={17} />
+              <input
+                aria-label="Search jobs"
+                maxLength={500}
+                onChange={(event) => setDraft({ ...draft, query: event.target.value })}
+                placeholder="Role, skill or company"
+                type="search"
+                value={draft.query}
+              />
+            </label>
+            <span aria-hidden="true" className={styles["heroDivider"]} />
+            <div className={styles["heroLocation"]}>
+              <LocationCombobox
+                onChange={(location) => setDraft((current) => ({ ...current, location }))}
+                onCommit={(location) => setDraft((current) => ({ ...current, location }))}
+                value={draft.location}
+              />
+            </div>
+            <button type="submit">Search</button>
+          </form>
+        </header>
+      ) : null}
 
       {presentation.showFilters ? (
         <aside aria-label="Filters" className={styles["filterRail"]}>
@@ -536,16 +608,20 @@ export function SearchWorkspace() {
                 <BellSimpleIcon aria-hidden="true" size={16} />
                 Save alert
               </Link>
-              <label>
-                <span className="sr-only">Sort jobs</span>
-                <select
-                  onChange={(event) => changeSort(searchSortSchema.parse(event.target.value))}
-                  value={applied.sort ?? "relevance"}
-                >
-                  <option value="relevance">Best match</option>
-                  <option value="newest">Newest</option>
-                  <option value="salary_desc">Highest salary</option>
-                </select>
+              <label className={styles["sortControl"]}>
+                <span>Sort</span>
+                <span className={styles["sortSelect"]}>
+                  <select
+                    aria-label="Sort jobs"
+                    onChange={(event) => changeSort(searchSortSchema.parse(event.target.value))}
+                    value={applied.sort ?? "relevance"}
+                  >
+                    <option value="relevance">Best match</option>
+                    <option value="newest">Newest</option>
+                    <option value="salary_desc">Highest salary</option>
+                  </select>
+                  <CaretDownIcon aria-hidden="true" size={13} />
+                </span>
               </label>
             </div>
           )}
@@ -584,7 +660,11 @@ export function SearchWorkspace() {
         ) : null}
 
         {presentation.visibleJobs.length > 0 ? (
-          <div className={styles["resultList"]} data-loading={String(status === "loading")}>
+          <div
+            className={styles["resultList"]}
+            data-layout={presentation.resultLayout}
+            data-loading={String(status === "loading")}
+          >
             {presentation.visibleJobs.map((job) => (
               <JobResult
                 detailSearch={appliedSearch}
@@ -598,7 +678,7 @@ export function SearchWorkspace() {
 
         {presentation.landing && (result?.total ?? 0) > presentation.visibleJobs.length ? (
           <div className={styles["landingFooter"]}>
-            <Link href="/?sort=newest&limit=50">View all roles</Link>
+            <Link href="/jobs?sort=newest&limit=50">View all roles</Link>
           </div>
         ) : null}
 

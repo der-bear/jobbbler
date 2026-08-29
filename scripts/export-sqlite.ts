@@ -18,6 +18,7 @@ export const SNAPSHOT_TABLE_MODES = {
   owners: "entity",
   organizations: "entity",
   jobs: "entity",
+  job_location_suggestions: "aggregate",
   saved_searches: "entity",
   schedules: "entity",
   owner_sessions: "entity",

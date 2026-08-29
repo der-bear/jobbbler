@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { JobSummary, SearchJobsResult } from "@jobbbler/contracts";
 
-import { deriveSearchPresentation } from "./search-workspace";
+import { deriveSearchPresentation, searchWorkspaceHref } from "./search-workspace";
 
 function job(index: number): JobSummary {
   return {
@@ -52,13 +52,37 @@ function result(count: number): SearchJobsResult {
 }
 
 describe("deriveSearchPresentation", () => {
+  it("keeps the Home URL canonical while Jobs owns filter URLs", () => {
+    const input = { query: "platform", sort: "newest" as const, limit: 20 };
+
+    expect(searchWorkspaceHref(input, "home")).toBe("/");
+    expect(searchWorkspaceHref(input, "catalog")).toBe("/jobs?q=platform&sort=newest");
+  });
+
   it("keeps the start screen focused and limits its latest-role preview", () => {
-    const presentation = deriveSearchPresentation({ sort: "newest", limit: 20 }, result(8));
+    const presentation = deriveSearchPresentation({ sort: "newest", limit: 20 }, result(8), "home");
 
     expect(presentation.landing).toBe(true);
+    expect(presentation.showHeroSearch).toBe(true);
+    expect(presentation.resultLayout).toBe("cards");
     expect(presentation.showFilters).toBe(false);
     expect(presentation.heading).toBe("Latest technology roles");
     expect(presentation.visibleJobs).toHaveLength(6);
+  });
+
+  it("opens Jobs as the full catalog with filters even before a search", () => {
+    const presentation = deriveSearchPresentation(
+      { sort: "newest", limit: 20 },
+      result(8),
+      "catalog",
+    );
+
+    expect(presentation.landing).toBe(false);
+    expect(presentation.showHeroSearch).toBe(false);
+    expect(presentation.resultLayout).toBe("list");
+    expect(presentation.showFilters).toBe(true);
+    expect(presentation.heading).toBe("All technology roles");
+    expect(presentation.visibleJobs).toHaveLength(8);
   });
 
   it("shows the complete result workspace after a meaningful search", () => {

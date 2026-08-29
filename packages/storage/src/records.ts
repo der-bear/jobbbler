@@ -266,6 +266,28 @@ export interface AgentDelegationRecord {
   readonly createdAt: string;
   readonly approvedAt: string | null;
   readonly revokedAt: string | null;
+  /** Channel through which the latest explicit assistance decision was received. */
+  readonly decisionChannel?: "first_party_ui" | "agent_client" | null;
+  /** Exact delegation request the decision was bound to. */
+  readonly decisionRequestId?: string | null;
+  /** Normalized decision stored without retaining raw conversation text. */
+  readonly decisionAction?: "approved" | "declined" | "revoked" | null;
+  /** Versioned evidence contract used to interpret the stored decision. */
+  readonly decisionEvidenceVersion?: "agent-interaction-v1" | null;
+}
+
+export interface DelegationApprovalEvidence {
+  readonly channel: "first_party_ui" | "agent_client";
+  readonly requestId: string;
+  readonly action: "approved";
+  readonly evidenceVersion: "agent-interaction-v1";
+}
+
+export interface DelegationRevocationEvidence {
+  readonly channel: "first_party_ui" | "agent_client";
+  readonly requestId: string;
+  readonly action: "declined" | "revoked";
+  readonly evidenceVersion: "agent-interaction-v1";
 }
 export interface DataGrantRecord {
   readonly id: string;
@@ -330,12 +352,20 @@ export interface RichDataGrantRecord {
   readonly withdrawnAt: string | null;
   /** Channel through which the explicit approval action was received. */
   readonly approvalChannel?: "first_party_ui" | "agent_client" | null;
-  /** Server-issued grant request bound to the approval action. */
+  /** Interaction request presented to the person for this approval action. */
   readonly approvalRequestId?: string | null;
   /** Normalized affirmative action stored without retaining raw conversation text. */
   readonly affirmativeAction?: "confirmed" | null;
   /** Versioned evidence contract used to interpret the stored approval fields. */
   readonly approvalEvidenceVersion?: "agent-interaction-v1" | null;
+  /** Channel through which consent withdrawal was received. */
+  readonly withdrawalChannel?: "first_party_ui" | "agent_client" | null;
+  /** Interaction request bound to the withdrawal action. */
+  readonly withdrawalRequestId?: string | null;
+  /** Normalized withdrawal action stored without retaining raw conversation text. */
+  readonly withdrawalAction?: "withdrawn" | null;
+  /** Versioned evidence contract used to interpret the withdrawal fields. */
+  readonly withdrawalEvidenceVersion?: "agent-interaction-v1" | null;
   /** Incremented for every grant state transition; absent legacy rows are version zero. */
   readonly version?: number;
 }
@@ -344,6 +374,13 @@ export interface GrantApprovalEvidence {
   readonly channel: "first_party_ui" | "agent_client";
   readonly requestId: string;
   readonly affirmativeAction: "confirmed";
+  readonly evidenceVersion: "agent-interaction-v1";
+}
+
+export interface GrantWithdrawalEvidence {
+  readonly channel: "first_party_ui" | "agent_client";
+  readonly requestId: string;
+  readonly action: "withdrawn";
   readonly evidenceVersion: "agent-interaction-v1";
 }
 

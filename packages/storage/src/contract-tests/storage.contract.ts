@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { Job, JobSearchCriteria } from "@jobbbler/contracts";
+import type { ApplicationDraft, Job, JobSearchCriteria } from "@jobbbler/contracts";
 
 import type {
   AuditEventRecord,
@@ -106,6 +106,29 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
           limit: 10,
         }),
       ).toEqual({ jobs: [job], total: 1, nextCursor: null, catalogUpdatedAt: now });
+    });
+
+    it("suggests distinct open-role locations by relevance without loading the catalog", async () => {
+      const current = await create();
+      await current.organizations.upsert(organization);
+      await current.jobs.upsert(job);
+      await current.jobs.upsert({
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440011",
+        locations: ["Berlin, Germany", "Europe"],
+      });
+      await current.jobs.upsert({
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440012",
+        locations: ["Paris, France"],
+        status: "closed",
+      });
+
+      await expect(current.jobs.suggestLocations("", 8)).resolves.toEqual([
+        "Europe",
+        "Berlin, Germany",
+      ]);
+      await expect(current.jobs.suggestLocations("ber", 8)).resolves.toEqual(["Berlin, Germany"]);
     });
 
     it("applies hard structured filters after lexical retrieval", async () => {
@@ -231,6 +254,54 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
       await expect(
         current.savedSearches.update({ ...saved, name: "Stale write", updatedAt: later }, 1),
       ).rejects.toMatchObject({ code: "CONFLICT" });
+    });
+
+    it("lists only the current owner's application drafts in recent order", async () => {
+      const current = await create();
+      const otherOwner: OwnerRecord = {
+        ...owner,
+        id: "owner_550e8400-e29b-41d4-a716-446655440001",
+      };
+      await current.owners.insert(owner);
+      await current.owners.insert(otherOwner);
+      await current.organizations.upsert(organization);
+      await current.jobs.upsert(job);
+
+      const oldest: ApplicationDraft = {
+        id: "application_550e8400-e29b-41d4-a716-446655440000",
+        ownerId: owner.id,
+        jobId: job.id,
+        state: "draft",
+        version: 0,
+        answers: [],
+        createdAt: now,
+        updatedAt: now,
+      };
+      const newest: ApplicationDraft = {
+        ...oldest,
+        id: "application_550e8400-e29b-41d4-a716-446655440001",
+        state: "reviewed",
+        createdAt: later,
+        updatedAt: later,
+      };
+      const privateToOtherOwner: ApplicationDraft = {
+        ...oldest,
+        id: "application_550e8400-e29b-41d4-a716-446655440002",
+        ownerId: otherOwner.id,
+      };
+      await current.applications.insert(oldest);
+      await current.applications.insert(newest);
+      await current.applications.insert(privateToOtherOwner);
+
+      const listByOwner = (
+        current.applications as typeof current.applications & {
+          listByOwner(ownerId: string): Promise<ApplicationDraft[]>;
+        }
+      ).listByOwner;
+      await expect(listByOwner.call(current.applications, owner.id)).resolves.toEqual([
+        newest,
+        oldest,
+      ]);
     });
 
     it("lists schedules only for their owner in most-recent-first order", async () => {

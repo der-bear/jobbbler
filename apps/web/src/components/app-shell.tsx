@@ -1,6 +1,6 @@
 "use client";
 
-import { BellSimpleIcon, BriefcaseIcon, CircleIcon } from "@phosphor-icons/react";
+import { BellSimpleIcon, BriefcaseIcon, CircleIcon, FileTextIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
@@ -13,12 +13,28 @@ import { useWebMcp } from "./webmcp-provider";
 import styles from "./app-shell.module.css";
 
 const navigation = [
-  { href: "/", label: "Jobs", icon: BriefcaseIcon },
+  { href: "/jobs", label: "Jobs", icon: BriefcaseIcon },
   { href: "/saved", label: "Alerts", icon: BellSimpleIcon },
+  { href: "/applications", label: "Applications", icon: FileTextIcon },
 ] as const;
 
 function isCurrentRoute(pathname: string, href: string): boolean {
-  return href === "/" ? pathname === href : pathname.startsWith(href);
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export function AppFooter() {
+  return (
+    <footer className={styles["siteFooter"]}>
+      <span>© 2026 Jobbbler</span>
+      <nav aria-label="Secondary navigation">
+        <Link href="/about/webmcp">How it works</Link>
+        <a href="https://github.com/der-bear/jobbbler" rel="noreferrer" target="_blank">
+          Source code
+          <span className="sr-only"> (opens in a new tab)</span>
+        </a>
+      </nav>
+    </footer>
+  );
 }
 
 export function AppHeaderSurface({
@@ -40,7 +56,7 @@ export function AppHeaderSurface({
 }>) {
   return (
     <header className={styles["header"]} inert={blocked || undefined}>
-      <Link aria-label="Jobbbler" className={styles["wordmark"]} href="/">
+      <Link aria-label="Jobbbler home" className={styles["wordmark"]} href="/">
         Jobbbler
       </Link>
       <nav aria-label="Primary navigation" className={styles["navigation"]}>
@@ -130,6 +146,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
       >
         <main id="main-content" inert={agentPanelOpen && compactAgentPanel}>
           {children}
+          <AppFooter />
         </main>
         {agentPanelOpen ? (
           <AgentPanel

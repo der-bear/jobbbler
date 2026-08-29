@@ -7,6 +7,7 @@ import { createDiscoveryCommands, type DiscoveryRouteDependencies } from "@/serv
 import {
   handleCompareRequest,
   handleJobDetailRequest,
+  handleLocationSuggestionsRequest,
   handleSearchRequest,
 } from "@/server/job-route-handlers";
 import type { RateLimiter } from "@/server/rate-limit";
@@ -64,6 +65,9 @@ const allowingLimiter: RateLimiter = {
 function dependencies(rateLimiter: RateLimiter = allowingLimiter): DiscoveryRouteDependencies {
   return {
     commands: createDiscoveryCommands(repository()),
+    jobs: {
+      suggestLocations: vi.fn(async () => ["Berlin, Germany", "Europe"]),
+    },
     rateLimiter,
     nowMs: () => 1_000,
   };
@@ -152,5 +156,21 @@ describe("job discovery API routes", () => {
 
     expect(response.status).toBe(429);
     expect(response.headers.get("retry-after")).toBe("17");
+  });
+
+  it("lazy-loads bounded location suggestions from the catalog index", async () => {
+    const current = dependencies();
+    const response = await handleLocationSuggestionsRequest(
+      new Request("https://jobbbler.example/api/v1/jobs/locations?q=ber&limit=8"),
+      current,
+    );
+
+    expect(response.status).toBe(200);
+    expect(current.jobs.suggestLocations).toHaveBeenCalledWith("ber", 8);
+    expect(response.headers.get("cache-control")).toContain("s-maxage=300");
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      data: { locations: ["Berlin, Germany", "Europe"] },
+    });
   });
 });

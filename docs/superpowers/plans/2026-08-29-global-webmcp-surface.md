@@ -4,9 +4,14 @@
 > It retains the original scope, constraints, and verification intent; current
 > release evidence appears in Task 4.
 
-**Goal:** Make every Jobbbler workflow reachable from every page through a stable WebMCP core while preserving context- and permission-gated execution.
+**Goal:** Make every Jobbbler workflow discoverable and reachable from every
+page through one stable 24-tool WebMCP surface while preserving owner-, state-,
+and permission-gated execution.
 
-**Architecture:** Register six site-wide core tools on every document, merge them with route/state manifests by unique name, and expose a compact capability catalog that distinguishes always-available tools from current context tools. Keep sensitive application executors state-gated and improve the Agent panel so judges can understand the two layers immediately.
+**Architecture:** Register all 24 focused tools on every document, deduplicate
+them by name, and expose a compact catalog grouped by outcome. Keep sensitive
+application executors state-gated and make the Agent panel explain global
+discovery without implying global authority.
 
 **Tech Stack:** TypeScript, React 19, Next.js 16, Zod 4, WebMCP imperative registration, Vitest, Playwright.
 
@@ -36,14 +41,15 @@
 **Interfaces:**
 
 - Consumes: `webMcpCatalog`, `completedWebMcpResult`, `safeWebMcpErrorResult`, `ToolManifest`.
-- Produces: `createSiteWideToolManifests(dependencies)` with `get_site_capabilities` and `open_jobbbler_page`.
+- Produces: `createSiteWideToolManifests(dependencies)` with
+  `open_jobbbler_page` and `prepare_application`.
 
 - [x] **Step 1: Write failing tests**
 
 ```ts
 expect(names(createSiteWideToolManifests(dependencies))).toEqual([
-  "get_site_capabilities",
   "open_jobbbler_page",
+  "prepare_application",
 ]);
 expect(await execute("open_jobbbler_page", { page: "saved" })).toMatchObject({
   status: "completed",
@@ -87,7 +93,8 @@ does not create a commit.
 **Interfaces:**
 
 - Consumes: search manifests, site-wide manifests, workflow planner, route manifests.
-- Produces: `mergeToolManifests(core, contextual)` and a provider registration set with six stable core names.
+- Produces: `composeStableWebMcpManifests(...)` and a provider registration set
+  with all 24 focused names.
 
 - [x] **Step 1: Write failing merge and E2E expectations**
 
@@ -119,9 +126,10 @@ Expected: PASS; a search invoked on `/about/webmcp` opens `/` and updates visibl
 - [x] **Step 5: Record the implementation**
 
 ```bash
-The stable core is `plan_job_workflow`, `get_site_capabilities`,
-`get_search_filters`, `search_jobs`, `open_job_details`, and
-`open_jobbbler_page`. Contextual manifests merge without duplicate names.
+The six entry tools are `plan_job_workflow`, `get_search_filters`,
+`search_jobs`, `open_job_details`, `prepare_application`, and
+`open_jobbbler_page`. All feature manifests remain registered without
+duplicate names; state-gated tools return actionable errors when premature.
 ```
 
 ### Task 3: Agent layer hierarchy, accessibility, and restrained state polish — completed
@@ -169,8 +177,7 @@ Expected: PASS with no horizontal overflow or hidden focus targets.
 
 ```bash
 The global Agent layer is available on every page. Its public hierarchy is
-Guide, Activity, Tools; Tools separates six always-available tools from
-contextual ones and exposes the 29-tool catalog.
+Activity, Tools, Guide; Tools exposes all 24 focused tools grouped by outcome.
 ```
 
 ### Task 4: Release verification and documentation alignment — completed

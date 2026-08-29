@@ -22,7 +22,7 @@ import {
 import { useToast } from "@jobbbler/ui";
 
 import { startApplication } from "@/features/application/start-application";
-import { supportsJobbblerPreparation } from "./application-capability";
+import { externalApplicationUrl, supportsJobbblerPreparation } from "./application-capability";
 import {
   compactDate,
   employmentLabel,
@@ -36,7 +36,7 @@ import { subscribeWebMcpJobDetailCommit } from "@/lib/webmcp-ui-bridge";
 
 import styles from "./job-detail.module.css";
 
-export { supportsJobbblerPreparation };
+export { externalApplicationUrl, supportsJobbblerPreparation };
 
 type LoadState =
   | { readonly kind: "loading" }
@@ -53,6 +53,20 @@ const dimensionLabels: Readonly<Record<keyof JobFit["dimensions"], string>> = {
   salary: "Compensation",
   freshness: "Freshness",
 };
+
+export function applicationActionLabel(job: Pick<Job, "applyMode">): string {
+  return job.applyMode === "external" ? "Apply on employer site" : "Apply";
+}
+
+export function hasMeaningfulSearchCriteria(criteriaSearch: string): boolean {
+  const parameters = new URLSearchParams(
+    criteriaSearch.startsWith("?") ? criteriaSearch.slice(1) : criteriaSearch,
+  );
+  parameters.delete("sort");
+  parameters.delete("limit");
+  parameters.delete("cursor");
+  return parameters.size > 0;
+}
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiClientError && error.code === "NOT_FOUND") {
@@ -104,6 +118,7 @@ function JobIdentity({
   onStartApplication(): void;
 }>) {
   const canPrepare = supportsJobbblerPreparation(job);
+  const employerApplicationUrl = externalApplicationUrl(job);
 
   return (
     <header className={styles["identity"]}>
@@ -138,12 +153,18 @@ function JobIdentity({
             type="button"
           >
             <PaperPlaneTiltIcon aria-hidden="true" size={16} />
-            {applicationBusy
-              ? "Opening application…"
-              : job.applyMode === "external"
-                ? "Prepare to apply on the employer's site"
-                : "Apply with Jobbbler"}
+            {applicationBusy ? "Opening…" : applicationActionLabel(job)}
           </button>
+        ) : employerApplicationUrl !== null ? (
+          <a
+            className={styles["applyButton"]}
+            href={employerApplicationUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            <PaperPlaneTiltIcon aria-hidden="true" size={16} />
+            {applicationActionLabel(job)}
+          </a>
         ) : (
           <span className={styles["unavailableLink"]}>
             The employer's application page is unavailable
@@ -154,7 +175,9 @@ function JobIdentity({
   );
 }
 
-function FitEvidence({ fit }: Readonly<{ fit: JobFit }>) {
+function FitEvidence({ criteriaSearch, fit }: Readonly<{ criteriaSearch: string; fit: JobFit }>) {
+  if (!hasMeaningfulSearchCriteria(criteriaSearch)) return null;
+
   const hasSignal =
     fit.evidence.length > 0 || fit.caveats.length > 0 || fit.exclusions.length > 0 || !fit.eligible;
   const unknownDimensions = Object.entries(fit.dimensions)
@@ -164,10 +187,10 @@ function FitEvidence({ fit }: Readonly<{ fit: JobFit }>) {
   if (!hasSignal) return null;
 
   return (
-    <section aria-labelledby="why-this-matches" className={styles["evidenceSection"]}>
+    <section aria-labelledby="how-it-fits" className={styles["evidenceSection"]}>
       <div className={styles["sectionHeading"]}>
         <div>
-          <h2 id="why-this-matches">Why this matches</h2>
+          <h2 id="how-it-fits">How it fits your search</h2>
           {fit.eligible ? null : (
             <p className={styles["ineligibleNote"]}>
               This role does not meet your current criteria.
@@ -177,39 +200,27 @@ function FitEvidence({ fit }: Readonly<{ fit: JobFit }>) {
       </div>
       <div className={styles["evidenceGrid"]}>
         <div>
-          <h3>Evidence</h3>
-          <ListOrUnknown
-            empty="No positive evidence was supplied for the current criteria."
-            items={fit.evidence}
-          />
+          <h3>Matches</h3>
+          <ListOrUnknown empty="No direct match evidence was available." items={fit.evidence} />
         </div>
-        <div>
-          <h3>Trade-offs</h3>
-          <ListOrUnknown
-            empty="No trade-offs were identified."
-            items={fit.caveats}
-            tone="caution"
-          />
-          {fit.exclusions.length > 0 ? (
-            <>
-              <h3 className={styles["subheading"]}>Exclusions</h3>
-              <ListOrUnknown
-                empty="No exclusions were identified."
-                items={fit.exclusions}
-                tone="caution"
-              />
-            </>
-          ) : null}
-        </div>
+        {fit.caveats.length > 0 || fit.exclusions.length > 0 ? (
+          <div>
+            <h3>Keep in mind</h3>
+            <ListOrUnknown empty="" items={fit.caveats} tone="caution" />
+            {fit.exclusions.length > 0 ? (
+              <>
+                <h3 className={styles["subheading"]}>Outside your filters</h3>
+                <ListOrUnknown empty="" items={fit.exclusions} tone="caution" />
+              </>
+            ) : null}
+          </div>
+        ) : null}
       </div>
-      <div className={styles["unknowns"]}>
-        <h3>What to verify</h3>
-        <p>
-          {unknownDimensions.length === 0
-            ? "The source answered everything Jobbbler checks."
-            : `The source did not say: ${unknownDimensions.join(", ")}. Confirm these with the employer.`}
+      {unknownDimensions.length === 0 ? null : (
+        <p className={styles["unknowns"]}>
+          Not stated in the posting: {unknownDimensions.join(", ")}.
         </p>
-      </div>
+      )}
     </section>
   );
 }
@@ -218,7 +229,7 @@ function SourceAndFreshness({ job }: Readonly<{ job: Job }>) {
   return (
     <section aria-labelledby="source-and-freshness" className={styles["provenanceSection"]}>
       <div>
-        <h2 id="source-and-freshness">Source and freshness</h2>
+        <h2 id="source-and-freshness">About this posting</h2>
       </div>
       <dl className={styles["provenanceList"]}>
         <div>
@@ -270,7 +281,7 @@ function DetailContent({
         job={result.job}
         onStartApplication={onStartApplication}
       />
-      <FitEvidence fit={result.fit} />
+      <FitEvidence criteriaSearch={criteriaSearch} fit={result.fit} />
       <section className={styles["roleFacts"]}>
         <div>
           <h2>Skills</h2>
@@ -371,7 +382,7 @@ export function JobDetail({
   return (
     <section aria-live="polite" className={styles["state"]}>
       <h1>{state.kind === "loading" ? "Loading this role…" : state.message}</h1>
-      {state.kind === "error" ? <Link href="/">Return to search</Link> : null}
+      {state.kind === "error" ? <Link href="/jobs">Return to search</Link> : null}
     </section>
   );
 }

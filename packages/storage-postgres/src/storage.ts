@@ -880,6 +880,30 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
           catalogUpdatedAt: latest,
         };
       },
+      async suggestLocations(query, limit) {
+        const normalizedQuery = query.trim().slice(0, 120).toLocaleLowerCase("en");
+        const safeLimit = Math.min(20, Math.max(1, Math.trunc(limit)));
+        const rows =
+          normalizedQuery.length === 0
+            ? await sql<{ readonly value: string }[]>`
+                SELECT min(value) AS value
+                FROM jobbbler.job_location_suggestions
+                GROUP BY normalized_value
+                ORDER BY count(*) DESC, normalized_value ASC
+                LIMIT ${safeLimit}`
+            : await sql<{ readonly value: string }[]>`
+                SELECT min(value) AS value
+                FROM jobbbler.job_location_suggestions
+                WHERE normalized_value >= ${normalizedQuery}
+                  AND normalized_value < ${`${normalizedQuery}\uffff`}
+                GROUP BY normalized_value
+                ORDER BY
+                  CASE WHEN normalized_value = ${normalizedQuery} THEN 0 ELSE 1 END,
+                  count(*) DESC,
+                  normalized_value ASC
+                LIMIT ${safeLimit}`;
+        return rows.map(({ value }) => value);
+      },
     },
     savedSearches: {
       async insert(record) {
@@ -1130,6 +1154,12 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
             .sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0] ?? null
         );
       },
+      async listByOwner(ownerId) {
+        return (await list<ApplicationDraft>(sql, "application", ownerId)).sort(
+          (left, right) =>
+            right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id),
+        );
+      },
       async getLatestReview(draftId, ownerId) {
         return (
           (await list<ApplicationReviewRecord>(sql, "application_review", ownerId))
@@ -1186,7 +1216,23 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
                 { ...confirmation, status: "invalidated" as const },
                 input.ownerId,
               );
-          await tx`DELETE FROM jobbbler.entity_records WHERE kind = 'rich_data_grant' AND owner_id = ${input.ownerId} AND body->>'draftId' = ${input.draft.id}`;
+          for (const grant of await list<RichDataGrantRecord>(tx, "rich_data_grant", input.ownerId))
+            if (
+              grant.draftId === input.draft.id &&
+              (grant.status === "requested" || grant.status === "active")
+            )
+              await write(
+                tx,
+                "rich_data_grant",
+                {
+                  ...grant,
+                  status: "withdrawn" as const,
+                  withdrawnAt: input.now,
+                  version: (grant.version ?? 0) + 1,
+                },
+                input.ownerId,
+                (grant.version ?? 0) + 1,
+              );
           return input.draft;
         });
       },
@@ -1466,23 +1512,53 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
           LIMIT 1`;
         return rows[0] === undefined ? null : body<AgentDelegationRecord>(rows[0]);
       },
-      async approve(id, ownerId, approvedAt) {
-        const current = await this.getById(id, ownerId);
-        if (current === null || current.status !== "requested" || current.expiresAt <= approvedAt)
-          throw domain("CONFLICT", "Delegation is unavailable, expired, or not awaiting approval.");
-        const next = { ...current, status: "active" as const, approvedAt };
-        await write(sql, "delegation", next, ownerId);
-        return next;
+      async approve(id, ownerId, approvedAt, evidence) {
+        return sql.begin(async (transaction) => {
+          const tx = transaction as PostgresExecutor;
+          const current = await getForUpdate<AgentDelegationRecord>(tx, "delegation", id);
+          if (
+            current?.ownerId !== ownerId ||
+            current.status !== "requested" ||
+            current.expiresAt <= approvedAt
+          )
+            throw domain(
+              "CONFLICT",
+              "Delegation is unavailable, expired, or not awaiting approval.",
+            );
+          const next = {
+            ...current,
+            status: "active" as const,
+            approvedAt,
+            decisionChannel: evidence?.channel ?? null,
+            decisionRequestId: evidence?.requestId ?? null,
+            decisionAction: evidence?.action ?? null,
+            decisionEvidenceVersion: evidence?.evidenceVersion ?? null,
+          };
+          await write(tx, "delegation", next, ownerId);
+          return next;
+        });
       },
-      async revoke(id, ownerId, revokedAt) {
-        const current = await this.getById(id, ownerId);
-        if (current === null) throw domain("CONFLICT", "Delegation is not available for owner.");
-        if (current.status === "revoked") return current;
-        if (current.status !== "requested" && current.status !== "active")
-          throw domain("CONFLICT", "Delegation is not revocable for owner.");
-        const next = { ...current, status: "revoked" as const, revokedAt };
-        await write(sql, "delegation", next, ownerId);
-        return next;
+      async revoke(id, ownerId, revokedAt, evidence) {
+        return sql.begin(async (transaction) => {
+          const tx = transaction as PostgresExecutor;
+          const current = await getForUpdate<AgentDelegationRecord>(tx, "delegation", id);
+          if (current?.ownerId !== ownerId)
+            throw domain("CONFLICT", "Delegation is not available for owner.");
+          if (current.status === "revoked") return current;
+          if (current.status !== "requested" && current.status !== "active")
+            throw domain("CONFLICT", "Delegation is not revocable for owner.");
+          const next = {
+            ...current,
+            status: "revoked" as const,
+            revokedAt,
+            decisionChannel: evidence?.channel ?? null,
+            decisionRequestId: evidence?.requestId ?? null,
+            decisionAction: evidence?.action ?? null,
+            decisionEvidenceVersion: evidence?.evidenceVersion ?? null,
+          };
+          await write(tx, "delegation", next, ownerId);
+          return next;
+        });
       },
     },
     dataGrants: {
@@ -1646,7 +1722,7 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
         await write(sql, "rich_data_grant", next, ownerId, next.version);
         return next;
       },
-      async withdraw(id, ownerId, draftId, at) {
+      async withdraw(id, ownerId, draftId, at, evidence) {
         return sql.begin(async (transaction) => {
           const tx = transaction as PostgresExecutor;
           const current = await getForUpdate<RichDataGrantRecord>(tx, "rich_data_grant", id);
@@ -1659,6 +1735,10 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
             ...current,
             status: "withdrawn" as const,
             withdrawnAt: at,
+            withdrawalChannel: evidence?.channel ?? null,
+            withdrawalRequestId: evidence?.requestId ?? null,
+            withdrawalAction: evidence?.action ?? null,
+            withdrawalEvidenceVersion: evidence?.evidenceVersion ?? null,
             version: (current.version ?? 0) + 1,
           };
           await write(tx, "rich_data_grant", next, ownerId, next.version);

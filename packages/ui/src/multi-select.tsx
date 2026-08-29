@@ -25,7 +25,11 @@ function selectionLabel(
   if (selected.length === 1) {
     return options.find(({ value }) => value === selected[0])?.label ?? placeholder;
   }
-  return `${String(selected.length)} selected`;
+  const labels = selected
+    .slice(0, 2)
+    .map((value) => options.find((option) => option.value === value)?.label ?? value);
+  const remainder = selected.length - labels.length;
+  return `${labels.join(", ")}${remainder === 0 ? "" : ` +${String(remainder)}`}`;
 }
 
 export function MultiSelect({

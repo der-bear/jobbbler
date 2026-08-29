@@ -159,12 +159,10 @@ states each have clear human copy.
 
 ### Tools
 
-The tab contains the complete 29-tool catalog without navigating away.
+The tab contains the complete 24-tool catalog without navigating away.
 
-- First show `Active now`, separating the six stable tools from currently
-  active contextual tools.
-- Then show `All capabilities`, grouped by Find, Inspect and compare, Alerts,
-  and Apply.
+- Show `Available tools`, grouped by Find, Inspect and compare, Alerts, and
+  Apply. The same set is discoverable on every route.
 - Each row contains a human title, code identifier, Read/Action metadata, and a
   one-sentence purpose.
 - Active tools are visually marked without suggesting that inactive tools are
@@ -173,32 +171,31 @@ The tab contains the complete 29-tool catalog without navigating away.
 
 ### Guide
 
-Reduce the guide to three ideas:
+Keep the guide concise but sufficient:
 
 1. no separate MCP server or connector setup;
-2. one strong example prompt;
-3. data sharing and final submission remain explicit human decisions.
+2. one self-contained example prompt that includes the current Jobbbler URL;
+3. the three-step external agent flow;
+4. what the tools handle and what decisions stay with the person.
 
 Do not repeat the product story, tool catalog, or capability groups here.
 
 ## WebMCP registration model
 
-Keep the hybrid model established by the global WebMCP surface design.
+Keep the stable global model established by the global WebMCP surface design.
 
-- Register the six outcome-level tools on every Jobbbler route:
-  `plan_job_workflow`, `get_site_capabilities`, `get_search_filters`,
-  `search_jobs`, `open_job_details`, and `open_jobbbler_page`.
-- Register page- and state-specific tools only while they are valid.
-- Update the tool list through registration lifecycle events when navigation or
-  application state changes.
-- Let the Agent view describe all 29 catalog capabilities while accurately
-  distinguishing the active subset.
+- Register all 24 focused tools on every Jobbbler route.
+- Enforce route, explicit ID, owner, and workflow-stage requirements at
+  execution time.
+- Keep `plan_job_workflow` advisory and optional; direct tool descriptions
+  remain sufficient for ordinary requests.
+- Let the Agent view group the catalog by outcome and explain that global
+  discovery is not global authority.
 
-This follows WebMCP guidance to register tools when useful and unregister tools
-when no longer usable. Registering every tool simultaneously would increase
-agent context cost, introduce invalid choices, weaken state-gated safety, and
-make the tool strategy less reliable. The stable navigation/search core means
-the agent still reaches every journey without guessing the DOM.
+The 24-tool limit is deliberate: lifecycle primitives were consolidated into
+outcome tools and the redundant capability dump was removed. This keeps the
+user requirement of global discovery without overlapping choices or a generic
+execute tool.
 
 ## WebMCP explainer
 
@@ -213,7 +210,7 @@ reference dump.
 5. Trust boundary: permission and final application confirmation stay explicit.
 6. Broader implication: the pattern applies to other data-rich websites.
 
-Remove the page-by-page 29-tool list. The panel is the live catalog. The page
+Remove the page-by-page 24-tool list. The panel is the live catalog. The page
 may show four compact outcome groups, but not every identifier.
 
 ## Brand and motion

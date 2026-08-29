@@ -8,20 +8,40 @@ import type {
 export type ApplicationStage = "profile" | "review" | "permission" | "confirmation" | "complete";
 
 function isCompletedAnswer(answer: ApplicationAnswer | undefined): boolean {
-  if (answer === undefined || !answer.acceptedByHuman || answer.value === null) return false;
+  if (answer === undefined || answer.value === null) return false;
   if (typeof answer.value === "string") return answer.value.trim().length > 0;
   if (Array.isArray(answer.value)) return answer.value.length > 0;
   return true;
 }
 
+export function applicationReadiness(workspace: ApplicationWorkspace): Readonly<{
+  completed: number;
+  required: number;
+  missingFieldKeys: readonly string[];
+  readyForReview: boolean;
+}> {
+  const required = workspace.requirements.filter((field) => field.required);
+  const missingFieldKeys = required
+    .filter(
+      (field) =>
+        !isCompletedAnswer(
+          workspace.draft.answers.find((answer) => answer.fieldKey === field.fieldKey),
+        ),
+    )
+    .map(({ fieldKey }) => fieldKey);
+  return {
+    completed: required.length - missingFieldKeys.length,
+    required: required.length,
+    missingFieldKeys,
+    readyForReview: missingFieldKeys.length === 0,
+  };
+}
+
 export function visibleApplicationProgress(
   workspace: ApplicationWorkspace,
 ): Readonly<{ completed: number; required: number }> {
-  const required = workspace.requirements.filter((field) => field.required);
-  const completed = required.filter((field) =>
-    isCompletedAnswer(workspace.draft.answers.find((answer) => answer.fieldKey === field.fieldKey)),
-  ).length;
-  return { completed, required: required.length };
+  const { completed, required } = applicationReadiness(workspace);
+  return { completed, required };
 }
 
 export function applicationDisclosure(workspace: ApplicationWorkspace): Readonly<{

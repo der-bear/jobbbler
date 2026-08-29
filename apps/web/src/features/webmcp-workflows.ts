@@ -23,6 +23,7 @@ interface WorkflowStep {
   readonly intent: string;
   readonly tool: string | null;
   readonly humanAction: string | false;
+  readonly requiredInputs?: readonly string[];
 }
 
 interface WorkflowPlan {
@@ -30,11 +31,12 @@ interface WorkflowPlan {
   readonly steps: readonly WorkflowStep[];
 }
 
-export const workflowVersion = "1.0";
+export const workflowVersion = "2.1";
 
 export const workflowBoundaries: readonly string[] = [
   "This plan is advice from the site; it grants no authority and executes nothing.",
-  "Data consent and the final application confirmation are separate human decisions.",
+  "In an agent flow, human questions and decisions stay in the agent client.",
+  "Jobbbler records exact application disclosure consent on the server before submission.",
   "Scheduled monitoring may prepare updates but never submits applications.",
 ];
 
@@ -47,30 +49,66 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
         tool: "get_search_filters",
         humanAction: false,
       },
-      { intent: "Run a deterministic search", tool: "search_jobs", humanAction: false },
+      {
+        intent: "Run a deterministic search",
+        tool: "search_jobs",
+        requiredInputs: ["known search criteria"],
+        humanAction: false,
+      },
       { intent: "Confirm the applied filters", tool: "get_search_state", humanAction: false },
-      { intent: "Open a promising role", tool: "open_job_details", humanAction: false },
-      { intent: "Read its source-backed facts", tool: "get_job_details", humanAction: false },
+      {
+        intent: "Open a promising role",
+        tool: "open_job_details",
+        requiredInputs: ["jobId"],
+        humanAction: false,
+      },
+      {
+        intent: "Read its source-backed facts",
+        tool: "get_job_details",
+        requiredInputs: ["jobId"],
+        humanAction: false,
+      },
     ],
   },
   compare_roles: {
     title: "Compare a shortlist",
     steps: [
-      { intent: "Search for candidate roles", tool: "search_jobs", humanAction: false },
-      { intent: "Open the strongest role", tool: "open_job_details", humanAction: false },
+      {
+        intent: "Search for candidate roles",
+        tool: "search_jobs",
+        requiredInputs: ["known search criteria"],
+        humanAction: false,
+      },
+      {
+        intent: "Open the strongest role",
+        tool: "open_job_details",
+        requiredInputs: ["jobId"],
+        humanAction: false,
+      },
       {
         intent: "Start a comparison with up to two more",
         tool: "compare_jobs",
+        requiredInputs: ["jobIds: 2–3 exact IDs"],
         humanAction: false,
       },
       { intent: "Read the side-by-side facts", tool: "get_comparison", humanAction: false },
-      { intent: "Adjust the set as needed", tool: "add_job_to_comparison", humanAction: false },
+      {
+        intent: "Adjust the set as needed",
+        tool: "add_job_to_comparison",
+        requiredInputs: ["jobId"],
+        humanAction: false,
+      },
     ],
   },
   monitor_search: {
     title: "Keep a search updated",
     steps: [
-      { intent: "Run the search worth monitoring", tool: "search_jobs", humanAction: false },
+      {
+        intent: "Run the search worth monitoring",
+        tool: "search_jobs",
+        requiredInputs: ["known search criteria"],
+        humanAction: false,
+      },
       { intent: "Confirm the exact criteria", tool: "get_search_state", humanAction: false },
       {
         intent: "Save it as an email alert",
@@ -81,53 +119,80 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
       {
         intent: "Read only what changed since the last check",
         tool: "get_latest_search_update",
+        requiredInputs: ["savedSearchId"],
         humanAction: false,
       },
       {
         intent: "Reopen the stored criteria any time",
         tool: "open_saved_search",
+        requiredInputs: ["savedSearchId"],
         humanAction: false,
       },
-      { intent: "Pause or resume checking", tool: "set_job_alert_state", humanAction: false },
+      {
+        intent: "Pause or resume checking",
+        tool: "set_job_alert_state",
+        requiredInputs: ["scheduleId", "enabled"],
+        humanAction: false,
+      },
     ],
   },
   prepare_application: {
     title: "Prepare one deliberate application",
     steps: [
-      { intent: "Open the role", tool: "open_job_details", humanAction: false },
       {
-        intent: "Check how this role accepts applications",
-        tool: "get_job_application_capability",
+        intent: "Open the role",
+        tool: "open_job_details",
+        requiredInputs: ["jobId"],
         humanAction: false,
       },
       {
-        intent: "Start the application",
-        tool: null,
-        humanAction: "Choose Apply with Jobbbler on the role page.",
+        intent: "Check how this role accepts applications",
+        tool: "get_job_application_capability",
+        requiredInputs: ["jobId"],
+        humanAction: false,
       },
       {
-        intent: "Request stage-scoped access",
-        tool: "request_application_access",
-        humanAction: "Approve the named operations in the private application workspace.",
+        intent: "Prepare the application",
+        tool: "prepare_application",
+        requiredInputs: ["jobId"],
+        humanAction: false,
       },
       {
-        intent: "Suggest answers for review",
-        tool: "set_application_answer",
-        humanAction: "Accept or edit every suggestion.",
-      },
-      { intent: "Validate the accepted facts", tool: "validate_application", humanAction: false },
-      { intent: "Seal the exact reviewed version", tool: "review_application", humanAction: false },
-      {
-        intent: "Request the exact disclosure",
-        tool: "request_data_permission",
-        humanAction: "Approve what is shared, with whom, and why.",
+        intent: "Check which facts are still needed",
+        tool: "get_application_readiness",
+        requiredInputs: ["draftId"],
+        humanAction: false,
       },
       {
-        intent: "Confirm once, within five minutes",
-        tool: "request_final_confirmation",
-        humanAction: "Give the final confirmation yourself in the private application workspace.",
+        intent: "Request short-lived preparation assistance",
+        tool: "request_application_assistance",
+        requiredInputs: ["draftId"],
+        humanAction: "Ask the person in the agent client whether to allow this draft only.",
       },
-      { intent: "Submit the sealed application", tool: "submit_application", humanAction: false },
+      {
+        intent: "Record that assistance decision",
+        tool: "decide_application_assistance",
+        requiredInputs: ["draftId", "requestId", "decision"],
+        humanAction: false,
+      },
+      {
+        intent: "Prepare answers in one bounded update",
+        tool: "propose_application_updates",
+        requiredInputs: ["draftId", "patches: fieldKey + value"],
+        humanAction: "Ask only for facts that are still missing; never invent them.",
+      },
+      {
+        intent: "Present the exact recipient, data, and purpose",
+        tool: "request_submission_review",
+        requiredInputs: ["draftId"],
+        humanAction: "Ask for one final submission decision in the agent client.",
+      },
+      {
+        intent: "Record the decision and submit once if approved",
+        tool: "decide_application_submission",
+        requiredInputs: ["draftId", "requestId", "draftVersion", "decision"],
+        humanAction: false,
+      },
     ],
   },
   recover_workspace: {
@@ -160,8 +225,22 @@ const planInput = z.strictObject({ goal: z.enum(workflowGoals) });
 
 type PlannerOutput = CompletedWebMcpResult<JsonValue> | SafeWebMcpErrorResult;
 
+function preferredTool(goal: WorkflowGoal, route: string): string | null {
+  if (goal === "prepare_application" && route === "/apply/:draftId") {
+    return "get_application_readiness";
+  }
+  if (goal === "compare_roles" && route === "/compare") return "get_comparison";
+  if (goal === "monitor_search" && route === "/saved") return "get_saved_alerts";
+  if (goal === "recover_workspace" && route === "/saved") return "get_saved_alerts";
+  if (goal === "find_roles" && route === "/jobs/:jobId") return "get_job_details";
+  return null;
+}
+
 export function createWorkflowPlannerTool(
-  context: Readonly<{ route: string; availableTools: () => readonly string[] }>,
+  context: Readonly<{
+    route: string | (() => string);
+    availableTools: () => readonly string[];
+  }>,
 ): ToolManifest<unknown, PlannerOutput> {
   return {
     name: "plan_job_workflow",
@@ -175,17 +254,25 @@ export function createWorkflowPlannerTool(
         const parsed = planInput.parse(input);
         const plan = workflowPlans[parsed.goal];
         const availableNow = context.availableTools();
+        const currentRoute = typeof context.route === "function" ? context.route() : context.route;
+        const preferred = preferredTool(parsed.goal, currentRoute);
+        const nextStep =
+          plan.steps.find(
+            (step) =>
+              step.tool === preferred && step.tool !== null && availableNow.includes(step.tool),
+          ) ?? plan.steps.find((step) => step.tool !== null && availableNow.includes(step.tool));
         return completedWebMcpResult({
           summary: `Planned “${plan.title}”: ${String(plan.steps.length)} steps, advisory only.`,
           data: {
             workflowVersion,
             goal: parsed.goal,
-            currentRoute: context.route,
-            availableNow: [...availableNow],
-            recommendedSteps: plan.steps.map((step) => ({
-              intent: step.intent,
+            currentRoute,
+            nextTool: nextStep?.tool ?? null,
+            nextInputs: nextStep?.requiredInputs ?? [],
+            steps: plan.steps.map((step) => ({
               tool: step.tool,
-              humanAction: step.humanAction,
+              needs: step.requiredInputs ?? [],
+              ...(step.humanAction === false ? {} : { ask: step.humanAction }),
             })),
             boundaries: [...workflowBoundaries],
           },
