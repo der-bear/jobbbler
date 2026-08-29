@@ -94,7 +94,9 @@ test.describe("public job search workspace", () => {
     });
     await page.goto("/");
 
-    await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(/unavailable/i);
+    await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(
+      /browser mode/i,
+    );
     const outcome = page.getByRole("searchbox", { name: "Search jobs" });
     await outcome.fill(exampleOutcome);
     await outcome.press("Enter");
@@ -141,5 +143,26 @@ test.describe("mobile and reduced-motion public search", () => {
         ),
       )
       .toBe(0);
+  });
+
+  test("keeps the judge-facing agent layer out of the main mobile task until requested", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    const trigger = page.getByRole("button", { name: /Open agent panel/ });
+    await expect(trigger).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Agent layer" })).toHaveCount(0);
+
+    await trigger.click();
+    const panel = page.getByRole("dialog", { name: "Agent layer" });
+    await expect(panel).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Guide" })).toBeFocused();
+    await expect(page.locator("header[inert]")).toHaveCount(1);
+    await expect(page.locator("main[inert]")).toHaveCount(1);
+
+    await page.getByRole("tab", { name: "Guide" }).press("Escape");
+    await expect(panel).toHaveCount(0);
+    await expect(trigger).toBeFocused();
   });
 });

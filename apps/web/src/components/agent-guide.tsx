@@ -1,141 +1,160 @@
-import { ArrowRightIcon } from "@phosphor-icons/react";
+import { ArrowRightIcon, CheckIcon } from "@phosphor-icons/react";
 import Link from "next/link";
-import type { ReactNode } from "react";
 
-import { workflowPlans } from "@/features/webmcp-workflows";
 import { webMcpCatalog } from "@/lib/webmcp-catalog";
 
 import type { RegisteredToolSummary } from "./webmcp-provider";
+import { stableWebMcpCoreNames } from "./webmcp-registration";
 
 import styles from "./agent-guide.module.css";
 
 const totalCatalogTools = webMcpCatalog.reduce((count, route) => count + route.tools.length, 0);
+const catalogTools = new Map(
+  webMcpCatalog.flatMap((route) => route.tools.map((tool) => [tool.name, tool] as const)),
+);
+
+const outcomeWorkflows = [
+  {
+    title: "Find and compare",
+    description: "Search, inspect source-backed facts, and compare a shortlist.",
+  },
+  {
+    title: "Watch what changed",
+    description: "Save a search, then return only to new, updated, closed, or changed roles.",
+  },
+  {
+    title: "Apply with control",
+    description: "Prepare answers while consent and final confirmation stay with the person.",
+  },
+] as const;
 
 export interface AgentToolsProps {
   readonly tools: readonly RegisteredToolSummary[];
+  readonly webMcpAvailable: boolean;
 }
 
-export function AgentTools({ tools }: AgentToolsProps) {
-  const activeNames = new Set(tools.map(({ name }) => name));
-  const inactiveRoutes = webMcpCatalog
-    .map((route) => ({
-      ...route,
-      tools: route.tools.filter((tool) => !activeNames.has(tool.name)),
-    }))
-    .filter((route) => route.tools.length > 0);
+const compactPurposes: Readonly<Record<string, string>> = {
+  plan_job_workflow: "Get the safe steps for a Jobbbler goal.",
+  get_site_capabilities: "See what the site can do and where approval stays required.",
+  get_search_filters: "Learn the exact search filters Jobbbler accepts.",
+  search_jobs: "Search the public technology-job catalog.",
+  open_job_details: "Open a known role and its source-backed facts.",
+  open_jobbbler_page: "Open another Jobbbler workspace.",
+};
+
+function toolPurpose(tool: RegisteredToolSummary): string {
+  return compactPurposes[tool.name] ?? tool.purpose;
+}
+
+export function AgentTools({ tools, webMcpAvailable }: AgentToolsProps) {
+  const registeredByName = new Map(tools.map((tool) => [tool.name, tool]));
+  const alwaysTools = stableWebMcpCoreNames.flatMap((name) => {
+    const tool = registeredByName.get(name) ?? catalogTools.get(name);
+    return tool === undefined ? [] : [tool];
+  });
+  const coreNames = new Set<string>(stableWebMcpCoreNames);
+  const contextTools = tools.filter((tool) => !coreNames.has(tool.name));
 
   return (
     <div className={styles["guide"]}>
-      <section aria-labelledby="panel-tools">
-        <h3 id="panel-tools">Active on this page</h3>
-        {tools.length === 0 ? (
+      <section aria-labelledby="panel-always-tools">
+        <div className={styles["sectionHeading"]}>
+          <h3 id="panel-always-tools">Site-wide</h3>
+          <span>{String(alwaysTools.length)}</span>
+        </div>
+        <p className={styles["note"]}>
+          {webMcpAvailable
+            ? "The agent keeps these entry points across every Jobbbler page."
+            : "A compatible agent browser receives these entry points on every page."}
+        </p>
+        <ul className={styles["toolList"]}>
+          {alwaysTools.map((tool) => (
+            <li key={tool.name}>
+              <div>
+                <code>{tool.name}</code>
+                <span>{tool.readOnly ? "Read" : "Action"}</span>
+              </div>
+              <p>{toolPurpose(tool)}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section aria-labelledby="panel-context-tools" className={styles["context"]}>
+        <div className={styles["sectionHeading"]}>
+          <h3 id="panel-context-tools">This page</h3>
+          <span>{String(contextTools.length)}</span>
+        </div>
+        {contextTools.length === 0 ? (
           <p className={styles["empty"]}>
-            No agent browser detected, so no tools are registered right now. The whole site keeps
-            working normally without one.
+            No additional page tools are active in this browser state.
           </p>
         ) : (
-          <ul>
-            {tools.map((tool) => (
+          <ul className={styles["toolList"]}>
+            {contextTools.map((tool) => (
               <li key={tool.name}>
                 <div>
                   <code>{tool.name}</code>
-                  {tool.readOnly ? <span>read-only</span> : null}
+                  <span>{tool.readOnly ? "Read" : "Action"}</span>
                 </div>
-                <p>{tool.purpose}</p>
+                <p>{toolPurpose(tool)}</p>
               </li>
             ))}
           </ul>
         )}
-        <p className={styles["note"]}>
-          The set changes with the page and its state: navigating swaps these tools for the next
-          page's set.
-        </p>
-      </section>
-
-      <section aria-labelledby="panel-all-tools" className={styles["catalog"]}>
-        <h3 id="panel-all-tools">
-          {activeNames.size === 0
-            ? `All ${String(totalCatalogTools)} site tools by page`
-            : `Available on other pages · ${String(totalCatalogTools)} tools site-wide`}
-        </h3>
-        {inactiveRoutes.map((route) => (
-          <div className={styles["catalogRoute"]} key={route.route}>
-            <h4>
-              {route.title} <code>{route.route}</code>
-            </h4>
-            {route.note === undefined ? null : <p className={styles["note"]}>{route.note}</p>}
-            <ul>
-              {route.tools.map((tool) => (
-                <li key={tool.name}>
-                  <div>
-                    <code>{tool.name}</code>
-                    {tool.readOnly ? <span>read-only</span> : null}
-                  </div>
-                  <p>{tool.purpose}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
       </section>
 
       <Link className={styles["moreLink"]} href="/about/webmcp">
-        How Jobbbler works with agents <ArrowRightIcon aria-hidden="true" size={14} />
+        View all {String(totalCatalogTools)} tools <ArrowRightIcon aria-hidden="true" size={14} />
       </Link>
     </div>
   );
 }
 
-export interface AgentGuideProps {
-  readonly status?: ReactNode;
-}
-
-export function AgentGuide({ status }: AgentGuideProps) {
+export function AgentGuide() {
   return (
     <div className={styles["guide"]}>
-      {status}
-
       <section aria-labelledby="guide-try">
-        <h3 id="guide-try">Try it in 10 seconds</h3>
-        <ol>
+        <p className={styles["promise"]}>No setup. Every agent action stays visible.</p>
+        <h3 id="guide-try">Try it with one prompt</h3>
+        <ol className={styles["steps"]}>
+          <li>Open Jobbbler in a WebMCP-compatible agent browser.</li>
           <li>
-            Open this page in an agent browser — the ChatGPT desktop app, or Chrome 149+ with the
-            WebMCP flag.
+            Ask:{" "}
+            <q>
+              Find senior remote product roles in Europe over €100k, compare the strongest three,
+              and save this search.
+            </q>
           </li>
-          <li>
-            Ask in plain words:{" "}
-            <em>“Find senior remote product roles in Europe over €100k, then save an alert.”</em>
-          </li>
-          <li>
-            The agent discovers this page's tools on its own. Nothing to install, declare, or
-            configure.
-          </li>
+          <li>Watch the search and this activity log update together.</li>
         </ol>
       </section>
 
-      <section aria-labelledby="guide-workflows">
-        <h3 id="guide-workflows">Suggested workflows</h3>
-        <ul className={styles["workflows"]}>
-          {Object.entries(workflowPlans).map(([goal, plan]) => (
-            <li key={goal}>
-              <strong>{plan.title}</strong>
-              <p>
-                {plan.steps
-                  .map((step) => (step.tool === null ? "you" : step.tool.replaceAll("_", " ")))
-                  .filter((value, index, all) => all.indexOf(value) === index)
-                  .join(" → ")}
-              </p>
+      <section aria-labelledby="guide-outcomes" className={styles["outcomes"]}>
+        <h3 id="guide-outcomes">What it helps with</h3>
+        <ul>
+          {outcomeWorkflows.map((workflow) => (
+            <li key={workflow.title}>
+              <CheckIcon aria-hidden="true" size={14} />
+              <div>
+                <strong>{workflow.title}</strong>
+                <p>{workflow.description}</p>
+              </div>
             </li>
           ))}
         </ul>
-        <p className={styles["note"]}>
-          An agent can fetch the same plans itself through the <code>plan_job_workflow</code> tool —
-          advisory only, it never acts.
+      </section>
+
+      <section aria-labelledby="guide-control" className={styles["control"]}>
+        <h3 id="guide-control">The person stays in control</h3>
+        <p>
+          Data sharing and final application submission require separate, explicit decisions. The
+          agent can prepare the work; it cannot grant itself permission.
         </p>
       </section>
 
       <Link className={styles["moreLink"]} href="/about/webmcp">
-        How Jobbbler works with agents <ArrowRightIcon aria-hidden="true" size={14} />
+        How the agent layer works <ArrowRightIcon aria-hidden="true" size={14} />
       </Link>
     </div>
   );

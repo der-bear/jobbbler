@@ -1,85 +1,157 @@
 .guide {
   display: grid;
-  gap: 18px;
-  justify-items: start;
+  gap: 24px;
 }
 
 .guide section {
   display: grid;
-  gap: 10px;
+  gap: 11px;
 }
 
 .guide h3 {
   margin: 0;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 660;
+  letter-spacing: -0.015em;
+}
+
+.promise {
+  margin: 0;
+  color: var(--color-signal-strong);
+  font-size: 11px;
   font-weight: 650;
 }
 
-.guide ol {
+.steps {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   margin: 0;
-  padding-inline-start: 18px;
+  padding-inline-start: 22px;
   color: var(--color-ink-muted);
   font-size: 12px;
   line-height: 1.55;
 }
 
-.guide ol em {
-  color: var(--color-ink);
-  font-style: normal;
-  font-weight: 550;
+.steps li::marker {
+  color: var(--color-signal-strong);
+  font-family: var(--jb-font-mono);
+  font-size: 10px;
 }
 
-.guide ul {
+.steps q {
+  color: var(--color-ink);
+  font-weight: 560;
+}
+
+.outcomes,
+.control,
+.context {
+  border-block-start: 1px solid var(--color-line);
+  padding-block-start: 20px;
+}
+
+.outcomes ul,
+.toolList {
   display: grid;
-  gap: 10px;
+  gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.guide ul li > div {
-  display: flex;
-  align-items: center;
-  gap: 7px;
+.outcomes li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  border-block-end: 1px solid var(--color-line);
+  padding-block: 12px;
+}
+
+.outcomes li:first-child {
+  padding-block-start: 2px;
+}
+
+.outcomes svg {
+  margin-block-start: 2px;
+  color: var(--color-signal-strong);
+}
+
+.outcomes strong {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.outcomes p,
+.control p,
+.toolList p,
+.note,
+.empty {
+  margin: 4px 0 0;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.control p {
+  margin: 0;
 }
 
 .guide code {
   color: var(--color-ink);
-  font-size: 11px;
-  font-weight: 600;
+  font-family: var(--jb-font-mono);
+  font-size: 10px;
+  font-weight: 500;
 }
 
-.guide ul li > div > span {
-  border: 1px solid var(--color-line);
-  border-radius: 999px;
+.sectionHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sectionHeading > span {
+  color: var(--color-ink-subtle);
+  font-family: var(--jb-font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.note,
+.empty {
+  margin: -3px 0 2px;
+}
+
+.toolList li {
+  border-block-end: 1px solid var(--color-line);
+  padding-block: 11px;
+}
+
+.toolList li > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.toolList li > div > span {
   color: var(--color-ink-subtle);
   font-size: 9px;
-  padding: 1px 7px;
 }
 
-.guide ul li p {
-  margin: 3px 0 0;
-  color: var(--color-ink-muted);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.empty {
-  margin: 0;
-  color: var(--color-ink-muted);
-  font-size: 12px;
-  line-height: 1.5;
+.toolList p {
+  margin-block-start: 3px;
 }
 
 .moreLink {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-self: start;
+  gap: 7px;
+  min-block-size: 44px;
   color: var(--color-signal-strong);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 630;
   text-decoration: none;
 }
 
@@ -87,59 +159,8 @@
   text-decoration: underline;
 }
 
-.note {
-  margin: 0;
-  color: var(--color-ink-subtle);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.note code {
-  font-size: 10px;
-}
-
-.workflows {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.workflows strong {
-  font-size: 12px;
-  font-weight: 630;
-}
-
-.workflows p {
-  margin: 2px 0 0;
-  color: var(--color-ink-muted);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.catalog {
-  border-block-start: 1px solid var(--color-line);
-  padding-block-start: 16px;
-}
-
-.catalogRoute {
-  display: grid;
-  gap: 8px;
-  margin-block-start: 14px;
-}
-
-.catalogRoute h4 {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin: 0;
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.catalogRoute h4 code {
-  color: var(--color-ink-subtle);
-  font-size: 10px;
-  font-weight: 500;
+.moreLink:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 3px solid var(--jb-focus);
+  outline-offset: 2px;
 }

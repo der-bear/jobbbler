@@ -35,6 +35,22 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
         readOnly: true,
       },
       {
+        name: "get_search_filters",
+        purpose: "Read every filter value this site accepts before composing a search.",
+        readOnly: true,
+      },
+      {
+        name: "search_jobs",
+        purpose: "Search the public technology-job catalog and synchronize the visible results.",
+        readOnly: false,
+      },
+      {
+        name: "open_job_details",
+        purpose:
+          "Open a known role from any page so its source-backed detail tools become available.",
+        readOnly: false,
+      },
+      {
         name: "open_jobbbler_page",
         purpose: "Open a Jobbbler workspace from any page using explicit validated identifiers.",
         readOnly: false,
@@ -46,26 +62,10 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
     title: "Search",
     tools: [
       {
-        name: "search_jobs",
-        purpose: "Search the public technology-job catalog and synchronize the visible results.",
-        readOnly: false,
-      },
-      {
         name: "get_search_state",
         purpose:
           "Read the current visible search constraints and result count without rerunning search.",
         readOnly: true,
-      },
-      {
-        name: "get_search_filters",
-        purpose: "Read every filter value this site accepts before composing a search.",
-        readOnly: true,
-      },
-      {
-        name: "open_job_details",
-        purpose:
-          "Open one role's page from the current results so its detail tools become available.",
-        readOnly: false,
       },
     ],
   },

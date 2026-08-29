@@ -5,12 +5,6 @@
   min-block-size: calc(100dvh - 69px);
 }
 
-.workspace[data-activity-open="true"] {
-  grid-template-columns:
-    minmax(250px, 290px) minmax(0, 1fr)
-    clamp(280px, var(--activity-panel-size, 360px), 45vw);
-}
-
 .hero {
   grid-column: 1 / -1;
   display: grid;
@@ -154,162 +148,6 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-}
-
-.activityPanel {
-  position: relative;
-  grid-row: 2;
-  min-inline-size: 0;
-  border-inline-start: 1px solid var(--color-line);
-  padding: clamp(24px, 2.6vw, 40px) clamp(18px, 2vw, 28px) 48px;
-}
-
-.activityResizer {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: -4px;
-  inline-size: 8px;
-  cursor: col-resize;
-  touch-action: none;
-}
-
-.activityResizer:hover,
-.activityResizer[data-resizing="true"] {
-  background: color-mix(in srgb, var(--jb-signal) 22%, transparent);
-}
-
-.activityPanel summary {
-  display: none;
-}
-
-.activityPanel details {
-  border: 0;
-  padding: 0;
-}
-
-.activityPanel details > div {
-  border: 0;
-  margin: 0;
-  padding: 0;
-}
-
-.activityPanel header {
-  display: grid;
-  justify-items: start;
-  gap: 10px;
-}
-
-.activityPanelHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  border-block-end: 1px solid var(--color-line);
-  padding-block-end: 14px;
-  margin-block-end: 18px;
-}
-
-.activityPanelHeader h2 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-}
-
-.activityPanelHeader p {
-  margin: 6px 0 0;
-  color: var(--color-ink-muted);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.activityPanelClose {
-  display: inline-flex;
-  border: 0;
-  background: transparent;
-  color: var(--color-ink-subtle);
-  padding: 4px;
-}
-
-.activityPanelClose:hover {
-  color: var(--color-ink);
-}
-
-.panelStatus {
-  display: grid;
-  justify-items: start;
-  gap: 6px;
-  margin-block-end: 14px;
-}
-
-.panelStatus > span {
-  color: var(--color-ink-muted);
-  font-size: 11px;
-}
-
-.panelTabs {
-  display: flex;
-  gap: 4px;
-  margin-block-end: 16px;
-  border-block-end: 1px solid var(--color-line);
-}
-
-.panelTabs button {
-  border: 0;
-  border-block-end: 2px solid transparent;
-  background: transparent;
-  color: var(--color-ink-muted);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 7px 10px 9px;
-}
-
-.panelTabs button:hover {
-  color: var(--color-ink);
-}
-
-.panelTabs button[aria-selected="true"] {
-  border-block-end-color: var(--jb-signal);
-  color: var(--color-ink);
-}
-
-.activityTrigger {
-  position: fixed;
-  inset-block-end: 18px;
-  inset-inline-end: 18px;
-  z-index: 40;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--color-line-strong);
-  border-radius: 999px;
-  background: var(--color-surface);
-  color: var(--color-ink);
-  box-shadow: 0 12px 28px -18px rgb(0 0 0 / 0.45);
-  padding: 9px 14px;
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.activityTrigger:hover {
-  background: var(--color-surface-subtle);
-}
-
-.activityTrigger span {
-  color: var(--color-ink-subtle);
-  font-family: var(--jb-font-mono);
-  font-size: 9px;
-  font-weight: 400;
-}
-
-.activityTrigger[data-status="ready"] > svg,
-.activityTrigger[data-status="preparing"] > svg {
-  color: var(--color-signal-strong);
-}
-
-.activityTrigger[data-status="error"] > svg,
-.activityTrigger[data-status="error"] span {
-  color: var(--jb-warning);
 }
 
 .filterBar {
@@ -689,20 +527,8 @@
 }
 
 @media (max-width: 1080px) {
-  .workspace,
-  .workspace[data-activity-open="true"] {
+  .workspace {
     grid-template-columns: minmax(220px, 30vw) minmax(0, 1fr);
-  }
-
-  .activityPanel {
-    grid-column: 1 / -1;
-    grid-row: auto;
-    border-inline-start: 0;
-    border-block-start: 1px solid var(--color-line);
-  }
-
-  .activityResizer {
-    display: none;
   }
 
   .jobSummary {
@@ -740,8 +566,10 @@
   }
 
   .heroSearch > button {
-    flex: 1 1 30%;
+    min-block-size: 44px;
+    flex: 1 1 100%;
     border-radius: var(--radius-sm);
+    white-space: nowrap;
   }
 
   .filterRail {

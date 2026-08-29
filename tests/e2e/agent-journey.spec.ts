@@ -71,6 +71,10 @@ test.describe("agent journey through the live WebMCP surface", () => {
         "plan_job_workflow",
         "search_jobs",
       ]);
+    await expect(page.getByRole("complementary", { name: "Agent layer" })).toBeVisible();
+    await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(
+      "6 tools active. Discovery is automatic.",
+    );
 
     const capabilities = (await callTool(page, "get_site_capabilities", {})) as {
       status: string;
@@ -115,11 +119,17 @@ test.describe("agent journey through the live WebMCP surface", () => {
         "search_jobs",
       ]);
     await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(/ready/i);
-    await expect(page.getByText("7 tools available on this page")).toBeVisible();
+    await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(
+      "7 tools active. Discovery is automatic.",
+    );
 
     const activityTab = page.getByRole("tab", { name: /Activity/ });
     await expect(activityTab).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByText("search_jobs", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Agent activity log" }).getByText("search_jobs", {
+        exact: true,
+      }),
+    ).toBeVisible();
     await expect(page.getByText("Complete", { exact: true }).first()).toBeVisible();
 
     const opened = (await callTool(page, "open_job_details", { jobId: firstJobId })) as {
@@ -148,14 +158,15 @@ test.describe("agent journey through the live WebMCP surface", () => {
     await page.goto("/");
 
     await expect(page.getByRole("tab", { name: "Guide" })).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByText("Try it in 10 seconds")).toBeVisible();
+    await expect(page.getByText("Try it with one prompt")).toBeVisible();
     await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(
       /unavailable|browser/i,
     );
 
-    await page.getByRole("tab", { name: "Tools" }).click();
-    await expect(page.getByText("No agent browser detected", { exact: false })).toBeVisible();
-    await expect(page.getByText(/All \d+ site tools/)).toBeVisible();
+    await page.getByRole("tab", { name: "Guide" }).press("End");
+    await expect(page.getByRole("tab", { name: "Tools" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("heading", { name: "Site-wide" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "View all 29 tools" })).toBeVisible();
     await expect(page.getByText("plan_job_workflow").first()).toBeVisible();
   });
 });

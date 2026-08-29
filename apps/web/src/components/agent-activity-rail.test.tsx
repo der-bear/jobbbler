@@ -31,14 +31,11 @@ const activities: readonly ToolActivity[] = [
 describe("AgentActivityRail", () => {
   it("keeps the agent layer secondary while surfacing active work", () => {
     const markup = renderToStaticMarkup(
-      <AgentActivityRail activities={activities} registeredToolCount={4} webMcpAvailable />,
+      <AgentActivityRail activities={activities} webMcpAvailable />,
     );
 
-    expect(markup).toContain("<details");
-    expect(markup).toContain('open=""');
-    expect(markup).toContain("Agent activity");
-    expect(markup).toContain("WebMCP available");
-    expect(markup).toContain("4 actions available on this page");
+    expect(markup).toContain("<section");
+    expect(markup).toContain('aria-label="Agent activity log"');
     expect(markup).toContain('aria-live="polite"');
     expect(markup).toContain('aria-busy="true"');
     expect(markup).toContain("Approval needed");
@@ -46,29 +43,20 @@ describe("AgentActivityRail", () => {
     expect(markup).not.toContain("activity_550e8400");
   });
 
-  it("collapses an idle agent layer behind plain-language disclosure", () => {
+  it("shows a plain-language browser fallback without nested disclosures", () => {
     const markup = renderToStaticMarkup(
-      <AgentActivityRail activities={[]} registeredToolCount={0} webMcpAvailable={false} />,
+      <AgentActivityRail activities={[]} webMcpAvailable={false} />,
     );
 
-    expect(markup).toContain("Agent activity");
-    expect(markup).toContain("Browser mode");
-    expect(markup).toContain("WebMCP unavailable");
-    expect(markup).toContain("Ready for your agent.");
-    expect(markup).not.toContain('open=""');
+    expect(markup).toContain("No agent actions in this browser.");
+    expect(markup).toContain("The job portal still works normally.");
+    expect(markup).not.toContain("<details");
   });
 
-  it("can open immediately when rendered inside an explicit activity sheet", () => {
-    const markup = renderToStaticMarkup(
-      <AgentActivityRail
-        activities={[]}
-        initiallyExpanded
-        registeredToolCount={2}
-        webMcpAvailable
-      />,
-    );
+  it("shows a useful empty receipt state when an agent is ready", () => {
+    const markup = renderToStaticMarkup(<AgentActivityRail activities={[]} webMcpAvailable />);
 
-    expect(markup).toContain('open=""');
-    expect(markup).toContain("2 actions available on this page");
+    expect(markup).toContain("No agent actions yet.");
+    expect(markup).toContain("When an agent uses a tool, its outcome appears here.");
   });
 });

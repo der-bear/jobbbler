@@ -4,12 +4,10 @@ import {
   ArrowClockwiseIcon,
   BriefcaseIcon,
   BellSimpleIcon,
-  CircleIcon,
   ClockIcon,
   MagnifyingGlassIcon,
   MapPinIcon,
   WarningCircleIcon,
-  XIcon,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -31,10 +29,7 @@ import {
 } from "@jobbbler/contracts";
 import { MultiSelect } from "@jobbbler/ui";
 
-import { AgentActivityRail } from "@/components/agent-activity-rail";
-import { AgentGuide, AgentTools } from "@/components/agent-guide";
 import { useWebMcp } from "@/components/webmcp-provider";
-import { WebMcpStatus } from "@/components/webmcp-status";
 import {
   categoryLabel,
   relativeFreshness,
@@ -323,19 +318,13 @@ export function SearchWorkspace() {
   const [result, setResult] = useState<SearchJobsResult | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
-  const [activityOpen, setActivityOpen] = useState(true);
-  const [panelTab, setPanelTab] = useState<"guide" | "tools" | "activity">("guide");
-  const [activityPanelWidth, setActivityPanelWidth] = useState(360);
-  const [activityResizing, setActivityResizing] = useState(false);
   const activityCount = webMcp.activities.length;
   const seenActivityCount = useRef(0);
-  const userChoseTab = useRef(false);
 
   const [agentPulse, setAgentPulse] = useState(false);
 
   useEffect(() => {
     if (activityCount > seenActivityCount.current) {
-      setPanelTab("activity");
       setAgentPulse(true);
       const timer = window.setTimeout(() => setAgentPulse(false), 900);
       seenActivityCount.current = activityCount;
@@ -344,28 +333,6 @@ export function SearchWorkspace() {
     seenActivityCount.current = activityCount;
     return undefined;
   }, [activityCount]);
-
-  useEffect(() => {
-    if (userChoseTab.current) return;
-    if (webMcp.status === "ready" && webMcp.registeredToolCount > 0) setPanelTab("activity");
-  }, [webMcp.registeredToolCount, webMcp.status]);
-
-  function startActivityResize(event: React.PointerEvent<HTMLDivElement>) {
-    event.preventDefault();
-    const startX = event.clientX;
-    const startWidth = activityPanelWidth;
-    setActivityResizing(true);
-    const onMove = (moveEvent: PointerEvent) => {
-      setActivityPanelWidth(Math.min(680, Math.max(280, startWidth + startX - moveEvent.clientX)));
-    };
-    const onUp = () => {
-      setActivityResizing(false);
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-  }
   const requestSequence = useRef(0);
 
   const runSearch = useCallback(async (input: JobSearchInput, history: "push" | "replace") => {
@@ -498,43 +465,11 @@ export function SearchWorkspace() {
     void runSearch(next, "push");
   }
 
-  const activityStatus =
-    webMcp.status === "error"
-      ? "Needs attention"
-      : webMcp.status === "checking"
-        ? "Checking"
-        : webMcp.status === "preparing"
-          ? "Preparing"
-          : webMcp.status === "unsupported"
-            ? "Browser mode"
-            : `${String(webMcp.activities.length)} ${webMcp.activities.length === 1 ? "event" : "events"}`;
-
   return (
-    <div
-      className={styles["workspace"]}
-      data-activity-open={String(activityOpen)}
-      style={{ "--activity-panel-size": `${String(activityPanelWidth)}px` } as React.CSSProperties}
-    >
-      {activityOpen ? null : (
-        <button
-          aria-expanded={activityOpen}
-          aria-label={`Agent activity — ${activityStatus}`}
-          className={styles["activityTrigger"]}
-          data-status={webMcp.status}
-          onClick={() => setActivityOpen(true)}
-          type="button"
-        >
-          <CircleIcon aria-hidden="true" size={8} weight="fill" />
-          Agent activity
-          <span>{activityStatus}</span>
-        </button>
-      )}
-
+    <div className={styles["workspace"]}>
       <header className={styles["hero"]} data-compact={String(!landing)}>
         <h1>Find your next technology role</h1>
-        <p className={styles["heroSub"]}>
-          Search yourself or ask your browser agent. No setup required.
-        </p>
+        <p className={styles["heroSub"]}>Search by role, skill, company, or location.</p>
         <form className={styles["heroSearch"]} onSubmit={submit} role="search">
           <label className={styles["heroField"]}>
             <MagnifyingGlassIcon aria-hidden="true" size={17} />
@@ -645,73 +580,6 @@ export function SearchWorkspace() {
           </footer>
         ) : null}
       </section>
-
-      {activityOpen ? (
-        <aside aria-label="Agent activity" className={styles["activityPanel"]}>
-          <div
-            aria-hidden="true"
-            className={styles["activityResizer"]}
-            data-resizing={String(activityResizing)}
-            onPointerDown={startActivityResize}
-          />
-          <div className={styles["activityPanelHeader"]}>
-            <div>
-              <h2>Agent panel</h2>
-              <p>What an AI assistant can do on this page and what it changed.</p>
-            </div>
-            <button
-              aria-label="Close agent panel"
-              className={styles["activityPanelClose"]}
-              onClick={() => setActivityOpen(false)}
-              type="button"
-            >
-              <XIcon aria-hidden="true" size={15} />
-            </button>
-          </div>
-          <div className={styles["panelStatus"]}>
-            <WebMcpStatus />
-            <span>
-              {webMcp.registeredToolCount === 0
-                ? "No tools registered on this page"
-                : `${String(webMcp.registeredToolCount)} tool${webMcp.registeredToolCount === 1 ? "" : "s"} available on this page`}
-            </span>
-          </div>
-          <div aria-label="Agent panel sections" className={styles["panelTabs"]} role="tablist">
-            {(
-              [
-                ["activity", `Activity${activityCount > 0 ? ` · ${String(activityCount)}` : ""}`],
-                ["tools", "Tools"],
-                ["guide", "Guide"],
-              ] as const
-            ).map(([tab, label]) => (
-              <button
-                aria-selected={panelTab === tab}
-                key={tab}
-                onClick={() => {
-                  userChoseTab.current = true;
-                  setPanelTab(tab);
-                }}
-                role="tab"
-                type="button"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          {panelTab === "guide" ? (
-            <AgentGuide />
-          ) : panelTab === "tools" ? (
-            <AgentTools tools={webMcp.registeredTools} />
-          ) : (
-            <AgentActivityRail
-              activities={webMcp.activities}
-              initiallyExpanded
-              registeredToolCount={webMcp.registeredToolCount}
-              webMcpAvailable={webMcp.supported && webMcp.status !== "error"}
-            />
-          )}
-        </aside>
-      ) : null}
     </div>
   );
 }

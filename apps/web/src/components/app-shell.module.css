@@ -4,6 +4,20 @@
   color: var(--color-ink);
 }
 
+.contentFrame {
+  min-inline-size: 0;
+}
+
+.contentFrame > main {
+  min-inline-size: 0;
+}
+
+.contentFrame[data-agent-open="true"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--agent-panel-size, 380px);
+  align-items: start;
+}
+
 .skipLink {
   position: fixed;
   inset-block-start: var(--space-3);
@@ -89,6 +103,41 @@
   gap: 8px;
 }
 
+.agentTrigger {
+  position: fixed;
+  z-index: 60;
+  inset-block-end: 18px;
+  inset-inline-end: 18px;
+  display: inline-flex;
+  min-block-size: 44px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 999px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-floating);
+  color: var(--color-ink);
+  padding-inline: 15px;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.agentTrigger span {
+  color: var(--color-ink-subtle);
+  font-family: var(--jb-font-mono);
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.agentTrigger[data-status="ready"] > svg {
+  color: var(--color-signal-strong);
+}
+
+.agentTrigger[data-status="error"] > svg,
+.agentTrigger[data-status="error"] span {
+  color: var(--jb-danger);
+}
+
 .webmcpLink {
   color: var(--color-ink-muted);
   font-size: 12px;
@@ -150,5 +199,15 @@
 
   .actions {
     grid-column: 2;
+  }
+
+  .agentTrigger {
+    inset-block-end: 88px;
+  }
+}
+
+@media (max-width: 1080px) {
+  .contentFrame[data-agent-open="true"] {
+    display: block;
   }
 }
