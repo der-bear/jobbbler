@@ -8,6 +8,7 @@ coverage/
 playwright-report/
 test-results/
 .turbo/
+.worktrees/
 
 # Local configuration and secrets
 .env
@@ -30,4 +31,3 @@ tmp/
 .idea/
 .vscode/
 *.swp
-
