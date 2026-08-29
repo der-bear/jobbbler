@@ -1,7 +1,7 @@
 {
   "version": 1,
   "route": "/jobs/job_00000001-0000-7000-8000-000000000001",
-  "registeredTools": ["get_job_details", "compare_jobs"],
+  "registeredTools": ["get_job_details", "compare_jobs", "plan_job_workflow"],
   "cases": [
     {
       "id": "detail-direct-current-job",

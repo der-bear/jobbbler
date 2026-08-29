@@ -22,6 +22,10 @@ The fixture arguments are the manifest contract for Task 7. Search arguments
 use the public search criteria shape; job identifiers use the `job_` entity-ID
 format; comparisons never contain more than three unique job IDs.
 
+`plan_job_workflow` registers alongside every route's own tools and appears in each
+fixture's file-level `registeredTools`; it is advisory and read-only, so most cases
+omit it from their case-level sets.
+
 The application surface registers different tools as the draft moves through
 its stages, so `application.json` cases carry their own `registeredTools` set;
 a case-level set always overrides the file-level default. Approval and
@@ -31,13 +35,13 @@ differs on exactly that fact.
 
 ## Coverage
 
-| Fixture            | Route tools                                    | Judge-facing behavior                                                                                                                                                                                                                                    |
-| ------------------ | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `search.json`      | `search_jobs`, `get_search_state`              | Direct and natural-language search, state reading, vague intent, comparison before selection, invalid salary range.                                                                                                                                      |
-| `detail.json`      | `get_job_details`, `compare_jobs`              | Current-job detail, explicit and paraphrased comparison, missing second job, comparison-only action on the wrong route, invalid ID.                                                                                                                      |
-| `compare.json`     | `get_comparison`, `remove_job_from_comparison` | Current comparison, ordinal removal, ambiguous ranking, unsupported add operation, removal of an unselected job.                                                                                                                                         |
-| `saved.json`       | `get_saved_alerts`, `set_job_alert_state`      | Alert reading, pause and resume by schedule ID, ambiguous alert selection, unsupported destination change, unknown schedule.                                                                                                                             |
-| `application.json` | State-gated per case                           | Authority request before editing, user-approved access, refusal to self-approve, exact answer suggestion, unsupported field, validation, review sealing, data permission, confirmation before submission, confirmed submission, honest external handoff. |
+| Fixture            | Route tools                                                                | Judge-facing behavior                                                                                                                                                                                                                                    |
+| ------------------ | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `search.json`      | `search_jobs`, `get_search_state`, `open_job_details`, `plan_job_workflow` | Direct and natural-language search, state reading, opening a role, asking for the monitoring plan, vague intent, comparison before selection, invalid salary range.                                                                                      |
+| `detail.json`      | `get_job_details`, `compare_jobs`                                          | Current-job detail, explicit and paraphrased comparison, missing second job, comparison-only action on the wrong route, invalid ID.                                                                                                                      |
+| `compare.json`     | `get_comparison`, `remove_job_from_comparison`, `add_job_to_comparison`    | Current comparison, ordinal removal and addition, ambiguous ranking, removal of an unselected job.                                                                                                                                                       |
+| `saved.json`       | `get_saved_alerts`, `set_job_alert_state`, `open_saved_search`             | Alert reading, pause and resume by schedule ID, reopening stored criteria, ambiguous alert selection, unsupported destination change, unknown schedule.                                                                                                  |
+| `application.json` | State-gated per case                                                       | Authority request before editing, user-approved access, refusal to self-approve, exact answer suggestion, unsupported field, validation, review sealing, data permission, confirmation before submission, confirmed submission, honest external handoff. |
 
 An evaluator should load the named route and fixture context, expose only the
 case's effective `registeredTools`, then compare the observed result with

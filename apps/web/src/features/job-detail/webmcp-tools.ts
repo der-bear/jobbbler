@@ -190,7 +190,7 @@ export function createJobDetailToolManifests(
     description:
       "Compare two or three source-backed roles and open the visible comparison. Use only after the user identifies distinct job IDs, including the role on this page.",
     inputSchema: comparisonInputJsonSchema,
-    annotations: { readOnlyHint: true, untrustedContentHint: true },
+    annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
       try {
         const parsed = currentComparisonInput.parse(input);

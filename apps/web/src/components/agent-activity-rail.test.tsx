@@ -54,7 +54,7 @@ describe("AgentActivityRail", () => {
     expect(markup).toContain("Agent activity");
     expect(markup).toContain("Browser mode");
     expect(markup).toContain("WebMCP unavailable");
-    expect(markup).toContain("Nothing changed by an agent in this session.");
+    expect(markup).toContain("Ready for your agent.");
     expect(markup).not.toContain('open=""');
   });
 

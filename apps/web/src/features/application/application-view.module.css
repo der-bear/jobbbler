@@ -487,3 +487,10 @@
       color 160ms ease;
   }
 }
+
+.heroSub {
+  margin: 8px 0 0;
+  color: var(--color-ink-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}

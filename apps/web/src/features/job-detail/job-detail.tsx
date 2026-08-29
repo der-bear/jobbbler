@@ -10,7 +10,7 @@ import {
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import {
@@ -297,8 +297,16 @@ function DetailContent({
 export function JobDetail({
   jobId,
   criteriaSearch,
-}: Readonly<{ jobId: string; criteriaSearch: string }>) {
-  const [state, setState] = useState<LoadState>({ kind: "loading" });
+  initialResult,
+}: Readonly<{
+  jobId: string;
+  criteriaSearch: string;
+  initialResult?: JobDetailResult | undefined;
+}>) {
+  const [state, setState] = useState<LoadState>(() =>
+    initialResult === undefined ? { kind: "loading" } : { kind: "ready", result: initialResult },
+  );
+  const hydratedFromServer = useRef(initialResult !== undefined);
   const [applicationBusy, setApplicationBusy] = useState(false);
   const router = useRouter();
   const toast = useToast();
@@ -331,6 +339,10 @@ export function JobDetail({
   );
 
   useEffect(() => {
+    if (hydratedFromServer.current) {
+      hydratedFromServer.current = false;
+      return;
+    }
     const controller = new AbortController();
     setState({ kind: "loading" });
 

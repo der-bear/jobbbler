@@ -41,6 +41,21 @@ const stateInputSchema = {
 const emptyInput = z.strictObject({});
 const stateInput = z.strictObject({ scheduleId: entityIdSchema, enabled: z.boolean() });
 
+const openSavedInputSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    savedSearchId: {
+      type: "string",
+      description: "A saved search ID returned by get_saved_alerts.",
+      pattern: "^saved_search_[0-9a-f-]{36}$",
+    },
+  },
+  required: ["savedSearchId"],
+} as const satisfies JsonSchema;
+
+const openSavedInput = z.strictObject({ savedSearchId: entityIdSchema });
+
 export interface SavedToolDependencies {
   listSavedSearches(options: Readonly<{ signal: AbortSignal }>): Promise<readonly SavedSearch[]>;
   listSchedules(options: Readonly<{ signal: AbortSignal }>): Promise<readonly JobAlertSchedule[]>;
@@ -50,6 +65,8 @@ export interface SavedToolDependencies {
     options: Readonly<{ signal: AbortSignal }>,
   ): Promise<JobAlertSchedule>;
   onScheduleCommitted(schedule: JobAlertSchedule): Promise<void> | void;
+  savedSearchHref(savedSearch: SavedSearch): string;
+  onNavigate(href: string): Promise<void> | void;
 }
 
 type SavedToolOutput = CompletedWebMcpResult<JsonValue> | SafeWebMcpErrorResult;
@@ -157,5 +174,44 @@ export function createSavedToolManifests(
     },
   };
 
-  return [getSavedAlerts, setJobAlertState];
+  const openSavedSearch: ToolManifest<unknown, SavedToolOutput> = {
+    name: "open_saved_search",
+    purpose: "Open one saved search on the results page with its exact stored criteria.",
+    description:
+      "Navigate to the search page with the exact criteria of a saved search returned by get_saved_alerts. The search tools then apply to that restored search.",
+    inputSchema: openSavedInputSchema,
+    annotations: { readOnlyHint: false, untrustedContentHint: true },
+    async execute(input, { signal }) {
+      try {
+        const parsed = openSavedInput.parse(input);
+        const savedSearches = await dependencies.listSavedSearches({ signal });
+        const savedSearch = savedSearches.find(({ id }) => id === parsed.savedSearchId);
+        if (savedSearch === undefined) {
+          throw new z.ZodError([
+            {
+              code: "custom",
+              path: ["savedSearchId"],
+              message: "The saved search is not in the current private workspace.",
+            },
+          ]);
+        }
+        await dependencies.onNavigate(dependencies.savedSearchHref(savedSearch));
+        return completedWebMcpResult({
+          summary: "Opened the saved search on the results page with its stored criteria.",
+          data: { savedSearchId: savedSearch.id, route: "/" },
+          resources: [
+            { type: "saved_search", id: savedSearch.id, label: short(savedSearch.name, 64) },
+          ],
+        });
+      } catch (error) {
+        return safeWebMcpErrorResult(
+          error,
+          signal,
+          "Provide one saved search ID from get_saved_alerts.",
+        );
+      }
+    },
+  };
+
+  return [getSavedAlerts, setJobAlertState, openSavedSearch];
 }

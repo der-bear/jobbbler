@@ -174,8 +174,16 @@ describe("route-scoped WebMCP tool manifests", () => {
       onNavigate,
     }) as readonly ToolManifest[];
 
-    expectAnnotatedUntrustedRoute(manifests, ["search_jobs", "get_search_state"]);
-    expect(manifests.every(({ annotations }) => annotations.readOnlyHint)).toBe(true);
+    expectAnnotatedUntrustedRoute(manifests, [
+      "search_jobs",
+      "get_search_state",
+      "open_job_details",
+    ]);
+    expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([
+      false,
+      true,
+      false,
+    ]);
 
     const controller = new AbortController();
     const success = await tool(manifests, "search_jobs").execute(
@@ -236,7 +244,7 @@ describe("route-scoped WebMCP tool manifests", () => {
     }) as readonly ToolManifest[];
 
     expectAnnotatedUntrustedRoute(manifests, ["get_job_details", "compare_jobs"]);
-    expect(manifests.every(({ annotations }) => annotations.readOnlyHint)).toBe(true);
+    expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([true, false]);
 
     const controller = new AbortController();
     const detail = await tool(manifests, "get_job_details").execute(
@@ -295,8 +303,16 @@ describe("route-scoped WebMCP tool manifests", () => {
       onNavigate,
     }) as readonly ToolManifest[];
 
-    expectAnnotatedUntrustedRoute(manifests, ["get_comparison", "remove_job_from_comparison"]);
-    expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([true, false]);
+    expectAnnotatedUntrustedRoute(manifests, [
+      "get_comparison",
+      "remove_job_from_comparison",
+      "add_job_to_comparison",
+    ]);
+    expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([
+      true,
+      false,
+      false,
+    ]);
 
     const controller = new AbortController();
     const comparison = await tool(manifests, "get_comparison").execute(

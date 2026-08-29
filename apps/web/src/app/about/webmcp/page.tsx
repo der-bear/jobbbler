@@ -6,6 +6,8 @@ import {
   ShieldCheckIcon,
 } from "@phosphor-icons/react/dist/ssr";
 
+import { webMcpCatalog } from "@/lib/webmcp-catalog";
+
 import styles from "./page.module.css";
 
 export default function WebMcpAboutPage() {
@@ -101,6 +103,40 @@ export default function WebMcpAboutPage() {
           search, alerts keep running through Jobbbler after the tab closes and report only newly
           observed matching roles.
         </p>
+      </section>
+
+      <section aria-labelledby="tool-reference" className={styles["section"]}>
+        <div>
+          <h2 id="tool-reference">Every tool, page by page.</h2>
+        </div>
+        <p className={styles["referenceIntro"]}>
+          Each page registers only the tools that make sense there, and removes them when you
+          navigate away. This is the complete reference; the Agent panel on each page shows the live
+          subset.
+        </p>
+        <div className={styles["toolReference"]}>
+          {webMcpCatalog.map((route) => (
+            <section aria-label={`${route.title} tools`} key={route.route}>
+              <h3>
+                {route.title} <code>{route.route}</code>
+              </h3>
+              {route.note === undefined ? null : (
+                <p className={styles["routeNote"]}>{route.note}</p>
+              )}
+              <ul>
+                {route.tools.map((tool) => (
+                  <li key={tool.name}>
+                    <div>
+                      <code>{tool.name}</code>
+                      {tool.readOnly ? <span>read-only</span> : null}
+                    </div>
+                    <p>{tool.purpose}</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
       </section>
 
       <section aria-labelledby="limits" className={styles["section"]}>

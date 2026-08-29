@@ -39,7 +39,11 @@ import { createSearchToolManifests } from "@/features/search/webmcp-tools";
 import { createSavedToolManifests } from "@/features/saved/webmcp-tools";
 import { queryApi } from "@/lib/query-client";
 import { startOwnerActivityFeed } from "@/lib/owner-activity-feed";
-import { searchInputToSearchParams, searchParamsToInput } from "@/lib/search-url";
+import {
+  searchHrefFromCriteria,
+  searchInputToSearchParams,
+  searchParamsToInput,
+} from "@/lib/search-url";
 import { subscribeToConfiguredSupabaseActivityWakeups } from "@/lib/supabase-activity-wakeup";
 import {
   commitWebMcpJobDetail,
@@ -48,7 +52,18 @@ import {
   readSearchSurfaceState,
 } from "@/lib/webmcp-ui-bridge";
 
+import { createWorkflowPlannerTool } from "@/features/webmcp-workflows";
+
 import { resolveWebMcpRoute, type WebMcpRoute } from "./webmcp-route";
+
+function routeLabel(route: WebMcpRoute): string {
+  if (route.kind === "search") return "/";
+  if (route.kind === "detail") return "/jobs/:jobId";
+  if (route.kind === "compare") return "/compare";
+  if (route.kind === "saved") return "/saved";
+  if (route.kind === "application") return "/apply/:draftId";
+  return "/";
+}
 
 export type WebMcpRegistrationStatus = "checking" | "unsupported" | "preparing" | "ready" | "error";
 
@@ -117,6 +132,7 @@ function routeManifests(
       getSearchState: readSearchSurfaceState,
       onSearchCommitted: commitWebMcpSearch,
       onNavigate: navigate,
+      getCriteriaSearch: currentCriteriaSearch,
     });
   }
 
@@ -169,6 +185,8 @@ function routeManifests(
           signal,
         }),
       onScheduleCommitted: commitWebMcpSchedule,
+      savedSearchHref: (savedSearch) => searchHrefFromCriteria(savedSearch.criteria),
+      onNavigate: navigate,
     });
   }
 
@@ -226,7 +244,17 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
     }
 
     const route = resolveWebMcpRoute(pathname);
-    const manifests = routeManifests(route, (href) => router.push(href, { scroll: false }));
+    const baseManifests = routeManifests(route, (href) => router.push(href, { scroll: false }));
+    const manifests =
+      baseManifests.length === 0
+        ? baseManifests
+        : [
+            ...baseManifests,
+            createWorkflowPlannerTool({
+              route: routeLabel(route),
+              availableTools: () => baseManifests.map(({ name }) => name),
+            }),
+          ];
     if (manifests.length === 0) {
       setStatus("ready");
       setRegisteredTools(emptyTools);

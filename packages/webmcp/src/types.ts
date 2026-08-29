@@ -19,6 +19,7 @@ export interface ToolManifest<I, O> {
 
 export interface RegisteredTool {
   readonly name: string;
+  readonly title: string;
   readonly description: string;
   readonly inputSchema: JsonSchema;
   readonly annotations: ToolAnnotations;

@@ -26,9 +26,14 @@ This matrix binds current WebMCP capabilities to one Jobbbler product behavior, 
 
 The initial public route sets stay deliberately small:
 
-- Search: `search_jobs`, `get_search_state`.
+- Search: `search_jobs`, `get_search_state`, `open_job_details`.
 - Job detail: `get_job_details`, `compare_jobs`.
-- Compare: `get_comparison`, `remove_job_from_comparison`.
+- Compare: `get_comparison`, `remove_job_from_comparison`, `add_job_to_comparison`.
+- Saved: `get_saved_alerts`, `set_job_alert_state`, `open_saved_search`.
+- Every route additionally registers `plan_job_workflow`, a read-only advisor that
+  returns the recommended safe composition of tools for one goal. It executes
+  nothing and grants nothing; navigation tools carry `readOnlyHint: false` because
+  they change the visible route and therefore the registered tool set.
 
 `remove_job_from_comparison` changes visible URL state, so it declares `readOnlyHint: false` even though it does not persist server data.
 

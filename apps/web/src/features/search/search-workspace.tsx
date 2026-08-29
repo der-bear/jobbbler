@@ -6,6 +6,8 @@ import {
   BellSimpleIcon,
   CircleIcon,
   ClockIcon,
+  MagnifyingGlassIcon,
+  MapPinIcon,
   WarningCircleIcon,
   XIcon,
 } from "@phosphor-icons/react";
@@ -30,6 +32,7 @@ import {
 import { MultiSelect } from "@jobbbler/ui";
 
 import { AgentActivityRail } from "@/components/agent-activity-rail";
+import { AgentGuide, AgentTools } from "@/components/agent-guide";
 import { useWebMcp } from "@/components/webmcp-provider";
 import { WebMcpStatus } from "@/components/webmcp-status";
 import {
@@ -57,6 +60,7 @@ interface SearchDraft {
   readonly workModels: readonly WorkModel[];
   readonly seniorities: readonly Seniority[];
   readonly location: string;
+  readonly postedWithinDays: string;
   readonly minimumSalary: string;
   readonly currency: string;
   readonly excludeKeywords: string;
@@ -70,6 +74,7 @@ function draftFromInput(input: JobSearchInput): SearchDraft {
     workModels: input.workModels ?? [],
     seniorities: input.seniorities ?? [],
     location: input.locations?.[0] ?? "",
+    postedWithinDays: input.postedWithinDays === undefined ? "" : String(input.postedWithinDays),
     minimumSalary: input.salary?.minimum === undefined ? "" : String(input.salary.minimum),
     currency: input.salary?.currency ?? "EUR",
     excludeKeywords: input.excludeKeywords?.join(", ") ?? "",
@@ -86,6 +91,7 @@ function inputFromDraft(draft: SearchDraft): JobSearchInput {
     workModels: [...draft.workModels],
     seniorities: [...draft.seniorities],
     locations: draft.location.trim().length === 0 ? [] : [draft.location.trim()],
+    ...(draft.postedWithinDays === "" ? {} : { postedWithinDays: Number(draft.postedWithinDays) }),
     excludeKeywords: draft.excludeKeywords
       .split(",")
       .map((value) => value.trim())
@@ -153,6 +159,7 @@ function SearchFilters({
         onCommit(draft);
       }}
     >
+      <p className={styles["railTitle"]}>Filters</p>
       <fieldset className={styles["choiceRow"]}>
         <legend>Work model</legend>
         <div>
@@ -200,15 +207,16 @@ function SearchFilters({
         />
       </div>
       <label className={styles["filterRow"]}>
-        <span>Location</span>
-        <input
-          maxLength={120}
-          onBlur={() => onCommit(draft)}
-          onChange={(event) => onDraftChange({ ...draft, location: event.target.value })}
-          onKeyDown={commitOnEnter}
-          placeholder="Any location"
-          value={draft.location}
-        />
+        <span>Date posted</span>
+        <select
+          onChange={(event) => onCommit({ ...draft, postedWithinDays: event.target.value })}
+          value={draft.postedWithinDays}
+        >
+          <option value="">Any time</option>
+          <option value="1">Past 24 hours</option>
+          <option value="7">Past week</option>
+          <option value="30">Past month</option>
+        </select>
       </label>
       <div className={styles["filterRow"]}>
         <span className={styles["salaryLabel"]}>
@@ -317,8 +325,31 @@ export function SearchWorkspace() {
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [activityOpen, setActivityOpen] = useState(true);
+  const [panelTab, setPanelTab] = useState<"guide" | "tools" | "activity">("guide");
   const [activityPanelWidth, setActivityPanelWidth] = useState(360);
   const [activityResizing, setActivityResizing] = useState(false);
+  const activityCount = webMcp.activities.length;
+  const seenActivityCount = useRef(0);
+  const userChoseTab = useRef(false);
+
+  const [agentPulse, setAgentPulse] = useState(false);
+
+  useEffect(() => {
+    if (activityCount > seenActivityCount.current) {
+      setPanelTab("activity");
+      setAgentPulse(true);
+      const timer = window.setTimeout(() => setAgentPulse(false), 900);
+      seenActivityCount.current = activityCount;
+      return () => window.clearTimeout(timer);
+    }
+    seenActivityCount.current = activityCount;
+    return undefined;
+  }, [activityCount]);
+
+  useEffect(() => {
+    if (userChoseTab.current) return;
+    if (webMcp.status === "ready" && webMcp.registeredToolCount > 0) setPanelTab("activity");
+  }, [webMcp.registeredToolCount, webMcp.status]);
 
   function startActivityResize(event: React.PointerEvent<HTMLDivElement>) {
     event.preventDefault();
@@ -431,6 +462,8 @@ export function SearchWorkspace() {
     return items;
   }, [applied]);
 
+  const landing = (applied.query ?? "") === "" && filterSummary.length === 0;
+
   const appliedSearch = useMemo(() => {
     const parameters = searchInputToSearchParams(applied);
     return parameters.size === 0 ? "" : `?${parameters.toString()}`;
@@ -498,32 +531,52 @@ export function SearchWorkspace() {
         </button>
       )}
 
-      <aside aria-label="Search and filters" className={styles["filterRail"]}>
-        <form onSubmit={submit} role="search">
-          <label className={styles["railSearch"]}>
-            <span>What are you looking for?</span>
+      <header className={styles["hero"]} data-compact={String(!landing)}>
+        <h1>Find your next technology role</h1>
+        <p className={styles["heroSub"]}>
+          Search yourself or ask your browser agent. No setup required.
+        </p>
+        <form className={styles["heroSearch"]} onSubmit={submit} role="search">
+          <label className={styles["heroField"]}>
+            <MagnifyingGlassIcon aria-hidden="true" size={17} />
             <input
+              aria-label="Search jobs"
               maxLength={500}
               onChange={(event) => setDraft({ ...draft, query: event.target.value })}
-              placeholder="Search roles, skills, or companies"
+              placeholder="Job title, skill, or company"
               type="search"
               value={draft.query}
             />
           </label>
+          <span aria-hidden="true" className={styles["heroDivider"]} />
+          <label className={styles["heroField"]}>
+            <MapPinIcon aria-hidden="true" size={17} />
+            <input
+              aria-label="Location"
+              maxLength={120}
+              onChange={(event) => setDraft({ ...draft, location: event.target.value })}
+              placeholder="Location"
+              value={draft.location}
+            />
+          </label>
+          <button type="submit">Search</button>
         </form>
+      </header>
+
+      <aside aria-label="Filters" className={styles["filterRail"]}>
         <SearchFilters draft={draft} onCommit={commitDraft} onDraftChange={setDraft} />
       </aside>
 
       <section className={styles["results"]} aria-labelledby="results-heading">
-        <div className={styles["resultsHeader"]}>
+        <div className={styles["resultsHeader"]} data-agent-pulse={String(agentPulse)}>
           <div aria-label="Search status" role="status">
-            <h1 id="results-heading">
+            <h2 id="results-heading">
               {result === null
-                ? "Open roles"
+                ? "Latest roles"
                 : filterSummary.length === 0 && (applied.query ?? "") === ""
-                  ? `${String(result.total)} open roles`
+                  ? `Latest roles · ${String(result.total)}`
                   : `${String(result.total)} matches`}
-            </h1>
+            </h2>
           </div>
           <div className={styles["resultsControls"]}>
             <Link className={styles["saveAlertLink"]} href={saveAlertHref}>
@@ -604,11 +657,11 @@ export function SearchWorkspace() {
           />
           <div className={styles["activityPanelHeader"]}>
             <div>
-              <h2>Agent activity</h2>
+              <h2>Agent panel</h2>
               <p>What an AI assistant can do on this page and what it changed.</p>
             </div>
             <button
-              aria-label="Close agent activity"
+              aria-label="Close agent panel"
               className={styles["activityPanelClose"]}
               onClick={() => setActivityOpen(false)}
               type="button"
@@ -616,14 +669,48 @@ export function SearchWorkspace() {
               <XIcon aria-hidden="true" size={15} />
             </button>
           </div>
-          <AgentActivityRail
-            activities={webMcp.activities}
-            initiallyExpanded
-            registeredToolCount={webMcp.registeredToolCount}
-            status={<WebMcpStatus />}
-            tools={webMcp.registeredTools}
-            webMcpAvailable={webMcp.supported && webMcp.status !== "error"}
-          />
+          <div className={styles["panelStatus"]}>
+            <WebMcpStatus />
+            <span>
+              {webMcp.registeredToolCount === 0
+                ? "No tools registered on this page"
+                : `${String(webMcp.registeredToolCount)} tool${webMcp.registeredToolCount === 1 ? "" : "s"} available on this page`}
+            </span>
+          </div>
+          <div aria-label="Agent panel sections" className={styles["panelTabs"]} role="tablist">
+            {(
+              [
+                ["activity", `Activity${activityCount > 0 ? ` · ${String(activityCount)}` : ""}`],
+                ["tools", "Tools"],
+                ["guide", "Guide"],
+              ] as const
+            ).map(([tab, label]) => (
+              <button
+                aria-selected={panelTab === tab}
+                key={tab}
+                onClick={() => {
+                  userChoseTab.current = true;
+                  setPanelTab(tab);
+                }}
+                role="tab"
+                type="button"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {panelTab === "guide" ? (
+            <AgentGuide />
+          ) : panelTab === "tools" ? (
+            <AgentTools tools={webMcp.registeredTools} />
+          ) : (
+            <AgentActivityRail
+              activities={webMcp.activities}
+              initiallyExpanded
+              registeredToolCount={webMcp.registeredToolCount}
+              webMcpAvailable={webMcp.supported && webMcp.status !== "error"}
+            />
+          )}
         </aside>
       ) : null}
     </div>

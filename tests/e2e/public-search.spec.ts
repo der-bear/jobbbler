@@ -18,8 +18,8 @@ test.describe("public job search workspace", () => {
     await page.goto(seededSearch);
 
     await expect(page.getByRole("main")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Jobbbler" })).toBeVisible();
-    await expect(page.getByRole("searchbox", { name: "What are you looking for?" })).toHaveValue(
+    await expect(page.getByRole("link", { name: "Jobbbler", exact: true })).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: "Search jobs" })).toHaveValue(
       "senior full-stack engineer",
     );
     await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
@@ -37,7 +37,7 @@ test.describe("public job search workspace", () => {
   test("submits an outcome with Enter and writes shareable URL state", async ({ page }) => {
     await page.goto("/");
 
-    const outcome = page.getByRole("searchbox", { name: "What are you looking for?" });
+    const outcome = page.getByRole("searchbox", { name: "Search jobs" });
     await outcome.fill(exampleOutcome);
     await outcome.press("Enter");
 
@@ -95,7 +95,7 @@ test.describe("public job search workspace", () => {
     await page.goto("/");
 
     await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(/unavailable/i);
-    const outcome = page.getByRole("searchbox", { name: "What are you looking for?" });
+    const outcome = page.getByRole("searchbox", { name: "Search jobs" });
     await outcome.fill(exampleOutcome);
     await outcome.press("Enter");
 
@@ -116,7 +116,7 @@ test.describe("mobile and reduced-motion public search", () => {
   }) => {
     await page.goto(seededSearch);
 
-    await expect(page.getByRole("searchbox", { name: "What are you looking for?" })).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: "Search jobs" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Remote", pressed: true })).toBeVisible();
     await expect(resultCard(page, seededRole.title, seededRole.company)).toBeVisible();
     await expect

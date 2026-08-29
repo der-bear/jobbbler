@@ -479,7 +479,10 @@ export function ApplicationView({
         <Link className={styles["backLink"]} href={`/jobs/${encodeURIComponent(job.id)}`}>
           <ArrowLeftIcon aria-hidden="true" /> Back to role
         </Link>
-        <h1>Apply for this role</h1>
+        <h1>Review before you apply</h1>
+        <p className={styles["heroSub"]}>
+          See exactly what will be sent. Nothing is shared until you approve it.
+        </p>
         <p className={styles["role"]}>
           <strong>{job.title}</strong> · {job.organizationName}
         </p>

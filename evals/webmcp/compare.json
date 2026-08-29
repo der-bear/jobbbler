@@ -1,7 +1,12 @@
 {
   "version": 1,
   "route": "/compare?id=job_00000001-0000-7000-8000-000000000001&id=job_00000004-0000-7000-8000-000000000004&id=job_0000000d-0000-7000-8000-00000000000d",
-  "registeredTools": ["get_comparison", "remove_job_from_comparison"],
+  "registeredTools": [
+    "get_comparison",
+    "remove_job_from_comparison",
+    "add_job_to_comparison",
+    "plan_job_workflow"
+  ],
   "cases": [
     {
       "id": "compare-direct-read-current-set",
@@ -92,18 +97,21 @@
       }
     },
     {
-      "id": "compare-wrong-order-add-job",
-      "category": "wrong_order",
+      "id": "compare-direct-add-job",
+      "category": "direct",
       "context": {
         "comparisonJobIds": [
           "job_00000001-0000-7000-8000-000000000001",
           "job_00000004-0000-7000-8000-000000000004"
         ]
       },
-      "prompt": "Add job_0000000d-0000-7000-8000-00000000000d to this comparison.",
+      "prompt": "Also add job job_7c2f1de0-3a4b-4c5d-8e6f-9a0b1c2d3e4f to this comparison.",
       "expected": {
-        "kind": "clarification",
-        "mustMention": ["search or job details", "add"]
+        "kind": "tool_call",
+        "tool": "add_job_to_comparison",
+        "arguments": {
+          "jobId": "job_7c2f1de0-3a4b-4c5d-8e6f-9a0b1c2d3e4f"
+        }
       }
     },
     {

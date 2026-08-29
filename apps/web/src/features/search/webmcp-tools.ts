@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  entityIdSchema,
   jobSearchInputSchema,
   type JobSearchCriteria,
   type JobSearchInput,
@@ -136,6 +137,21 @@ export interface SearchWebMcpState {
   readonly total: number | null;
 }
 
+const openJobInputSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    jobId: {
+      type: "string",
+      description: "A job ID returned by search_jobs.",
+      pattern: "^job_[0-9a-f-]{36}$",
+    },
+  },
+  required: ["jobId"],
+} as const satisfies JsonSchema;
+
+const openJobInput = z.strictObject({ jobId: entityIdSchema });
+
 export interface SearchToolDependencies {
   searchJobs(
     input: JobSearchInput,
@@ -144,6 +160,7 @@ export interface SearchToolDependencies {
   getSearchState(): JobSearchInput | SearchWebMcpState | null;
   onSearchCommitted(input: JobSearchInput, result: SearchJobsResult): Promise<void> | void;
   onNavigate(href: string): Promise<void> | void;
+  getCriteriaSearch?(): string;
 }
 
 type SearchToolOutput = CompletedWebMcpResult<JsonValue> | SafeWebMcpErrorResult;
@@ -194,7 +211,7 @@ export function createSearchToolManifests(
     description:
       "Search Jobbbler's source-backed technology roles. Use for a new or refined job search. Applies validated criteria to the visible page and returns compact matches with IDs.",
     inputSchema: searchInputJsonSchema,
-    annotations: { readOnlyHint: true, untrustedContentHint: true },
+    annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
       try {
         const parsed = publicJobSearchInput.parse(input);
@@ -259,5 +276,30 @@ export function createSearchToolManifests(
     },
   };
 
-  return [searchJobs, getSearchState];
+  const openJobDetails: ToolManifest<unknown, SearchToolOutput> = {
+    name: "open_job_details",
+    purpose: "Open one role's page from the current results so its detail tools become available.",
+    description:
+      "Navigate to a role returned by search_jobs, keeping the current criteria. After this call the page exposes get_job_details and compare_jobs instead of the search tools.",
+    inputSchema: openJobInputSchema,
+    annotations: { readOnlyHint: false, untrustedContentHint: true },
+    async execute(input, { signal }) {
+      try {
+        const parsed = openJobInput.parse(input);
+        const criteriaSearch = dependencies.getCriteriaSearch?.() ?? "";
+        await dependencies.onNavigate(
+          `/jobs/${encodeURIComponent(parsed.jobId)}${criteriaSearch.length === 0 ? "" : `?${criteriaSearch}`}`,
+        );
+        return completedWebMcpResult({
+          summary: "Opened the role page. Its detail tools replace the search tools.",
+          data: { jobId: parsed.jobId, route: "/jobs/:jobId" },
+          resources: [{ type: "job", id: parsed.jobId, label: "Opened role" }],
+        });
+      } catch (error) {
+        return safeWebMcpErrorResult(error, signal, "Provide one job ID from search_jobs.");
+      }
+    },
+  };
+
+  return [searchJobs, getSearchState, openJobDetails];
 }

@@ -12,12 +12,6 @@ import type { ToolActivity } from "@jobbbler/contracts";
 
 import styles from "./agent-activity-rail.module.css";
 
-export interface RegisteredToolListItem {
-  readonly name: string;
-  readonly purpose: string;
-  readonly readOnly: boolean;
-}
-
 export interface AgentActivityRailProps {
   readonly activities: readonly ToolActivity[];
   readonly className?: string;
@@ -25,7 +19,6 @@ export interface AgentActivityRailProps {
   readonly maxItems?: number;
   readonly registeredToolCount: number;
   readonly status?: ReactNode;
-  readonly tools?: readonly RegisteredToolListItem[];
   readonly webMcpAvailable: boolean;
 }
 
@@ -41,15 +34,15 @@ const activityPresentation: Readonly<Record<ToolActivity["status"], ActivityPres
   },
   completed: {
     icon: <CheckCircleIcon aria-hidden="true" size={15} weight="fill" />,
-    label: "Completed",
+    label: "Complete",
   },
   requires_user_action: {
     icon: <WarningCircleIcon aria-hidden="true" size={15} weight="fill" />,
-    label: "Approval needed",
+    label: "Needs user",
   },
   failed: {
     icon: <WarningCircleIcon aria-hidden="true" size={15} weight="fill" />,
-    label: "Needs attention",
+    label: "Error",
   },
   cancelled: {
     icon: <XIcon aria-hidden="true" size={15} weight="bold" />,
@@ -61,8 +54,11 @@ function compactTime(value: string): string {
   return `${value.slice(11, 16)} UTC`;
 }
 
-function toolLabel(toolName: string): string {
-  return toolName.replaceAll("_", " ");
+function durationLabel(startedAt: string, completedAt: string | null): string | null {
+  if (completedAt === null) return null;
+  const elapsed = Date.parse(completedAt) - Date.parse(startedAt);
+  if (!Number.isFinite(elapsed) || elapsed < 0) return null;
+  return elapsed < 1_000 ? `${String(elapsed)} ms` : `${(elapsed / 1_000).toFixed(1)} s`;
 }
 
 function toolCountLabel(count: number): string {
@@ -86,7 +82,6 @@ export function AgentActivityRail({
   maxItems = 4,
   registeredToolCount,
   status,
-  tools = [],
   webMcpAvailable,
 }: AgentActivityRailProps) {
   const itemLimit = Math.max(0, maxItems);
@@ -136,26 +131,11 @@ export function AgentActivityRail({
         </header>
         <p className={styles["toolCount"]}>{toolCountLabel(registeredToolCount)}</p>
 
-        {tools.length > 0 ? (
-          <section aria-label="Available WebMCP tools" className={styles["toolList"]}>
-            <h3>Tools an agent can call here</h3>
-            <ul>
-              {tools.map((tool) => (
-                <li key={tool.name}>
-                  <div>
-                    <code>{tool.name}</code>
-                    {tool.readOnly ? <span>read-only</span> : null}
-                  </div>
-                  <p>{tool.purpose}</p>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
         {visibleActivities.length === 0 ? (
           <p className={styles["empty"]} role="status">
-            Nothing changed by an agent in this session. You can use every feature yourself.
+            Ready for your agent. This page offers{" "}
+            {registeredToolCount === 0 ? "no" : String(registeredToolCount)} safe action
+            {registeredToolCount === 1 ? "" : "s"} — and everything also works by hand.
           </p>
         ) : (
           <ol aria-live="polite" aria-relevant="additions text" className={styles["timeline"]}>
@@ -170,12 +150,17 @@ export function AgentActivityRail({
                 >
                   <span className={styles["marker"]}>{presentation.icon}</span>
                   <div className={styles["entry"]}>
-                    <div className={styles["entryHeader"]}>
-                      <code>{toolLabel(activity.toolName)}</code>
-                      <span className={styles["state"]}>{presentation.label}</span>
-                    </div>
                     <p>{activity.safeSummary}</p>
-                    <time dateTime={time}>{compactTime(time)}</time>
+                    <div className={styles["entryHeader"]}>
+                      <code>{activity.toolName}</code>
+                      <span className={styles["state"]}>{presentation.label}</span>
+                      {durationLabel(activity.startedAt, activity.completedAt) === null ? null : (
+                        <span className={styles["state"]}>
+                          {durationLabel(activity.startedAt, activity.completedAt)}
+                        </span>
+                      )}
+                      <time dateTime={time}>{compactTime(time)}</time>
+                    </div>
                   </div>
                 </li>
               );

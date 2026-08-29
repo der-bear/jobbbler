@@ -1,6 +1,7 @@
 .workspace {
   display: grid;
   grid-template-columns: minmax(250px, 290px) minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
   min-block-size: calc(100dvh - 69px);
 }
 
@@ -10,41 +11,140 @@
     clamp(280px, var(--activity-panel-size, 360px), 45vw);
 }
 
-.filterRail {
-  border-inline-end: 1px solid var(--color-line);
-  padding: clamp(26px, 3vw, 40px) clamp(20px, 2vw, 32px) 48px;
-}
-
-.railSearch {
+.hero {
+  grid-column: 1 / -1;
   display: grid;
-  gap: 7px;
-  padding-block-end: 10px;
+  justify-items: center;
+  gap: 16px;
+  border-block-end: 1px solid var(--color-line);
+  padding: clamp(26px, 4vw, 44px) clamp(24px, 4vw, 64px) clamp(24px, 3vw, 34px);
 }
 
-.railSearch > span {
+.hero h1 {
+  margin: 0;
+  font-size: clamp(24px, 2.6vw, 34px);
+  font-weight: 640;
+  letter-spacing: -0.035em;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.heroSub {
+  margin: -6px 0 0;
   color: var(--color-ink-muted);
-  font-size: 11px;
+  font-size: 13px;
+  text-align: center;
 }
 
-.railSearch input {
-  min-inline-size: 0;
-  inline-size: 100%;
+.hero[data-compact="true"] .heroSub {
+  display: none;
+}
+
+.hero[data-compact="true"] {
+  justify-items: start;
+  gap: 0;
+  padding-block: 14px;
+}
+
+.hero[data-compact="true"] h1 {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.hero[data-compact="true"] .heroSearch {
+  inline-size: min(560px, 100%);
+}
+
+.hero[data-compact="true"] .heroField input {
+  min-block-size: 34px;
+}
+
+.hero[data-compact="true"] .heroSearch > button {
+  padding: 8px 16px;
+}
+
+.heroSearch {
+  display: flex;
+  inline-size: min(680px, 100%);
+  align-items: center;
+  gap: 4px;
   border: 1px solid var(--color-line-strong);
-  border-radius: var(--radius-sm);
-  outline: 0;
+  border-radius: 999px;
   background: var(--color-surface);
-  color: var(--color-ink);
-  padding: 9px 11px;
-  font-size: 14px;
-  font-weight: 540;
+  padding: 4px 4px 4px 16px;
 }
 
-.railSearch input:focus-visible {
+.heroSearch:focus-within {
   border-color: var(--jb-signal);
 }
 
-.railSearch input::placeholder {
+.heroField {
+  display: flex;
+  flex: 1;
+  min-inline-size: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.heroField svg {
+  flex: 0 0 auto;
   color: var(--color-ink-subtle);
+}
+
+.heroField input {
+  flex: 1;
+  min-inline-size: 0;
+  min-block-size: 42px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 14px;
+}
+
+.heroField input::placeholder {
+  color: var(--color-ink-subtle);
+}
+
+.heroField:last-of-type {
+  flex: 0 1 220px;
+}
+
+.heroDivider {
+  align-self: stretch;
+  inline-size: 1px;
+  margin-block: 7px;
+  background: var(--color-line);
+}
+
+.heroSearch > button {
+  border: 0;
+  border-radius: 999px;
+  background: var(--jb-signal);
+  color: var(--jb-signal-contrast);
+  font-size: 13px;
+  font-weight: 650;
+  padding: 11px 22px;
+}
+
+.heroSearch > button:hover {
+  background: var(--jb-signal-strong);
+}
+
+.filterRail {
+  grid-row: 2;
+  border-inline-end: 1px solid var(--color-line);
+  padding: clamp(22px, 3vw, 32px) clamp(20px, 2vw, 32px) 48px;
+}
+
+.railTitle {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .resultsHeader,
@@ -58,6 +158,7 @@
 
 .activityPanel {
   position: relative;
+  grid-row: 2;
   min-inline-size: 0;
   border-inline-start: 1px solid var(--color-line);
   padding: clamp(24px, 2.6vw, 40px) clamp(18px, 2vw, 28px) 48px;
@@ -131,6 +232,44 @@
 }
 
 .activityPanelClose:hover {
+  color: var(--color-ink);
+}
+
+.panelStatus {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  margin-block-end: 14px;
+}
+
+.panelStatus > span {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+}
+
+.panelTabs {
+  display: flex;
+  gap: 4px;
+  margin-block-end: 16px;
+  border-block-end: 1px solid var(--color-line);
+}
+
+.panelTabs button {
+  border: 0;
+  border-block-end: 2px solid transparent;
+  background: transparent;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 10px 9px;
+}
+
+.panelTabs button:hover {
+  color: var(--color-ink);
+}
+
+.panelTabs button[aria-selected="true"] {
+  border-block-end-color: var(--jb-signal);
   color: var(--color-ink);
 }
 
@@ -281,6 +420,7 @@
 }
 
 .results {
+  grid-row: 2;
   min-inline-size: 0;
   inline-size: 100%;
   max-inline-size: 1100px;
@@ -288,9 +428,42 @@
 }
 
 .resultsHeader {
+  position: relative;
   align-items: flex-end;
   border-block-end: 1px solid var(--color-line);
   padding-block-end: 18px;
+}
+
+.resultsHeader::after {
+  content: "";
+  position: absolute;
+  inset-block-end: -1px;
+  inset-inline-start: 0;
+  block-size: 2px;
+  inline-size: 100%;
+  background: var(--jb-signal);
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.resultsHeader[data-agent-pulse="true"]::after {
+  animation: agentPulse 0.9s var(--ease-standard);
+}
+
+@keyframes agentPulse {
+  0% {
+    opacity: 1;
+    transform: scaleX(0);
+  }
+  60% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
 }
 
 .resultsHeader h1 {
@@ -544,6 +717,33 @@
     padding-block-end: 86px;
   }
 
+  .hero {
+    padding: 22px 20px;
+  }
+
+  .heroSearch {
+    flex-wrap: wrap;
+    border-radius: var(--radius-lg);
+    padding: 6px 10px;
+  }
+
+  .heroDivider {
+    display: none;
+  }
+
+  .heroField {
+    flex: 1 1 100%;
+  }
+
+  .heroField:last-of-type {
+    flex: 1 1 60%;
+  }
+
+  .heroSearch > button {
+    flex: 1 1 30%;
+    border-radius: var(--radius-sm);
+  }
+
   .filterRail {
     border-inline-end: 0;
     border-block-end: 1px solid var(--color-line);
@@ -605,6 +805,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .resultsHeader[data-agent-pulse="true"]::after {
+    animation: none;
+  }
+
   .skeletonRow span {
     animation: none;
   }

@@ -156,5 +156,66 @@ export function createCompareToolManifests(
     },
   };
 
-  return [getComparison, removeJobFromComparison];
+  const addJobInputSchema = {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      jobId: {
+        type: "string",
+        description: "A job ID from search_jobs or get_job_details to add to this comparison.",
+        pattern: "^job_[0-9a-f-]{36}$",
+      },
+    },
+    required: ["jobId"],
+  } as const satisfies JsonSchema;
+  const addJobInput = z.strictObject({ jobId: jobIdSchema });
+
+  const addJobToComparison: ToolManifest<unknown, CompareToolOutput> = {
+    name: "add_job_to_comparison",
+    purpose: "Add one more role to the current comparison and update its shareable URL.",
+    description:
+      "Add a job by ID to the comparison already open. The comparison holds at most three distinct roles; the visible page and URL update to include the new set.",
+    inputSchema: addJobInputSchema,
+    annotations: { readOnlyHint: false, untrustedContentHint: true },
+    async execute(input, { signal }) {
+      try {
+        const parsed = addJobInput.parse(input);
+        const current = selectedJobIds(dependencies);
+        if (current.includes(parsed.jobId)) {
+          throw new z.ZodError([
+            { code: "custom", path: ["jobId"], message: "The job is already in this comparison." },
+          ]);
+        }
+        if (current.length >= 3) {
+          throw new z.ZodError([
+            {
+              code: "custom",
+              path: ["jobId"],
+              message: "The comparison already holds three roles. Remove one first.",
+            },
+          ]);
+        }
+        const jobIds = [...current, parsed.jobId];
+        const criteriaSearch = dependencies.getCriteriaSearch?.() ?? "";
+        const parameters = new URLSearchParams(criteriaSearch);
+        parameters.delete("id");
+        for (const id of jobIds) parameters.append("id", id);
+        await dependencies.onNavigate(`/compare?${parameters.toString()}`);
+        await dependencies.onComparisonCommitted({ jobIds });
+        return completedWebMcpResult({
+          summary: `Added the role. The comparison now holds ${String(jobIds.length)} of 3.`,
+          data: { jobIds },
+          facts: [{ key: "selected", value: jobIds.length }],
+        });
+      } catch (error) {
+        return safeWebMcpErrorResult(
+          error,
+          signal,
+          "Provide one new job ID; a comparison holds at most three distinct roles.",
+        );
+      }
+    },
+  };
+
+  return [getComparison, removeJobFromComparison, addJobToComparison];
 }

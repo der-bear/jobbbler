@@ -1,7 +1,7 @@
 {
   "version": 1,
   "route": "/apply/:draftId",
-  "registeredTools": ["get_application_state"],
+  "registeredTools": ["get_application_state", "plan_job_workflow"],
   "cases": [
     {
       "id": "application-direct-read-state",
@@ -231,6 +231,36 @@
         "kind": "tool_call",
         "tool": "request_data_permission",
         "arguments": {}
+      }
+    },
+    {
+      "id": "application-direct-approve-data-permission-after-user-decision",
+      "category": "direct",
+      "registeredTools": ["get_application_state", "approve_data_permission"],
+      "context": {
+        "application": {
+          "stage": "permission",
+          "agentAuthorityStatus": "granted",
+          "dataPermissionStatus": "requested",
+          "finalConfirmationReady": false,
+          "applyMode": "internal"
+        },
+        "pendingInteraction": {
+          "id": "interaction_9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d",
+          "kind": "data_consent",
+          "recipient": "Jobbbler Demo Systems",
+          "fieldKeys": ["full_name", "email", "motivation"]
+        },
+        "userDecision": "The user explicitly approved this exact disclosure in the agent client."
+      },
+      "prompt": "I approve sharing exactly those fields with Jobbbler Demo Systems.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "approve_data_permission",
+        "arguments": {
+          "requestId": "interaction_9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d",
+          "confirmed": true
+        }
       }
     },
     {

@@ -1,7 +1,12 @@
 {
   "version": 1,
   "route": "/saved",
-  "registeredTools": ["get_saved_alerts", "set_job_alert_state"],
+  "registeredTools": [
+    "get_saved_alerts",
+    "set_job_alert_state",
+    "open_saved_search",
+    "plan_job_workflow"
+  ],
   "cases": [
     {
       "id": "saved-direct-read-alerts",
@@ -156,6 +161,29 @@
         },
         "field": "scheduleId",
         "mustMention": ["schedule", "workspace"]
+      }
+    },
+    {
+      "id": "saved-direct-open-saved-search",
+      "category": "direct",
+      "context": {
+        "alerts": [
+          {
+            "savedSearchId": "saved_search_1c9a2b7e-63f0-4a5d-8f21-9adf5f4b2c10",
+            "name": "Senior product roles in Europe",
+            "scheduleId": "schedule_7b1f2c3d-4e5a-4b6c-8d7e-9f0a1b2c3d4e",
+            "enabled": true,
+            "frequency": "daily"
+          }
+        ]
+      },
+      "prompt": "Open my senior product search with its saved filters.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "open_saved_search",
+        "arguments": {
+          "savedSearchId": "saved_search_1c9a2b7e-63f0-4a5d-8f21-9adf5f4b2c10"
+        }
       }
     }
   ]

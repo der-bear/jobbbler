@@ -148,9 +148,18 @@ export function safeWebMcpErrorResult(
   }
 
   if (error instanceof ZodError) {
+    const issues = error.issues
+      .slice(0, 3)
+      .map((issue) => {
+        const path = issue.path.map(String).join(".");
+        const message = issue.message.slice(0, 120);
+        return path.length === 0 ? message : `${path}: ${message}`;
+      })
+      .join(" · ")
+      .slice(0, 360);
     return failedResult({
       code: "VALIDATION",
-      message: validationMessage,
+      message: issues.length === 0 ? validationMessage : `${validationMessage} ${issues}`,
       retryable: false,
     });
   }

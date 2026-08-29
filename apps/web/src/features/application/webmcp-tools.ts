@@ -391,7 +391,7 @@ function approvePermissionTool(
   dependencies: ApplicationToolDependencies,
 ): ToolManifest<unknown, ApplicationToolOutput> {
   return {
-    name: "approve_application_data_permission",
+    name: "approve_data_permission",
     purpose: "Record explicit agent-mediated permission for the exact reviewed disclosure.",
     description:
       "Use only after the user explicitly approves the pending disclosure in the agent client. The server records the agent-mediated channel, request, reviewed payload, recipient, purpose, notice, and affirmative action; permission remains withdrawable before submission.",

@@ -1,0 +1,145 @@
+.guide {
+  display: grid;
+  gap: 18px;
+  justify-items: start;
+}
+
+.guide section {
+  display: grid;
+  gap: 10px;
+}
+
+.guide h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.guide ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-inline-start: 18px;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.guide ol em {
+  color: var(--color-ink);
+  font-style: normal;
+  font-weight: 550;
+}
+
+.guide ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guide ul li > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.guide code {
+  color: var(--color-ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.guide ul li > div > span {
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  color: var(--color-ink-subtle);
+  font-size: 9px;
+  padding: 1px 7px;
+}
+
+.guide ul li p {
+  margin: 3px 0 0;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.empty {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.moreLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-signal-strong);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.moreLink:hover {
+  text-decoration: underline;
+}
+
+.note {
+  margin: 0;
+  color: var(--color-ink-subtle);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.note code {
+  font-size: 10px;
+}
+
+.workflows {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workflows strong {
+  font-size: 12px;
+  font-weight: 630;
+}
+
+.workflows p {
+  margin: 2px 0 0;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.catalog {
+  border-block-start: 1px solid var(--color-line);
+  padding-block-start: 16px;
+}
+
+.catalogRoute {
+  display: grid;
+  gap: 8px;
+  margin-block-start: 14px;
+}
+
+.catalogRoute h4 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.catalogRoute h4 code {
+  color: var(--color-ink-subtle);
+  font-size: 10px;
+  font-weight: 500;
+}

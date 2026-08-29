@@ -200,7 +200,7 @@ describe("application-route WebMCP tools", () => {
     const requestedPermissionTools = createApplicationToolManifests(requestedPermissionDeps);
     expect(names(requestedPermissionTools)).toEqual([
       "get_application_state",
-      "approve_application_data_permission",
+      "approve_data_permission",
     ]);
     const approvedPermission = await requestedPermissionTools[1]!.execute(
       { requestId: consentRequestId, confirmed: true },
