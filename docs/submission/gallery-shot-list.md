@@ -1,37 +1,22 @@
 # Jobbbler gallery shot list
 
-Use five to seven clean 3:2 images. Capture real application state, remove
-personal information, and ensure the focal content remains readable in Devpost
-crops.
+The current gallery uses four clean 3:2 captures from the verified local
+build. Each image shows real application state, contains no personal
+information, and remains readable in Devpost crops. Recapture the same four
+stories after the final interface pass.
 
-1. **Search with evidence** — Search workspace with human-readable filters,
-   job cards, source labels, and the global Agent layer showing its stable core
-   and current contextual tools. Caption: “A job search stays understandable
-   before and after agent help.”
-2. **Visible agent collaboration** — Search results beside the Agent panel's
-   Activity tab: a two-level entry with the human sentence first, then
-   `search_jobs · Complete` and its duration. The Guide / Activity / Tools
-   hierarchy stays visible. Caption: “Tool work is visible at the point of
-   effect.”
-3. **Comparison workspace** — Three roles in the comparison view with
-   match/evidence structure. Caption: “Compare concrete trade-offs instead of
-   losing context across tabs.”
-4. **The delta moment** — Saved page with a card reading “Checking daily” and
-   “N changes since the last check · M matching”, beside the agent client
-   showing the `get_latest_search_update` result (“Since the last check: …”).
-   Caption: “Only tells you what changed — the server keeps checking after
-   the tab closes.”
-5. **Verified alert** — Saved workspace with schedule state and a
-   plain-language delivery status. Blur or avoid all email addresses.
-   Caption: “Alerts require a verified email and report delivery truthfully.”
-6. **Agent-mediated permission (climax)** — External agent presentation beside
-   the resulting internal fictional-demo application permission state, with
-   the exact recipient, purpose, and fields on screen. Caption: “Permission
-   applies only to this exact application. What you approve becomes a record
-   of what you approved.”
-7. **Mobile state** — Narrow viewport showing Saved or search with the
-   “Agent activity” button or opened panel. Caption: “The workflow remains
-   usable and legible on small screens.”
+1. **`media/01-search-webmcp.png` — Search with evidence**
+   - Caption: “A natural-language job search becomes explicit filters, ranked evidence, and inspectable results.”
+   - Alt text: “Jobbbler search page showing a plain-language request for senior remote product and software engineering roles in Europe, explicit filters, and three ranked matches with supporting evidence.”
+2. **`media/04-agentic-web-proof.png` — Agentic web proof of value**
+   - Caption: “A familiar website can expose structured actions directly to a compatible browser agent—without a separate MCP server.”
+   - Alt text: “Jobbbler About WebMCP page explaining how a user describes an outcome in an agent client, opens Jobbbler, sees the same result, and keeps consequential choices explicit.”
+3. **`media/03-application-permission.png` — Agent-mediated permission**
+   - Caption: “The exact recipient, purpose, and disclosed fields are reviewed before request-bound approval.”
+   - Alt text: “Dark-mode application workspace for a synthetic Product Design Lead role, showing the data-permission stage, exact disclosure fields, recipient and purpose, plus a required final confirmation.”
+4. **`media/02-saved-alert.png` — Verified alert**
+   - Caption: “A verified private workspace turns a saved search into a durable, truthfully reported alert.”
+   - Alt text: “Dark-mode Saved page showing a verified private workspace, one monitored platform-role search, and confirmations that email verification and alert activation succeeded.”
 
 ## Capture checklist
 
@@ -42,4 +27,4 @@ crops.
 - Verify that each image corresponds to a feature currently available in the
   submitted build — including the global Agent layer and its current three-tab
   hierarchy.
-- Final files/alt text: **[ADD_FILE_NAMES_AND_ALT_TEXT_BEFORE_SUBMISSION]**.
+- Final files and alt text are listed above and match the checked-in media.

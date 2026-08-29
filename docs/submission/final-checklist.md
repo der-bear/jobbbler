@@ -2,8 +2,7 @@
 
 ## Claims and links
 
-- [ ] Replace **[PRODUCTION_URL]**, **[VIDEO_URL]**, and **[REPOSITORY_URL]**
-      in `devpost-copy.md`.
+- [ ] Replace **[PRODUCTION_URL]** and **[VIDEO_URL]** in `devpost-copy.md`.
 - [ ] Confirm the live URL loads signed out and the fallback UI works without
       WebMCP.
 - [ ] Confirm the submitted build, video, gallery, and Devpost copy describe
@@ -11,7 +10,7 @@
 - [ ] Confirm the Devpost copy carries the tagline “Find once. Stay updated.
       Apply with control.” and both formulas (“Not an AI job board…” and
       “Jobbbler does not only expose tools…”) verbatim.
-- [ ] Verify public repository, license, local-run instructions, and any
+- [x] Verify public repository, MIT license, local-run instructions, and any
       required attribution.
 - [ ] Remove any claim that cannot be shown in the recorded build.
 
@@ -60,6 +59,9 @@
       passed; focused E2E 11/11; local PostgreSQL 15 contract 30/30.
 - [ ] Validate gallery image crops, captions, alt text, dimensions, and
       file-size limits on Devpost.
+- [x] Validate the current four checked-in gallery crops, authored captions,
+      3:2 dimensions, and file-size limits; recapture and revalidate them after
+      the final interface pass.
 - [ ] Check spelling, team/attribution fields, rules acknowledgement, and URLs
       immediately before submission.
 - [ ] Do not submit from this checklist. Obtain the user’s action-time

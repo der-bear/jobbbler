@@ -38,5 +38,5 @@ simply helps people find work.”**
 - If `get_search_state` is shown, include its explicit truncation summary when
   bounded criteria omit or shorten values; do not present a partial state as a
   complete one.
-- Replace these before publishing: **[PRODUCTION_URL]**, **[VIDEO_URL]**,
-  **[REPOSITORY_URL]**.
+- Keep narration concrete: describe what is currently visible, not future roadmap claims.
+- Replace these before publishing: **[PRODUCTION_URL]** and **[VIDEO_URL]**. Repository: https://github.com/der-bear/jobbbler.

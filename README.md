@@ -1,5 +1,7 @@
 # Jobbbler
 
+[![CI](https://github.com/der-bear/jobbbler/actions/workflows/ci.yml/badge.svg)](https://github.com/der-bear/jobbbler/actions/workflows/ci.yml)
+
 **Find once. Stay updated. Apply with control.**
 
 Job search is repetitive. People rerun the same queries every day, rebuild the
