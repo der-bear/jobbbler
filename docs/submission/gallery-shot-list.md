@@ -1,13 +1,19 @@
 # Jobbbler gallery shot list
 
-Use 4–6 clean 3:2 images. Capture real application state, remove personal information, and ensure the focal content remains readable in Devpost crops.
+The final gallery uses four clean 3:2 captures from the verified local build. Each image shows real application state, contains no personal information, and remains readable in Devpost crops.
 
-1. **Search with evidence** — Search workspace with human-readable filters, job cards, source labels, and a compact WebMCP-ready state. Caption: “A job search stays understandable before and after agent help.”
-2. **Visible agent collaboration** — Search plus Agent Activity rail showing a completed `search_jobs` tool call with safe summary and affected results. Caption: “Tool work is visible at the point of effect.”
-3. **Comparison workspace** — Three roles in the comparison view with match/evidence structure. Caption: “Compare concrete trade-offs instead of losing context across tabs.”
-4. **Verified alert** — Saved workspace with schedule state and a latest-run/delivery status. Blur or avoid all email addresses. Caption: “Durable alerts require verification and report delivery truthfully.”
-5. **Agent-mediated permission** — External agent presentation beside the resulting internal fictional-demo application permission state. Caption: “The exact recipient, purpose, and fields are reviewed before a request-bound approval is recorded.”
-6. **Mobile state** — Narrow viewport showing Saved or search with the activity/filter sheet pattern. Caption: “The workflow remains usable and legible on small screens.”
+1. **`media/01-search-webmcp.png` — Search with evidence**
+   - Caption: “A natural-language job search becomes explicit filters, ranked evidence, and inspectable results.”
+   - Alt text: “Jobbbler search page showing a plain-language request for senior remote product and software engineering roles in Europe, explicit filters, and three ranked matches with supporting evidence.”
+2. **`media/02-saved-alert.png` — Verified alert**
+   - Caption: “A verified private workspace turns a saved search into a durable, truthfully reported alert.”
+   - Alt text: “Dark-mode Saved page showing a verified private workspace, one monitored platform-role search, and confirmations that email verification and alert activation succeeded.”
+3. **`media/03-application-permission.png` — Agent-mediated permission**
+   - Caption: “The exact recipient, purpose, and disclosed fields are reviewed before request-bound approval.”
+   - Alt text: “Dark-mode application workspace for a synthetic Product Design Lead role, showing the data-permission stage, exact disclosure fields, recipient and purpose, plus a required final confirmation.”
+4. **`media/04-agentic-web-proof.png` — Agentic web proof of value**
+   - Caption: “A familiar website can expose structured actions directly to a compatible browser agent—without a separate MCP server.”
+   - Alt text: “Jobbbler About WebMCP page explaining how a user describes an outcome in an agent client, opens Jobbbler, sees the same result, and keeps consequential choices explicit.”
 
 ## Capture checklist
 
@@ -15,4 +21,4 @@ Use 4–6 clean 3:2 images. Capture real application state, remove personal info
 - Do not include browser chrome, unrelated tabs, OS notifications, developer tools, secrets, real applicants, or real employer branding.
 - Keep synthetic organization names visible where a demo application is shown.
 - Verify that each image corresponds to a feature currently available in the submitted build.
-- Final files/alt text: **[ADD_FILE_NAMES_AND_ALT_TEXT_BEFORE_SUBMISSION]**.
+- Final files and alt text are listed above and match the checked-in media.
