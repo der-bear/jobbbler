@@ -530,7 +530,7 @@ button.jb-chip {
 }
 
 .jb-range:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--jb-focus) 35%, transparent);
+  outline: 3px solid var(--jb-focus);
   outline-offset: 4px;
   border-radius: 999px;
 }

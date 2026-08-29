@@ -19,7 +19,7 @@
 
 .summary:focus-visible {
   border-radius: var(--radius-sm);
-  outline: 3px solid color-mix(in srgb, var(--jb-focus) 30%, transparent);
+  outline: 3px solid var(--jb-focus);
   outline-offset: 2px;
 }
 
@@ -101,9 +101,10 @@
   font-size: 12px;
 }
 
-.form input:focus {
+.form input:focus-visible {
   border-color: var(--jb-signal);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--jb-focus) 24%, transparent);
+  outline: 3px solid var(--jb-focus);
+  outline-offset: 2px;
 }
 
 .form button {
