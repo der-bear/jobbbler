@@ -1,0 +1,85 @@
+import { describe, expect, it } from "vitest";
+
+import type { JobSummary, SearchJobsResult } from "@jobbbler/contracts";
+
+import { deriveSearchPresentation } from "./search-workspace";
+
+function job(index: number): JobSummary {
+  return {
+    id: `job_${String(index).padStart(8, "0")}`,
+    organizationId: `org_${String(index).padStart(8, "0")}`,
+    organizationName: `Company ${String(index)}`,
+    title: `Role ${String(index)}`,
+    summary: "A source-backed technology role.",
+    categories: ["software_engineering"],
+    workModel: "remote",
+    employmentType: "full_time",
+    seniority: "senior",
+    locations: ["Europe"],
+    skills: ["TypeScript"],
+    salary: null,
+    source: { key: "demo", label: "Demo", url: null },
+    applyMode: "internal",
+    status: "open",
+    publishedAt: "2026-08-29T10:00:00.000Z",
+    updatedAt: "2026-08-29T10:00:00.000Z",
+  };
+}
+
+function result(count: number): SearchJobsResult {
+  return {
+    jobs: Array.from({ length: count }, (_, index) => job(index)),
+    total: count,
+    nextCursor: null,
+    criteria: {
+      query: null,
+      categories: [],
+      workModels: [],
+      seniorities: [],
+      locations: [],
+      skills: [],
+      excludeKeywords: [],
+      salary: null,
+      postedWithinDays: null,
+      sort: "newest",
+      cursor: null,
+      limit: 20,
+      unresolvedAssumptions: [],
+    },
+    catalogUpdatedAt: "2026-08-29T10:00:00.000Z",
+    warnings: [],
+  };
+}
+
+describe("deriveSearchPresentation", () => {
+  it("keeps the start screen focused and limits its latest-role preview", () => {
+    const presentation = deriveSearchPresentation({ sort: "newest", limit: 20 }, result(8));
+
+    expect(presentation.landing).toBe(true);
+    expect(presentation.showFilters).toBe(false);
+    expect(presentation.heading).toBe("Latest technology roles");
+    expect(presentation.visibleJobs).toHaveLength(6);
+  });
+
+  it("shows the complete result workspace after a meaningful search", () => {
+    const presentation = deriveSearchPresentation(
+      { query: "platform", locations: ["Europe"], sort: "newest", limit: 20 },
+      result(8),
+    );
+
+    expect(presentation.landing).toBe(false);
+    expect(presentation.showFilters).toBe(true);
+    expect(presentation.heading).toBe("8 matches");
+    expect(presentation.visibleJobs).toHaveLength(8);
+  });
+
+  it("treats a freshness filter as a search even without text", () => {
+    const presentation = deriveSearchPresentation(
+      { postedWithinDays: 7, sort: "newest", limit: 20 },
+      result(3),
+    );
+
+    expect(presentation.landing).toBe(false);
+    expect(presentation.showFilters).toBe(true);
+  });
+});

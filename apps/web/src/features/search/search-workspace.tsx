@@ -6,7 +6,6 @@ import {
   BellSimpleIcon,
   ClockIcon,
   MagnifyingGlassIcon,
-  MapPinIcon,
   WarningCircleIcon,
 } from "@phosphor-icons/react";
 import Link from "next/link";
@@ -41,6 +40,9 @@ import { ApiClientError, queryApi } from "@/lib/query-client";
 import { searchInputToSearchParams, searchParamsToInput } from "@/lib/search-url";
 import { publishSearchSurfaceState, subscribeWebMcpSearchCommit } from "@/lib/webmcp-ui-bridge";
 
+import { CurrencySelector, isDisplayCurrency, type DisplayCurrency } from "./currency-selector";
+import { LocationCombobox } from "./location-combobox";
+
 import styles from "./search-workspace.module.css";
 
 const defaultSearch: JobSearchInput = {
@@ -56,7 +58,7 @@ interface SearchDraft {
   readonly location: string;
   readonly postedWithinDays: string;
   readonly minimumSalary: string;
-  readonly currency: string;
+  readonly currency: DisplayCurrency;
   readonly excludeKeywords: string;
   readonly sort: JobSearchCriteria["sort"];
 }
@@ -70,7 +72,10 @@ function draftFromInput(input: JobSearchInput): SearchDraft {
     location: input.locations?.[0] ?? "",
     postedWithinDays: input.postedWithinDays === undefined ? "" : String(input.postedWithinDays),
     minimumSalary: input.salary?.minimum === undefined ? "" : String(input.salary.minimum),
-    currency: input.salary?.currency ?? "EUR",
+    currency:
+      input.salary?.currency !== undefined && isDisplayCurrency(input.salary.currency)
+        ? input.salary.currency
+        : "EUR",
     excludeKeywords: input.excludeKeywords?.join(", ") ?? "",
     sort: input.sort ?? "relevance",
   };
@@ -118,6 +123,39 @@ function errorMessage(error: unknown): string {
     return error.message;
   }
   return "Search is temporarily unavailable. Please retry.";
+}
+
+function hasMeaningfulSearchCriteria(input: JobSearchInput): boolean {
+  return (
+    (input.query?.trim().length ?? 0) > 0 ||
+    (input.categories?.length ?? 0) > 0 ||
+    (input.workModels?.length ?? 0) > 0 ||
+    (input.seniorities?.length ?? 0) > 0 ||
+    (input.locations?.length ?? 0) > 0 ||
+    (input.skills?.length ?? 0) > 0 ||
+    (input.excludeKeywords?.length ?? 0) > 0 ||
+    input.salary !== undefined ||
+    input.postedWithinDays !== undefined ||
+    (input.limit ?? 20) > 20
+  );
+}
+
+export function deriveSearchPresentation(
+  input: JobSearchInput,
+  result: SearchJobsResult | null,
+): Readonly<{
+  heading: string;
+  landing: boolean;
+  showFilters: boolean;
+  visibleJobs: readonly JobSummary[];
+}> {
+  const landing = !hasMeaningfulSearchCriteria(input);
+  return {
+    heading: landing ? "Latest technology roles" : `${String(result?.total ?? 0)} matches`,
+    landing,
+    showFilters: !landing,
+    visibleJobs: result === null ? [] : landing ? result.jobs.slice(0, 6) : result.jobs,
+  };
 }
 
 function SearchFilters({
@@ -222,16 +260,10 @@ function SearchFilters({
           </strong>
         </span>
         <span className={styles["salaryInput"]}>
-          <select
-            aria-label="Salary currency"
-            onChange={(event) => onCommit({ ...draft, currency: event.target.value })}
+          <CurrencySelector
+            onChange={(currency) => onCommit({ ...draft, currency })}
             value={draft.currency}
-          >
-            <option value="EUR">EUR</option>
-            <option value="USD">USD</option>
-            <option value="CAD">CAD</option>
-            <option value="GBP">GBP</option>
-          </select>
+          />
           <input
             aria-label="Minimum annual salary"
             className="jb-range"
@@ -282,12 +314,15 @@ function SearchSkeleton() {
 }
 
 function JobResult({
+  displayCurrency,
   job,
   detailSearch,
 }: Readonly<{
+  displayCurrency: DisplayCurrency;
   job: JobSummary;
   detailSearch: string;
 }>) {
+  const convertedSalary = job.salary !== null && job.salary.currency !== displayCurrency;
   return (
     <article aria-label={`${job.title} at ${job.organizationName}`} className={styles["jobResult"]}>
       <div className={styles["jobSummary"]}>
@@ -299,11 +334,20 @@ function JobResult({
           <strong>{job.title}</strong>
           <small>{job.organizationName}</small>
           <span className={styles["jobMeta"]}>
-            {workModelLabel(job.workModel)} · {job.locations[0]}
+            <span>{workModelLabel(job.workModel)}</span>
+            {job.locations[0]}
           </span>
         </Link>
         <div className={styles["jobSalary"]}>
-          <strong>{salaryLabel(job.salary)}</strong>
+          <strong
+            title={
+              convertedSalary
+                ? `Converted from ${job.salary?.currency ?? "the listed currency"} using Jobbbler's fixed demo rates.`
+                : undefined
+            }
+          >
+            {salaryLabel(job.salary, displayCurrency)}
+          </strong>
           <small>{relativeFreshness(job.updatedAt)}</small>
         </div>
       </div>
@@ -402,34 +446,6 @@ export function SearchWorkspace() {
 
   useEffect(() => () => publishSearchSurfaceState(null), []);
 
-  const filterSummary = useMemo(() => {
-    const items: { readonly id: string; readonly label: string }[] = [];
-    for (const value of applied.categories ?? []) {
-      items.push({ id: `category:${value}`, label: categoryLabel(value) });
-    }
-    for (const value of applied.workModels ?? []) {
-      items.push({ id: `work:${value}`, label: workModelLabel(value) });
-    }
-    for (const value of applied.seniorities ?? []) {
-      items.push({ id: `seniority:${value}`, label: seniorityLabel(value) });
-    }
-    for (const value of applied.locations ?? []) {
-      items.push({ id: `location:${value}`, label: value });
-    }
-    if (applied.salary?.minimum !== undefined) {
-      items.push({
-        id: "salary:minimum",
-        label: `Min ${applied.salary.currency ?? "EUR"} ${Intl.NumberFormat("en").format(applied.salary.minimum)}`,
-      });
-    }
-    for (const value of applied.excludeKeywords ?? []) {
-      items.push({ id: `exclude:${value}`, label: `No ${value}` });
-    }
-    return items;
-  }, [applied]);
-
-  const landing = (applied.query ?? "") === "" && filterSummary.length === 0;
-
   const appliedSearch = useMemo(() => {
     const parameters = searchInputToSearchParams(applied);
     return parameters.size === 0 ? "" : `?${parameters.toString()}`;
@@ -440,6 +456,12 @@ export function SearchWorkspace() {
     parameters.set("create", "1");
     return `/saved?${parameters.toString()}`;
   }, [applied]);
+
+  const presentation = useMemo(() => deriveSearchPresentation(applied, result), [applied, result]);
+  const locationOptions = useMemo(
+    () => result?.jobs.flatMap((job) => job.locations) ?? [],
+    [result],
+  );
 
   function commitDraft(next: SearchDraft) {
     setDraft(next);
@@ -466,10 +488,12 @@ export function SearchWorkspace() {
   }
 
   return (
-    <div className={styles["workspace"]}>
-      <header className={styles["hero"]} data-compact={String(!landing)}>
+    <div className={styles["workspace"]} data-landing={String(presentation.landing)}>
+      <header className={styles["hero"]} data-compact={String(!presentation.landing)}>
         <h1>Find your next technology role</h1>
-        <p className={styles["heroSub"]}>Search by role, skill, company, or location.</p>
+        <p className={styles["heroSub"]}>
+          One clear search for roles that fit how you want to work.
+        </p>
         <form className={styles["heroSearch"]} onSubmit={submit} role="search">
           <label className={styles["heroField"]}>
             <MagnifyingGlassIcon aria-hidden="true" size={17} />
@@ -483,52 +507,48 @@ export function SearchWorkspace() {
             />
           </label>
           <span aria-hidden="true" className={styles["heroDivider"]} />
-          <label className={styles["heroField"]}>
-            <MapPinIcon aria-hidden="true" size={17} />
-            <input
-              aria-label="Location"
-              maxLength={120}
-              onChange={(event) => setDraft({ ...draft, location: event.target.value })}
-              placeholder="Location"
+          <div className={styles["heroLocation"]}>
+            <LocationCombobox
+              onChange={(location) => setDraft((current) => ({ ...current, location }))}
+              onCommit={(location) => setDraft((current) => ({ ...current, location }))}
+              options={locationOptions}
               value={draft.location}
             />
-          </label>
-          <button type="submit">Search jobs</button>
+          </div>
+          <button type="submit">Search</button>
         </form>
       </header>
 
-      <aside aria-label="Filters" className={styles["filterRail"]}>
-        <SearchFilters draft={draft} onCommit={commitDraft} onDraftChange={setDraft} />
-      </aside>
+      {presentation.showFilters ? (
+        <aside aria-label="Filters" className={styles["filterRail"]}>
+          <SearchFilters draft={draft} onCommit={commitDraft} onDraftChange={setDraft} />
+        </aside>
+      ) : null}
 
       <section className={styles["results"]} aria-labelledby="results-heading">
         <div className={styles["resultsHeader"]} data-agent-pulse={String(agentPulse)}>
           <div aria-label="Search status" role="status">
-            <h2 id="results-heading">
-              {result === null
-                ? "Latest roles"
-                : filterSummary.length === 0 && (applied.query ?? "") === ""
-                  ? `Latest roles · ${String(result.total)}`
-                  : `${String(result.total)} matches`}
-            </h2>
+            <h2 id="results-heading">{presentation.heading}</h2>
           </div>
-          <div className={styles["resultsControls"]}>
-            <Link className={styles["saveAlertLink"]} href={saveAlertHref}>
-              <BellSimpleIcon aria-hidden="true" size={16} />
-              Save alert
-            </Link>
-            <label>
-              <span className="sr-only">Sort jobs</span>
-              <select
-                onChange={(event) => changeSort(searchSortSchema.parse(event.target.value))}
-                value={applied.sort ?? "relevance"}
-              >
-                <option value="relevance">Best match</option>
-                <option value="newest">Newest</option>
-                <option value="salary_desc">Highest salary</option>
-              </select>
-            </label>
-          </div>
+          {presentation.landing ? null : (
+            <div className={styles["resultsControls"]}>
+              <Link className={styles["saveAlertLink"]} href={saveAlertHref}>
+                <BellSimpleIcon aria-hidden="true" size={16} />
+                Save alert
+              </Link>
+              <label>
+                <span className="sr-only">Sort jobs</span>
+                <select
+                  onChange={(event) => changeSort(searchSortSchema.parse(event.target.value))}
+                  value={applied.sort ?? "relevance"}
+                >
+                  <option value="relevance">Best match</option>
+                  <option value="newest">Newest</option>
+                  <option value="salary_desc">Highest salary</option>
+                </select>
+              </label>
+            </div>
+          )}
         </div>
 
         <div aria-atomic="true" aria-live="polite" className="sr-only">
@@ -555,7 +575,7 @@ export function SearchWorkspace() {
           </div>
         ) : null}
 
-        {result !== null && result.jobs.length === 0 ? (
+        {result !== null && presentation.visibleJobs.length === 0 ? (
           <div className={styles["emptyState"]}>
             <BriefcaseIcon aria-hidden="true" size={30} />
             <h3>No exact matches yet</h3>
@@ -563,11 +583,22 @@ export function SearchWorkspace() {
           </div>
         ) : null}
 
-        {result !== null && result.jobs.length > 0 ? (
+        {presentation.visibleJobs.length > 0 ? (
           <div className={styles["resultList"]} data-loading={String(status === "loading")}>
-            {result.jobs.map((job) => (
-              <JobResult detailSearch={appliedSearch} job={job} key={job.id} />
+            {presentation.visibleJobs.map((job) => (
+              <JobResult
+                detailSearch={appliedSearch}
+                displayCurrency={draft.currency}
+                job={job}
+                key={job.id}
+              />
             ))}
+          </div>
+        ) : null}
+
+        {presentation.landing && (result?.total ?? 0) > presentation.visibleJobs.length ? (
+          <div className={styles["landingFooter"]}>
+            <Link href="/?sort=newest&limit=50">View all roles</Link>
           </div>
         ) : null}
 
