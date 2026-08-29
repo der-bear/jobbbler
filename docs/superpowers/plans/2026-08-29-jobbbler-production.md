@@ -4,17 +4,21 @@
 
 **Goal:** Ship Jobbbler as a polished, publicly deployed, production-ready WebMCP job discovery, alerting, and safe-application product, developed against SQLite and cut over to Supabase PostgreSQL for production.
 
-**Architecture:** A strict TypeScript workspace separates the Next.js UI/BFF, worker, framework-free domains, runtime contracts, storage adapters, connectors, WebMCP lifecycle, and UI system. UI and WebMCP invoke the same application commands; external work is queued outside transactions. SQLite and PostgreSQL implement the same repository contracts and run the same behavior suite.
+**Architecture:** A strict TypeScript workspace separates the Next.js UI/BFF, worker, framework-free domains, runtime contracts, storage adapters, connectors, WebMCP lifecycle, and UI system. UI and WebMCP invoke the same application commands; external work is queued outside transactions. Human identity, agent delegation, data authorization, and action confirmation are independent server-enforced layers. Sanitized domain events stream to the UI over WebSocket without becoming a source of truth. SQLite and PostgreSQL implement the same repository contracts and run the same behavior suite.
 
-**Tech Stack:** Node.js 24 LTS, pnpm 11.19.0, Next.js 16.3.3, React 19.2.8, TypeScript 7.0.2 strict, Tailwind CSS 4.3.3, Zod 4.5.2, Drizzle ORM 0.45.2, SQLite/FTS5, Supabase PostgreSQL, Vitest 4.1.11, Playwright 1.62.1.
+**Tech Stack:** Node.js 24 LTS, pnpm 11.19.0, Next.js 16.3.3, React 19.2.8, TypeScript 6.0.3 strict, Tailwind CSS 4.3.3, Zod 4.4.3, Drizzle ORM 0.45.2, SQLite/FTS5, Supabase PostgreSQL, Vitest 4.1.11, Playwright 1.62.1.
 
 **Spec:** `docs/superpowers/specs/2026-08-29-jobbbler-production-design.md`
 
 ## Global Constraints
 
-- Public competition release is Jobs only; Local Services is not implemented in this plan.
+- Public competition release is Jobbbler only and contains IT/adjacent-technology vacancies; Local Services is a separate future product and separate submission.
+- Every repository artifact and every user-facing string is English-only.
 - Public search works without an account and without WebMCP.
 - WebMCP uses `document.modelContext.registerTool`, feature detection, route/state lifecycle, same-origin exposure, cancellation, and visible UI synchronization.
+- WebMCP is not treated as proof of agent identity. Agent authority comes from a resource/action/expiry-bound server delegation approved on a trusted first-party surface; secrets never appear in tool input, output, URL state, logs, or model context.
+- Consent and other data-processing authorizations are purpose-, recipient-, field-, payload-, and policy-version-bound, independently revocable where applicable, and collected by a clear first-party affirmative action rather than inferred from an agent call.
+- WebSocket events make agent work observable in real time, but commands, repository state, authorization decisions, and reconnect catch-up remain authoritative.
 - Tool names are at most 30 characters, descriptions at most 500 characters, parameter descriptions at most 150 characters, and output summaries at most 1,500 characters.
 - Source/user content is untrusted; read-only and untrusted annotations are accurate.
 - No bulk apply, scheduled apply, arbitrary SQL, arbitrary fetch, generic action, or false external-submission success.
@@ -51,65 +55,55 @@ docs/                     architecture, security, sources, operations and demo
 ### Task 1: Reproducible Workspace and Release Skeleton
 
 **Files:**
+
 - Create: `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `.npmrc`, `.nvmrc`, `.env.example`
-- Create: `tsconfig.base.json`, `eslint.config.mjs`, `prettier.config.mjs`, `vitest.workspace.ts`
+- Create: `tsconfig.base.json`, `eslint.config.mjs`, `prettier.config.mjs`, `vitest.config.ts`
 - Create: `apps/web/package.json`, `apps/web/next.config.ts`, `apps/web/tsconfig.json`
 - Create: `apps/worker/package.json`, `apps/worker/tsconfig.json`
 - Create: each `packages/*/package.json` and `tsconfig.json` from the planned file map
 - Create: `LICENSE`, `README.md`, `SECURITY.md`, `.github/workflows/ci.yml`
-- Test: `packages/contracts/src/workspace-smoke.test.ts`
+- Verify: execute the real `lint`, `typecheck`, `test`, and `build` scripts from a clean install
 
 **Interfaces:**
+
 - Produces workspace scripts: `dev`, `dev:web`, `dev:worker`, `build`, `typecheck`, `lint`, `test`, `test:e2e`, `db:migrate`, `db:seed`, `verify`.
 - Produces `@jobbbler/*` package names and TypeScript project references used by all later tasks.
 
-- [ ] **Step 1: Write the workspace smoke test**
+- [x] **Step 1: Create root and package manifests with exact pinned dependencies**
 
-```ts
-import { describe, expect, it } from "vitest";
-import rootPackage from "../../../package.json";
+Use exact versions listed in the plan header. Set `engines.node` to `>=24 <27` so Node.js 24 LTS is the production baseline while local Node.js 26 remains supported, `type: module`, `private: true`, and `packageManager: pnpm@11.19.0`.
 
-describe("workspace", () => {
-  it("exposes one-command verification", () => {
-    expect(rootPackage.packageManager).toBe("pnpm@11.19.0");
-    expect(rootPackage.scripts.verify).toBe("pnpm lint && pnpm typecheck && pnpm test && pnpm build");
-  });
-});
-```
-
-- [ ] **Step 2: Create root and package manifests with exact pinned dependencies**
-
-Use `pnpm` workspace catalogs and pin the versions listed in the plan header. Set `engines.node` to `>=24 <25`, `type: module`, `private: true`, and `packageManager: pnpm@11.19.0`.
-
-- [ ] **Step 3: Add strict shared TypeScript, lint, format, Vitest, and CI configuration**
+- [x] **Step 2: Add strict shared TypeScript, lint, format, Vitest, and CI configuration**
 
 Enable `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `verbatimModuleSyntax`, and `noEmit`. CI runs install with frozen lockfile, lint, typecheck, tests, build, and artifact upload for Playwright reports.
 
-- [ ] **Step 4: Add license, environment contract, security policy, and boot README**
+- [x] **Step 3: Add license, environment contract, security policy, and boot README**
 
 Document SQLite as the default, PostgreSQL via `DATABASE_URL`, public Supabase variables, server-only Supabase key, Resend adapter variables, and demo seed commands without committing secrets.
 
-- [ ] **Step 5: Install dependencies and verify the skeleton**
+- [x] **Step 4: Install dependencies and verify the skeleton**
 
 Run: `pnpm install`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`.  
 Expected: every command exits 0 and produces no untracked generated secrets.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
-git add package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc .nvmrc .env.example tsconfig.base.json eslint.config.mjs prettier.config.mjs vitest.workspace.ts apps packages LICENSE README.md SECURITY.md .github
+git add package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc .nvmrc .env.example .prettierignore tsconfig.base.json eslint.config.mjs prettier.config.mjs vitest.config.ts apps packages docs LICENSE README.md SECURITY.md .github
 git commit -m "chore: scaffold production workspace"
 ```
 
 ### Task 2: Contracts, Domain Primitives, and Command Boundary
 
 **Files:**
+
 - Create: `packages/contracts/src/search.ts`, `job.ts`, `schedule.ts`, `application.ts`, `api.ts`, `webmcp.ts`, `index.ts`
 - Create: `packages/core-domain/src/result.ts`, `errors.ts`, `clock.ts`, `ids.ts`, `command.ts`, `events.ts`, `index.ts`
 - Create: `packages/jobs-domain/src/job.ts`, `search-criteria.ts`, `ranking.ts`, `index.ts`
 - Test: colocated `*.test.ts` files for schemas, criteria, and ranking
 
 **Interfaces:**
+
 - Produces `ApplicationCommand<TInput,TResult>` and `CommandContext`.
 - Produces `jobSearchInputSchema`, `JobSearchCriteria`, `JobSummary`, `SearchJobsResult`, and standard API envelopes.
 - Consumed by storage, HTTP, WebMCP, workers, and UI.
@@ -118,8 +112,12 @@ git commit -m "chore: scaffold production workspace"
 
 ```ts
 it("keeps unknown salary distinct from below threshold", () => {
-  expect(rankJob(job({ salaryMin: null }), criteria({ salaryMin: 100_000 })).salary).toBe("unknown");
-  expect(rankJob(job({ salaryMin: 80_000 }), criteria({ salaryMin: 100_000 })).salary).toBe("below");
+  expect(rankJob(job({ salaryMin: null }), criteria({ salaryMin: 100_000 })).salary).toBe(
+    "unknown",
+  );
+  expect(rankJob(job({ salaryMin: 80_000 }), criteria({ salaryMin: 100_000 })).salary).toBe(
+    "below",
+  );
 });
 ```
 
@@ -127,7 +125,16 @@ it("keeps unknown salary distinct from below threshold", () => {
 
 ```ts
 export const apiErrorSchema = z.object({
-  code: z.enum(["VALIDATION", "UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "RATE_LIMITED", "DEPENDENCY", "INTERNAL"]),
+  code: z.enum([
+    "VALIDATION",
+    "UNAUTHORIZED",
+    "FORBIDDEN",
+    "NOT_FOUND",
+    "CONFLICT",
+    "RATE_LIMITED",
+    "DEPENDENCY",
+    "INTERNAL",
+  ]),
   message: z.string(),
   requestId: z.string(),
   retryable: z.boolean(),
@@ -140,7 +147,16 @@ export const apiErrorSchema = z.object({
 ```ts
 export interface CommandContext {
   requestId: string;
-  principal: { kind: "anonymous" | "guest" | "user" | "service"; id?: string; roles: readonly string[] };
+  principal: {
+    kind: "anonymous" | "guest" | "user" | "service";
+    id?: string;
+    roles: readonly string[];
+  };
+  agent?: {
+    sessionId: string;
+    delegationId?: string;
+    verifiedClientId?: string;
+  };
   clock: Clock;
   idempotencyKey?: string;
 }
@@ -170,6 +186,7 @@ git commit -m "feat: define typed domain and command contracts"
 ### Task 3: SQLite Schema, Repositories, Seed, and Recovery
 
 **Files:**
+
 - Create: `packages/storage/src/repositories/*.ts`, `contract-tests/*.ts`, `index.ts`
 - Create: `packages/storage-sqlite/src/connection.ts`, `migrate.ts`, `repositories/*.ts`, `fts.ts`, `index.ts`
 - Create: `migrations/sqlite/0001_core.sql`, `0002_jobs.sql`, `0003_search.sql`, `0004_actions.sql`, `0005_fts.sql`
@@ -178,6 +195,7 @@ git commit -m "feat: define typed domain and command contracts"
 - Test: SQLite repository contracts, migration, FTS, WAL/FK, backup/restore
 
 **Interfaces:**
+
 - Produces repositories for catalog, saved search, schedules, applications, work items, audit, and idempotency.
 - Produces `createSqliteStorage(databasePath): Storage`.
 
@@ -189,7 +207,9 @@ export function savedSearchRepositoryContract(create: StorageFactory) {
     const storage = await create();
     const saved = await storage.savedSearches.insert(savedSearch());
     await storage.savedSearches.update({ ...saved, name: "A" }, saved.version);
-    await expect(storage.savedSearches.update({ ...saved, name: "B" }, saved.version)).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(
+      storage.savedSearches.update({ ...saved, name: "B" }, saved.version),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
   });
 }
 ```
@@ -208,7 +228,7 @@ Keep SQLite SQL inside this adapter. Map rows to domain records. Implement lexic
 
 - [ ] **Step 5: Seed a first-party synthetic catalog**
 
-Seed at least 36 jobs across twelve fictional organizations, multiple regions, work models, seniority, compensation-known/unknown, and one internal demo employer. Include deterministic timestamps and source attribution labeled `jobbbler_demo`.
+Seed at least 36 IT/adjacent-tech jobs across twelve fictional organizations, multiple regions, work models, seniority, compensation-known/unknown, and one internal demo employer. Cover engineering, data/AI, product, design/research, security, infrastructure, QA, developer relations, technical support/success, technical recruiting, and technology-focused operations or sales. Include deterministic timestamps and source attribution labeled `jobbbler_demo`.
 
 - [ ] **Step 6: Test backup and restore**
 
@@ -228,6 +248,7 @@ git commit -m "feat: add portable SQLite persistence"
 ### Task 4: Source Policy, Three Connectors, and Ingestion
 
 **Files:**
+
 - Create: `packages/connectors/src/contracts.ts`, `policy.ts`, `runtime.ts`, `normalize.ts`
 - Create: `packages/connectors/src/jobicy/*`, `remoteok/*`, `arbeitnow/*`
 - Create: `packages/connectors/source-policies/*.json`
@@ -236,6 +257,7 @@ git commit -m "feat: add portable SQLite persistence"
 - Test: connector contract, malformed input, policy, dedupe, timeout and idempotent ingestion
 
 **Interfaces:**
+
 - Consumes `Storage`, job contracts, clock, and source policies.
 - Produces `JobConnector.fetchPartition(input, signal): AsyncIterable<RawSourceRecord>` and `runSourceIngestion`.
 
@@ -253,7 +275,7 @@ Use official endpoints only, descriptive user agent, conservative cadence, condi
 
 - [ ] **Step 4: Implement normalization, conservative identity linking, and version creation**
 
-Store immutable raw records first. Match by trusted source ID, canonical apply URL, or high-confidence organization/title/location evidence; ambiguous candidates remain separate.
+Store immutable raw records first. Map only IT/adjacent-tech records into the supported taxonomy. Match by trusted source ID, canonical apply URL, or high-confidence organization/title/location evidence; ambiguous candidates remain separate.
 
 - [ ] **Step 5: Implement lease-based worker execution**
 
@@ -274,6 +296,7 @@ git commit -m "feat: ingest and normalize policy-bound job feeds"
 ### Task 5: Search Commands, BFF, and Shareable State
 
 **Files:**
+
 - Create: `packages/jobs-domain/src/search-jobs-command.ts`, `compare-jobs-command.ts`, `fit.ts`
 - Create: `apps/web/src/server/context.ts`, `commands.ts`, `rate-limit.ts`, `api-response.ts`
 - Create: `apps/web/src/app/api/v1/jobs/search/route.ts`, `jobs/[id]/route.ts`, `jobs/compare/route.ts`
@@ -281,6 +304,7 @@ git commit -m "feat: ingest and normalize policy-bound job feeds"
 - Test: command tests, route tests, URL round trip, rate limit and untrusted output
 
 **Interfaces:**
+
 - Produces `searchJobsCommand.execute(context, SearchJobsInput): Promise<SearchJobsResult>`.
 - Produces versioned `/api/v1` endpoints consumed by UI and WebMCP.
 
@@ -311,6 +335,7 @@ git commit -m "feat: expose explainable job discovery API"
 ### Task 6: Original Design System and Public Search Experience
 
 **Files:**
+
 - Create: `packages/ui/src/styles/tokens.css`, `base.css`, `motion.css`
 - Create: `packages/ui/src/components/{button,input,chip,card,dialog,sheet,toast,skeleton,theme-toggle}.tsx`
 - Create: `apps/web/src/app/layout.tsx`, `page.tsx`, `globals.css`, `providers.tsx`
@@ -319,6 +344,7 @@ git commit -m "feat: expose explainable job discovery API"
 - Test: component semantics, theme persistence, Playwright search/detail/compare/mobile/no-WebMCP
 
 **Interfaces:**
+
 - Consumes discovery API and URL state.
 - Produces accessible UI primitives, search state store, and visible events consumed by WebMCP.
 
@@ -332,7 +358,7 @@ Implement warm neutral light, charcoal-green dark, contrast-safe signal accent, 
 
 - [ ] **Step 3: Build search workspace and states**
 
-Compose top bar, outcome input, inferred/explicit filter chips, sort/count, list, result cards, empty/partial/stale/error states, and responsive sheets.
+Compose top bar, WebMCP status/pulse, outcome input, inferred/explicit filter chips, sort/count, list, result cards, point-of-effect change highlighting, accessible live announcements, empty/partial/stale/error states, and responsive sheets.
 
 - [ ] **Step 4: Build details, evidence, fit and comparison**
 
@@ -353,6 +379,7 @@ git commit -m "feat: create polished Jobbbler discovery experience"
 ### Task 7: WebMCP Lifecycle, Tools, Activity, and Evals
 
 **Files:**
+
 - Create: `packages/webmcp/src/types.ts`, `feature-detection.ts`, `manifest.ts`, `register.ts`, `activity.ts`, `json-schema.ts`
 - Create: `apps/web/src/components/webmcp-provider.tsx`, `agent-activity-rail.tsx`, `webmcp-status.tsx`
 - Create: `apps/web/src/features/*/webmcp-tools.ts`
@@ -361,6 +388,7 @@ git commit -m "feat: create polished Jobbbler discovery experience"
 - Test: lifecycle, schema, annotations, cancellation, same-state updates, route sets, direct/paraphrased/ambiguous evals
 
 **Interfaces:**
+
 - Produces `registerToolSet(manifest, context): () => void` and `AgentActivityStore`.
 - Consumes the same typed command clients as human UI.
 
@@ -384,9 +412,11 @@ export interface ToolManifest<I, O> {
 
 Register only when `document.modelContext?.registerTool` exists; abort on route/role/resource change; do not expose cross-origin tools; preserve in-flight behavior according to the current API and ensure network calls receive `signal`.
 
+Before implementation, perform a focused current-documentation pass through Local Knowledge and the challenge's Devpost Resources. Record a capability-to-feature-to-test-to-demo matrix; do not assume WebMCP supplies a cryptographically verifiable agent identity unless the current API explicitly proves it.
+
 - [ ] **Step 4: Implement route tools and UI synchronization**
 
-Search, detail, compare, save, schedule, and application tools call versioned APIs, update the same client stores/URL as UI, focus a meaningful element, and write concise activity records.
+Search, detail, compare, save, schedule, and application tools call versioned APIs, update the same client stores/URL as UI, focus a meaningful element, announce the outcome, highlight the affected state, and write concise activity records with confirmation and safe undo metadata.
 
 - [ ] **Step 5: Implement deterministic tool/eval checks**
 
@@ -404,6 +434,7 @@ git commit -m "feat: add transparent route-scoped WebMCP tools"
 ### Task 8: Ownership, Saved Searches, Scheduler, and Email Alerts
 
 **Files:**
+
 - Create: `packages/core-domain/src/ownership/*`, `schedules/*`, `deltas/*`, `notifications/*`
 - Create: `apps/web/src/app/api/v1/owners/*`, `saved-searches/*`, `schedules/*`
 - Create: `apps/web/src/app/saved/page.tsx`, `saved/[savedSearchId]/page.tsx`, `manage/[token]/page.tsx`
@@ -412,6 +443,7 @@ git commit -m "feat: add transparent route-scoped WebMCP tools"
 - Test: fake clock recurrence, guest verification, token scope/expiry, deltas, dedupe, retry and pages
 
 **Interfaces:**
+
 - Produces `SavedSearchService`, `ScheduleService`, `DeltaService`, `NotificationAdapter`.
 - Produces APIs/tools for preview, schedule, latest update, pause, and management.
 
@@ -447,14 +479,17 @@ git commit -m "feat: deliver durable verified job alerts"
 ### Task 9: Safe Internal Application State Machine
 
 **Files:**
-- Create: `packages/jobs-domain/src/applications/*`
+
+- Create: `packages/jobs-domain/src/applications/*`, `packages/core-domain/src/delegations/*`, `data-grants/*`
 - Create: `apps/web/src/app/api/v1/applications/*`
 - Create: `apps/web/src/app/apply/[draftId]/page.tsx`, `features/application/*`
 - Create: `apps/worker/src/application-worker.ts`
-- Test: provenance, validation, review immutability, token binding/reuse/expiry, edit invalidation, idempotent submission, receipt, external handoff honesty
+- Test: progressive identity, agent delegation scope/expiry/revoke, data-grant purpose/recipient/payload binding, provenance, validation, review immutability, token binding/reuse/expiry, edit invalidation, idempotent submission, receipt, external handoff honesty
 
 **Interfaces:**
+
 - Produces `ApplicationService.start/setAnswer/validate/review/requestConfirmation/submit`.
+- Produces `AgentDelegationService.request/approve/evaluate/revoke` and `DataGrantService.request/grant/withdraw/evaluate`.
 - Produces application route WebMCP tools and a visible receipt.
 
 - [ ] **Step 1: Write the application state-machine tests first**
@@ -496,12 +531,14 @@ git commit -m "feat: add reviewed single-application workflow"
 ### Task 10: PostgreSQL/Supabase Adapter, RLS, and Migration
 
 **Files:**
+
 - Create: `packages/storage-postgres/src/connection.ts`, `repositories/*.ts`, `fts.ts`, `index.ts`
 - Create: `migrations/postgres/0001_core.sql` through `0005_rls.sql`
 - Create: `scripts/export-sqlite.ts`, `import-postgres.ts`, `verify-migration.ts`, `rollback-migration.md`
 - Test: shared repository contracts on PostgreSQL, RLS matrix, FTS/geo fixture parity, migration IDs/counts/checksums
 
 **Interfaces:**
+
 - Produces `createPostgresStorage(databaseUrl): Storage` with behavior equivalent to SQLite.
 - Consumed through `createStorage(env)` without domain changes.
 
@@ -535,6 +572,7 @@ git commit -m "feat: migrate storage to Supabase PostgreSQL"
 ### Task 11: Security, Observability, CI, and Production Deployment
 
 **Files:**
+
 - Create/Modify: `apps/web/next.config.ts`, middleware/security modules, rate limits, health routes
 - Create: `packages/core-domain/src/observability/*`, `docs/architecture.md`, `docs/security.md`, `docs/privacy.md`, `docs/sources.md`, `docs/operations.md`, `docs/deployment.md`
 - Create: `Dockerfile`, `.dockerignore`, deployment provider config, `scripts/smoke-production.ts`
@@ -542,19 +580,20 @@ git commit -m "feat: migrate storage to Supabase PostgreSQL"
 - Test: headers/CSP, authz, prompt-injection fixtures, health/readiness, log redaction, rate limit, production smoke
 
 **Interfaces:**
+
 - Produces `/api/health`, `/api/ready`, structured logs/metrics, hardened headers, deployment artifact, and runbooks.
 
 - [ ] **Step 1: Write security and observability tests**
 
-Cover CSP, frame/origin policy, secure cookies, CSRF/origin checks, authorization matrix, untrusted content sanitization, secret redaction, file gates, API bounds, and request/tool/work correlation IDs.
+Cover CSP, frame/origin policy, secure cookies, CSRF/origin checks, human/agent/data/action authorization matrix, untrusted content sanitization, secret redaction, file gates, API bounds, WebSocket channel authorization and redaction, reconnect cursors, and request/tool/work correlation IDs.
 
 - [ ] **Step 2: Implement security middleware and abuse controls**
 
-Use server-side schema/auth checks for every tool API, same-site session cookies, mutation origin validation, principal/IP rate limits, bounded payloads, safe errors, and no raw source HTML.
+Use server-side schema/auth checks for every tool API, same-site session cookies, mutation origin validation, resource-scoped agent delegations, purpose-bound data grants, principal/IP rate limits, bounded payloads, safe errors, and no raw source HTML.
 
 - [ ] **Step 3: Implement health, logs, metrics, and worker heartbeat**
 
-Readiness checks database/migrations; health does not depend on external feeds. Emit structured redacted events for API, WebMCP, source, scheduler, delivery, application, and migration operations.
+Readiness checks database/migrations; health does not depend on external feeds. Emit structured redacted events for API, WebMCP, source, scheduler, delivery, application, and migration operations. Stream a sanitized subset through a cursor-based WebSocket gateway with heartbeat, bounded buffers, reconnect catch-up, and a polling fallback; production may implement the same contract with Supabase Realtime.
 
 - [ ] **Step 4: Complete operations and compliance documentation**
 
@@ -576,11 +615,13 @@ git commit -m "chore: harden and deploy Jobbbler production"
 ### Task 12: Browser, Accessibility, Performance, and Release Verification
 
 **Files:**
+
 - Create: `playwright.config.ts`, `tests/e2e/*.spec.ts`, `tests/a11y/*.spec.ts`, `tests/webmcp/*.spec.ts`
 - Create: `docs/release-checklist.md`, `docs/test-evidence.md`
 - Modify: defects found during verification only in their owning modules
 
 **Interfaces:**
+
 - Produces reproducible evidence for all release gates and live browser compatibility.
 
 - [ ] **Step 1: Run full automated verification from a clean install**
@@ -609,12 +650,14 @@ git commit -m "test: verify production journeys and WebMCP behavior"
 ### Task 13: Public Repository, Walkthrough Media, and Devpost Submission
 
 **Files:**
+
 - Modify: `README.md`, repository About metadata, final docs
 - Create: `docs/demo-script.md`, `docs/devpost-story.md`, `docs/devpost-fields.md`
 - Create: `assets/submission/thumbnail.png`, gallery images, video source/output and captions
 - External: public Git host, live deployment, public YouTube video, Devpost draft/final submission
 
 **Interfaces:**
+
 - Consumes verified production behavior and produces the complete public judging package.
 
 - [ ] **Step 1: Finalize public repository presentation**
@@ -658,4 +701,3 @@ At the finalization page, request the required action-time confirmation for the 
 - SQLite, PostgreSQL, UI, WebMCP, schedules, applications, security, deployment, media, and Devpost each have an independently reviewable deliverable.
 - Shared interface names are consistent across tasks: `Storage`, `ApplicationCommand`, `CommandContext`, `ToolManifest`, `SavedSearchService`, `ScheduleService`, `ApplicationService`.
 - The plan contains no deferred feature placeholders. Out-of-scope items remain explicitly excluded.
-

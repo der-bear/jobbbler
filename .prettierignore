@@ -1,0 +1,10 @@
+.next/
+coverage/
+dist/
+node_modules/
+playwright-report/
+test-results/
+
+# Source material is preserved verbatim.
+docs/kickoff/
+docs/rules/

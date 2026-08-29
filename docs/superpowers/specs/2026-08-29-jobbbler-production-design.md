@@ -3,7 +3,7 @@
 **Status:** Approved through delegated product authority  
 **Date:** 2026-08-29  
 **Product:** Jobbbler, the Jobs vertical of the Universal Discovery, Subscription, and Action Platform  
-**Public release:** Jobs only; Local Services remains a future vertical on the same contracts
+**Public release:** Jobbbler only, focused on IT and adjacent-technology roles. Local Services is a separate future product and must use a separate submission, story, media package, and product context.
 
 ## 1. Outcome
 
@@ -18,6 +18,8 @@ The release succeeds when:
 - tool calls and human interactions mutate the same visible state;
 - search, comparison, saved alerts, and a reviewed internal application form one complete story together;
 - data provenance, uncertainty, agent activity, and safety boundaries are visible;
+- human identity, agent authorization, data authorization, and final action confirmation are visibly separate controls;
+- agent activity and consequential state changes appear live through a resilient WebSocket event stream without making that stream authoritative;
 - light and dark themes, responsive layouts, and accessible keyboard flows are polished;
 - local development uses SQLite and the production environment uses Supabase PostgreSQL through behaviorally equivalent repositories;
 - the public repository, live URL, demo video, gallery assets, and Devpost submission are complete.
@@ -42,7 +44,7 @@ A client-only demo would be faster but could not honestly demonstrate durable sc
 
 ### Competition release
 
-- Public job search with deterministic text and structured filters.
+- Public search for IT and adjacent-technology jobs with deterministic text and structured filters.
 - Natural-language intent accepted by `search_jobs`, compiled and validated server-side.
 - Three source adapters with policy, attribution, freshness, and raw-record provenance.
 - Canonical job records and version history with conservative duplicate resolution.
@@ -55,6 +57,7 @@ A client-only demo would be faster but could not honestly demonstrate durable sc
 - Internal demo-employer application with draft, provenance, validation, immutable review, short-lived single-use confirmation, idempotent submission, and receipt.
 - External jobs use a prepared packet and honest URL handoff; Jobbbler never claims external success.
 - Visible Agent Activity rail and a WebMCP availability inspector.
+- Progressive identity, resource-scoped agent delegation, purpose-bound data authorization receipts, revocation, and a no-secret-in-model-context policy.
 - Operator source-health view and auditable tool/action events.
 - SQLite development database, export tool, Supabase import, PostgreSQL production adapter, RLS, and parity verification.
 - CI, deployment, operational documentation, restore drill, public repository, license, demo assets, and Devpost submission.
@@ -100,7 +103,11 @@ The desktop search route has three coordinated regions:
 
 1. A compact top bar with brand, WebMCP status, theme, saved work, and profile.
 2. The search workspace with an outcome composer, editable filter chips, result count, sort, and a clean result list.
-3. A collapsible Agent Activity rail that explains tool calls, safe parameters, duration, affected state, and next step.
+3. A collapsible Agent Activity rail that explains tool calls, safe parameters, duration, affected state, confirmation state, reversible actions, and next step.
+
+Agent feedback also appears at the point of effect: a compact WebMCP status indicator, a running-state pulse, brief highlighting of changed filters/results, and an accessible live announcement. Feedback never obscures the affected control or turns the product into a developer console.
+
+The activity rail is live rather than optimistic theater. A sanitized WebSocket stream reports accepted tool calls, authorization escalations, data-authorization decisions, state transitions, retries, and receipts. A cursor-based reconnect catches up missed events. The browser always reconciles against authoritative API state, and the conventional UI remains fully usable when the stream is unavailable.
 
 Mobile uses one column. Filters and Agent Activity become bottom sheets with keyboard-accessible alternatives. The main search and current result remain visible without horizontal scrolling.
 
@@ -144,6 +151,8 @@ Semantic HTML, landmarks, focus management, visible focus rings, form labels, co
 - Same-origin exposure only. No cross-origin `exposedTo` in the competition release.
 - Every execution propagates its abort signal to network work.
 - Backend commands revalidate schema, authorization, version, rate limit, and idempotency.
+- WebMCP registration and possession of a draft identifier do not authenticate an agent or authorize an action.
+- Tool input and output never carry reusable credentials, recovery links, raw session tokens, or confirmation secrets.
 
 ### Route tool sets
 
@@ -169,16 +178,20 @@ Saved-search detail:
 - `get_latest_job_alert`
 - `pause_job_alert`
 
-Application route:
+Application route, registered by current state rather than all at once:
 
 - `get_application_draft`
+- `request_agent_access` when the current agent session lacks a required delegation
 - `set_application_answer`
 - `validate_application`
+- `request_data_consent` when sensitive processing or recipient disclosure lacks a current data grant
 - `review_application`
 - `request_app_confirmation`
 - `submit_application`
 
 Tool registration is driven by one route manifest. Each tool calls the same typed application command used by the human UI. Successful commands publish a client event that updates the relevant store, URL, focus target, toast, and Agent Activity record.
+
+An authorization denial can be requestable but is never an implicit grant. The trusted Jobbbler UI displays the exact agent session, draft, operations, data categories, recipient, purpose, and expiry; only a direct human action creates the delegation or data grant. The backend re-evaluates authority on every command. Where the current WebMCP implementation does not expose a cryptographically verifiable agent identity, Jobbbler honestly binds authority to an opaque browser agent session instead of claiming to identify the underlying model or vendor.
 
 ### Evaluations
 
@@ -214,6 +227,25 @@ docs/
 
 The domain packages import no framework, browser, HTTP client, or database driver. Physical storage implements repository contracts. WebMCP contains no authorization decision. Server-only modules own secrets.
 
+### Identity, delegation, data authorization, and confirmation
+
+The platform uses progressive identity and four deliberately separate security objects:
+
+1. A human owner session identifies who owns searches, profiles, drafts, and receipts. Public search and an ephemeral draft need no registration. Cross-device recovery or long-lived private data requires a verified email identity, with a future passkey upgrade path.
+2. An agent delegation authorizes one browser agent session or verified external client to perform named operations on one resource for a short period. It is revocable and cannot authorize new data purposes or submission by itself.
+3. A data authorization grant records recipient, purpose, exact field/document categories, policy version, payload boundary, affirmative action, timestamps, expiry, and withdrawal state. A legal basis is recorded separately; Jobbbler does not incorrectly label every user instruction as GDPR consent.
+4. An application confirmation is single-use, short-lived, bound to one immutable review and payload hash, and invalidated by every material edit, recipient change, data-grant change, or revoke.
+
+The agent receives non-secret resource and delegation references only. Human sessions use secure same-site cookies; raw recovery, verification, and confirmation material is never returned through WebMCP. External clients can use a standards-based sender-constrained authorization profile only after a compatible client surface is available; the browser demo does not invent unverifiable agent identity claims.
+
+Detailed invariants and flows live in `docs/architecture/agent-authorization-and-consent.md`.
+
+### Real-time interaction plane
+
+Committed domain events are written with application state through an outbox. A realtime adapter publishes a redacted projection to owner-scoped WebSocket channels. Events carry stable IDs, aggregate versions, correlation IDs, safe summaries, and UI effect hints; they never contain credentials, full application answers, uploaded documents, or raw upstream HTML. The client reconnects with its last event cursor, refetches authoritative state on version gaps, and falls back to bounded polling. Local development uses the worker gateway; production implements the same interface with a managed WebSocket or Supabase Realtime adapter after parity tests.
+
+Detailed protocol constraints live in `docs/architecture/realtime-agent-activity.md`.
+
 ### Runtime
 
 - Next.js App Router and React for SSR, route handlers, and client islands.
@@ -233,7 +265,7 @@ UI, WebMCP, workers, and HTTP handlers invoke typed application commands. A stat
 
 ### Essential records
 
-- identities: users, guest owners, notification endpoints, signed management scopes;
+- identities: users, guest owners, verified endpoints, human sessions, agent sessions, scoped delegations, and data grants;
 - sources: source policies, source runs, immutable raw records, attribution;
 - catalog: organizations, canonical jobs, versions, source links, locations, skills;
 - discovery: saved searches, schedules, search runs, results, state, deltas, digests;
@@ -245,9 +277,9 @@ IDs are generated application-side and remain unchanged during migration. Timest
 
 ### Source strategy
 
-Implement Jobicy, Remote OK, and Arbeitnow adapters behind one connector contract. Each adapter has a checked-in source-policy record, conservative polling interval, timeout, bounded response size, attribution mapping, fixture contract tests, and circuit-breaking failure state. Search runs only against the local normalized catalog.
+Implement Jobicy, Remote OK, and Arbeitnow adapters behind one connector contract. Each adapter has a checked-in source-policy record, conservative polling interval, timeout, bounded response size, attribution mapping, fixture contract tests, and circuit-breaking failure state. Ingestion maps records into a curated IT/adjacent-tech taxonomy: software engineering, data/AI, product, design/research, security, infrastructure, QA, developer relations, technical support/success, technical recruiting, and technology-focused operations or sales. Records outside that taxonomy are not published. Search runs only against the local normalized catalog.
 
-For reliable judging, a first-party synthetic demo catalog is always available and clearly labeled. Live sourced records supplement it; they never determine whether the primary demo path works.
+For reliable judging, a first-party synthetic demo catalog of IT and adjacent-tech roles is always available and clearly labeled. Live sourced records supplement it; they never determine whether the primary demo path works.
 
 ### Search pipeline
 
@@ -284,6 +316,8 @@ Any material edit invalidates review and confirmation. There is no bulk-submit t
 - Treat job descriptions, résumés, user text, and connector payloads as untrusted data.
 - Sanitize rendered content; do not render source HTML.
 - Strict CSP, secure headers, same-site cookies, origin checks, CSRF protection, and server-side authorization.
+- Deny-by-default agent delegations, clear requestable-denial UI, resource/action/expiry binding, and re-evaluation on every command.
+- Consent and other data-authorization prompts are granular, unbundled, purpose-bound, versioned, and never inferred from silence or agent intent; withdrawal is easy wherever withdrawal applies.
 - Per-principal and per-IP rate limits with safe error envelopes.
 - File type, size, magic-byte, and malware-scan adapter gates before document use.
 - Secrets only in server/worker environments; no backend key in browser bundles.
@@ -296,7 +330,7 @@ Any material edit invalidates review and confirmation. There is no bulk-submit t
 
 - Structured JSON logs with request, command, work item, source run, and tool invocation IDs.
 - Health and readiness endpoints distinguish web, database, migrations, and worker state.
-- Metrics for API latency/error rate, WebMCP success, search latency, connector freshness, queue age, schedule lateness, delivery success, SQLite contention, and action outcomes.
+- Metrics for API latency/error rate, WebMCP success, WebSocket connection/reconnect/gap rate, search latency, connector freshness, queue age, schedule lateness, delivery success, SQLite contention, and action outcomes.
 - Bounded retries with jitter, terminal error classes, expired-lease repair, and source isolation.
 - SQLite off-host backup and automated restore verification before migration.
 - PostgreSQL migration rehearses snapshot, validates row counts/IDs/checksums, switches adapters, and documents rollback.
@@ -319,7 +353,7 @@ Snapshot-heavy tests and exhaustive component tests are avoided. Critical domain
 
 ## 13. Delivery and submission
 
-The repository starts with a baseline commit during the hackathon period and keeps meaningful dated commits. It includes an MIT license, complete README, environment example, architecture, source policy, security, deployment, testing, and demo instructions.
+The repository starts with a baseline commit during the hackathon period and keeps meaningful dated commits. It includes an MIT license, complete README, environment example, architecture, source policy, security, privacy, deployment, testing, and demo instructions. Every artifact and user-facing string is English-only.
 
 The live release is public and free through the judging period. Production uses Supabase PostgreSQL; local setup defaults to SQLite. A seeded judge/demo account is documented only in Devpost testing instructions when needed.
 
@@ -331,7 +365,7 @@ Submission assets:
 - concise English project story covering inspiration, WebMCP fit, implementation, challenges, learning, impact, and safety;
 - live URL, public repository URL, tested clients, stack tags, and honest testing instructions.
 
-No Devpost plugin is installed. Devpost Resources and Local Knowledge provide research pointers; current behavior is verified against the live app and official sources before release.
+No Devpost plugin is installed. Devpost Resources and Local Knowledge provide research pointers; current behavior is verified against the live app and official sources before release. Jobbbler never presents Local Services as part of this product or submission; a later Local Services product requires a separate repository context, case study, media package, and Devpost submission.
 
 ## 14. Release gates
 

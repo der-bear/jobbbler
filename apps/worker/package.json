@@ -1,0 +1,26 @@
+{
+  "name": "@jobbbler/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsup src/main.ts --format esm --out-dir dist --clean",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@jobbbler/connectors": "workspace:*",
+    "@jobbbler/contracts": "workspace:*",
+    "@jobbbler/core-domain": "workspace:*",
+    "@jobbbler/jobs-domain": "workspace:*",
+    "@jobbbler/storage": "workspace:*",
+    "@jobbbler/storage-postgres": "workspace:*",
+    "@jobbbler/storage-sqlite": "workspace:*",
+    "pino": "10.3.1",
+    "resend": "6.24.0"
+  },
+  "devDependencies": {
+    "tsup": "8.5.1"
+  }
+}

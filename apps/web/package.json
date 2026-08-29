@@ -1,0 +1,33 @@
+{
+  "name": "@jobbbler/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build --webpack",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@jobbbler/contracts": "workspace:*",
+    "@jobbbler/core-domain": "workspace:*",
+    "@jobbbler/jobs-domain": "workspace:*",
+    "@jobbbler/storage": "workspace:*",
+    "@jobbbler/storage-postgres": "workspace:*",
+    "@jobbbler/storage-sqlite": "workspace:*",
+    "@jobbbler/ui": "workspace:*",
+    "@jobbbler/webmcp": "workspace:*",
+    "@supabase/supabase-js": "2.112.4",
+    "next": "16.3.3",
+    "pino": "10.3.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "postcss": "8.5.26",
+    "tailwindcss": "4.3.3"
+  }
+}

@@ -1,0 +1,17 @@
+packages:
+  - apps/*
+  - packages/*
+
+engineStrict: true
+linkWorkspacePackages: true
+preferWorkspacePackages: true
+saveExact: true
+strictPeerDependencies: true
+
+allowBuilds:
+  better-sqlite3: true
+  esbuild: true
+
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - "@jobbbler/*"
