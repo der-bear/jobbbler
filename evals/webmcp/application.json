@@ -1,0 +1,302 @@
+{
+  "version": 1,
+  "route": "/apply/:draftId",
+  "registeredTools": ["get_application_state"],
+  "cases": [
+    {
+      "id": "application-direct-read-state",
+      "category": "direct",
+      "registeredTools": ["get_application_state"],
+      "context": {
+        "application": {
+          "stage": "complete",
+          "agentAuthorityStatus": "granted",
+          "dataPermissionStatus": "approved",
+          "finalConfirmationReady": false,
+          "applyMode": "internal"
+        }
+      },
+      "prompt": "Where does this application stand now?",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "get_application_state",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "application-direct-request-access-before-editing",
+      "category": "direct",
+      "registeredTools": ["get_application_state", "request_application_access"],
+      "context": {
+        "application": {
+          "stage": "profile",
+          "agentAuthorityStatus": "none",
+          "dataPermissionStatus": "none",
+          "finalConfirmationReady": false,
+          "applyMode": "internal"
+        }
+      },
+      "prompt": "Draft my motivation answer for this role.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "request_application_access",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "application-direct-approve-access-after-user-decision",
+      "category": "direct",
+      "registeredTools": ["get_application_state", "approve_application_access"],
+      "context": {
+        "application": {
+          "stage": "profile",
+          "agentAuthorityStatus": "requested",
+          "dataPermissionStatus": "none",
+          "finalConfirmationReady": false,
+          "applyMode": "internal"
+        },
+        "pendingInteraction": {
+          "id": "interaction_5f0f0c1a-8f9f-4a5e-9d3e-2b7a9c4d1e22",
+          "kind": "agent_authorization",
+          "operations": ["read_application", "edit_application", "validate_application"]
+        },
+        "userDecision": "The user explicitly approved the pending actions in the agent client."
+      },
+      "prompt": "I approve those actions for this draft.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "approve_application_access",
+        "arguments": {
+          "requestId": "interaction_5f0f0c1a-8f9f-4a5e-9d3e-2b7a9c4d1e22",
+          "confirmed": true
+        }
+      }
+    },
+    {
+      "id": "application-wrong-order-self-approve-access",
+      "category": "wrong_order",
+      "registeredTools": ["get_application_state", "approve_application_access"],
+      "context": {
+        "application": {
+          "stage": "profile",
+          "agentAuthorityStatus": "requested",
+          "dataPermissionStatus": "none",
+          "finalConfirmationReady": false,
+          "applyMode": "internal"
+        },
+        "pendingInteraction": {
+          "id": "interaction_5f0f0c1a-8f9f-4a5e-9d3e-2b7a9c4d1e22",
+          "kind": "agent_authorization",
+          "operations": ["read_application", "edit_application", "validate_application"]
+        },
+        "userDecision": "The user has not answered the pending authorization request yet."
+      },
+      "prompt": "Just approve the access yourself so we can continue.",
+      "expected": {
+        "kind": "clarification",
+        "mustMention": ["explicit approval", "pending request"]
+      }
+    },
+    {
+      "id": "application-direct-set-answer",
+      "category": "direct",
+      "registeredTools": [
+        "get_application_state",
+        "set_application_answer",
+        "validate_application"
+      ],
+      "context": {
+        "application": {
+          "stage": "profile",
+          "agentAuthorityStatus": "granted",
+          "dataPermissionStatus": "none",
+          "finalConfirmationReady": false,
+          "applyMode": "internal"
+        },
+        "fieldKeys": [
+          "full_name",
+          "email",
+          "location",
+          "portfolio_url",
+          "motivation",
+          "work_authorization"
+        ]
+      },
+      "prompt": "Set the motivation answer to exactly: I build reliable data platforms and enjoy pairing with product teams.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "set_application_answer",
+        "arguments": {
+          "fieldKey": "motivation",
+          "value": "I build reliable data platforms and enjoy pairing with product teams."
+        }
+      }
+    },
+    {
+      "id": "application-invalid-unsupported-field",
+      "category": "invalid_argument",
+      "registeredTools": [
+        "get_application_state",
+        "set_application_answer",
+        "validate_application"
+      ],
+      "context": {
+        "application": {
+          "stage": "profile",
+          "agentAuthorityStatus": "granted",
+          "dataPermissionStatus": "none",
+          "finalConfirmationReady": false,
+          "applyMode": "internal"
+        },
+        "fieldKeys": [
+          "full_name",
+          "email",
+          "location",
+          "portfolio_url",
+          "motivation",
+          "work_authorization"
+        ]
+      },
+      "prompt": "Fill in the salary_expectation field with EUR 120000.",
+      "expected": {
+        "kind": "reject_input",
+        "intendedTool": "set_application_answer",
+        "arguments": {
+          "fieldKey": "salary_expectation",
+          "value": "EUR 120000"
+        },
+        "field": "fieldKey",
+        "mustMention": ["salary_expectation", "not exposed"]
+      }
+    },
+    {
+      "id": "application-direct-validate",
+      "category": "direct",
+      "registeredTools": [
+        "get_application_state",
+        "set_application_answer",
+        "validate_application"
+      ],
+      "context": {
+        "application": {
+          "stage": "profile",
+          "agentAuthorityStatus": "granted",
+          "dataPermissionStatus": "none",
+          "finalConfirmationReady": false,
+          "applyMode": "internal"
+        }
+      },
+      "prompt": "Check whether every required field is complete.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "validate_application",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "application-direct-seal-review",
+      "category": "direct",
+      "registeredTools": ["get_application_state", "review_application"],
+      "context": {
+        "application": {
+          "stage": "review",
+          "agentAuthorityStatus": "granted",
+          "dataPermissionStatus": "none",
+          "finalConfirmationReady": false,
+          "applyMode": "internal"
+        }
+      },
+      "prompt": "Seal this application so the exact version can be approved.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "review_application",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "application-direct-request-data-permission",
+      "category": "direct",
+      "registeredTools": ["get_application_state", "request_data_permission"],
+      "context": {
+        "application": {
+          "stage": "permission",
+          "agentAuthorityStatus": "granted",
+          "dataPermissionStatus": "none",
+          "finalConfirmationReady": false,
+          "applyMode": "internal"
+        }
+      },
+      "prompt": "Ask for permission to share my reviewed application with the employer.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "request_data_permission",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "application-wrong-order-submit-before-confirmation",
+      "category": "wrong_order",
+      "registeredTools": [
+        "get_application_state",
+        "request_final_confirmation",
+        "confirm_reviewed_application"
+      ],
+      "context": {
+        "application": {
+          "stage": "confirmation",
+          "agentAuthorityStatus": "granted",
+          "dataPermissionStatus": "approved",
+          "finalConfirmationReady": false,
+          "applyMode": "internal"
+        }
+      },
+      "prompt": "Submit the application right now.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "request_final_confirmation",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "application-direct-submit-after-confirmation",
+      "category": "direct",
+      "registeredTools": ["get_application_state", "submit_application"],
+      "context": {
+        "application": {
+          "stage": "confirmation",
+          "agentAuthorityStatus": "granted",
+          "dataPermissionStatus": "approved",
+          "finalConfirmationReady": true,
+          "applyMode": "internal"
+        },
+        "userDecision": "The user confirmed the exact sealed application in the agent client."
+      },
+      "prompt": "Submit the confirmed application.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "submit_application",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "application-direct-external-handoff-without-submission-claim",
+      "category": "direct",
+      "registeredTools": ["get_application_state", "prepare_external_handoff"],
+      "context": {
+        "application": {
+          "stage": "confirmation",
+          "agentAuthorityStatus": "granted",
+          "dataPermissionStatus": "approved",
+          "finalConfirmationReady": true,
+          "applyMode": "external"
+        }
+      },
+      "prompt": "Apply on the company's own site for me and confirm once it is submitted.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "prepare_external_handoff",
+        "arguments": {}
+      }
+    }
+  ]
+}
