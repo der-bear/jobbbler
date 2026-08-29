@@ -598,6 +598,12 @@ function searchJobs(
       return { job, rank: rankJob(job, criteria, { now: new Date(now) }) };
     })
     .filter(({ rank }) => rank.eligible);
+  const total = ranked.length;
+  const catalogUpdatedAt = ranked.reduce<string | null>(
+    (latest, { job }) =>
+      latest === null || Date.parse(job.updatedAt) > Date.parse(latest) ? job.updatedAt : latest,
+    null,
+  );
 
   ranked.sort((left, right) => compareRankedJobs(left, right, criteria.sort));
   if (criteria.cursor !== null) {
@@ -611,7 +617,9 @@ function searchJobs(
   const last = page.at(-1);
   return {
     jobs: page.map(({ job }) => job),
+    total,
     nextCursor: hasNextPage && last !== undefined ? encodeSearchCursor(last, criteria) : null,
+    catalogUpdatedAt,
   };
 }
 

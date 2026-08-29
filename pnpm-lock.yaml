@@ -73,6 +73,9 @@ importers:
       "@supabase/supabase-js":
         specifier: 2.112.4
         version: 2.112.4
+      better-sqlite3:
+        specifier: 13.0.3
+        version: 13.0.3
       next:
         specifier: 16.3.3
         version: 16.3.3(@playwright/test@1.62.1)(@types/node@26.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)

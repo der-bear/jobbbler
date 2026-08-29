@@ -308,24 +308,24 @@ git commit -m "feat: ingest and normalize policy-bound job feeds"
 - Produces `searchJobsCommand.execute(context, SearchJobsInput): Promise<SearchJobsResult>`.
 - Produces versioned `/api/v1` endpoints consumed by UI and WebMCP.
 
-- [ ] **Step 1: Write failing command and URL round-trip tests**
+- [x] **Step 1: Write failing command and URL round-trip tests**
 
 Cover hard salary filters, explicit unknown policy, exclusions, pagination, stable ordering, evidence, and round-tripping visible filters through URL search params.
 
-- [ ] **Step 2: Implement search, detail, fit, and comparison commands**
+- [x] **Step 2: Implement search, detail, fit, and comparison commands**
 
 Authorize public reads, apply schema validation, call repositories, calculate deterministic score explanations, and cap untrusted descriptions in responses.
 
-- [ ] **Step 3: Implement BFF routes and error/rate-limit envelope**
+- [x] **Step 3: Implement BFF routes and error/rate-limit envelope**
 
 Generate request IDs, parse Zod input, never expose stack traces, set cache policy by endpoint, and return `429` with safe retry guidance.
 
-- [ ] **Step 4: Run focused route and domain tests**
+- [x] **Step 4: Run focused route and domain tests**
 
 Run: `pnpm --filter @jobbbler/jobs-domain test && pnpm --filter @jobbbler/web test -- search`.  
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/jobs-domain apps/web/src/server apps/web/src/app/api apps/web/src/lib

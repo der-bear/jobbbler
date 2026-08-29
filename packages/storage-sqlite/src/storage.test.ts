@@ -80,6 +80,7 @@ describe("SQLite relevance candidate completeness", () => {
     });
 
     expect(result.jobs).toEqual([strongest]);
+    expect(result.total).toBe(1_001);
     expect(result.nextCursor).toEqual(expect.any(String));
     storage.close();
   });

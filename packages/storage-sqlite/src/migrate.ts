@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 import { DomainError } from "@jobbbler/core-domain";
 
@@ -31,7 +30,14 @@ interface MigrationRow {
 }
 
 export function defaultMigrationDirectory(): string {
-  return fileURLToPath(new URL("../../../migrations/sqlite/", import.meta.url));
+  const launchDirectory = process.env["INIT_CWD"] ?? process.cwd();
+  const candidates = [
+    resolve(launchDirectory, "migrations/sqlite"),
+    resolve(launchDirectory, "../../migrations/sqlite"),
+    resolve(process.cwd(), "migrations/sqlite"),
+    resolve(process.cwd(), "../../migrations/sqlite"),
+  ];
+  return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0]!;
 }
 
 function readMigrations(directory: string): MigrationFile[] {

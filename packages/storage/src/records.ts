@@ -93,7 +93,9 @@ export interface JobSearchQuery {
 
 export interface JobSearchPage {
   readonly jobs: Job[];
+  readonly total: number;
   readonly nextCursor: string | null;
+  readonly catalogUpdatedAt: string | null;
 }
 
 export interface ClaimWorkItemsInput {

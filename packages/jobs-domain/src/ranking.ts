@@ -84,6 +84,14 @@ function rankSalary(job: Job, criteria: JobSearchCriteria): RankDimension {
   if (requested === null) return emptyDimension;
 
   if (job.salary === null) {
+    if (requested.unknownPolicy === "only") {
+      return {
+        status: "match",
+        score: 1,
+        matched: ["undisclosed salary"],
+        missing: [],
+      };
+    }
     return {
       status: "unknown",
       score: requested.unknownPolicy === "exclude" ? 0 : 0.4,

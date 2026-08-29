@@ -71,7 +71,17 @@ describe("rankJob", () => {
       salary: { unknownPolicy: "only" },
     });
 
-    expect(rankJob(job({ salary: null }), criteria, evaluation).eligible).toBe(true);
+    const undisclosed = rankJob(job({ salary: null }), criteria, evaluation);
+
+    expect(undisclosed.eligible).toBe(true);
+    expect(undisclosed.score).toBe(100);
+    expect(undisclosed.dimensions.salary).toEqual({
+      status: "match",
+      score: 1,
+      matched: ["undisclosed salary"],
+      missing: [],
+    });
+    expect(undisclosed.caveats).not.toContain("Comparable compensation is unavailable.");
     expect(rankJob(baseJob, criteria, evaluation).eligible).toBe(false);
   });
 

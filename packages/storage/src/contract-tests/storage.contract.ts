@@ -103,7 +103,7 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
           now,
           limit: 10,
         }),
-      ).toEqual({ jobs: [job], nextCursor: null });
+      ).toEqual({ jobs: [job], total: 1, nextCursor: null, catalogUpdatedAt: now });
     });
 
     it("applies hard structured filters after lexical retrieval", async () => {
@@ -124,14 +124,14 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
           now,
           limit: 10,
         }),
-      ).toEqual({ jobs: [job], nextCursor: null });
+      ).toEqual({ jobs: [job], total: 1, nextCursor: null, catalogUpdatedAt: now });
       expect(
         await current.jobs.search({
           criteria: { ...emptyCriteria, seniorities: ["entry"] },
           now,
           limit: 10,
         }),
-      ).toEqual({ jobs: [], nextCursor: null });
+      ).toEqual({ jobs: [], total: 0, nextCursor: null, catalogUpdatedAt: null });
     });
 
     it("treats untrusted lexical syntax as text instead of executable FTS syntax", async () => {
@@ -145,7 +145,7 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
           now,
           limit: 10,
         }),
-      ).resolves.toEqual({ jobs: [], nextCursor: null });
+      ).resolves.toEqual({ jobs: [], total: 0, nextCursor: null, catalogUpdatedAt: null });
     });
 
     it("paginates a stable sort without duplicates", async () => {
@@ -171,6 +171,8 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
         limit: 2,
       });
       expect(firstPage.jobs.map(({ id }) => id)).toEqual([job.id, second.id]);
+      expect(firstPage.total).toBe(3);
+      expect(firstPage.catalogUpdatedAt).toBe(now);
       expect(firstPage.nextCursor).toEqual(expect.any(String));
 
       const secondPage = await current.jobs.search({
@@ -183,7 +185,12 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
         now,
         limit: 2,
       });
-      expect(secondPage).toEqual({ jobs: [third], nextCursor: null });
+      expect(secondPage).toEqual({
+        jobs: [third],
+        total: 3,
+        nextCursor: null,
+        catalogUpdatedAt: now,
+      });
     });
 
     it("rejects a malformed or mismatched search cursor", async () => {

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
     "typecheck": "tsc --noEmit"
@@ -19,6 +19,7 @@
     "@jobbbler/ui": "workspace:*",
     "@jobbbler/webmcp": "workspace:*",
     "@supabase/supabase-js": "2.112.4",
+    "better-sqlite3": "13.0.3",
     "next": "16.3.3",
     "pino": "10.3.1",
     "react": "19.2.8",
