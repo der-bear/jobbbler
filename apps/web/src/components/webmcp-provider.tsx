@@ -1,0 +1,228 @@
+"use client";
+
+import { usePathname, useRouter } from "next/navigation";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
+
+import {
+  compareJobsResultSchema,
+  jobDetailResultSchema,
+  searchJobsResultSchema,
+  type ToolActivity,
+} from "@jobbbler/contracts";
+import {
+  AgentActivityStore,
+  isModelContextAvailable,
+  registerToolSet,
+  type ToolManifest,
+} from "@jobbbler/webmcp";
+
+import { createCompareToolManifests } from "@/features/compare/webmcp-tools";
+import { compareApiUrl } from "@/features/compare/compare-state";
+import { createJobDetailToolManifests } from "@/features/job-detail/webmcp-tools";
+import { createSearchToolManifests } from "@/features/search/webmcp-tools";
+import { queryApi } from "@/lib/query-client";
+import { searchInputToSearchParams, searchParamsToInput } from "@/lib/search-url";
+import {
+  commitWebMcpJobDetail,
+  commitWebMcpSearch,
+  readSearchSurfaceState,
+} from "@/lib/webmcp-ui-bridge";
+
+import { resolveWebMcpRoute, type WebMcpRoute } from "./webmcp-route";
+
+export type WebMcpRegistrationStatus = "checking" | "unsupported" | "preparing" | "ready" | "error";
+
+interface WebMcpContextValue {
+  readonly activities: readonly ToolActivity[];
+  readonly registeredToolCount: number;
+  readonly retry: () => void;
+  readonly status: WebMcpRegistrationStatus;
+  readonly supported: boolean;
+}
+
+const emptyActivities: readonly ToolActivity[] = Object.freeze([]);
+const fallbackContext: WebMcpContextValue = {
+  activities: emptyActivities,
+  registeredToolCount: 0,
+  retry: () => undefined,
+  status: "checking",
+  supported: false,
+};
+
+const WebMcpContext = createContext<WebMcpContextValue>(fallbackContext);
+
+function currentCriteriaSearch(): string {
+  const parameters = new URLSearchParams(window.location.search);
+  parameters.delete("id");
+  return parameters.toString();
+}
+
+function currentSearchInput() {
+  return searchParamsToInput(new URLSearchParams(currentCriteriaSearch()));
+}
+
+function selectedComparisonIds(): readonly string[] {
+  return new URLSearchParams(window.location.search).getAll("id");
+}
+
+function searchUrl(input: Parameters<typeof searchInputToSearchParams>[0]): string {
+  const parameters = searchInputToSearchParams(input);
+  return `/api/v1/jobs/search${parameters.size === 0 ? "" : `?${parameters.toString()}`}`;
+}
+
+function detailUrl(jobId: string): string {
+  const parameters = searchInputToSearchParams(currentSearchInput());
+  return `/api/v1/jobs/${encodeURIComponent(jobId)}${
+    parameters.size === 0 ? "" : `?${parameters.toString()}`
+  }`;
+}
+
+function routeManifests(
+  route: WebMcpRoute,
+  navigate: (href: string) => void,
+): readonly ToolManifest<unknown, unknown>[] {
+  if (route.kind === "search") {
+    return createSearchToolManifests({
+      searchJobs: (input, { signal }) =>
+        queryApi(searchUrl(input), searchJobsResultSchema, { signal }),
+      getSearchState: readSearchSurfaceState,
+      onSearchCommitted: commitWebMcpSearch,
+      onNavigate: navigate,
+    });
+  }
+
+  if (route.kind === "detail") {
+    return createJobDetailToolManifests({
+      currentJobId: route.jobId,
+      getJobDetails: (input, { signal }) =>
+        queryApi(detailUrl(input.jobId), jobDetailResultSchema, { signal }),
+      compareJobs: (input, { signal }) =>
+        queryApi(compareApiUrl(input.jobIds, currentCriteriaSearch()), compareJobsResultSchema, {
+          signal,
+        }),
+      onDetailCommitted: commitWebMcpJobDetail,
+      onNavigate: navigate,
+      getCriteriaSearch: currentCriteriaSearch,
+    });
+  }
+
+  if (route.kind === "compare") {
+    return createCompareToolManifests({
+      selectedJobIds: selectedComparisonIds,
+      getComparison: ({ signal }) =>
+        queryApi(
+          compareApiUrl(selectedComparisonIds(), currentCriteriaSearch()),
+          compareJobsResultSchema,
+          { signal },
+        ),
+      removeJobFromComparison: (jobId, { signal }) => {
+        if (signal.aborted) return Promise.reject(new DOMException("Cancelled.", "AbortError"));
+        return Promise.resolve({
+          jobIds: selectedComparisonIds().filter((selectedId) => selectedId !== jobId),
+        });
+      },
+      onComparisonCommitted: () => undefined,
+      onNavigate: navigate,
+      getCriteriaSearch: currentCriteriaSearch,
+    });
+  }
+
+  return [];
+}
+
+export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [activitiesStore] = useState(() => new AgentActivityStore());
+  const [status, setStatus] = useState<WebMcpRegistrationStatus>("checking");
+  const [registeredToolCount, setRegisteredToolCount] = useState(0);
+  const [registrationRevision, setRegistrationRevision] = useState(0);
+  const retry = useCallback(() => setRegistrationRevision((revision) => revision + 1), []);
+
+  const subscribe = useCallback(
+    (listener: () => void) => activitiesStore.subscribe(listener),
+    [activitiesStore],
+  );
+  const getSnapshot = useCallback(() => activitiesStore.snapshot(), [activitiesStore]);
+  const activities = useSyncExternalStore(subscribe, getSnapshot, () => emptyActivities);
+
+  useEffect(() => {
+    setStatus("checking");
+    setRegisteredToolCount(0);
+    let modelContext: unknown;
+    try {
+      modelContext = (document as Document & { modelContext?: unknown }).modelContext;
+      if (!isModelContextAvailable(modelContext)) throw new Error("WebMCP is unavailable.");
+    } catch {
+      setStatus("unsupported");
+      setRegisteredToolCount(0);
+      return;
+    }
+
+    const route = resolveWebMcpRoute(pathname);
+    const manifests = routeManifests(route, (href) => router.push(href, { scroll: false }));
+    if (manifests.length === 0) {
+      setStatus("ready");
+      setRegisteredToolCount(0);
+      return;
+    }
+
+    let disposed = false;
+    let unregister: (() => void) | undefined;
+    const registrationController = new AbortController();
+    setStatus("preparing");
+    setRegisteredToolCount(0);
+
+    void registerToolSet(manifests, {
+      modelContext,
+      activities: activitiesStore,
+      signal: registrationController.signal,
+    })
+      .then((cleanup) => {
+        if (disposed) {
+          cleanup();
+          return;
+        }
+        unregister = cleanup;
+        setRegisteredToolCount(manifests.length);
+        setStatus("ready");
+      })
+      .catch(() => {
+        if (disposed) return;
+        setRegisteredToolCount(0);
+        setStatus("error");
+      });
+
+    return () => {
+      disposed = true;
+      registrationController.abort();
+      unregister?.();
+    };
+  }, [activitiesStore, pathname, registrationRevision, router]);
+
+  const value = useMemo<WebMcpContextValue>(
+    () => ({
+      activities,
+      registeredToolCount,
+      retry,
+      status,
+      supported: status !== "checking" && status !== "unsupported",
+    }),
+    [activities, registeredToolCount, retry, status],
+  );
+
+  return <WebMcpContext.Provider value={value}>{children}</WebMcpContext.Provider>;
+}
+
+export function useWebMcp(): WebMcpContextValue {
+  return useContext(WebMcpContext);
+}

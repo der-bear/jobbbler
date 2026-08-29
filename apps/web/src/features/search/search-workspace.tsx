@@ -17,6 +17,7 @@ import {
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import {
   jobCategorySchema,
@@ -34,6 +35,8 @@ import {
 } from "@jobbbler/contracts";
 import { Sheet } from "@jobbbler/ui";
 
+import { AgentActivityRail } from "@/components/agent-activity-rail";
+import { useWebMcp } from "@/components/webmcp-provider";
 import { WebMcpStatus } from "@/components/webmcp-status";
 import {
   categoryLabel,
@@ -45,6 +48,7 @@ import {
 } from "@/lib/job-format";
 import { ApiClientError, queryApi } from "@/lib/query-client";
 import { searchInputToSearchParams, searchParamsToInput } from "@/lib/search-url";
+import { publishSearchSurfaceState, subscribeWebMcpSearchCommit } from "@/lib/webmcp-ui-bridge";
 
 import styles from "./search-workspace.module.css";
 
@@ -74,13 +78,6 @@ interface SearchDraft {
   readonly currency: string;
   readonly excludeKeywords: string;
   readonly sort: JobSearchCriteria["sort"];
-}
-
-interface ActivityItem {
-  readonly id: number;
-  readonly label: string;
-  readonly detail: string;
-  readonly actor: "You" | "WebMCP";
 }
 
 function draftFromInput(input: JobSearchInput): SearchDraft {
@@ -432,6 +429,7 @@ function JobResult({
 }
 
 export function SearchWorkspace() {
+  const webMcp = useWebMcp();
   const [applied, setApplied] = useState<JobSearchInput>(defaultSearch);
   const [draft, setDraft] = useState<SearchDraft>(() => draftFromInput(defaultSearch));
   const [result, setResult] = useState<SearchJobsResult | null>(null);
@@ -440,14 +438,7 @@ export function SearchWorkspace() {
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [comparedJobIds, setComparedJobIds] = useState<readonly string[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [activity, setActivity] = useState<readonly ActivityItem[]>([
-    {
-      id: 1,
-      label: "Workspace ready",
-      detail: "A transparent search is ready to refine.",
-      actor: "You",
-    },
-  ]);
+  const [activityOpen, setActivityOpen] = useState(false);
   const requestSequence = useRef(0);
 
   const runSearch = useCallback(async (input: JobSearchInput, history: "push" | "replace") => {
@@ -494,6 +485,34 @@ export function SearchWorkspace() {
     window.addEventListener("popstate", restore);
     return () => window.removeEventListener("popstate", restore);
   }, [runSearch]);
+
+  useEffect(
+    () =>
+      subscribeWebMcpSearchCommit(({ input, result: committedResult }) => {
+        requestSequence.current += 1;
+        publishSearchSurfaceState({
+          criteria: committedResult.criteria,
+          total: committedResult.total,
+        });
+        flushSync(() => {
+          setApplied(input);
+          setDraft(draftFromInput(input));
+          setResult(committedResult);
+          setExpandedJobId(committedResult.jobs[0]?.id ?? null);
+          setError(null);
+          setStatus("ready");
+        });
+      }),
+    [],
+  );
+
+  useEffect(() => {
+    publishSearchSurfaceState(
+      result === null ? null : { criteria: result.criteria, total: result.total },
+    );
+  }, [result]);
+
+  useEffect(() => () => publishSearchSurfaceState(null), []);
 
   const filterSummary = useMemo(() => {
     const items: { readonly id: string; readonly label: string }[] = [];
@@ -555,17 +574,6 @@ export function SearchWorkspace() {
     }
     setApplied(next);
     setDraft(draftFromInput(next));
-    setActivity((current) =>
-      [
-        {
-          id: Date.now(),
-          label: "Constraint removed",
-          detail: "Results were refreshed from the visible search state.",
-          actor: "You" as const,
-        },
-        ...current,
-      ].slice(0, 4),
-    );
     void runSearch(next, "push");
   }
 
@@ -574,17 +582,6 @@ export function SearchWorkspace() {
     setFiltersOpen(false);
     const next = inputFromDraft(draft);
     setApplied(next);
-    setActivity((current) =>
-      [
-        {
-          id: Date.now(),
-          label: "Search refined",
-          detail: "Visible constraints were applied to the catalog.",
-          actor: "You" as const,
-        },
-        ...current,
-      ].slice(0, 4),
-    );
     void runSearch(next, "push");
   }
 
@@ -603,6 +600,17 @@ export function SearchWorkspace() {
     });
   }
 
+  const mobileActivityStatus =
+    webMcp.status === "error"
+      ? "Needs attention"
+      : webMcp.status === "checking"
+        ? "Checking"
+        : webMcp.status === "preparing"
+          ? "Preparing"
+          : webMcp.status === "unsupported"
+            ? "Browser mode"
+            : `${String(webMcp.activities.length)} ${webMcp.activities.length === 1 ? "event" : "events"}`;
+
   return (
     <div className={styles["workspace"]}>
       <aside className={styles["intentRail"]} aria-label="Search intent and filters">
@@ -620,15 +628,28 @@ export function SearchWorkspace() {
           </p>
         </section>
 
-        <button
-          className={styles["mobileFiltersButton"]}
-          onClick={() => setFiltersOpen(true)}
-          type="button"
-        >
-          <SlidersHorizontalIcon aria-hidden="true" size={17} />
-          Filters
-          <span>{filterSummary.length} active</span>
-        </button>
+        <div className={styles["mobileWorkspaceActions"]}>
+          <button
+            className={styles["mobileFiltersButton"]}
+            onClick={() => setFiltersOpen(true)}
+            type="button"
+          >
+            <SlidersHorizontalIcon aria-hidden="true" size={17} />
+            Filters
+            <span>{filterSummary.length} active</span>
+          </button>
+          <button
+            aria-label={`Agent activity — ${mobileActivityStatus}`}
+            className={styles["mobileActivityButton"]}
+            data-status={webMcp.status}
+            onClick={() => setActivityOpen(true)}
+            type="button"
+          >
+            <CircleIcon aria-hidden="true" size={8} weight="fill" />
+            Activity
+            <span>{mobileActivityStatus}</span>
+          </button>
+        </div>
         <SearchFilters
           className={styles["desktopFilters"] ?? ""}
           draft={draft}
@@ -636,34 +657,13 @@ export function SearchWorkspace() {
           onSubmit={submit}
         />
 
-        <section className={styles["activityPreview"]} aria-labelledby="activity-heading">
-          <div className={styles["activityHeader"]}>
-            <div>
-              <p className={styles["eyebrow"]} id="activity-heading">
-                Agent activity
-              </p>
-              <WebMcpStatus />
-            </div>
-            <span className={styles["activityScope"]}>This session</span>
-          </div>
-          <ol>
-            {activity.map((item) => (
-              <li key={item.id}>
-                <CircleIcon
-                  aria-hidden="true"
-                  className={styles["activityDot"]}
-                  size={9}
-                  weight="fill"
-                />
-                <div>
-                  <strong>{item.label}</strong>
-                  <p>{item.detail}</p>
-                  <small>{item.actor} · just now</small>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </section>
+        <AgentActivityRail
+          activities={webMcp.activities}
+          className={styles["agentActivity"] ?? ""}
+          registeredToolCount={webMcp.registeredToolCount}
+          status={<WebMcpStatus />}
+          webMcpAvailable={webMcp.supported && webMcp.status !== "error"}
+        />
       </aside>
 
       <Sheet
@@ -679,6 +679,22 @@ export function SearchWorkspace() {
           draft={draft}
           onDraftChange={setDraft}
           onSubmit={submit}
+        />
+      </Sheet>
+
+      <Sheet
+        className={styles["mobileActivitySheet"] ?? ""}
+        description="See which route-specific tools are available and what an agent changed in this session."
+        onOpenChange={setActivityOpen}
+        open={activityOpen}
+        side="bottom"
+        title="Agent activity"
+      >
+        <AgentActivityRail
+          activities={webMcp.activities}
+          registeredToolCount={webMcp.registeredToolCount}
+          status={<WebMcpStatus />}
+          webMcpAvailable={webMcp.supported && webMcp.status !== "error"}
         />
       </Sheet>
 

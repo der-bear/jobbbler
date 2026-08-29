@@ -49,6 +49,8 @@ Application-generated sortable IDs and UTC timestamps cross database boundaries 
 
 ## Documentation map
 
+- [WebMCP capability matrix](./webmcp-capability-matrix.md)
+- [WebMCP evaluation fixtures](./webmcp-evals.md)
 - [Agent authorization and data consent](./agent-authorization-and-consent.md)
 - [Realtime Agent Activity](./realtime-agent-activity.md)
 - [Source ingestion and governance](./source-ingestion.md)

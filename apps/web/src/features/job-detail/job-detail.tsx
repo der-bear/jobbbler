@@ -10,6 +10,7 @@ import {
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 
 import {
   jobDetailResultSchema,
@@ -27,6 +28,7 @@ import {
   workModelLabel,
 } from "@/lib/job-format";
 import { ApiClientError, queryApi } from "@/lib/query-client";
+import { subscribeWebMcpJobDetailCommit } from "@/lib/webmcp-ui-bridge";
 
 import styles from "./job-detail.module.css";
 
@@ -262,6 +264,15 @@ export function JobDetail({
   criteriaSearch,
 }: Readonly<{ jobId: string; criteriaSearch: string }>) {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
+
+  useEffect(
+    () =>
+      subscribeWebMcpJobDetailCommit((result) => {
+        if (result.job.id !== jobId) return;
+        flushSync(() => setState({ kind: "ready", result }));
+      }),
+    [jobId],
+  );
 
   useEffect(() => {
     const controller = new AbortController();

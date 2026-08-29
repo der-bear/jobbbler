@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "route": "/jobs/job_00000001-0000-7000-8000-000000000001",
+  "registeredTools": ["get_job_details", "compare_jobs"],
+  "cases": [
+    {
+      "id": "detail-direct-current-job",
+      "category": "direct",
+      "context": {
+        "currentJobId": "job_00000001-0000-7000-8000-000000000001"
+      },
+      "prompt": "Show the full details for this job.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "get_job_details",
+        "arguments": {
+          "jobId": "job_00000001-0000-7000-8000-000000000001"
+        }
+      }
+    },
+    {
+      "id": "detail-paraphrased-current-job",
+      "category": "paraphrased",
+      "context": {
+        "currentJobId": "job_00000001-0000-7000-8000-000000000001"
+      },
+      "prompt": "Give me the specifics behind the role I am viewing.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "get_job_details",
+        "arguments": {
+          "jobId": "job_00000001-0000-7000-8000-000000000001"
+        }
+      }
+    },
+    {
+      "id": "detail-direct-compare-current-and-known-job",
+      "category": "direct",
+      "context": {
+        "currentJobId": "job_00000001-0000-7000-8000-000000000001",
+        "visibleJobIds": [
+          "job_00000001-0000-7000-8000-000000000001",
+          "job_00000004-0000-7000-8000-000000000004"
+        ]
+      },
+      "prompt": "Compare this job with job_00000004-0000-7000-8000-000000000004.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "compare_jobs",
+        "arguments": {
+          "jobIds": [
+            "job_00000001-0000-7000-8000-000000000001",
+            "job_00000004-0000-7000-8000-000000000004"
+          ]
+        }
+      }
+    },
+    {
+      "id": "detail-paraphrased-compare-current-and-known-job",
+      "category": "paraphrased",
+      "context": {
+        "currentJobId": "job_00000001-0000-7000-8000-000000000001",
+        "visibleJobIds": [
+          "job_00000001-0000-7000-8000-000000000001",
+          "job_00000004-0000-7000-8000-000000000004"
+        ]
+      },
+      "prompt": "Put the role on this page next to job_00000004-0000-7000-8000-000000000004 so I can weigh them up.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "compare_jobs",
+        "arguments": {
+          "jobIds": [
+            "job_00000001-0000-7000-8000-000000000001",
+            "job_00000004-0000-7000-8000-000000000004"
+          ]
+        }
+      }
+    },
+    {
+      "id": "detail-ambiguous-compare-one-job",
+      "category": "ambiguous",
+      "context": {
+        "currentJobId": "job_00000001-0000-7000-8000-000000000001"
+      },
+      "prompt": "Compare this role.",
+      "expected": {
+        "kind": "clarification",
+        "mustMention": ["another job", "job id"]
+      }
+    },
+    {
+      "id": "detail-wrong-order-remove-from-comparison",
+      "category": "wrong_order",
+      "context": {
+        "currentJobId": "job_00000001-0000-7000-8000-000000000001"
+      },
+      "prompt": "Remove this job from my comparison.",
+      "expected": {
+        "kind": "clarification",
+        "mustMention": ["comparison", "open"]
+      }
+    },
+    {
+      "id": "detail-invalid-job-id",
+      "category": "invalid_argument",
+      "context": {
+        "currentJobId": "job_00000001-0000-7000-8000-000000000001"
+      },
+      "prompt": "Show details for job_invalid.",
+      "expected": {
+        "kind": "reject_input",
+        "intendedTool": "get_job_details",
+        "arguments": {
+          "jobId": "job_invalid"
+        },
+        "field": "jobId",
+        "mustMention": ["valid job id"]
+      }
+    }
+  ]
+}

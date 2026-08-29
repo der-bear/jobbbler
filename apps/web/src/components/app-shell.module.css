@@ -115,7 +115,9 @@
   .header {
     grid-template-columns: 1fr auto;
     min-block-size: 60px;
+    background: var(--color-canvas);
     padding-inline: 18px;
+    backdrop-filter: none;
   }
 
   .wordmark span,

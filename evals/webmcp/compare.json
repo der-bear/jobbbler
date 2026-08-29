@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "route": "/compare?id=job_00000001-0000-7000-8000-000000000001&id=job_00000004-0000-7000-8000-000000000004&id=job_0000000d-0000-7000-8000-00000000000d",
+  "registeredTools": ["get_comparison", "remove_job_from_comparison"],
+  "cases": [
+    {
+      "id": "compare-direct-read-current-set",
+      "category": "direct",
+      "context": {
+        "comparisonJobIds": [
+          "job_00000001-0000-7000-8000-000000000001",
+          "job_00000004-0000-7000-8000-000000000004",
+          "job_0000000d-0000-7000-8000-00000000000d"
+        ]
+      },
+      "prompt": "Show the current comparison.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "get_comparison",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "compare-paraphrased-read-current-set",
+      "category": "paraphrased",
+      "context": {
+        "comparisonJobIds": [
+          "job_00000001-0000-7000-8000-000000000001",
+          "job_00000004-0000-7000-8000-000000000004",
+          "job_0000000d-0000-7000-8000-00000000000d"
+        ]
+      },
+      "prompt": "Lay out the roles I have lined up side by side.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "get_comparison",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "compare-direct-remove-second-job",
+      "category": "direct",
+      "context": {
+        "comparisonJobIds": [
+          "job_00000001-0000-7000-8000-000000000001",
+          "job_00000004-0000-7000-8000-000000000004",
+          "job_0000000d-0000-7000-8000-00000000000d"
+        ]
+      },
+      "prompt": "Remove the second job from this comparison.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "remove_job_from_comparison",
+        "arguments": {
+          "jobId": "job_00000004-0000-7000-8000-000000000004"
+        }
+      }
+    },
+    {
+      "id": "compare-paraphrased-remove-first-job",
+      "category": "paraphrased",
+      "context": {
+        "comparisonJobIds": [
+          "job_00000001-0000-7000-8000-000000000001",
+          "job_00000004-0000-7000-8000-000000000004",
+          "job_0000000d-0000-7000-8000-00000000000d"
+        ]
+      },
+      "prompt": "Drop the first option from the shortlist.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "remove_job_from_comparison",
+        "arguments": {
+          "jobId": "job_00000001-0000-7000-8000-000000000001"
+        }
+      }
+    },
+    {
+      "id": "compare-ambiguous-keep-best",
+      "category": "ambiguous",
+      "context": {
+        "comparisonJobIds": [
+          "job_00000001-0000-7000-8000-000000000001",
+          "job_00000004-0000-7000-8000-000000000004",
+          "job_0000000d-0000-7000-8000-00000000000d"
+        ]
+      },
+      "prompt": "Keep only the best one.",
+      "expected": {
+        "kind": "clarification",
+        "mustMention": ["criteria", "job"]
+      }
+    },
+    {
+      "id": "compare-wrong-order-add-job",
+      "category": "wrong_order",
+      "context": {
+        "comparisonJobIds": [
+          "job_00000001-0000-7000-8000-000000000001",
+          "job_00000004-0000-7000-8000-000000000004"
+        ]
+      },
+      "prompt": "Add job_0000000d-0000-7000-8000-00000000000d to this comparison.",
+      "expected": {
+        "kind": "clarification",
+        "mustMention": ["search or job details", "add"]
+      }
+    },
+    {
+      "id": "compare-invalid-remove-unselected-job",
+      "category": "invalid_argument",
+      "context": {
+        "comparisonJobIds": [
+          "job_00000001-0000-7000-8000-000000000001",
+          "job_00000004-0000-7000-8000-000000000004"
+        ]
+      },
+      "prompt": "Remove job_0000000d-0000-7000-8000-00000000000d from this comparison.",
+      "expected": {
+        "kind": "reject_input",
+        "intendedTool": "remove_job_from_comparison",
+        "arguments": {
+          "jobId": "job_0000000d-0000-7000-8000-00000000000d"
+        },
+        "field": "jobId",
+        "mustMention": ["not in the current comparison"]
+      }
+    }
+  ]
+}

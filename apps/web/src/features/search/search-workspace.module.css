@@ -30,7 +30,6 @@
 
 .eyebrowRow,
 .filterHeading,
-.activityHeader,
 .resultsHeader,
 .resultsControls,
 .resultsFooter {
@@ -66,11 +65,14 @@
   border-block-start: 1px solid var(--color-line);
 }
 
-.mobileFiltersButton {
+.mobileWorkspaceActions,
+.mobileFiltersButton,
+.mobileActivityButton {
   display: none;
 }
 
-.mobileFilterSheet {
+.mobileFilterSheet,
+.mobileActivitySheet {
   display: none;
 }
 
@@ -182,80 +184,8 @@
   translate: 0 -1px;
 }
 
-.activityPreview {
+.agentActivity {
   margin-block-start: 42px;
-  border-block-start: 1px solid var(--color-line);
-  padding-block-start: 21px;
-}
-
-.activityHeader {
-  align-items: flex-start;
-}
-
-.activityHeader > div {
-  display: grid;
-  gap: 12px;
-}
-
-.activityScope {
-  color: var(--color-signal-strong);
-  font-size: 11px;
-}
-
-.activityPreview ol {
-  display: grid;
-  gap: 0;
-  margin: 22px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.activityPreview li {
-  position: relative;
-  display: grid;
-  grid-template-columns: 12px 1fr;
-  gap: 11px;
-  min-block-size: 74px;
-}
-
-.activityPreview li:not(:last-child)::after {
-  position: absolute;
-  inset-block: 10px -2px;
-  inset-inline-start: 4px;
-  inline-size: 1px;
-  background: var(--color-line-strong);
-  content: "";
-}
-
-.activityDot {
-  position: relative;
-  z-index: 1;
-  margin-block-start: 3px;
-  color: var(--jb-signal);
-}
-
-.activityPreview li div {
-  min-inline-size: 0;
-}
-
-.activityPreview li strong {
-  display: block;
-  color: var(--color-ink);
-  font-size: 11px;
-  font-weight: 640;
-}
-
-.activityPreview li p {
-  margin: 4px 0 3px;
-  color: var(--color-ink-muted);
-  font-size: 11px;
-  line-height: 1.4;
-}
-
-.activityPreview li small {
-  color: var(--color-ink-subtle);
-  font-family: var(--jb-font-mono);
-  font-size: 9px;
 }
 
 .results {
@@ -750,20 +680,27 @@
     font-size: clamp(27px, 8.2vw, 38px);
   }
 
-  .activityPreview {
-    display: none;
-  }
-
   .desktopFilters {
     display: none;
   }
 
-  .mobileFiltersButton {
+  .agentActivity {
+    display: none;
+  }
+
+  .mobileWorkspaceActions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-block-start: 22px;
+  }
+
+  .mobileFiltersButton,
+  .mobileActivityButton {
     display: flex;
     inline-size: 100%;
     align-items: center;
     gap: 8px;
-    margin-block-start: 22px;
     border: 1px solid var(--color-line-strong);
     border-radius: var(--radius-sm);
     background: var(--color-surface);
@@ -773,15 +710,33 @@
     font-weight: 650;
   }
 
-  .mobileFiltersButton span {
+  .mobileFiltersButton span,
+  .mobileActivityButton span {
     margin-inline-start: auto;
     color: var(--color-ink-subtle);
     font-family: var(--jb-font-mono);
     font-size: 9px;
     font-weight: 400;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobileActivityButton[data-status="ready"] > svg,
+  .mobileActivityButton[data-status="preparing"] > svg {
+    color: var(--color-signal-strong);
+  }
+
+  .mobileActivityButton[data-status="error"] > svg,
+  .mobileActivityButton[data-status="error"] span {
+    color: var(--jb-warning);
   }
 
   .mobileFilterSheet[open] {
+    display: block;
+  }
+
+  .mobileActivitySheet[open] {
     display: block;
   }
 
@@ -794,6 +749,15 @@
     max-block-size: calc(82dvh - 92px);
     overflow-y: auto;
     padding-block-start: 0;
+  }
+
+  .mobileActivitySheet :global(.jb-dialog__surface) {
+    max-block-size: 76dvh;
+  }
+
+  .mobileActivitySheet :global(.jb-dialog__body) {
+    max-block-size: calc(76dvh - 92px);
+    overflow-y: auto;
   }
 
   .sheetFilters {

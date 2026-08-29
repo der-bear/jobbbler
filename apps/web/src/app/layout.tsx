@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { ToastProvider } from "@jobbbler/ui";
 
 import { AppShell } from "@/components/app-shell";
+import { WebMcpProvider } from "@/components/webmcp-provider";
 
 import "./globals.css";
 
@@ -27,7 +28,9 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
       </head>
       <body>
         <ToastProvider>
-          <AppShell>{children}</AppShell>
+          <WebMcpProvider>
+            <AppShell>{children}</AppShell>
+          </WebMcpProvider>
         </ToastProvider>
       </body>
     </html>

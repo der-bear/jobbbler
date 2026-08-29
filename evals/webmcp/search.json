@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "route": "/",
+  "registeredTools": ["search_jobs", "get_search_state"],
+  "cases": [
+    {
+      "id": "search-direct-filtered",
+      "category": "direct",
+      "context": {
+        "searchState": {}
+      },
+      "prompt": "Find senior remote software engineering jobs in Europe paying at least EUR 100000. Exclude agencies.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "search_jobs",
+        "arguments": {
+          "query": "software engineering",
+          "workModels": ["remote"],
+          "seniorities": ["senior"],
+          "locations": ["Europe"],
+          "excludeKeywords": ["agency"],
+          "salary": {
+            "minimum": 100000,
+            "currency": "EUR",
+            "period": "year",
+            "unknownPolicy": "include"
+          },
+          "sort": "relevance",
+          "limit": 20
+        }
+      }
+    },
+    {
+      "id": "search-paraphrased-filtered",
+      "category": "paraphrased",
+      "context": {
+        "searchState": {}
+      },
+      "prompt": "Show senior Europe-friendly remote engineering work above EUR 100000 a year, but skip agency postings.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "search_jobs",
+        "arguments": {
+          "query": "engineering",
+          "workModels": ["remote"],
+          "seniorities": ["senior"],
+          "locations": ["Europe"],
+          "excludeKeywords": ["agency"],
+          "salary": {
+            "minimum": 100000,
+            "currency": "EUR",
+            "period": "year",
+            "unknownPolicy": "include"
+          },
+          "sort": "relevance",
+          "limit": 20
+        }
+      }
+    },
+    {
+      "id": "search-direct-read-state",
+      "category": "direct",
+      "context": {
+        "searchState": {
+          "query": "product designer",
+          "workModels": ["remote"],
+          "sort": "newest",
+          "limit": 20
+        }
+      },
+      "prompt": "What filters are active right now?",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "get_search_state",
+        "arguments": {}
+      }
+    },
+    {
+      "id": "search-ambiguous-good-role",
+      "category": "ambiguous",
+      "context": {
+        "searchState": {}
+      },
+      "prompt": "Find me a good role.",
+      "expected": {
+        "kind": "clarification",
+        "mustMention": ["role", "location or remote preference"]
+      }
+    },
+    {
+      "id": "search-wrong-order-compare-before-results",
+      "category": "wrong_order",
+      "context": {
+        "searchState": {}
+      },
+      "prompt": "Before searching, compare the jobs I will find.",
+      "expected": {
+        "kind": "clarification",
+        "mustMention": ["search", "one to three jobs"]
+      }
+    },
+    {
+      "id": "search-invalid-salary-range",
+      "category": "invalid_argument",
+      "context": {
+        "searchState": {}
+      },
+      "prompt": "Set the minimum salary to EUR 90000 and the maximum salary to EUR 70000.",
+      "expected": {
+        "kind": "reject_input",
+        "intendedTool": "search_jobs",
+        "arguments": {
+          "salary": {
+            "minimum": 90000,
+            "maximum": 70000,
+            "currency": "EUR",
+            "period": "year",
+            "unknownPolicy": "include"
+          }
+        },
+        "field": "salary.maximum",
+        "mustMention": ["maximum", "minimum"]
+      }
+    }
+  ]
+}
