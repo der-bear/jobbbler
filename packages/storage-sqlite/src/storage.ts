@@ -929,6 +929,10 @@ function createRepositories(
         if (row === undefined) throw notFound("Saved search");
         return savedSearchFromRow(row);
       },
+      async delete(id) {
+        const result = database.prepare("DELETE FROM saved_searches WHERE id = ?").run(id);
+        return result.changes > 0;
+      },
     },
     schedules: {
       async insert(record) {

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { jobAlertScheduleSchema, savedSearchSchema, scheduleRecurrenceSchema } from "./schedule.js";
+import {
+  jobAlertScheduleSchema,
+  savedSearchSchema,
+  scheduleRecurrenceSchema,
+  updateJobAlertScheduleInputSchema,
+} from "./schedule.js";
 
 describe("scheduleRecurrenceSchema", () => {
   it("accepts an explicit IANA weekly schedule", () => {
@@ -89,5 +94,33 @@ describe("scheduleRecurrenceSchema", () => {
         updatedAt: timestamp,
       }),
     ).toMatchObject({ enabled: true, delivery: { channel: "email" } });
+  });
+
+  it("requires at least one recurrence or delivery change to update an alert", () => {
+    expect(
+      updateJobAlertScheduleInputSchema.parse({
+        expectedVersion: 2,
+        recurrence: { frequency: "daily", time: "07:15", timeZone: "Europe/Kyiv" },
+      }),
+    ).toMatchObject({ expectedVersion: 2, recurrence: { time: "07:15" } });
+    expect(
+      updateJobAlertScheduleInputSchema.parse({
+        expectedVersion: 0,
+        delivery: {
+          channel: "email",
+          endpointId: "endpoint_550e8400-e29b-41d4-a716-446655440000",
+        },
+      }),
+    ).toMatchObject({ delivery: { channel: "email" } });
+
+    expect(() => updateJobAlertScheduleInputSchema.parse({ expectedVersion: 2 })).toThrow(
+      /recurrence or delivery/i,
+    );
+    expect(() =>
+      updateJobAlertScheduleInputSchema.parse({
+        expectedVersion: 2,
+        enabled: false,
+      }),
+    ).toThrow();
   });
 });

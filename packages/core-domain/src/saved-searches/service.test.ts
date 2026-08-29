@@ -32,6 +32,13 @@ function ports() {
       insert: async (record) => (saved.set(record.id, record), record),
       getById: async (id) => saved.get(id) ?? null,
       listByOwner: async (id) => [...saved.values()].filter(({ ownerId: owner }) => owner === id),
+      delete: async (id) => {
+        if (!saved.delete(id)) return false;
+        for (const [scheduleId, schedule] of schedules) {
+          if (schedule.savedSearchId === id) schedules.delete(scheduleId);
+        }
+        return true;
+      },
     },
     schedules: {
       insert: async (record) => (schedules.set(record.id, record), record),
@@ -202,6 +209,112 @@ describe("saved-search and alert service", () => {
       enabled: true,
       version: 2,
       nextRunAt: "2026-08-31T09:01:20.000Z",
+    });
+  });
+
+  it("updates recurrence and delivery with optimistic versioning and a fresh due instant", async () => {
+    const state = ports();
+    const service = createSavedSearchService(state.current);
+    const saved = await service.createSavedSearch(
+      ownerId,
+      { name: "Remote TypeScript", criteria },
+      now,
+    );
+    const scheduled = await service.scheduleAlert(
+      ownerId,
+      {
+        savedSearchId: saved.id,
+        expectedVersion: 0,
+        recurrence: { frequency: "daily", time: "09:00", timeZone: "UTC" },
+        delivery: { channel: "email", endpointId },
+      },
+      now,
+    );
+
+    const updated = await service.updateSchedule(
+      ownerId,
+      scheduled.id,
+      {
+        expectedVersion: 0,
+        recurrence: { frequency: "daily", time: "18:00", timeZone: "UTC" },
+      },
+      now,
+    );
+    expect(updated).toMatchObject({
+      version: 1,
+      recurrence: { time: "18:00" },
+      delivery: { channel: "email", endpointId },
+      nextRunAt: "2026-08-29T18:01:20.000Z",
+    });
+
+    await expect(
+      service.updateSchedule(
+        ownerId,
+        scheduled.id,
+        { expectedVersion: 0, recurrence: { frequency: "daily", time: "07:00", timeZone: "UTC" } },
+        now,
+      ),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(
+      service.updateSchedule(
+        ownerId,
+        scheduled.id,
+        {
+          expectedVersion: 1,
+          delivery: {
+            channel: "email",
+            endpointId: "endpoint_650e8400-e29b-41d4-a716-446655440000",
+          },
+        },
+        now,
+      ),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      service.updateSchedule(ownerId, scheduled.id, { expectedVersion: 1 }, now),
+    ).rejects.toThrow();
+    const delivered = await service.updateSchedule(
+      ownerId,
+      scheduled.id,
+      { expectedVersion: 1, delivery: { channel: "email", endpointId } },
+      now,
+    );
+    expect(delivered).toMatchObject({
+      version: 2,
+      nextRunAt: updated.nextRunAt,
+      delivery: { endpointId },
+    });
+  });
+
+  it("deletes an owned saved search together with its schedule", async () => {
+    const state = ports();
+    const service = createSavedSearchService(state.current);
+    const saved = await service.createSavedSearch(
+      ownerId,
+      { name: "Remote TypeScript", criteria },
+      now,
+    );
+    const scheduled = await service.scheduleAlert(
+      ownerId,
+      {
+        savedSearchId: saved.id,
+        expectedVersion: 0,
+        recurrence: { frequency: "daily", time: "09:00", timeZone: "UTC" },
+        delivery: { channel: "email", endpointId },
+      },
+      now,
+    );
+
+    await expect(
+      service.deleteSavedSearch("owner_650e8400-e29b-41d4-a716-446655440000", saved.id),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(service.deleteSavedSearch(ownerId, saved.id)).resolves.toEqual({
+      savedSearch: saved,
+      schedule: scheduled,
+    });
+    expect(state.saved.size).toBe(0);
+    expect(state.schedules.size).toBe(0);
+    await expect(service.deleteSavedSearch(ownerId, saved.id)).rejects.toMatchObject({
+      code: "NOT_FOUND",
     });
   });
 });

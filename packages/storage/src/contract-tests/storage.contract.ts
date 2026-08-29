@@ -314,6 +314,92 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
       ).rejects.toMatchObject({ code: "CONFLICT" });
     });
 
+    it("deletes a saved search together with its schedule and alert artifacts", async () => {
+      const current = await create();
+      await current.owners.insert(owner);
+      await current.organizations.upsert(organization);
+      await current.jobs.upsert(job);
+      const saved: SavedSearchRecord = {
+        id: "search_550e8400-e29b-41d4-a716-446655440030",
+        ownerId: owner.id,
+        name: "Remove me",
+        criteria: emptyCriteria,
+        version: 0,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const kept: SavedSearchRecord = {
+        ...saved,
+        id: "search_550e8400-e29b-41d4-a716-446655440031",
+        name: "Keep me",
+      };
+      await current.savedSearches.insert(saved);
+      await current.savedSearches.insert(kept);
+      const schedule: ScheduleRecord = {
+        id: "schedule_550e8400-e29b-41d4-a716-446655440030",
+        ownerId: owner.id,
+        savedSearchId: saved.id,
+        recurrence: { frequency: "daily", time: "09:00", timeZone: "UTC" },
+        deliveryChannel: "email",
+        deliveryEndpointId: "endpoint_550e8400-e29b-41d4-a716-446655440030",
+        enabled: true,
+        nextRunAt: later,
+        version: 0,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await current.schedules.insert(schedule);
+      const evaluation = {
+        id: "evaluation_550e8400-e29b-41d4-a716-446655440030",
+        ownerId: owner.id,
+        savedSearchId: saved.id,
+        scheduleId: schedule.id,
+        catalogUpdatedAt: now,
+        createdAt: now,
+        baseline: [{ jobId: job.id, fingerprint: "c".repeat(64) }],
+      };
+      await current.alerts.insertEvaluation({
+        evaluation,
+        changes: [
+          {
+            id: "change_550e8400-e29b-41d4-a716-446655440030",
+            evaluationId: evaluation.id,
+            jobId: job.id,
+            kind: "new" as const,
+            createdAt: now,
+          },
+        ],
+      });
+      await current.alerts.putDeliveryIfAbsent({
+        id: "delivery_550e8400-e29b-41d4-a716-446655440030",
+        evaluationId: evaluation.id,
+        ownerId: owner.id,
+        scheduleId: schedule.id,
+        endpointId: schedule.deliveryEndpointId,
+        contentHash: "d".repeat(64),
+        status: "pending",
+        attempt: 0,
+        providerRef: null,
+        errorCode: null,
+        acceptedAt: null,
+        lastAttemptAt: null,
+        version: 0,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      await expect(current.savedSearches.delete(saved.id)).resolves.toBe(true);
+
+      await expect(current.savedSearches.getById(saved.id)).resolves.toBeNull();
+      await expect(current.savedSearches.listByOwner(owner.id)).resolves.toEqual([kept]);
+      await expect(current.schedules.getById(schedule.id)).resolves.toBeNull();
+      await expect(current.schedules.listByOwner(owner.id)).resolves.toEqual([]);
+      await expect(current.alerts.getLatestEvaluation(saved.id)).resolves.toBeNull();
+      await expect(current.alerts.listChanges(evaluation.id)).resolves.toEqual([]);
+      await expect(current.alerts.getLatestDelivery(schedule.id)).resolves.toBeNull();
+      await expect(current.savedSearches.delete(saved.id)).resolves.toBe(false);
+    });
+
     it("keeps alert evaluations immutable and deduplicates content-bound deliveries", async () => {
       const current = await create();
       await current.owners.insert(owner);

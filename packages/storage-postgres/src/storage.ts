@@ -882,6 +882,39 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
       async update(record, expectedVersion) {
         return updateVersioned(sql, "saved_search", record, expectedVersion);
       },
+      async delete(id) {
+        return sql.begin(async (transaction) => {
+          const tx = transaction as PostgresExecutor;
+          const existing = await tx<{ readonly id: string }[]>`
+            SELECT id FROM jobbbler.entity_records
+            WHERE kind = 'saved_search' AND id = ${id}
+            FOR UPDATE`;
+          if (existing.length === 0) return false;
+          await tx`
+            DELETE FROM jobbbler.entity_records
+            WHERE kind = 'alert_change' AND body->>'evaluationId' IN (
+              SELECT evaluation.id FROM jobbbler.entity_records AS evaluation
+              WHERE evaluation.kind = 'alert_evaluation'
+                AND evaluation.body->>'savedSearchId' = ${id}
+            )`;
+          await tx`
+            DELETE FROM jobbbler.entity_records
+            WHERE kind = 'alert_delivery' AND body->>'scheduleId' IN (
+              SELECT schedule.id FROM jobbbler.entity_records AS schedule
+              WHERE schedule.kind = 'schedule' AND schedule.body->>'savedSearchId' = ${id}
+            )`;
+          await tx`
+            DELETE FROM jobbbler.entity_records
+            WHERE kind = 'alert_evaluation' AND body->>'savedSearchId' = ${id}`;
+          await tx`
+            DELETE FROM jobbbler.entity_records
+            WHERE kind = 'schedule' AND body->>'savedSearchId' = ${id}`;
+          await tx`
+            DELETE FROM jobbbler.entity_records
+            WHERE kind = 'saved_search' AND id = ${id}`;
+          return true;
+        });
+      },
     },
     schedules: {
       async insert(record) {

@@ -94,9 +94,25 @@ export const setJobAlertEnabledInputSchema = z.strictObject({
   enabled: z.boolean(),
 });
 
+export const updateJobAlertScheduleInputSchema = z
+  .strictObject({
+    expectedVersion: z.number().int().nonnegative(),
+    recurrence: scheduleRecurrenceSchema.optional(),
+    delivery: z
+      .strictObject({
+        channel: z.literal("email"),
+        endpointId: entityIdSchema,
+      })
+      .optional(),
+  })
+  .refine((input) => input.recurrence !== undefined || input.delivery !== undefined, {
+    message: "Provide a recurrence or delivery change.",
+  });
+
 export type ScheduleRecurrence = z.infer<typeof scheduleRecurrenceSchema>;
 export type Weekday = z.infer<typeof weekdaySchema>;
 export type SavedSearch = z.infer<typeof savedSearchSchema>;
 export type JobAlertSchedule = z.infer<typeof jobAlertScheduleSchema>;
 export type ScheduleJobAlertInput = z.infer<typeof scheduleJobAlertInputSchema>;
 export type SetJobAlertEnabledInput = z.infer<typeof setJobAlertEnabledInputSchema>;
+export type UpdateJobAlertScheduleInput = z.infer<typeof updateJobAlertScheduleInputSchema>;

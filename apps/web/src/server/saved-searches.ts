@@ -29,6 +29,7 @@ export function createSavedSearchRouteDependencies(
   return {
     identity,
     activity: createOwnerActivityPublisher(storage.ownerActivity),
+    idempotency: storage.idempotency,
     latestRun: {
       getEvaluation: (savedSearchId) => storage.alerts.getLatestEvaluation(savedSearchId),
       listChanges: (evaluationId) => storage.alerts.listChanges(evaluationId),

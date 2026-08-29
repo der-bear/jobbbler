@@ -76,6 +76,8 @@ export interface SavedSearchRepository {
   getById(id: string): Promise<SavedSearchRecord | null>;
   listByOwner(ownerId: string): Promise<SavedSearchRecord[]>;
   update(record: SavedSearchRecord, expectedVersion: number): Promise<SavedSearchRecord>;
+  /** Deletes the saved search and its dependent schedule and alert rows; false when absent. */
+  delete(id: string): Promise<boolean>;
 }
 
 export interface ScheduleRepository {
