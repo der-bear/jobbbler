@@ -190,6 +190,10 @@ importers:
       "@jobbbler/jobs-domain":
         specifier: workspace:*
         version: link:../jobs-domain
+    devDependencies:
+      vitest:
+        specifier: 4.1.11
+        version: 4.1.11(@types/node@26.4.0)(@vitest/coverage-v8@4.1.11)(vite@8.2.2(@types/node@26.4.0)(esbuild@0.27.7)(jiti@2.7.0)(tsx@4.20.6))
 
   packages/storage-postgres:
     dependencies:
@@ -211,6 +215,9 @@ importers:
 
   packages/storage-sqlite:
     dependencies:
+      "@jobbbler/contracts":
+        specifier: workspace:*
+        version: link:../contracts
       "@jobbbler/core-domain":
         specifier: workspace:*
         version: link:../core-domain

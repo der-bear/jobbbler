@@ -5,9 +5,11 @@
   "type": "module",
   "exports": "./src/index.ts",
   "scripts": {
+    "test": "vitest run src",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@jobbbler/contracts": "workspace:*",
     "@jobbbler/core-domain": "workspace:*",
     "@jobbbler/jobs-domain": "workspace:*",
     "@jobbbler/storage": "workspace:*",

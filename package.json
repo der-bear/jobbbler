@@ -19,6 +19,10 @@
     "format:check": "prettier --check .",
     "test": "vitest run --passWithNoTests",
     "test:e2e": "playwright test",
+    "db:migrate": "node --disable-warning=DEP0205 --import tsx scripts/migrate-sqlite.ts",
+    "db:seed": "node --disable-warning=DEP0205 --import tsx scripts/seed-sqlite.ts",
+    "db:backup": "node --disable-warning=DEP0205 --import tsx scripts/backup-sqlite.ts",
+    "db:restore-verify": "node --disable-warning=DEP0205 --import tsx scripts/restore-verify-sqlite.ts",
     "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {

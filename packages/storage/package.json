@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./contract-tests": "./src/contract-tests/storage.contract.ts"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
@@ -11,5 +14,8 @@
     "@jobbbler/contracts": "workspace:*",
     "@jobbbler/core-domain": "workspace:*",
     "@jobbbler/jobs-domain": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "4.1.11"
   }
 }
