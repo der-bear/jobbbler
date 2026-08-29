@@ -5,6 +5,7 @@ import type {
   Seniority,
   WorkModel,
 } from "@jobbbler/contracts";
+import { convertSalaryAmount } from "@jobbbler/jobs-domain";
 
 const categoryLabels: Readonly<Record<JobCategory, string>> = {
   software_engineering: "Software engineering",
@@ -72,16 +73,30 @@ function amount(value: number, currency: string): string {
   }).format(value);
 }
 
-export function salaryLabel(salary: SalaryRange | null): string {
-  if (salary === null) return "Salary undisclosed";
+export function salaryLabel(salary: SalaryRange | null, displayCurrency?: string): string {
+  if (salary === null) return "Salary not listed";
+  const targetCurrency = displayCurrency?.toUpperCase() ?? salary.currency;
+  const convertedMinimum =
+    salary.minimum === null
+      ? null
+      : convertSalaryAmount(salary.minimum, salary.currency, targetCurrency);
+  const convertedMaximum =
+    salary.maximum === null
+      ? null
+      : convertSalaryAmount(salary.maximum, salary.currency, targetCurrency);
+  const conversionAvailable = convertedMinimum !== null || convertedMaximum !== null;
+  const changedCurrency = targetCurrency !== salary.currency && conversionAvailable;
+  const currency = changedCurrency ? targetCurrency : salary.currency;
+  const minimum = changedCurrency ? convertedMinimum : salary.minimum;
+  const maximum = changedCurrency ? convertedMaximum : salary.maximum;
   const period = salary.period === "year" ? "yr" : salary.period === "month" ? "mo" : "hr";
-  if (salary.minimum !== null && salary.maximum !== null) {
-    return `${amount(salary.minimum, salary.currency)}–${amount(salary.maximum, salary.currency)} / ${period}`;
+  const prefix = changedCurrency ? "≈" : "";
+  if (minimum !== null && maximum !== null) {
+    return `${prefix}${amount(minimum, currency)}–${amount(maximum, currency)} / ${period}`;
   }
-  if (salary.minimum !== null) return `From ${amount(salary.minimum, salary.currency)} / ${period}`;
-  if (salary.maximum !== null)
-    return `Up to ${amount(salary.maximum, salary.currency)} / ${period}`;
-  return `${salary.currency} range undisclosed`;
+  if (minimum !== null) return `${prefix}From ${amount(minimum, currency)} / ${period}`;
+  if (maximum !== null) return `${prefix}Up to ${amount(maximum, currency)} / ${period}`;
+  return "Salary not listed";
 }
 
 export function compactDate(value: string): string {

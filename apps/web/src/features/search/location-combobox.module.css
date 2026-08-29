@@ -1,0 +1,73 @@
+.combobox {
+  position: relative;
+  min-inline-size: 0;
+}
+
+.field {
+  display: flex;
+  min-inline-size: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.field > svg {
+  flex: 0 0 auto;
+  color: var(--color-ink-subtle);
+}
+
+.field > input {
+  min-inline-size: 0;
+  inline-size: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-ink);
+}
+
+.field > input::placeholder {
+  color: var(--color-ink-subtle);
+}
+
+.options {
+  position: absolute;
+  z-index: 30;
+  inset-block-start: calc(100% + 10px);
+  inset-inline: -12px;
+  display: grid;
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-floating);
+  padding: 6px;
+  list-style: none;
+}
+
+.options button {
+  inline-size: 100%;
+  min-block-size: 38px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-ink-muted);
+  padding-inline: 10px;
+  text-align: start;
+}
+
+.options button:hover,
+.options button[aria-selected="true"] {
+  background: var(--color-surface-subtle);
+  color: var(--color-ink);
+}
+
+.options button:focus-visible {
+  outline: 2px solid var(--jb-focus);
+  outline-offset: -2px;
+}
+
+@media (max-width: 800px) {
+  .options {
+    inset-inline: 0;
+  }
+}
