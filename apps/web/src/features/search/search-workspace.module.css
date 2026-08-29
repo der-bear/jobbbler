@@ -260,10 +260,24 @@
   border-color: var(--jb-signal);
 }
 
+.salaryLabel {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.salaryLabel strong {
+  color: var(--color-signal-strong);
+  font-size: 11px;
+  font-weight: 650;
+}
+
 .salaryInput {
   display: grid;
   grid-template-columns: 76px 1fr;
-  gap: 6px;
+  align-items: center;
+  gap: 10px;
 }
 
 .results {
@@ -391,7 +405,6 @@
   font-size: 12px;
   font-weight: 590;
 }
-
 
 .saveAlertLink:hover,
 .errorState button:hover {

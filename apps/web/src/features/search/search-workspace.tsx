@@ -27,6 +27,8 @@ import {
   type Seniority,
   type WorkModel,
 } from "@jobbbler/contracts";
+import { MultiSelect } from "@jobbbler/ui";
+
 import { AgentActivityRail } from "@/components/agent-activity-rail";
 import { useWebMcp } from "@/components/webmcp-provider";
 import { WebMcpStatus } from "@/components/webmcp-status";
@@ -51,9 +53,9 @@ const defaultSearch: JobSearchInput = {
 
 interface SearchDraft {
   readonly query: string;
-  readonly category: JobCategory | "";
+  readonly categories: readonly JobCategory[];
   readonly workModels: readonly WorkModel[];
-  readonly seniority: Seniority | "";
+  readonly seniorities: readonly Seniority[];
   readonly location: string;
   readonly minimumSalary: string;
   readonly currency: string;
@@ -64,9 +66,9 @@ interface SearchDraft {
 function draftFromInput(input: JobSearchInput): SearchDraft {
   return {
     query: input.query ?? "",
-    category: input.categories?.[0] ?? "",
+    categories: input.categories ?? [],
     workModels: input.workModels ?? [],
-    seniority: input.seniorities?.[0] ?? "",
+    seniorities: input.seniorities ?? [],
     location: input.locations?.[0] ?? "",
     minimumSalary: input.salary?.minimum === undefined ? "" : String(input.salary.minimum),
     currency: input.salary?.currency ?? "EUR",
@@ -80,9 +82,9 @@ function inputFromDraft(draft: SearchDraft): JobSearchInput {
   const salaryAmount = minimumSalary.length === 0 ? undefined : Number(minimumSalary);
   return {
     ...(draft.query.trim().length === 0 ? {} : { query: draft.query.trim() }),
-    categories: draft.category === "" ? [] : [draft.category],
+    categories: [...draft.categories],
     workModels: [...draft.workModels],
-    seniorities: draft.seniority === "" ? [] : [draft.seniority],
+    seniorities: [...draft.seniorities],
     locations: draft.location.trim().length === 0 ? [] : [draft.location.trim()],
     excludeKeywords: draft.excludeKeywords
       .split(",")
@@ -166,38 +168,37 @@ function SearchFilters({
           ))}
         </div>
       </fieldset>
-      <label className={styles["filterRow"]}>
+      <div className={styles["filterRow"]}>
         <span>Function</span>
-        <select
-          onChange={(event) =>
-            onCommit({ ...draft, category: event.target.value as JobCategory | "" })
+        <MultiSelect
+          label="Function"
+          onChange={(categories) =>
+            onCommit({ ...draft, categories: categories as readonly JobCategory[] })
           }
-          value={draft.category}
-        >
-          <option value="">Any function</option>
-          {jobCategorySchema.options.map((value) => (
-            <option key={value} value={value}>
-              {categoryLabel(value)}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className={styles["filterRow"]}>
+          options={jobCategorySchema.options.map((value) => ({
+            value,
+            label: categoryLabel(value),
+          }))}
+          placeholder="Any function"
+          searchable
+          selected={draft.categories}
+        />
+      </div>
+      <div className={styles["filterRow"]}>
         <span>Seniority</span>
-        <select
-          onChange={(event) =>
-            onCommit({ ...draft, seniority: event.target.value as Seniority | "" })
+        <MultiSelect
+          label="Seniority"
+          onChange={(seniorities) =>
+            onCommit({ ...draft, seniorities: seniorities as readonly Seniority[] })
           }
-          value={draft.seniority}
-        >
-          <option value="">Any level</option>
-          {senioritySchema.options.map((value) => (
-            <option key={value} value={value}>
-              {seniorityLabel(value)}
-            </option>
-          ))}
-        </select>
-      </label>
+          options={senioritySchema.options.map((value) => ({
+            value,
+            label: seniorityLabel(value),
+          }))}
+          placeholder="Any level"
+          selected={draft.seniorities}
+        />
+      </div>
       <label className={styles["filterRow"]}>
         <span>Location</span>
         <input
@@ -209,8 +210,15 @@ function SearchFilters({
           value={draft.location}
         />
       </label>
-      <label className={styles["filterRow"]}>
-        <span>Minimum salary</span>
+      <div className={styles["filterRow"]}>
+        <span className={styles["salaryLabel"]}>
+          Minimum salary
+          <strong>
+            {draft.minimumSalary === "" || draft.minimumSalary === "0"
+              ? "Any"
+              : `${draft.currency} ${Intl.NumberFormat("en").format(Number(draft.minimumSalary))}+`}
+          </strong>
+        </span>
         <span className={styles["salaryInput"]}>
           <select
             aria-label="Salary currency"
@@ -224,16 +232,23 @@ function SearchFilters({
           </select>
           <input
             aria-label="Minimum annual salary"
+            className="jb-range"
+            max="250000"
             min="0"
-            onBlur={() => onCommit(draft)}
             onChange={(event) => onDraftChange({ ...draft, minimumSalary: event.target.value })}
-            onKeyDown={commitOnEnter}
-            step="1000"
-            type="number"
-            value={draft.minimumSalary}
+            onKeyUp={() => onCommit(draft)}
+            onPointerUp={() => onCommit(draft)}
+            step="10000"
+            style={
+              {
+                "--jb-range-progress": `${String((Number(draft.minimumSalary || "0") / 250000) * 100)}%`,
+              } as React.CSSProperties
+            }
+            type="range"
+            value={draft.minimumSalary === "" ? "0" : draft.minimumSalary}
           />
         </span>
-      </label>
+      </div>
       <label className={styles["filterRow"]}>
         <span>Exclude</span>
         <input
@@ -431,8 +446,7 @@ export function SearchWorkspace() {
     setDraft(next);
     const input = inputFromDraft(next);
     if (
-      searchInputToSearchParams(input).toString() ===
-      searchInputToSearchParams(applied).toString()
+      searchInputToSearchParams(input).toString() === searchInputToSearchParams(applied).toString()
     ) {
       return;
     }

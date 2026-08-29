@@ -186,7 +186,8 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
   const router = useRouter();
   const [activitiesStore] = useState(() => new AgentActivityStore());
   const [status, setStatus] = useState<WebMcpRegistrationStatus>("checking");
-  const [registeredTools, setRegisteredTools] = useState<readonly RegisteredToolSummary[]>(emptyTools);
+  const [registeredTools, setRegisteredTools] =
+    useState<readonly RegisteredToolSummary[]>(emptyTools);
   const [registrationRevision, setRegistrationRevision] = useState(0);
   const retry = useCallback(() => setRegistrationRevision((revision) => revision + 1), []);
 

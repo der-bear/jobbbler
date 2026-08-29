@@ -312,7 +312,6 @@ export function SavedWorkspace() {
     [endpoints],
   );
 
-
   async function revokeEndpoint(endpoint: VerificationEndpointSummary) {
     setStatus("working");
     setError(null);
