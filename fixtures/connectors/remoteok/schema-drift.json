@@ -1,0 +1,22 @@
+[
+  {
+    "legal": "Synthetic Remote OK-compatible fixture for local connector tests only.",
+    "warning": "The next item intentionally changes a field type.",
+    "terms": "https://fixture.example.test/remoteok/terms",
+    "privacy": "https://fixture.example.test/remoteok/privacy",
+    "last_updated": "2026-08-29T08:00:00Z"
+  },
+  {
+    "id": 819001,
+    "slug": "drift-example",
+    "epoch": 1788768000,
+    "date": "2026-08-29T08:00:00Z",
+    "company": "Drift Example Works",
+    "position": "Backend Engineer",
+    "tags": "python,postgresql",
+    "description": "<p>This payload intentionally has a non-array tags value.</p>",
+    "location": "Remote - Europe",
+    "url": "https://jobs.fixture.test/remoteok/drift-example",
+    "apply_url": "https://apply.fixture.test/drift-example/819001"
+  }
+]

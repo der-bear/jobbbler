@@ -3,15 +3,27 @@ import type { ApplicationDraft, Job } from "@jobbbler/contracts";
 import type {
   AuditEventRecord,
   ClaimWorkItemsInput,
+  FailWorkItemInput,
   IdempotencyPutResult,
   IdempotencyRecord,
   JobSearchPage,
   JobSearchQuery,
   OrganizationRecord,
   OwnerRecord,
+  PersistSourceObservationInput,
+  PersistSourceObservationResult,
+  RenewWorkItemLeaseInput,
   SavedSearchRecord,
   ScheduleRecord,
+  SourceRunRecord,
+  SourceStateInput,
+  SourceStateRecord,
+  StoredSourceEvidence,
+  JobSourceLinkRecord,
+  JobVersionRecord,
+  SourceReconciliationResult,
   WorkItemRecord,
+  WorkItemPutResult,
 } from "./records.js";
 
 export interface OwnerRepository {
@@ -53,7 +65,12 @@ export interface ApplicationRepository {
 
 export interface WorkItemRepository {
   insert(record: WorkItemRecord): Promise<WorkItemRecord>;
+  putIfAbsent(record: WorkItemRecord): Promise<WorkItemPutResult>;
+  getById(id: string): Promise<WorkItemRecord | null>;
   claimDue(input: ClaimWorkItemsInput): Promise<WorkItemRecord[]>;
+  renewLease(input: RenewWorkItemLeaseInput): Promise<WorkItemRecord>;
+  complete(id: string, workerId: string, now: string): Promise<WorkItemRecord>;
+  fail(input: FailWorkItemInput): Promise<WorkItemRecord>;
 }
 
 export interface AuditRepository {
@@ -70,6 +87,27 @@ export interface IdempotencyRepository {
   get(scope: string, key: string): Promise<IdempotencyRecord | null>;
 }
 
+export interface IngestionRepository {
+  insertRun(record: SourceRunRecord): Promise<SourceRunRecord>;
+  finishRun(record: SourceRunRecord): Promise<SourceRunRecord>;
+  getRunById(id: string): Promise<SourceRunRecord | null>;
+  putSourceState(
+    input: SourceStateInput,
+    expectedVersion: number | null,
+  ): Promise<SourceStateRecord>;
+  getSourceState(sourceKey: string, partition: string): Promise<SourceStateRecord | null>;
+  listSourceStates(): Promise<SourceStateRecord[]>;
+  persistObservation(input: PersistSourceObservationInput): Promise<PersistSourceObservationResult>;
+  getEvidence(id: string): Promise<StoredSourceEvidence | null>;
+  listJobVersions(jobId: string): Promise<JobVersionRecord[]>;
+  listJobSourceLinks(jobId: string): Promise<JobSourceLinkRecord[]>;
+  reconcileCompletedRun(
+    runId: string,
+    closeAfterMisses: number,
+  ): Promise<SourceReconciliationResult>;
+  purgeExpiredPayloads(now: string, limit: number): Promise<number>;
+}
+
 export interface Storage {
   readonly owners: OwnerRepository;
   readonly organizations: OrganizationRepository;
@@ -80,5 +118,6 @@ export interface Storage {
   readonly workItems: WorkItemRepository;
   readonly audit: AuditRepository;
   readonly idempotency: IdempotencyRepository;
+  readonly ingestion: IngestionRepository;
   close(): void;
 }

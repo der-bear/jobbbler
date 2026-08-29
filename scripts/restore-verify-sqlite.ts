@@ -8,7 +8,9 @@ import {
   restoreAndVerifySqliteBackup,
 } from "../packages/storage-sqlite/src/maintenance.js";
 
-const sourcePath = resolve(process.argv[2] ?? ".data/jobbbler.sqlite");
+const sourcePath = resolve(
+  process.argv[2] ?? process.env["SQLITE_DATABASE_PATH"] ?? ".data/jobbbler.sqlite",
+);
 const directory = await mkdtemp(join(tmpdir(), "jobbbler-restore-verify-"));
 
 try {

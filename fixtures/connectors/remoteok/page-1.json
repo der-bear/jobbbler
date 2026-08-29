@@ -1,0 +1,71 @@
+[
+  {
+    "legal": "Synthetic Remote OK-compatible fixture for local connector tests only.",
+    "warning": "All organizations and jobs in this fixture are fictional.",
+    "terms": "https://fixture.example.test/remoteok/terms",
+    "privacy": "https://fixture.example.test/remoteok/privacy",
+    "last_updated": "2026-08-29T08:00:00Z"
+  },
+  {
+    "id": 810001,
+    "slug": "cinderpeak-senior-backend-engineer",
+    "epoch": 1787994000,
+    "date": "2026-08-20T09:00:00Z",
+    "company": "Cinderpeak Software",
+    "company_logo": "https://assets.fixture.test/cinderpeak.png",
+    "position": "Senior Backend Engineer",
+    "tags": ["python", "postgresql", "distributed-systems"],
+    "description": "<p>Build reliable APIs for a fictional logistics planning product.</p>",
+    "location": "Remote - Europe",
+    "url": "https://jobs.fixture.test/remoteok/cinderpeak-senior-backend-engineer",
+    "apply_url": "https://apply.fixture.test/cinderpeak/810001",
+    "salary_min": 85000,
+    "salary_max": 108000
+  },
+  {
+    "id": 810002,
+    "slug": "violet-arc-cloud-security-engineer",
+    "epoch": 1788166800,
+    "date": "2026-08-22T09:00:00Z",
+    "company": "Violet Arc Cloud",
+    "company_logo": "https://assets.fixture.test/violet-arc.png",
+    "position": "Cloud Security Engineer",
+    "tags": ["security", "kubernetes", "terraform"],
+    "description": "<article><p>Improve cloud controls for a fictional platform.</p><img src=x onerror=alert('fixture')><script>stealFixtureData()</script></article>",
+    "location": "Remote - Canada",
+    "url": "https://jobs.fixture.test/remoteok/violet-arc-cloud-security-engineer",
+    "apply_url": "https://apply.fixture.test/violet-arc/810002",
+    "salary_min": 118000,
+    "salary_max": 146000
+  },
+  {
+    "id": 810003,
+    "slug": "paper-signal-technical-writer",
+    "epoch": 1788339600,
+    "date": "2026-08-24T09:00:00Z",
+    "company": "Paper Signal Labs",
+    "company_logo": "https://assets.fixture.test/paper-signal.png",
+    "position": "Technical Writer",
+    "tags": ["documentation", "apis", "developer-experience"],
+    "description": "<p>Create practical reference material for a fictional API product.</p>",
+    "location": "Remote - Global",
+    "url": "https://jobs.fixture.test/remoteok/paper-signal-technical-writer",
+    "apply_url": "https://apply.fixture.test/paper-signal/810003"
+  },
+  {
+    "id": 810004,
+    "slug": "sunroom-guest-experience-host",
+    "epoch": 1788426000,
+    "date": "2026-08-25T09:00:00Z",
+    "company": "Sunroom Retreats",
+    "company_logo": "https://assets.fixture.test/sunroom.png",
+    "position": "Guest Experience Host",
+    "tags": ["hospitality", "events", "guest-services"],
+    "description": "<p>Welcome guests and coordinate activities at fictional retreats.</p>",
+    "location": "On-site - Portland, United States",
+    "url": "https://jobs.fixture.test/remoteok/sunroom-guest-experience-host",
+    "apply_url": "https://apply.fixture.test/sunroom/810004",
+    "salary_min": 42000,
+    "salary_max": 48000
+  }
+]

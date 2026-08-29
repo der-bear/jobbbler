@@ -1,0 +1,9 @@
+{
+  "apiVersion": "1.0",
+  "status": "success",
+  "jobCount": 1,
+  "jobs": {
+    "id": "jobicy-fixture-drift-1001",
+    "jobTitle": "This object should be rejected because jobs is no longer an array"
+  }
+}

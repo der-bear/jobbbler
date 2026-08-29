@@ -51,6 +51,7 @@ Application-generated sortable IDs and UTC timestamps cross database boundaries 
 
 - [Agent authorization and data consent](./agent-authorization-and-consent.md)
 - [Realtime Agent Activity](./realtime-agent-activity.md)
+- [Source ingestion and governance](./source-ingestion.md)
 - `docs/security.md` — implementation controls and threat review, completed before release
 - `docs/privacy.md` — data inventory, purposes, retention, deletion, and user rights, completed before release
 - `docs/operations.md` — health, incident, backup, restore, and rollback procedures, completed before release

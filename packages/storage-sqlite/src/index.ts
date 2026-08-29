@@ -1,4 +1,5 @@
 export * from "./connection.js";
+export * from "./ingestion-repository.js";
 export * from "./maintenance.js";
 export * from "./migrate.js";
 export * from "./seed.js";

@@ -199,7 +199,7 @@ git commit -m "feat: define typed domain and command contracts"
 - Produces repositories for catalog, saved search, schedules, applications, work items, audit, and idempotency.
 - Produces `createSqliteStorage(databasePath): Storage`.
 
-- [ ] **Step 1: Write the repository behavior suite before adapters**
+- [x] **Step 1: Write the repository behavior suite before adapters**
 
 ```ts
 export function savedSearchRepositoryContract(create: StorageFactory) {
@@ -214,27 +214,27 @@ export function savedSearchRepositoryContract(create: StorageFactory) {
 }
 ```
 
-- [ ] **Step 2: Add portable SQL migrations and migration journal**
+- [x] **Step 2: Add portable SQL migrations and migration journal**
 
 Create typed base/vertical tables from the design, indexes, foreign keys, check constraints, versions, unique idempotency keys, token hashes, and immutable review/submission records.
 
-- [ ] **Step 3: Enforce SQLite operational rules at connection time**
+- [x] **Step 3: Enforce SQLite operational rules at connection time**
 
 Run `PRAGMA foreign_keys = ON`, `journal_mode = WAL`, `busy_timeout = 5000`, and verify the returned values. Keep one application write queue and short `BEGIN IMMEDIATE` claims.
 
-- [ ] **Step 4: Implement repositories and FTS5 search**
+- [x] **Step 4: Implement repositories and FTS5 search**
 
 Keep SQLite SQL inside this adapter. Map rows to domain records. Implement lexical query escaping, structured filters, stable sort, pagination, and evidence joins.
 
-- [ ] **Step 5: Seed a first-party synthetic catalog**
+- [x] **Step 5: Seed a first-party synthetic catalog**
 
 Seed at least 36 IT/adjacent-tech jobs across twelve fictional organizations, multiple regions, work models, seniority, compensation-known/unknown, and one internal demo employer. Cover engineering, data/AI, product, design/research, security, infrastructure, QA, developer relations, technical support/success, technical recruiting, and technology-focused operations or sales. Include deterministic timestamps and source attribution labeled `jobbbler_demo`.
 
-- [ ] **Step 6: Test backup and restore**
+- [x] **Step 6: Test backup and restore**
 
 Run migrations and seed, take an online backup, restore to a fresh temporary database, run integrity/FTS checks, and compare canonical IDs/counts/checksums.
 
-- [ ] **Step 7: Run tests and commit**
+- [x] **Step 7: Run tests and commit**
 
 ```bash
 pnpm --filter @jobbbler/storage-sqlite test
@@ -261,32 +261,32 @@ git commit -m "feat: add portable SQLite persistence"
 - Consumes `Storage`, job contracts, clock, and source policies.
 - Produces `JobConnector.fetchPartition(input, signal): AsyncIterable<RawSourceRecord>` and `runSourceIngestion`.
 
-- [ ] **Step 1: Write connector contract tests using checked-in fixtures**
+- [x] **Step 1: Write connector contract tests using checked-in fixtures**
 
 Verify stable external IDs, source URL, attribution, raw hash, compensation uncertainty, location/work model, content sanitization, bounded records, and abort propagation.
 
-- [ ] **Step 2: Implement executable source-policy validation**
+- [x] **Step 2: Implement executable source-policy validation**
 
 Policies define enabled state, allowed purpose, minimum poll interval, request timeout, maximum bytes/records, attribution, retention, redistribution, and terms/source URLs. Runtime blocks a fetch when policy disallows it.
 
-- [ ] **Step 3: Implement Jobicy, Remote OK, and Arbeitnow adapters**
+- [x] **Step 3: Implement Jobicy, Remote OK, and Arbeitnow adapters**
 
 Use official endpoints only, descriptive user agent, conservative cadence, conditional requests when supported, hard response bounds, and typed dependency errors. Never infer application permission from listing access.
 
-- [ ] **Step 4: Implement normalization, conservative identity linking, and version creation**
+- [x] **Step 4: Implement normalization, conservative identity linking, and version creation**
 
 Store immutable raw records first. Map only IT/adjacent-tech records into the supported taxonomy. Match by trusted source ID, canonical apply URL, or high-confidence organization/title/location evidence; ambiguous candidates remain separate.
 
-- [ ] **Step 5: Implement lease-based worker execution**
+- [x] **Step 5: Implement lease-based worker execution**
 
 Claim bounded work, make external calls outside write transactions, persist result/idempotency/audit, retry only transient errors with jitter, and isolate each source.
 
-- [ ] **Step 6: Run connector and ingestion tests; ingest a bounded local sample**
+- [x] **Step 6: Run connector and ingestion tests; ingest a bounded local sample**
 
 Run: `pnpm --filter @jobbbler/connectors test && pnpm --filter @jobbbler/worker test && pnpm ingest -- --source all --limit 50`.  
 Expected: connector tests pass; each enabled source records attribution and a completed/precisely failed run without breaking demo data.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/connectors apps/worker fixtures/connectors

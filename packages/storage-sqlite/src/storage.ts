@@ -26,6 +26,7 @@ import type {
 
 import { openSqliteDatabase, type SqliteDatabase } from "./connection.js";
 import { toFts5Query } from "./fts.js";
+import { createSqliteIngestionRepository } from "./ingestion-repository.js";
 import { migrateSqlite } from "./migrate.js";
 
 type SqlParameter = string | number | bigint | null | Uint8Array;
@@ -614,7 +615,7 @@ function searchJobs(
   };
 }
 
-function createRepositories(database: SqliteDatabase): Omit<Storage, "close"> {
+function createRepositories(database: SqliteDatabase): Omit<Storage, "close" | "ingestion"> {
   return {
     owners: {
       async insert(record) {
@@ -837,6 +838,45 @@ function createRepositories(database: SqliteDatabase): Omit<Storage, "close"> {
           .run({ ...record, payloadJson: json(record.payload) });
         return record;
       },
+      async putIfAbsent(record) {
+        const put = database.transaction(() => {
+          const existing = database
+            .prepare("SELECT * FROM work_items WHERE id = ?")
+            .get(record.id) as WorkItemRow | undefined;
+          if (existing !== undefined) {
+            const stored = workItemFromRow(existing);
+            if (
+              stored.kind !== record.kind ||
+              json(stored.payload) !== json(record.payload) ||
+              stored.maxAttempts !== record.maxAttempts
+            ) {
+              throw new DomainError({
+                code: "CONFLICT",
+                message: "Work-item ID is already bound to a different task.",
+              });
+            }
+            return { inserted: false, record: stored };
+          }
+          database
+            .prepare(
+              `INSERT INTO work_items(
+                 id, kind, payload_json, status, available_at, attempt, max_attempts,
+                 lease_owner, lease_expires_at, last_error_code, created_at, updated_at
+               ) VALUES (
+                 @id, @kind, @payloadJson, @status, @availableAt, @attempt, @maxAttempts,
+                 @leaseOwner, @leaseExpiresAt, @lastErrorCode, @createdAt, @updatedAt
+               )`,
+            )
+            .run({ ...record, payloadJson: json(record.payload) });
+          return { inserted: true, record };
+        });
+        return put.immediate();
+      },
+      async getById(id) {
+        const row = database.prepare("SELECT * FROM work_items WHERE id = ?").get(id) as
+          WorkItemRow | undefined;
+        return row === undefined ? null : workItemFromRow(row);
+      },
       async claimDue(input: ClaimWorkItemsInput) {
         const claim = database.transaction(() => {
           const candidates = database
@@ -874,6 +914,98 @@ function createRepositories(database: SqliteDatabase): Omit<Storage, "close"> {
         });
 
         return claim.immediate().map(workItemFromRow);
+      },
+      async renewLease(input) {
+        const result = database
+          .prepare(
+            `UPDATE work_items
+             SET lease_expires_at = @leaseExpiresAt,
+                 updated_at = @now
+             WHERE id = @id
+               AND status = 'running'
+               AND lease_owner = @workerId
+               AND lease_expires_at > @now
+               AND lease_expires_at < @leaseExpiresAt`,
+          )
+          .run(input);
+        if (result.changes === 0) {
+          const exists = database.prepare("SELECT 1 FROM work_items WHERE id = ?").get(input.id);
+          throw exists === undefined
+            ? notFound("Work item")
+            : new DomainError({
+                code: "CONFLICT",
+                message: "Work item is not held by this worker under an active lease.",
+              });
+        }
+        const row = database.prepare("SELECT * FROM work_items WHERE id = ?").get(input.id) as
+          WorkItemRow | undefined;
+        if (row === undefined) throw notFound("Work item");
+        return workItemFromRow(row);
+      },
+      async complete(id, workerId, now) {
+        const result = database
+          .prepare(
+            `UPDATE work_items
+             SET status = 'succeeded',
+                 lease_owner = NULL,
+                 lease_expires_at = NULL,
+                 last_error_code = NULL,
+                 updated_at = ?
+             WHERE id = ?
+               AND status = 'running'
+               AND lease_owner = ?
+               AND lease_expires_at > ?`,
+          )
+          .run(now, id, workerId, now);
+        if (result.changes === 0) {
+          const exists = database.prepare("SELECT 1 FROM work_items WHERE id = ?").get(id);
+          throw exists === undefined
+            ? notFound("Work item")
+            : new DomainError({
+                code: "CONFLICT",
+                message: "Work item is not held by this worker under an active lease.",
+              });
+        }
+        const row = database.prepare("SELECT * FROM work_items WHERE id = ?").get(id) as
+          WorkItemRow | undefined;
+        if (row === undefined) throw notFound("Work item");
+        return workItemFromRow(row);
+      },
+      async fail(input) {
+        const result = database
+          .prepare(
+            `UPDATE work_items
+             SET status = CASE
+                   WHEN @terminal = 1 OR attempt >= max_attempts THEN 'dead'
+                   ELSE 'failed'
+                 END,
+                 available_at = CASE
+                   WHEN @terminal = 1 OR attempt >= max_attempts THEN @now
+                   ELSE @retryAt
+                 END,
+                 lease_owner = NULL,
+                 lease_expires_at = NULL,
+                 last_error_code = @errorCode,
+                 updated_at = @now
+             WHERE id = @id
+               AND status = 'running'
+               AND lease_owner = @workerId
+               AND lease_expires_at > @now`,
+          )
+          .run({ ...input, terminal: input.terminal ? 1 : 0 });
+        if (result.changes === 0) {
+          const exists = database.prepare("SELECT 1 FROM work_items WHERE id = ?").get(input.id);
+          throw exists === undefined
+            ? notFound("Work item")
+            : new DomainError({
+                code: "CONFLICT",
+                message: "Work item is not held by this worker under an active lease.",
+              });
+        }
+        const row = database.prepare("SELECT * FROM work_items WHERE id = ?").get(input.id) as
+          WorkItemRow | undefined;
+        if (row === undefined) throw notFound("Work item");
+        return workItemFromRow(row);
       },
     },
     audit: {
@@ -959,6 +1091,7 @@ export function createSqliteStorage(
     const repositories = createRepositories(database);
     return {
       ...repositories,
+      ingestion: createSqliteIngestionRepository(database),
       close() {
         database.close();
       },

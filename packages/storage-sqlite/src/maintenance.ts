@@ -44,6 +44,14 @@ const canonicalTableOrders = [
   ["application_reviews", "id"],
   ["action_confirmations", "id"],
   ["application_submissions", "id"],
+  ["source_states", "source_key, partition"],
+  ["source_runs", "id"],
+  ["source_records", "id"],
+  ["source_payloads", "source_record_id"],
+  ["normalization_results", "id"],
+  ["source_run_records", "run_id, source_record_id"],
+  ["job_versions", "id"],
+  ["job_source_links", "source_key, partition, external_id"],
 ] as const;
 
 export async function backupSqliteDatabase(

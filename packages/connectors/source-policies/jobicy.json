@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "sourceKey": "jobicy",
+  "enabled": true,
+  "allowedPurposes": ["job_discovery"],
+  "minimumPollIntervalSeconds": 21600,
+  "requestTimeoutMs": 10000,
+  "maxResponseBytes": 1000000,
+  "maxRecords": 50,
+  "rawPayloadRetentionDays": 7,
+  "redistribution": "attributed_excerpt",
+  "commercialUse": "allowed_with_attribution",
+  "attribution": {
+    "label": "Jobicy",
+    "url": "https://jobicy.com/",
+    "required": true,
+    "followedLinkRequired": false
+  },
+  "sourceUrl": "https://jobicy.com/api/v2/remote-jobs",
+  "termsUrl": "https://jobicy.com/jobs-rss-feed",
+  "userAgent": "Jobbbler/0.1 (+https://jobbbler.example/about/sources)",
+  "notes": "Cache centrally, poll at most four times per day, preserve Jobicy attribution and canonical URLs."
+}

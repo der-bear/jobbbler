@@ -242,6 +242,13 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
         updatedAt: now,
       };
       await current.workItems.insert(work);
+      await expect(current.workItems.putIfAbsent(work)).resolves.toEqual({
+        inserted: false,
+        record: work,
+      });
+      await expect(
+        current.workItems.putIfAbsent({ ...work, payload: { source: "remoteok" } }),
+      ).rejects.toMatchObject({ code: "CONFLICT" });
 
       const claimed = await current.workItems.claimDue({
         workerId: "worker-a",
@@ -259,6 +266,113 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
       expect(claimed).toHaveLength(1);
       expect(claimed[0]).toMatchObject({ status: "running", leaseOwner: "worker-a" });
       expect(secondClaim).toEqual([]);
+    });
+
+    it("renews only the active owner's lease", async () => {
+      const current = await create();
+      const work: WorkItemRecord = {
+        id: "work_550e8400-e29b-41d4-a716-446655440005",
+        kind: "catalog_ingest",
+        payload: { source: "jobicy" },
+        status: "pending",
+        availableAt: now,
+        attempt: 0,
+        maxAttempts: 3,
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        lastErrorCode: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await current.workItems.insert(work);
+      await current.workItems.claimDue({
+        workerId: "worker-a",
+        now,
+        leaseExpiresAt: later,
+        limit: 1,
+      });
+
+      await expect(
+        current.workItems.renewLease({
+          id: work.id,
+          workerId: "worker-b",
+          now: "2026-08-29T10:01:00.000Z",
+          leaseExpiresAt: "2026-08-29T10:10:00.000Z",
+        }),
+      ).rejects.toMatchObject({ code: "CONFLICT" });
+      await expect(
+        current.workItems.renewLease({
+          id: work.id,
+          workerId: "worker-a",
+          now: "2026-08-29T10:01:00.000Z",
+          leaseExpiresAt: "2026-08-29T10:10:00.000Z",
+        }),
+      ).resolves.toMatchObject({
+        status: "running",
+        leaseOwner: "worker-a",
+        leaseExpiresAt: "2026-08-29T10:10:00.000Z",
+      });
+    });
+
+    it("requires the active lease to complete or reschedule work", async () => {
+      const current = await create();
+      const work: WorkItemRecord = {
+        id: "work_550e8400-e29b-41d4-a716-446655440010",
+        kind: "catalog_ingest",
+        payload: { source: "jobicy" },
+        status: "pending",
+        availableAt: now,
+        attempt: 0,
+        maxAttempts: 2,
+        leaseOwner: null,
+        leaseExpiresAt: null,
+        lastErrorCode: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await current.workItems.insert(work);
+      await current.workItems.claimDue({
+        workerId: "worker-a",
+        now,
+        leaseExpiresAt: later,
+        limit: 1,
+      });
+
+      await expect(current.workItems.complete(work.id, "worker-b", now)).rejects.toMatchObject({
+        code: "CONFLICT",
+      });
+      const failed = await current.workItems.fail({
+        id: work.id,
+        workerId: "worker-a",
+        now,
+        retryAt: later,
+        errorCode: "DEPENDENCY",
+        terminal: false,
+      });
+      expect(failed).toMatchObject({
+        status: "failed",
+        attempt: 1,
+        availableAt: later,
+        leaseOwner: null,
+      });
+
+      const finalLeaseAt = "2026-08-29T10:10:00.000Z";
+      await current.workItems.claimDue({
+        workerId: "worker-b",
+        now: later,
+        leaseExpiresAt: finalLeaseAt,
+        limit: 1,
+      });
+      const dead = await current.workItems.fail({
+        id: work.id,
+        workerId: "worker-b",
+        now: later,
+        retryAt: "2026-08-29T10:15:00.000Z",
+        errorCode: "DEPENDENCY",
+        terminal: false,
+      });
+      expect(dead).toMatchObject({ status: "dead", attempt: 2, availableAt: later });
+      await expect(current.workItems.getById(work.id)).resolves.toEqual(dead);
     });
 
     it("keeps idempotency keys bound to one request hash", async () => {

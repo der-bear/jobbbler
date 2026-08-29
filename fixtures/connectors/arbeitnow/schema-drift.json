@@ -1,0 +1,23 @@
+{
+  "data": {
+    "slug": "arbeitnow-drift-1001",
+    "company_name": "Drift Meadow Software",
+    "title": "Software Engineer"
+  },
+  "links": {
+    "first": "https://api.fixture.test/arbeitnow/jobs?page=1",
+    "last": "https://api.fixture.test/arbeitnow/jobs?page=1",
+    "prev": null,
+    "next": null
+  },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "last_page": 1,
+    "links": [],
+    "path": "https://api.fixture.test/arbeitnow/jobs",
+    "per_page": 1,
+    "to": 1,
+    "total": 1
+  }
+}

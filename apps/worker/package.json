@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/main.ts",
-    "build": "tsup src/main.ts --format esm --out-dir dist --clean",
+    "build": "tsup --config tsup.config.ts",
     "start": "node dist/main.js",
+    "test": "vitest run src",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -17,8 +18,11 @@
     "@jobbbler/storage": "workspace:*",
     "@jobbbler/storage-postgres": "workspace:*",
     "@jobbbler/storage-sqlite": "workspace:*",
+    "better-sqlite3": "13.0.3",
     "pino": "10.3.1",
-    "resend": "6.24.0"
+    "resend": "6.24.0",
+    "sanitize-html": "2.17.7",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "tsup": "8.5.1"

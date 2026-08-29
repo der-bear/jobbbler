@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "sourceKey": "arbeitnow",
+  "enabled": false,
+  "allowedPurposes": ["evaluation"],
+  "minimumPollIntervalSeconds": 86400,
+  "requestTimeoutMs": 10000,
+  "maxResponseBytes": 2000000,
+  "maxRecords": 175,
+  "rawPayloadRetentionDays": 1,
+  "redistribution": "attributed_metadata_only",
+  "commercialUse": "requires_permission",
+  "attribution": {
+    "label": "Arbeitnow",
+    "url": "https://www.arbeitnow.com/",
+    "required": true,
+    "followedLinkRequired": true
+  },
+  "sourceUrl": "https://www.arbeitnow.com/api/job-board-api",
+  "termsUrl": "https://www.arbeitnow.com/terms",
+  "userAgent": "Jobbbler/0.1 (+https://jobbbler.example/about/sources)",
+  "notes": "Connector is implemented for evaluation but production ingestion remains disabled until commercial display, caching, retention, and downstream use are clarified in writing."
+}

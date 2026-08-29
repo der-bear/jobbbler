@@ -1,0 +1,68 @@
+{
+  "data": [
+    {
+      "slug": "silver-circuit-senior-frontend-engineer-1001",
+      "company_name": "Silver Circuit Labs",
+      "title": "Senior Frontend Engineer",
+      "description": "<p>Build accessible interfaces for a fictional workflow application.</p>",
+      "remote": true,
+      "url": "https://jobs.fixture.test/arbeitnow/silver-circuit-senior-frontend-engineer-1001",
+      "tags": ["typescript", "react", "accessibility"],
+      "job_types": ["full_time"],
+      "location": "Berlin, Germany",
+      "created_at": 1787220000
+    },
+    {
+      "slug": "glacier-loom-data-engineer-1002",
+      "company_name": "Glacier Loom Data",
+      "title": "Data Engineer",
+      "description": "<div><p>Build data pipelines for a fictional analytics product.</p><iframe src=\"https://evil.fixture.test\"></iframe><script>fixturePayload()</script></div>",
+      "remote": false,
+      "url": "https://jobs.fixture.test/arbeitnow/glacier-loom-data-engineer-1002",
+      "tags": ["python", "sql", "data-engineering"],
+      "job_types": ["full_time"],
+      "location": "Vienna, Austria",
+      "created_at": 1787392800
+    },
+    {
+      "slug": "faraday-grove-product-analyst-1003",
+      "company_name": "Faraday Grove",
+      "title": "Product Analyst",
+      "description": "<p>Turn usage data into product insights for a fictional B2B tool.</p>",
+      "remote": true,
+      "url": "https://jobs.fixture.test/arbeitnow/faraday-grove-product-analyst-1003",
+      "tags": ["product", "analytics", "sql"],
+      "job_types": ["contract"],
+      "location": "Remote - Europe",
+      "created_at": 1787565600
+    },
+    {
+      "slug": "willow-hall-event-steward-1004",
+      "company_name": "Willow Hall Events",
+      "title": "Event Steward",
+      "description": "<p>Support guests, venues, and event schedules for fictional local gatherings.</p>",
+      "remote": false,
+      "url": "https://jobs.fixture.test/arbeitnow/willow-hall-event-steward-1004",
+      "tags": ["hospitality", "events"],
+      "job_types": ["part_time"],
+      "location": "Manchester, United Kingdom",
+      "created_at": 1787652000
+    }
+  ],
+  "links": {
+    "first": "https://api.fixture.test/arbeitnow/jobs?page=1",
+    "last": null,
+    "prev": null,
+    "next": "https://api.fixture.test/arbeitnow/jobs?page=2"
+  },
+  "meta": {
+    "current_page": 1,
+    "current_page_url": "https://api.fixture.test/arbeitnow/jobs?page=1",
+    "from": 1,
+    "path": "https://api.fixture.test/arbeitnow/jobs",
+    "per_page": 4,
+    "to": 4,
+    "terms": "Synthetic fixture: link back to the source and do not abuse the API.",
+    "info": "Synthetic current-shape pagination fixture."
+  }
+}
