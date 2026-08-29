@@ -33,3 +33,4 @@ tmp/
 .idea/
 .vscode/
 *.swp
+.impeccable/
