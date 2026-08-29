@@ -34,6 +34,24 @@ The initial public route sets stay deliberately small:
 
 Saved searches, schedules, consent, delegation, and application tools register only when their backing server commands and secure owner-session boundary exist. Tool names distinguish requests from completed effects. Agent-mediated approval uses two explicit tools: one returns the exact presentation and server request ID; the second accepts only that ID plus `confirmed: true` after the client has obtained the user's decision.
 
+## Imperative versus declarative registration
+
+WebMCP offers two registration surfaces: the imperative `document.modelContext.registerTool`
+API and the declarative `toolname`/`tooldescription` form annotations. Jobbbler deliberately
+uses only the imperative API:
+
+- Every conventional form on the site either already has a richer imperative tool bound to the
+  same server command (search, alerts, application answers) or exists precisely to keep private
+  values — a delivery email, a one-time code — out of agent tool input and output. A declarative
+  annotation on those forms would route the private value through the agent, which the privacy
+  model forbids.
+- Imperative registration lets each route register a small, state-gated tool set with typed
+  results, cancellation, and activity records; a duplicated declarative twin of the same form
+  would only make agent tool choice more ambiguous.
+
+The decision is revisited if a new, non-sensitive form appears that has no imperative
+counterpart.
+
 ## Source baseline
 
 - [WebMCP specification](https://webmachinelearning.github.io/webmcp/)
