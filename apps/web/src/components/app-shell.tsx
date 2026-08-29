@@ -3,7 +3,7 @@
 import { BellSimpleIcon, BriefcaseIcon, CircleIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
 
 import { ThemeToggle } from "@jobbbler/ui";
 
@@ -13,12 +13,67 @@ import { useWebMcp } from "./webmcp-provider";
 import styles from "./app-shell.module.css";
 
 const navigation = [
-  { href: "/", label: "Search", icon: BriefcaseIcon },
-  { href: "/saved", label: "Saved", icon: BellSimpleIcon },
+  { href: "/", label: "Jobs", icon: BriefcaseIcon },
+  { href: "/saved", label: "Alerts", icon: BellSimpleIcon },
 ] as const;
 
 function isCurrentRoute(pathname: string, href: string): boolean {
   return href === "/" ? pathname === href : pathname.startsWith(href);
+}
+
+export function AppHeaderSurface({
+  agentButtonRef,
+  agentOpen,
+  agentStatus,
+  agentStatusLabel,
+  blocked = false,
+  onAgentToggle,
+  pathname,
+}: Readonly<{
+  agentButtonRef?: Ref<HTMLButtonElement>;
+  agentOpen: boolean;
+  agentStatus: "checking" | "preparing" | "ready" | "unsupported" | "error";
+  agentStatusLabel: string;
+  blocked?: boolean;
+  onAgentToggle: () => void;
+  pathname: string;
+}>) {
+  return (
+    <header className={styles["header"]} inert={blocked || undefined}>
+      <Link aria-label="Jobbbler" className={styles["wordmark"]} href="/">
+        Jobbbler
+      </Link>
+      <nav aria-label="Primary navigation" className={styles["navigation"]}>
+        {navigation.map(({ href, label, icon: Icon }) => (
+          <Link
+            aria-current={isCurrentRoute(pathname, href) ? "page" : undefined}
+            className={styles["navLink"]}
+            href={href}
+            key={href}
+          >
+            <Icon aria-hidden="true" size={17} weight="regular" />
+            <span>{label}</span>
+          </Link>
+        ))}
+      </nav>
+      <div className={styles["actions"]}>
+        <button
+          aria-expanded={agentOpen}
+          aria-label={`Agent view — ${agentStatusLabel}`}
+          className={styles["agentView"]}
+          data-status={agentStatus}
+          onClick={onAgentToggle}
+          ref={agentButtonRef}
+          type="button"
+        >
+          <CircleIcon aria-hidden="true" size={8} weight="fill" />
+          <span>Agent view</span>
+          <span className="sr-only">{agentStatusLabel}</span>
+        </button>
+        <ThemeToggle />
+      </div>
+    </header>
+  );
 }
 
 export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
@@ -59,31 +114,15 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
       <a className={styles["skipLink"]} href="#main-content">
         Skip to content
       </a>
-      <header className={styles["header"]} inert={agentPanelOpen && compactAgentPanel}>
-        <Link aria-label="Jobbbler" className={styles["wordmark"]} href="/">
-          Jobbbler
-          <span>Find once. Stay updated. Apply with control.</span>
-        </Link>
-        <nav aria-label="Primary navigation" className={styles["navigation"]}>
-          {navigation.map(({ href, label, icon: Icon }) => (
-            <Link
-              aria-current={isCurrentRoute(pathname, href) ? "page" : undefined}
-              className={styles["navLink"]}
-              href={href}
-              key={href}
-            >
-              <Icon aria-hidden="true" size={17} weight="regular" />
-              <span>{label}</span>
-            </Link>
-          ))}
-        </nav>
-        <div className={styles["actions"]}>
-          <Link className={styles["webmcpLink"]} href="/about/webmcp">
-            Works with agents
-          </Link>
-          <ThemeToggle />
-        </div>
-      </header>
+      <AppHeaderSurface
+        agentButtonRef={agentTriggerRef}
+        agentOpen={agentPanelOpen}
+        agentStatus={webMcp.status}
+        agentStatusLabel={agentStatus}
+        blocked={agentPanelOpen && compactAgentPanel}
+        onAgentToggle={() => (agentPanelOpen ? closeAgentPanel() : setAgentPanelOpen(true))}
+        pathname={pathname}
+      />
       <div
         className={styles["contentFrame"]}
         data-agent-open={String(agentPanelOpen)}
@@ -101,21 +140,6 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
           />
         ) : null}
       </div>
-      {agentPanelOpen ? null : (
-        <button
-          aria-expanded={false}
-          aria-label={`Open agent panel — ${agentStatus}`}
-          className={styles["agentTrigger"]}
-          data-status={webMcp.status}
-          onClick={() => setAgentPanelOpen(true)}
-          ref={agentTriggerRef}
-          type="button"
-        >
-          <CircleIcon aria-hidden="true" size={8} weight="fill" />
-          Agent layer
-          <span>{agentStatus}</span>
-        </button>
-      )}
     </div>
   );
 }

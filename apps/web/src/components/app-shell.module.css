@@ -1,6 +1,12 @@
 .shell {
   min-block-size: 100dvh;
-  background: var(--color-canvas);
+  background:
+    radial-gradient(
+      circle at 44% 2%,
+      color-mix(in srgb, var(--jb-signal) 7%, transparent),
+      transparent 30rem
+    ),
+    var(--color-canvas);
   color: var(--color-ink);
 }
 
@@ -50,23 +56,14 @@
 }
 
 .wordmark {
-  display: inline-flex;
-  align-items: baseline;
   justify-self: start;
-  gap: 12px;
-  color: var(--color-ink);
+  background: linear-gradient(118deg, var(--color-ink) 35%, var(--color-signal-strong));
+  background-clip: text;
+  color: transparent;
   font-size: 22px;
   font-weight: 750;
   letter-spacing: -0.045em;
   text-decoration: none;
-}
-
-.wordmark span {
-  color: var(--color-ink-subtle);
-  font-size: 11px;
-  font-weight: 520;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .navigation {
@@ -103,49 +100,37 @@
   gap: 8px;
 }
 
-.agentTrigger {
-  position: fixed;
-  z-index: 60;
-  inset-block-end: 18px;
-  inset-inline-end: 18px;
+.agentView {
   display: inline-flex;
-  min-block-size: 44px;
+  min-block-size: 38px;
   align-items: center;
-  gap: 8px;
-  border: 1px solid var(--color-line-strong);
+  gap: 7px;
+  border: 1px solid var(--color-line);
   border-radius: 999px;
-  background: var(--color-surface);
-  box-shadow: var(--shadow-floating);
-  color: var(--color-ink);
-  padding-inline: 15px;
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.agentTrigger span {
-  color: var(--color-ink-subtle);
-  font-family: var(--jb-font-mono);
-  font-size: 9px;
-  font-weight: 400;
-}
-
-.agentTrigger[data-status="ready"] > svg {
-  color: var(--color-signal-strong);
-}
-
-.agentTrigger[data-status="error"] > svg,
-.agentTrigger[data-status="error"] span {
-  color: var(--jb-danger);
-}
-
-.webmcpLink {
+  background: color-mix(in srgb, var(--color-surface) 84%, transparent);
   color: var(--color-ink-muted);
+  padding-inline: 12px;
   font-size: 12px;
-  text-decoration: none;
+  font-weight: 620;
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    background var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
 }
 
-.webmcpLink:hover {
+.agentView:hover,
+.agentView[aria-expanded="true"] {
+  border-color: var(--color-line-strong);
+  background: var(--color-surface-subtle);
+  color: var(--color-ink);
+}
+
+.agentView[data-status="ready"] > svg {
   color: var(--color-signal-strong);
+}
+
+.agentView[data-status="error"] > svg {
+  color: var(--jb-danger);
 }
 
 .avatar {
@@ -169,8 +154,6 @@
     backdrop-filter: none;
   }
 
-  .wordmark span,
-  .webmcpLink,
   .avatar {
     display: none;
   }
@@ -201,8 +184,21 @@
     grid-column: 2;
   }
 
-  .agentTrigger {
-    inset-block-end: 88px;
+  .agentView {
+    min-block-size: 36px;
+    padding-inline: 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .agentView span:not(.sr-only) {
+    display: none;
+  }
+
+  .agentView {
+    inline-size: 36px;
+    justify-content: center;
+    padding: 0;
   }
 }
 
