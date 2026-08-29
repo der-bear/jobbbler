@@ -42,6 +42,11 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
   find_roles: {
     title: "Find matching roles",
     steps: [
+      {
+        intent: "Learn the accepted filter values when unsure",
+        tool: "get_search_filters",
+        humanAction: false,
+      },
       { intent: "Run a deterministic search", tool: "search_jobs", humanAction: false },
       { intent: "Confirm the applied filters", tool: "get_search_state", humanAction: false },
       { intent: "Open a promising role", tool: "open_job_details", humanAction: false },
@@ -90,6 +95,11 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
     title: "Prepare one deliberate application",
     steps: [
       { intent: "Open the role", tool: "open_job_details", humanAction: false },
+      {
+        intent: "Check how this role accepts applications",
+        tool: "get_job_application_capability",
+        humanAction: false,
+      },
       {
         intent: "Start the application",
         tool: null,

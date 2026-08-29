@@ -46,6 +46,11 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
         readOnly: true,
       },
       {
+        name: "get_search_filters",
+        purpose: "Read every filter value this site accepts before composing a search.",
+        readOnly: true,
+      },
+      {
         name: "open_job_details",
         purpose:
           "Open one role's page from the current results so its detail tools become available.",
@@ -60,6 +65,11 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
       {
         name: "get_job_details",
         purpose: "Inspect the source-backed facts and fit evidence for the role open on this page.",
+        readOnly: true,
+      },
+      {
+        name: "get_job_application_capability",
+        purpose: "Learn how the role on this page accepts applications before starting one.",
         readOnly: true,
       },
       {

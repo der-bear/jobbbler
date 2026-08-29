@@ -10,6 +10,9 @@ const EUR_PER_UNIT: Readonly<Record<string, number>> = {
   CAD: 0.63,
 };
 
+/** Currencies that cross-currency salary ranking can convert between. */
+export const comparableCurrencies: readonly string[] = Object.keys(EUR_PER_UNIT);
+
 export function convertSalaryAmount(
   amount: number,
   fromCurrency: string,

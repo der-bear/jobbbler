@@ -119,7 +119,11 @@ function tool(manifests: readonly ToolManifest[], name: string): ToolManifest {
   return manifest;
 }
 
-function expectAnnotatedUntrustedRoute(manifests: readonly ToolManifest[], names: string[]): void {
+function expectAnnotatedUntrustedRoute(
+  manifests: readonly ToolManifest[],
+  names: string[],
+  trustedContentNames: readonly string[] = [],
+): void {
   expect(manifests.map(({ name }) => name)).toEqual(names);
   expect(new Set(manifests.map(({ purpose }) => purpose)).size).toBe(manifests.length);
   expect(new Set(manifests.map(({ description }) => description)).size).toBe(manifests.length);
@@ -132,7 +136,9 @@ function expectAnnotatedUntrustedRoute(manifests: readonly ToolManifest[], names
   );
   for (const manifest of manifests) {
     expect(typeof manifest.annotations.readOnlyHint).toBe("boolean");
-    expect(manifest.annotations.untrustedContentHint).toBe(true);
+    expect(manifest.annotations.untrustedContentHint).toBe(
+      !trustedContentNames.includes(manifest.name),
+    );
   }
 }
 
@@ -174,13 +180,14 @@ describe("route-scoped WebMCP tool manifests", () => {
       onNavigate,
     }) as readonly ToolManifest[];
 
-    expectAnnotatedUntrustedRoute(manifests, [
-      "search_jobs",
-      "get_search_state",
-      "open_job_details",
-    ]);
+    expectAnnotatedUntrustedRoute(
+      manifests,
+      ["search_jobs", "get_search_state", "get_search_filters", "open_job_details"],
+      ["get_search_filters"],
+    );
     expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([
       false,
+      true,
       true,
       false,
     ]);
@@ -243,8 +250,16 @@ describe("route-scoped WebMCP tool manifests", () => {
       onNavigate,
     }) as readonly ToolManifest[];
 
-    expectAnnotatedUntrustedRoute(manifests, ["get_job_details", "compare_jobs"]);
-    expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([true, false]);
+    expectAnnotatedUntrustedRoute(manifests, [
+      "get_job_details",
+      "get_job_application_capability",
+      "compare_jobs",
+    ]);
+    expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([
+      true,
+      true,
+      false,
+    ]);
 
     const controller = new AbortController();
     const detail = await tool(manifests, "get_job_details").execute(

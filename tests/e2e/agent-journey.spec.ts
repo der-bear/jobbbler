@@ -61,10 +61,16 @@ test.describe("agent journey through the live WebMCP surface", () => {
 
     await expect
       .poll(() => registeredToolNames(page))
-      .toEqual(["get_search_state", "open_job_details", "plan_job_workflow", "search_jobs"]);
+      .toEqual([
+        "get_search_filters",
+        "get_search_state",
+        "open_job_details",
+        "plan_job_workflow",
+        "search_jobs",
+      ]);
 
     await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(/ready/i);
-    await expect(page.getByText("4 tools available on this page")).toBeVisible();
+    await expect(page.getByText("5 tools available on this page")).toBeVisible();
 
     const plan = (await callTool(page, "plan_job_workflow", { goal: "monitor_search" })) as {
       status: string;
@@ -102,7 +108,12 @@ test.describe("agent journey through the live WebMCP surface", () => {
     await expect(page).toHaveURL(/\/jobs\//);
     await expect
       .poll(() => registeredToolNames(page))
-      .toEqual(["compare_jobs", "get_job_details", "plan_job_workflow"]);
+      .toEqual([
+        "compare_jobs",
+        "get_job_application_capability",
+        "get_job_details",
+        "plan_job_workflow",
+      ]);
   });
 
   test("keeps the guide as the starter screen when no agent is connected", async ({ page }) => {

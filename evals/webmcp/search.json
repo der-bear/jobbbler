@@ -1,7 +1,13 @@
 {
   "version": 1,
   "route": "/",
-  "registeredTools": ["search_jobs", "get_search_state", "open_job_details", "plan_job_workflow"],
+  "registeredTools": [
+    "search_jobs",
+    "get_search_state",
+    "get_search_filters",
+    "open_job_details",
+    "plan_job_workflow"
+  ],
   "cases": [
     {
       "id": "search-direct-filtered",
@@ -159,6 +165,21 @@
         "arguments": {
           "goal": "monitor_search"
         }
+      }
+    },
+    {
+      "id": "search-direct-filter-vocabulary",
+      "category": "direct",
+      "context": {
+        "searchState": {
+          "query": null
+        }
+      },
+      "prompt": "Which seniority levels and work models does this site accept as filters?",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "get_search_filters",
+        "arguments": {}
       }
     }
   ]

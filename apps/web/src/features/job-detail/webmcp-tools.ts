@@ -16,6 +16,8 @@ import {
   type SafeWebMcpErrorResult,
 } from "@/lib/webmcp-tool-result";
 
+import { applicationCapabilityData, applicationCapabilitySummary } from "./application-capability";
+
 const jobIdProperty = {
   type: "string",
   description: "A Jobbbler job ID visible on the current page.",
@@ -214,5 +216,34 @@ export function createJobDetailToolManifests(
     },
   };
 
-  return [getJobDetails, compareJobs];
+  const getApplicationCapability: ToolManifest<unknown, JobDetailToolOutput> = {
+    name: "get_job_application_capability",
+    purpose: "Learn how the role on this page accepts applications before starting one.",
+    description:
+      "Read this role's application capability: whether Jobbbler can prepare it, which steps stay with the human, and whether an external handoff is required. Use before planning an application; it changes nothing.",
+    inputSchema: detailInputJsonSchema,
+    annotations: { readOnlyHint: true, untrustedContentHint: true },
+    async execute(input, { signal }) {
+      try {
+        const parsed = currentDetailInput.parse(input);
+        const result = await dependencies.getJobDetails(parsed, { signal });
+        return completedWebMcpResult({
+          summary: applicationCapabilitySummary(result.job),
+          data: applicationCapabilityData(result.job),
+          resources: [
+            {
+              type: "job",
+              id: result.job.id,
+              label: short(`${result.job.title} at ${result.job.organizationName}`, 70),
+            },
+          ],
+          facts: [{ key: "apply_mode", value: result.job.applyMode }],
+        });
+      } catch (error) {
+        return safeWebMcpErrorResult(error, signal, "The capability request is invalid.");
+      }
+    },
+  };
+
+  return [getJobDetails, getApplicationCapability, compareJobs];
 }

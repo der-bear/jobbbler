@@ -1,7 +1,12 @@
 {
   "version": 1,
   "route": "/jobs/job_00000001-0000-7000-8000-000000000001",
-  "registeredTools": ["get_job_details", "compare_jobs", "plan_job_workflow"],
+  "registeredTools": [
+    "get_job_details",
+    "get_job_application_capability",
+    "compare_jobs",
+    "plan_job_workflow"
+  ],
   "cases": [
     {
       "id": "detail-direct-current-job",
@@ -116,6 +121,21 @@
         },
         "field": "jobId",
         "mustMention": ["valid job id"]
+      }
+    },
+    {
+      "id": "detail-direct-application-capability",
+      "category": "direct",
+      "context": {
+        "currentJobId": "job_00000001-0000-7000-8000-000000000001"
+      },
+      "prompt": "Before we start: can you apply for this role through Jobbbler, and what will stay with me?",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "get_job_application_capability",
+        "arguments": {
+          "jobId": "job_00000001-0000-7000-8000-000000000001"
+        }
       }
     }
   ]

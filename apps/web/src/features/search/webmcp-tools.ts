@@ -2,12 +2,18 @@ import { z } from "zod";
 
 import {
   entityIdSchema,
+  jobCategorySchema,
   jobSearchInputSchema,
+  salaryPeriodSchema,
+  searchSortSchema,
+  senioritySchema,
+  unknownSalaryPolicySchema,
+  workModelSchema,
   type JobSearchCriteria,
   type JobSearchInput,
   type SearchJobsResult,
 } from "@jobbbler/contracts";
-import { normalizeJobSearchCriteria } from "@jobbbler/jobs-domain";
+import { comparableCurrencies, normalizeJobSearchCriteria } from "@jobbbler/jobs-domain";
 import type { JsonSchema, JsonValue, ToolManifest } from "@jobbbler/webmcp";
 
 import { searchInputToSearchParams } from "@/lib/search-url";
@@ -276,6 +282,41 @@ export function createSearchToolManifests(
     },
   };
 
+  const getSearchFilters: ToolManifest<unknown, SearchToolOutput> = {
+    name: "get_search_filters",
+    purpose: "Read every filter value this site accepts before composing a search.",
+    description:
+      "Read Jobbbler's exact search vocabulary: accepted categories, work models, seniorities, salary options, and sort orders. Use instead of guessing enum values before calling search_jobs.",
+    inputSchema: emptyInputSchema,
+    annotations: { readOnlyHint: true, untrustedContentHint: false },
+    async execute(input, { signal }) {
+      try {
+        emptyInput.parse(input);
+        return completedWebMcpResult({
+          summary: "Read the accepted search filter vocabulary.",
+          data: {
+            categories: [...jobCategorySchema.options],
+            workModels: [...workModelSchema.options],
+            seniorities: [...senioritySchema.options],
+            salary: {
+              periods: [...salaryPeriodSchema.options],
+              unknownPolicies: [...unknownSalaryPolicySchema.options],
+              currency: "Any ISO 4217 code; cross-currency ranking supports these.",
+              comparableCurrencies: [...comparableCurrencies],
+            },
+            sort: [...searchSortSchema.options],
+            locations: "Free text: countries, regions, or cities.",
+            skills: "Free text, matched against role skills.",
+            postedWithinDays: { minimum: 1, maximum: 365 },
+            limit: { minimum: 1, maximum: 50, default: 20 },
+          },
+        });
+      } catch (error) {
+        return safeWebMcpErrorResult(error, signal, "Search filters accept no arguments.");
+      }
+    },
+  };
+
   const openJobDetails: ToolManifest<unknown, SearchToolOutput> = {
     name: "open_job_details",
     purpose: "Open one role's page from the current results so its detail tools become available.",
@@ -301,5 +342,5 @@ export function createSearchToolManifests(
     },
   };
 
-  return [searchJobs, getSearchState, openJobDetails];
+  return [searchJobs, getSearchState, getSearchFilters, openJobDetails];
 }
