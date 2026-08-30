@@ -86,4 +86,15 @@ describe("PostgreSQL migration manifest", () => {
     expect(sql).not.toContain("rawRecoveryCode");
     expect(sql).not.toContain("rawSessionToken");
   });
+
+  it("hardens Supabase advisor findings without broadening public access", () => {
+    const migration = postgresMigrationManifest().find(({ version }) => version === 17);
+
+    expect(migration?.name).toBe("supabase_advisor_hardening");
+    expect(migration?.sql).toContain("ALTER FUNCTION jobbbler.current_owner_id()");
+    expect(migration?.sql).toContain("SET search_path = ''");
+    expect(migration?.sql).toContain("(SELECT auth.jwt())");
+    expect(migration?.sql).toContain("TO anon");
+    expect(migration?.sql).toContain("TO authenticated");
+  });
 });

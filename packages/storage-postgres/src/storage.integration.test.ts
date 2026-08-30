@@ -201,6 +201,134 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
     await storage.close();
   });
 
+  it("pins function lookup and preserves public-job plus owner-only RLS semantics", async () => {
+    const storage = createPostgresStorage(databaseUrl!);
+    close = async () => storage.close();
+    await resetPostgresSchema(storage.sql);
+    await migratePostgres(storage.sql);
+
+    const hardenedFunctions = await storage.sql<
+      {
+        readonly functionName: string;
+        readonly searchPathPinned: boolean;
+      }[]
+    >`
+      SELECT
+        p.proname AS "functionName",
+        'search_path=""' = ANY(coalesce(p.proconfig, ARRAY[]::text[])) AS "searchPathPinned"
+      FROM pg_proc AS p
+      JOIN pg_namespace AS n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'jobbbler'
+        AND p.proname = ANY(${storage.sql.array([
+          "annualized_salary_sort_value",
+          "current_owner_id",
+          "import_snapshot_row",
+          "job_search_document_text",
+          "normalize_search_text",
+          "refresh_job_search_document",
+          "remove_job_search_document",
+        ])})
+      ORDER BY p.proname
+    `;
+    expect(hardenedFunctions).toHaveLength(7);
+    expect(hardenedFunctions.every(({ searchPathPinned }) => searchPathPinned)).toBe(true);
+
+    const policies = await storage.sql<
+      {
+        readonly command: string;
+        readonly policyname: string;
+        readonly roles: readonly string[];
+      }[]
+    >`
+      SELECT policyname, roles, cmd AS command
+      FROM pg_policies
+      WHERE schemaname = 'jobbbler'
+        AND tablename = 'entity_records'
+      ORDER BY policyname
+    `;
+    expect(policies).toEqual([
+      {
+        policyname: "entity_records_authenticated_read",
+        roles: ["authenticated"],
+        command: "SELECT",
+      },
+      {
+        policyname: "entity_records_owner_delete",
+        roles: ["authenticated"],
+        command: "DELETE",
+      },
+      {
+        policyname: "entity_records_owner_insert",
+        roles: ["authenticated"],
+        command: "INSERT",
+      },
+      {
+        policyname: "entity_records_owner_update",
+        roles: ["authenticated"],
+        command: "UPDATE",
+      },
+      {
+        policyname: "entity_records_public_open_jobs",
+        roles: ["anon"],
+        command: "SELECT",
+      },
+    ]);
+    await expect(
+      storage.sql<
+        {
+          readonly canDelete: boolean;
+          readonly canInsert: boolean;
+          readonly canUpdate: boolean;
+        }[]
+      >`
+        SELECT
+          has_table_privilege('authenticated', 'jobbbler.entity_records', 'DELETE') AS "canDelete",
+          has_table_privilege('authenticated', 'jobbbler.entity_records', 'INSERT') AS "canInsert",
+          has_table_privilege('authenticated', 'jobbbler.entity_records', 'UPDATE') AS "canUpdate"
+      `,
+    ).resolves.toEqual([{ canDelete: false, canInsert: false, canUpdate: false }]);
+
+    const jobBody = (status: "open" | "closed") => ({
+      title: `${status} role`,
+      organizationName: "RLS Contract",
+      summary: "RLS contract fixture.",
+      categories: ["software_engineering"],
+      locations: ["Europe"],
+      skills: ["PostgreSQL"],
+      status,
+      publishedAt: ingestionNow,
+      updatedAt: ingestionNow,
+      workModel: "remote",
+      seniority: "senior",
+      salary: null,
+    });
+    await storage.sql`
+      INSERT INTO jobbbler.entity_records(kind, id, owner_id, body)
+      VALUES
+        ('job', 'job-rls-open', NULL, ${storage.sql.json(jobBody("open"))}),
+        ('job', 'job-rls-closed', NULL, ${storage.sql.json(jobBody("closed"))}),
+        ('application', 'application-rls-owned', 'owner-rls-a', '{}'::jsonb),
+        ('application', 'application-rls-other', 'owner-rls-b', '{}'::jsonb)
+    `;
+
+    const anonIds = await storage.sql.begin(async (transaction) => {
+      await transaction.unsafe("SET LOCAL ROLE anon");
+      return transaction<{ readonly id: string }[]>`
+        SELECT id FROM jobbbler.entity_records ORDER BY id
+      `;
+    });
+    expect(anonIds).toEqual([{ id: "job-rls-open" }]);
+
+    const authenticatedIds = await storage.sql.begin(async (transaction) => {
+      await transaction.unsafe("SET LOCAL ROLE authenticated");
+      await transaction`SELECT set_config('request.jwt.claim.owner_id', 'owner-rls-a', true)`;
+      return transaction<{ readonly id: string }[]>`
+        SELECT id FROM jobbbler.entity_records ORDER BY id
+      `;
+    });
+    expect(authenticatedIds).toEqual([{ id: "application-rls-owned" }, { id: "job-rls-open" }]);
+  });
+
   it("normalizes decomposed diacritics without introducing token boundaries", async () => {
     const storage = createPostgresStorage(databaseUrl!);
     close = async () => storage.close();
