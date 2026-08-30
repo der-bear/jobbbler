@@ -155,6 +155,7 @@ export const jobSearchToolInputJsonSchema = {
 } as const satisfies JsonSchema;
 
 const searchJobsPageSize = 3;
+const visibleSearchPageSize = 20;
 const searchJobsToolInputJsonSchema = {
   ...jobSearchToolInputJsonSchema,
   properties: {
@@ -318,18 +319,23 @@ export function createSearchToolManifests(
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
       try {
-        const parsed = searchJobsToolInput.parse(input);
-        const result = await dependencies.searchJobs(parsed, { signal });
-        const parameters = searchInputToSearchParams(parsed);
+        const agentInput = searchJobsToolInput.parse(input);
+        const visibleInput = { ...agentInput, limit: visibleSearchPageSize };
+        delete visibleInput.cursor;
+        const [agentResult, visibleResult] = await Promise.all([
+          dependencies.searchJobs(agentInput, { signal }),
+          dependencies.searchJobs(visibleInput, { signal }),
+        ]);
+        const parameters = searchInputToSearchParams(visibleInput);
         const href = parameters.size === 0 ? "/jobs" : `/jobs?${parameters.toString()}`;
         await dependencies.onNavigate(href, { signal });
-        await dependencies.onSearchCommitted(parsed, result);
+        await dependencies.onSearchCommitted(visibleInput, visibleResult);
         return completedWebMcpResult({
-          summary: `Found ${String(result.total)} matching technology role${result.total === 1 ? "" : "s"}.`,
-          data: compactSearchResult(result),
+          summary: `Found ${String(agentResult.total)} matching technology role${agentResult.total === 1 ? "" : "s"}.`,
+          data: compactSearchResult(agentResult),
           facts: [
-            { key: "total", value: result.total },
-            { key: "catalog_updated_at", value: result.catalogUpdatedAt },
+            { key: "total", value: agentResult.total },
+            { key: "catalog_updated_at", value: agentResult.catalogUpdatedAt },
           ],
         });
       } catch (error) {
