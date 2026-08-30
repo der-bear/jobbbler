@@ -24,6 +24,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
 
+  docker-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --target web --tag jobbbler-web:ci .
+      - run: docker build --target worker --tag jobbbler-worker:ci .
+
   postgres-contract:
     runs-on: ubuntu-latest
     timeout-minutes: 15

@@ -17,6 +17,7 @@ describe("production deployment artifacts", () => {
     expect(dockerfile).toContain("FROM node:24-bookworm AS base");
     expect(dockerfile).not.toContain("apt-get");
     expect(dockerfile).toContain("pnpm install --frozen-lockfile");
+    expect(dockerfile).toContain("pnpm --filter @jobbbler/worker deploy --legacy --prod");
     expect(dockerfile).toContain("AS web");
     expect(dockerfile).toContain("AS worker");
     expect(dockerfile).toContain("USER jobbbler");
@@ -24,6 +25,10 @@ describe("production deployment artifacts", () => {
     expect(dockerfile).toContain('CMD ["node", "apps/worker/dist/main.js"]');
     expect(dockerfile).toContain("apps/web/.next/standalone");
     expect(dockerfile).toContain("apps/web/.next/static");
+    expect(dockerfile).not.toContain("/app/apps/web/public");
+    expect(dockerfile).toContain("ARG NEXT_PUBLIC_SUPABASE_URL");
+    expect(dockerfile).toContain("ARG NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    expect(dockerfile).toContain("ARG NEXT_PUBLIC_SUPABASE_ACTIVITY_WAKEUPS");
     expect(ignore).toContain(".env");
     expect(ignore).toContain("node_modules");
     expect(ignore).toContain(".git");
@@ -39,6 +44,9 @@ describe("production deployment artifacts", () => {
     expect(workflow).toContain("POSTGRES_TEST_DATABASE_URL");
     expect(workflow).toContain("pnpm --filter @jobbbler/storage-postgres test");
     expect(workflow).toContain("verify:");
+    expect(workflow).toContain("docker-package:");
+    expect(workflow).toContain("docker build --target web");
+    expect(workflow).toContain("docker build --target worker");
   });
 
   it("documents server-only PostgreSQL configuration and independent web and worker deployment", async () => {

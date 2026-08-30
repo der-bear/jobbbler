@@ -12,12 +12,20 @@ RUN corepack enable && corepack install -g pnpm@11.19.0
 
 FROM base AS build
 
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ARG NEXT_PUBLIC_SUPABASE_ACTIVITY_WAKEUPS=false
+
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_SUPABASE_ACTIVITY_WAKEUPS=$NEXT_PUBLIC_SUPABASE_ACTIVITY_WAKEUPS
+
 COPY . .
 
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @jobbbler/web build
 RUN pnpm --filter @jobbbler/worker build
-RUN pnpm --filter @jobbbler/worker deploy --prod /opt/jobbbler-worker
+RUN pnpm --filter @jobbbler/worker deploy --legacy --prod /opt/jobbbler-worker
 
 FROM node:24-bookworm-slim AS runtime-base
 
@@ -38,7 +46,6 @@ ENV PORT=3000
 
 COPY --from=build --chown=jobbbler:jobbbler /app/apps/web/.next/standalone ./
 COPY --from=build --chown=jobbbler:jobbbler /app/apps/web/.next/static ./apps/web/.next/static
-COPY --from=build --chown=jobbbler:jobbbler /app/apps/web/public ./apps/web/public
 
 USER jobbbler
 
