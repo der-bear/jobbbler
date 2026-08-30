@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { AgentOperation, ApplicationAgentState } from "@jobbbler/contracts";
 
+import { MAX_WEBMCP_RESULT_BYTES, webMcpResultSize } from "@/lib/webmcp-tool-result";
+
 import {
   createApplicationToolManifests,
   createStableApplicationToolManifests,
@@ -318,31 +320,28 @@ describe("application WebMCP outcomes", () => {
       requestId: reviewRequestId,
       nextTool: "decide_application_submission",
       userAction: { kind: "action_confirmation", surface: "application_review" },
+      decisionContext: {
+        draftId: ready.draftId,
+        draftVersion: ready.version,
+        reviewHref: `/apply/${ready.draftId}`,
+        recipient: "Northstar Systems",
+        fieldCount: 4,
+        sensitiveFieldCount: 3,
+        noticeVersion: "privacy-2026-08",
+        expiresAt: "2026-08-29T10:05:00.000Z",
+      },
       presentation: {
         title: "Review and submit this application?",
         confirmLabel: "Submit this application",
-        application: {
-          recipient: "Northstar Systems",
-          purpose: "Submit this reviewed application to Northstar Systems.",
-          fields: expect.arrayContaining([
-            {
-              fieldKey: "full_name",
-              label: "Full name",
-              value: "Ada Lovelace",
-              sensitive: true,
-            },
-            {
-              fieldKey: "work_authorization",
-              label: "Work authorization",
-              value: "Authorized to work in the European Union",
-              sensitive: true,
-            },
-          ]),
-          privacyNotice: "privacy-2026-08",
-          draftVersion: ready.version,
-        },
+        facts: expect.arrayContaining([
+          { key: "Recipient", value: "Northstar Systems" },
+          { key: "Fields", value: 4 },
+          { key: "Sensitive fields", value: 3 },
+        ]),
       },
     });
+    expect(JSON.stringify(result)).not.toContain("ada@example.com");
+    expect(webMcpResultSize(result)).toBeLessThanOrEqual(MAX_WEBMCP_RESULT_BYTES);
     expect(names(createApplicationToolManifests(deps))).toEqual([
       "get_application_readiness",
       "propose_application_updates",
@@ -350,7 +349,7 @@ describe("application WebMCP outcomes", () => {
     ]);
   });
 
-  it("returns a bounded exact review without truncating a long application answer", async () => {
+  it("keeps a long exact review on the visible owner surface instead of overrunning the agent", async () => {
     const ready = { ...base, completedRequiredFields: 5 };
     const deps = dependencies(ready, [
       "read_application",
@@ -384,14 +383,16 @@ describe("application WebMCP outcomes", () => {
 
     expect(result).toMatchObject({
       status: "requires_user_action",
+      decisionContext: {
+        reviewHref: `/apply/${ready.draftId}`,
+        fieldCount: 1,
+      },
       presentation: {
-        application: {
-          fields: [{ value: exactValue, sensitive: false }],
-        },
+        prompt: expect.stringContaining("visible review"),
       },
     });
-    expect(JSON.stringify(result)).toContain(exactValue);
-    expect(new TextEncoder().encode(JSON.stringify(result)).byteLength).toBeLessThanOrEqual(65_536);
+    expect(JSON.stringify(result)).not.toContain(exactValue);
+    expect(webMcpResultSize(result)).toBeLessThanOrEqual(MAX_WEBMCP_RESULT_BYTES);
   });
 
   it("records the exact submission decision in one outcome tool", async () => {
@@ -556,7 +557,9 @@ describe("site-wide application tools", () => {
       { draftId: base.draftId },
       { signal: new AbortController().signal },
     );
-    expect(onNavigate).toHaveBeenCalledWith(`/apply/${base.draftId}`);
+    expect(onNavigate).toHaveBeenCalledWith(`/apply/${base.draftId}`, {
+      signal: expect.any(AbortSignal),
+    });
     expect(result).toMatchObject({
       status: "failed",
       error: { code: "CONFLICT", retryable: false },

@@ -14,7 +14,6 @@ import type { JsonSchema, JsonValue, ToolManifest } from "@jobbbler/webmcp";
 import {
   completedWebMcpResult,
   failedWebMcpResult,
-  MAX_EXACT_REVIEW_RESULT_BYTES,
   requiresUserActionWebMcpResult,
   safeWebMcpErrorResult,
   type CompletedWebMcpResult,
@@ -22,6 +21,7 @@ import {
   type SafeWebMcpErrorResult,
 } from "@/lib/webmcp-tool-result";
 import type { WebMcpNavigate } from "@/lib/webmcp-navigation";
+import { compactSubmissionReview } from "./submission-review-presentation";
 
 const emptyInputSchema = {
   type: "object",
@@ -424,6 +424,7 @@ function submissionReviewTool(
       try {
         emptyInput.parse(input);
         const request = await dependencies.requestSubmissionReview({ signal });
+        const compactReview = compactSubmissionReview(request);
         return requiresUserActionWebMcpResult({
           summary:
             "The completed application is ready for the person's final review in the agent client.",
@@ -431,19 +432,8 @@ function submissionReviewTool(
           surface: "application_review",
           requestId: request.id,
           nextTool: "decide_application_submission",
-          maximumBytes: MAX_EXACT_REVIEW_RESULT_BYTES,
-          presentation: {
-            title: "Review and submit this application?",
-            prompt: `Review the exact application for ${request.recipient}. Submission happens only after this decision.`,
-            confirmLabel: "Submit this application",
-            application: {
-              recipient: request.recipient,
-              purpose: request.purpose,
-              fields: request.fields,
-              privacyNotice: request.noticeVersion,
-              draftVersion: request.draftVersion,
-            },
-          },
+          decisionContext: compactReview.decisionContext,
+          presentation: compactReview.presentation,
         });
       } catch (error) {
         return safeWebMcpErrorResult(error, signal, "Submission review accepts no arguments.");
