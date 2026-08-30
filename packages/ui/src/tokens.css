@@ -15,9 +15,17 @@
   --jb-danger: #a63c35;
   --jb-warning: #8a5d10;
   --jb-focus: #0b6f47;
+  /*
+   * Filled controls cannot be dimmed with group opacity: it fades the label and
+   * the fill together, so the pair below carries its own contrast (5.2:1 here,
+   * 4.6:1 in dark) instead of collapsing as the fill lightens.
+   */
+  --jb-signal-disabled: #e4eae6;
+  --jb-signal-disabled-contrast: #55625b;
   --jb-radius-sm: 4px;
   --jb-radius-md: 8px;
   --jb-radius-lg: 12px;
+  --jb-radius-pill: 999px;
   --jb-shadow-raised: 0 12px 32px rgb(20 34 24 / 12%);
   --jb-duration-fast: 140ms;
   --jb-duration-base: 180ms;
@@ -26,20 +34,28 @@
   --color-canvas: var(--jb-canvas);
   --color-surface: var(--jb-surface);
   --color-surface-subtle: var(--jb-surface-muted);
+  --color-surface-soft: var(--jb-surface-muted);
+  --color-surface-strong: var(--jb-surface-strong);
   --color-surface-raised: var(--jb-surface);
   --color-ink: var(--jb-text);
   --color-ink-muted: var(--jb-text-muted);
   --color-ink-subtle: var(--jb-text-muted);
   --color-line: var(--jb-border);
   --color-line-strong: var(--jb-border-strong);
+  --color-signal: var(--jb-signal);
   --color-signal-strong: var(--jb-signal-strong);
   --color-signal-soft: color-mix(in srgb, var(--jb-signal) 12%, var(--jb-surface));
+  --color-danger: var(--jb-danger);
+  --color-warning: var(--jb-warning);
   --space-2: 0.5rem;
   --space-3: 0.75rem;
   --radius-sm: var(--jb-radius-sm);
+  --radius-md: var(--jb-radius-md);
   --radius-lg: var(--jb-radius-lg);
+  --radius-pill: var(--jb-radius-pill);
   --shadow-floating: var(--jb-shadow-raised);
   --motion-fast: var(--jb-duration-fast);
+  --motion-base: var(--jb-duration-base);
   --ease-standard: var(--jb-ease);
   --font-sans: var(--jb-font-ui);
 }
@@ -59,4 +75,6 @@
   --jb-danger: #ff9b91;
   --jb-warning: #f5c46f;
   --jb-focus: #8adba5;
+  --jb-signal-disabled: #2a322d;
+  --jb-signal-disabled-contrast: #8d9a93;
 }

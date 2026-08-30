@@ -64,6 +64,38 @@ export function employmentLabel(value: EmploymentType): string {
   return employmentLabels[value];
 }
 
+/*
+ * The work-model chip already names remoteness, so a location that repeats it
+ * ("Remote - Europe" printed beside a "Remote" chip) is reduced to the part the
+ * chip does not carry. A location that says nothing else returns null.
+ */
+export function locationBesideWorkModel(
+  location: string | undefined,
+  workModel: WorkModel,
+): string | null {
+  if (location === undefined) return null;
+  const label = workModelLabels[workModel].replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const remainder = location.replace(new RegExp(`^${label}\\s*[-–—·,]?\\s*`, "iu"), "").trim();
+  return remainder.length > 0 ? remainder : null;
+}
+
+/* Full-time is the default every reader assumes, so only deviations are shown. */
+export function deviatingEmploymentLabel(value: EmploymentType): string | null {
+  return value === "full_time" ? null : employmentLabels[value];
+}
+
+/*
+ * Employment type is carried by the facts line, so a title that ends by repeating
+ * it ("… Monitoring (Part-Time)") sheds the suffix. That parenthetical is also
+ * what pushed titles past the truncation boundary on narrow screens.
+ */
+export function titleWithoutEmploymentSuffix(title: string, value: EmploymentType): string {
+  if (value === "full_time") return title;
+  const label = employmentLabels[value].replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const stripped = title.replace(new RegExp(`\\s*\\(\\s*${label}\\s*\\)\\s*$`, "iu"), "").trim();
+  return stripped.length > 0 ? stripped : title;
+}
+
 function amount(value: number, currency: string, compact: boolean): string {
   const formatted = new Intl.NumberFormat("en", {
     style: "currency",

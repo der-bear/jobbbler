@@ -106,6 +106,20 @@
   gap: 5px;
 }
 
+/*
+ * The detail page carries the same two forms as a results row: the design
+ * system's `Chip` for the attribute that disqualifies the role, plain text for
+ * the rest. It used to flatten all four facts — salary included — into one grey
+ * line.
+ *
+ * Salary is a gating filter too, so it does not read as a footnote.
+ */
+.factSalary {
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+
 .description {
   max-inline-size: 78ch;
   margin-block-start: clamp(32px, 5vw, 52px);
@@ -154,13 +168,15 @@
   text-decoration: none;
 }
 
+/*
+ * No `font: inherit` here: globals.css already opts buttons out of the UA font,
+ * and repeating it would undo the 13px/650 the shared rule above sets.
+ */
 .applyButton {
-  min-block-size: 40px;
   border: 1px solid var(--jb-signal);
   padding: 8px 13px;
   color: var(--jb-signal-contrast);
   background: var(--jb-signal);
-  font: inherit;
   cursor: pointer;
 }
 
@@ -170,7 +186,9 @@
 
 .applyButton:disabled {
   cursor: wait;
-  opacity: 0.62;
+  border-color: var(--jb-signal-disabled);
+  background: var(--jb-signal-disabled);
+  color: var(--jb-signal-disabled-contrast);
 }
 
 .backLink {

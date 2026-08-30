@@ -29,14 +29,17 @@ import {
   type ToolActivity,
   type WorkModel,
 } from "@jobbbler/contracts";
-import { MultiSelect } from "@jobbbler/ui";
+import { Chip, MultiSelect } from "@jobbbler/ui";
 
 import { useWebMcp } from "@/components/webmcp-provider";
 import {
   categoryLabel,
+  deviatingEmploymentLabel,
+  locationBesideWorkModel,
   relativeFreshness,
   salaryCardPresentation,
   seniorityLabel,
+  titleWithoutEmploymentSuffix,
   workModelLabel,
 } from "@/lib/job-format";
 import { ApiClientError, queryApi } from "@/lib/query-client";
@@ -447,11 +450,18 @@ function JobResult({
           className={styles["jobTitleLink"]}
           href={`/jobs/${job.id}${detailSearch}`}
         >
-          <strong>{job.title}</strong>
+          <strong>{titleWithoutEmploymentSuffix(job.title, job.employmentType)}</strong>
           <small>{job.organizationName}</small>
           <span className={styles["jobMeta"]}>
-            <span>{workModelLabel(job.workModel)}</span>
-            {job.locations[0]}
+            <Chip tone={job.workModel === "onsite" ? "neutral" : "signal"}>
+              {workModelLabel(job.workModel)}
+            </Chip>
+            {[
+              locationBesideWorkModel(job.locations[0], job.workModel),
+              deviatingEmploymentLabel(job.employmentType),
+            ]
+              .filter((fact): fact is string => fact !== null)
+              .join(" · ")}
           </span>
         </Link>
         <div className={styles["jobSalary"]}>

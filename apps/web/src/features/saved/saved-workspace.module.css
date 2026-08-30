@@ -421,11 +421,25 @@
   background: var(--color-surface-subtle);
 }
 
+/*
+ * Filled buttons state their own disabled colours: group opacity would fade the
+ * label and the fill together and leave the text unreadable against it.
+ */
 .primaryButton:disabled,
 .quietButton:disabled,
 .dangerButton:disabled {
   cursor: wait;
-  opacity: 0.55;
+}
+
+.primaryButton:disabled,
+.dangerButton:disabled {
+  border-color: var(--jb-signal-disabled);
+  background: var(--jb-signal-disabled);
+  color: var(--jb-signal-disabled-contrast);
+}
+
+.quietButton:disabled {
+  color: var(--color-ink-muted);
 }
 
 .hint {

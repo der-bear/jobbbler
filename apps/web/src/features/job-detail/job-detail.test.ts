@@ -3,12 +3,15 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type { Job, JobFit } from "@jobbbler/contracts";
+import type * as JobbblerUi from "@jobbbler/ui";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
-vi.mock("@jobbbler/ui", () => ({
+/* Only the toast hook is stubbed; the real design-system components render. */
+vi.mock("@jobbbler/ui", async (importOriginal) => ({
+  ...(await importOriginal<typeof JobbblerUi>()),
   useToast: () => ({ show: vi.fn() }),
 }));
 

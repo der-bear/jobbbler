@@ -19,16 +19,18 @@ import {
   type JobDetailResult,
   type JobFit,
 } from "@jobbbler/contracts";
-import { useToast } from "@jobbbler/ui";
+import { Chip, useToast } from "@jobbbler/ui";
 
 import { startApplication } from "@/features/application/start-application";
 import { externalApplicationUrl, supportsJobbblerPreparation } from "./application-capability";
 import {
   compactDate,
-  employmentLabel,
+  deviatingEmploymentLabel,
+  locationBesideWorkModel,
   relativeFreshness,
   salaryLabel,
   seniorityLabel,
+  titleWithoutEmploymentSuffix,
   workModelLabel,
 } from "@/lib/job-format";
 import { ApiClientError, queryApi } from "@/lib/query-client";
@@ -140,6 +142,8 @@ function JobIdentity({
 }>) {
   const canPrepare = supportsJobbblerPreparation(job);
   const employerApplicationUrl = externalApplicationUrl(job);
+  const factLocations = locationBesideWorkModel(job.locations.join(", "), job.workModel);
+  const factEmployment = deviatingEmploymentLabel(job.employmentType);
 
   return (
     <header className={styles["identity"]}>
@@ -149,20 +153,25 @@ function JobIdentity({
       </Link>
       <div className={styles["titleRow"]}>
         <div>
-          <h1>{job.title}</h1>
+          <h1>{titleWithoutEmploymentSuffix(job.title, job.employmentType)}</h1>
           <p className={styles["organization"]}>{job.organizationName}</p>
         </div>
       </div>
       <div className={styles["facts"]}>
-        <span>
-          <MapPinIcon aria-hidden="true" size={16} />
-          {workModelLabel(job.workModel)} · {job.locations.join(", ")}
-        </span>
-        <span>{employmentLabel(job.employmentType)}</span>
+        <Chip tone={job.workModel === "onsite" ? "neutral" : "signal"}>
+          {workModelLabel(job.workModel)}
+        </Chip>
+        {factLocations === null ? null : (
+          <span>
+            <MapPinIcon aria-hidden="true" size={16} />
+            {factLocations}
+          </span>
+        )}
+        {factEmployment === null ? null : <span>{factEmployment}</span>}
         <span>
           {job.seniority === null ? "Seniority not stated" : seniorityLabel(job.seniority)}
         </span>
-        <span>{salaryLabel(job.salary)}</span>
+        <span className={styles["factSalary"]}>{salaryLabel(job.salary)}</span>
       </div>
       <div className={styles["actions"]}>
         {canPrepare ? (

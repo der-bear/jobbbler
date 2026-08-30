@@ -53,8 +53,20 @@ button:disabled {
 .jb-button:hover:not(:disabled) {
   transform: translateY(-1px);
 }
-.jb-button:disabled {
-  opacity: 0.56;
+/*
+ * Group opacity fades a filled button's label and its fill together, so the
+ * label loses contrast exactly as the ground lightens. Each variant states its
+ * own disabled colours instead.
+ */
+.jb-button--primary:disabled {
+  background: var(--jb-signal-disabled);
+  color: var(--jb-signal-disabled-contrast);
+}
+.jb-button--secondary:disabled,
+.jb-button--quiet:disabled,
+.jb-button--danger:disabled {
+  border-color: var(--jb-border);
+  color: var(--jb-text-muted);
 }
 .jb-button--sm {
   font-size: 0.8125rem;
@@ -161,6 +173,24 @@ button.jb-chip {
   border-color: var(--jb-signal);
   color: var(--jb-signal-strong);
 }
+/*
+ * A static chip describes; it never invites a click. Dropping the outline keeps
+ * the bordered pill meaning "control" everywhere, and stops rows of metadata
+ * from reading as a row of buttons.
+ */
+.jb-chip--static {
+  min-height: 1.375rem;
+  border: 0;
+  background: var(--jb-surface-muted);
+  color: var(--jb-text-muted);
+  padding: 0 0.5625rem;
+  font-size: 0.6875rem;
+  font-weight: 620;
+}
+.jb-chip--signal {
+  background: color-mix(in srgb, var(--jb-signal) 10%, var(--jb-surface));
+  color: var(--jb-signal-strong);
+}
 .jb-chip__remove,
 .jb-icon-button,
 .jb-theme-toggle {
@@ -177,6 +207,18 @@ button.jb-chip {
 .jb-icon-button:hover,
 .jb-theme-toggle:hover {
   background: var(--jb-surface-strong);
+}
+
+.jb-theme-toggle__dark-icon {
+  display: none;
+}
+
+:root[data-theme="dark"] .jb-theme-toggle__light-icon {
+  display: none;
+}
+
+:root[data-theme="dark"] .jb-theme-toggle__dark-icon {
+  display: block;
 }
 
 .jb-card {
