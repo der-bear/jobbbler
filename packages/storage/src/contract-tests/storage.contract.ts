@@ -124,10 +124,7 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
         status: "closed",
       });
 
-      await expect(current.jobs.suggestLocations("", 8)).resolves.toEqual([
-        "Europe",
-        "Berlin, Germany",
-      ]);
+      await expect(current.jobs.suggestLocations("", 8)).resolves.toEqual([]);
       await expect(current.jobs.suggestLocations("ber", 8)).resolves.toEqual(["Berlin, Germany"]);
     });
 

@@ -14,7 +14,7 @@ export interface JobDetailRouteContext {
 }
 
 const locationSuggestionQuerySchema = z.strictObject({
-  q: z.string().trim().max(120).default(""),
+  q: z.string().trim().min(1).max(120),
   limit: z.coerce.number().int().min(1).max(20).default(8),
 });
 

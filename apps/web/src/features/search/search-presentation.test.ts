@@ -42,6 +42,15 @@ describe("locationSuggestions", () => {
       { signal },
     );
   });
+
+  it("uses local featured choices without requesting the server for an empty query", async () => {
+    const request = vi.fn(async () => ({ locations: ["Berlin, Germany"] }));
+
+    await expect(
+      fetchLocationSuggestions("", new AbortController().signal, request),
+    ).resolves.toEqual([]);
+    expect(request).not.toHaveBeenCalled();
+  });
 });
 
 describe("salaryLabel", () => {

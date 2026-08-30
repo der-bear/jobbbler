@@ -173,4 +173,15 @@ describe("job discovery API routes", () => {
       data: { locations: ["Berlin, Germany", "Europe"] },
     });
   });
+
+  it("rejects an empty location lookup without scanning the catalog index", async () => {
+    const current = dependencies();
+    const response = await handleLocationSuggestionsRequest(
+      new Request("https://jobbbler.example/api/v1/jobs/locations?limit=8"),
+      current,
+    );
+
+    expect(response.status).toBe(400);
+    expect(current.jobs.suggestLocations).not.toHaveBeenCalled();
+  });
 });

@@ -58,7 +58,9 @@ export async function fetchLocationSuggestions(
   signal: AbortSignal,
   request: LocationSuggestionRequest = queryApi,
 ): Promise<readonly string[]> {
-  const parameters = new URLSearchParams({ q: query.trim(), limit: "8" });
+  const normalizedQuery = query.trim();
+  if (normalizedQuery.length === 0) return [];
+  const parameters = new URLSearchParams({ q: normalizedQuery, limit: "8" });
   const result = await request(
     `/api/v1/jobs/locations?${parameters.toString()}`,
     locationSuggestionsResultSchema,
@@ -101,6 +103,11 @@ export function LocationCombobox({
 
   useEffect(() => {
     if (!open) return undefined;
+    if (query.length === 0) {
+      setLoadedOptions([]);
+      setLoadStatus("ready");
+      return undefined;
+    }
     const cacheKey = query.toLocaleLowerCase("en");
     const cached = cache.current.get(cacheKey);
     if (cached !== undefined) {
@@ -111,23 +118,20 @@ export function LocationCombobox({
 
     const controller = new AbortController();
     setLoadStatus("loading");
-    const timer = window.setTimeout(
-      () => {
-        void loadOptions(query, controller.signal)
-          .then((nextOptions) => {
-            if (controller.signal.aborted) return;
-            cache.current.set(cacheKey, nextOptions);
-            setLoadedOptions(nextOptions);
-            setLoadStatus("ready");
-          })
-          .catch(() => {
-            if (controller.signal.aborted) return;
-            setLoadedOptions([]);
-            setLoadStatus("error");
-          });
-      },
-      query.length === 0 ? 0 : 180,
-    );
+    const timer = window.setTimeout(() => {
+      void loadOptions(query, controller.signal)
+        .then((nextOptions) => {
+          if (controller.signal.aborted) return;
+          cache.current.set(cacheKey, nextOptions);
+          setLoadedOptions(nextOptions);
+          setLoadStatus("ready");
+        })
+        .catch(() => {
+          if (controller.signal.aborted) return;
+          setLoadedOptions([]);
+          setLoadStatus("error");
+        });
+    }, 180);
     return () => {
       window.clearTimeout(timer);
       controller.abort();

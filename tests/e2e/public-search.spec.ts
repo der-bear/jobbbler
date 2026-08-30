@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 const exampleOutcome = "senior full-stack engineer";
 const seededSearch =
-  "/?q=senior+full-stack+engineer&category=software_engineering&work=remote&seniority=senior&location=Europe&salary_min=100000&currency=EUR&exclude=agency";
+  "/jobs?q=senior+full-stack+engineer&category=software_engineering&work=remote&seniority=senior&location=Europe&salary_min=100000&currency=EUR&exclude=agency";
 
 const seededRole = {
   company: "Jobbbler Demo Systems",
@@ -18,8 +18,8 @@ test.describe("public job search workspace", () => {
     await page.goto(seededSearch);
 
     await expect(page.getByRole("main")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Jobbbler", exact: true })).toBeVisible();
-    await expect(page.getByRole("searchbox", { name: "Search jobs" })).toHaveValue(
+    await expect(page.getByRole("link", { name: "Jobbbler home" })).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: "Search" })).toHaveValue(
       "senior full-stack engineer",
     );
     await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
@@ -66,13 +66,13 @@ test.describe("public job search workspace", () => {
     await expect(page).toHaveURL(/\/jobs\/[^/?#]+/);
     await expect.poll(() => new URL(page.url()).searchParams.get("salary_min")).toBe("100000");
     await expect(page.getByRole("heading", { name: seededRole.title })).toBeVisible();
-    await expect(page.getByRole("region", { name: "Why this matches" })).toContainText(
+    await expect(page.getByRole("region", { name: "How it fits your search" })).toContainText(
       "Work model is remote.",
     );
-    await expect(page.getByRole("region", { name: "Source and freshness" })).toContainText(
+    await expect(page.getByRole("region", { name: "About this posting" })).toContainText(
       /Jobbbler demo|source/i,
     );
-    await expect(page.getByRole("region", { name: "Source and freshness" })).toContainText(
+    await expect(page.getByRole("region", { name: "About this posting" })).toContainText(
       "Handled on Jobbbler",
     );
   });
@@ -118,7 +118,7 @@ test.describe("mobile and reduced-motion public search", () => {
   }) => {
     await page.goto(seededSearch);
 
-    await expect(page.getByRole("searchbox", { name: "Search jobs" })).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: "Search" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Remote", pressed: true })).toBeVisible();
     await expect(resultCard(page, seededRole.title, seededRole.company)).toBeVisible();
     await expect
@@ -150,18 +150,18 @@ test.describe("mobile and reduced-motion public search", () => {
   }) => {
     await page.goto("/");
 
-    const trigger = page.getByRole("button", { name: /Open agent panel/ });
+    const trigger = page.getByRole("button", { name: /Agent view/ });
     await expect(trigger).toBeVisible();
-    await expect(page.getByRole("dialog", { name: "Agent layer" })).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: "Agent view" })).toHaveCount(0);
 
     await trigger.click();
-    const panel = page.getByRole("dialog", { name: "Agent layer" });
+    const panel = page.getByRole("dialog", { name: "Agent view" });
     await expect(panel).toBeVisible();
-    await expect(page.getByRole("tab", { name: "Guide" })).toBeFocused();
+    await expect(page.getByRole("tab", { name: "Activity" })).toBeFocused();
     await expect(page.locator("header[inert]")).toHaveCount(1);
     await expect(page.locator("main[inert]")).toHaveCount(1);
 
-    await page.getByRole("tab", { name: "Guide" }).press("Escape");
+    await page.getByRole("tab", { name: "Activity" }).press("Escape");
     await expect(panel).toHaveCount(0);
     await expect(trigger).toBeFocused();
   });

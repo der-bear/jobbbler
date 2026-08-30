@@ -862,32 +862,23 @@ function suggestLocations(
   limit: number,
 ): readonly string[] {
   const normalizedQuery = query.trim().slice(0, 120).toLocaleLowerCase("en");
+  if (normalizedQuery.length === 0) return [];
   const safeLimit = Math.min(20, Math.max(1, Math.trunc(limit)));
-  const rows = (
-    normalizedQuery.length === 0
-      ? database
-          .prepare(
-            `SELECT min(value) AS value, COUNT(*) AS frequency
-             FROM job_location_suggestions
-             GROUP BY normalized_value
-             ORDER BY frequency DESC, normalized_value ASC
-             LIMIT ?`,
-          )
-          .all(safeLimit)
-      : database
-          .prepare(
-            `SELECT min(value) AS value, COUNT(*) AS frequency
-             FROM job_location_suggestions
-             WHERE normalized_value >= ? AND normalized_value < ?
-             GROUP BY normalized_value
-             ORDER BY
-               CASE WHEN normalized_value = ? THEN 0 ELSE 1 END,
-               frequency DESC,
-               normalized_value ASC
-             LIMIT ?`,
-          )
-          .all(normalizedQuery, `${normalizedQuery}\uffff`, normalizedQuery, safeLimit)
-  ) as { readonly value: string }[];
+  const rows = database
+    .prepare(
+      `SELECT min(value) AS value, COUNT(*) AS frequency
+       FROM job_location_suggestions
+       WHERE normalized_value >= ? AND normalized_value < ?
+       GROUP BY normalized_value
+       ORDER BY
+         CASE WHEN normalized_value = ? THEN 0 ELSE 1 END,
+         frequency DESC,
+         normalized_value ASC
+       LIMIT ?`,
+    )
+    .all(normalizedQuery, `${normalizedQuery}\uffff`, normalizedQuery, safeLimit) as {
+    readonly value: string;
+  }[];
   return rows.map(({ value }) => value);
 }
 

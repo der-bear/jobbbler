@@ -203,8 +203,8 @@ Document exact counts only after manifest validation and E2E pass.
 Run: `pnpm verify && pnpm test:e2e`
 
 Current recorded evidence: `pnpm verify` passed with 104 files passed and 1
-skipped, 473 tests passed and 27 skipped, and both production builds passed.
-The local PostgreSQL 16 contract run passed 34/34.
+skipped, 475 tests passed and 29 skipped, and both production builds passed.
+The local PostgreSQL 16 contract run passed 35/35.
 
 - [x] **Step 3: Define production smoke and current-media capture**
 

@@ -54,6 +54,33 @@ async function callTool(page: Page, name: string, input: unknown): Promise<unkno
   );
 }
 
+const allSiteTools = [
+  "add_job_to_comparison",
+  "compare_jobs",
+  "decide_application_assistance",
+  "decide_application_submission",
+  "get_application_readiness",
+  "get_comparison",
+  "get_job_application_capability",
+  "get_job_details",
+  "get_latest_search_update",
+  "get_saved_alerts",
+  "get_search_filters",
+  "get_search_state",
+  "open_job_details",
+  "open_jobbbler_page",
+  "open_saved_search",
+  "plan_job_workflow",
+  "prepare_application",
+  "propose_application_updates",
+  "remove_job_from_comparison",
+  "request_application_assistance",
+  "request_submission_review",
+  "search_jobs",
+  "set_job_alert_state",
+  "withdraw_application_consent",
+] as const;
+
 test.describe("agent journey through the live WebMCP surface", () => {
   test("keeps workflows reachable, plans, searches, and navigates like an agent", async ({
     page,
@@ -61,37 +88,18 @@ test.describe("agent journey through the live WebMCP surface", () => {
     await installModelContext(page);
     await page.goto("/about/webmcp");
 
-    await expect
-      .poll(() => registeredToolNames(page))
-      .toEqual([
-        "get_search_filters",
-        "get_site_capabilities",
-        "open_job_details",
-        "open_jobbbler_page",
-        "plan_job_workflow",
-        "search_jobs",
-      ]);
-    await expect(page.getByRole("complementary", { name: "Agent layer" })).toBeVisible();
+    await expect.poll(() => registeredToolNames(page)).toEqual([...allSiteTools]);
+    await expect(page.getByRole("complementary", { name: "Agent view" })).toBeVisible();
     await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(
-      "6 tools active. Discovery is automatic.",
+      "24 tools active. Discovery is automatic.",
     );
-
-    const capabilities = (await callTool(page, "get_site_capabilities", {})) as {
-      status: string;
-      data: { interactionModel: string; totalCapabilities: number };
-    };
-    expect(capabilities).toMatchObject({
-      status: "completed",
-      data: { interactionModel: "global_core_plus_context" },
-    });
-    expect(capabilities.data.totalCapabilities).toBeGreaterThan(20);
 
     const plan = (await callTool(page, "plan_job_workflow", { goal: "monitor_search" })) as {
       status: string;
-      data: { recommendedSteps: readonly { tool: string | null }[]; boundaries: readonly string[] };
+      data: { steps: readonly { tool: string | null }[]; boundaries: readonly string[] };
     };
     expect(plan.status).toBe("completed");
-    expect(plan.data.recommendedSteps.length).toBeGreaterThan(3);
+    expect(plan.data.steps.length).toBeGreaterThan(3);
     expect(plan.data.boundaries.join(" ")).toContain("grants no authority");
 
     const search = (await callTool(page, "search_jobs", {
@@ -107,20 +115,10 @@ test.describe("agent journey through the live WebMCP surface", () => {
       .poll(() => new URL(page.url()).searchParams.get("q"))
       .toBe("senior full-stack engineer");
     await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
-    await expect
-      .poll(() => registeredToolNames(page))
-      .toEqual([
-        "get_search_filters",
-        "get_search_state",
-        "get_site_capabilities",
-        "open_job_details",
-        "open_jobbbler_page",
-        "plan_job_workflow",
-        "search_jobs",
-      ]);
+    await expect.poll(() => registeredToolNames(page)).toEqual([...allSiteTools]);
     await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(/ready/i);
     await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(
-      "7 tools active. Discovery is automatic.",
+      "24 tools active. Discovery is automatic.",
     );
 
     const activityTab = page.getByRole("tab", { name: /Activity/ });
@@ -138,35 +136,31 @@ test.describe("agent journey through the live WebMCP surface", () => {
       error?: unknown;
     };
     expect(opened, JSON.stringify(opened)).toMatchObject({ status: "completed" });
-    await expect(page).toHaveURL(/\/jobs\//);
-    await expect
-      .poll(() => registeredToolNames(page))
-      .toEqual([
-        "compare_jobs",
-        "get_job_application_capability",
-        "get_job_details",
-        "get_search_filters",
-        "get_site_capabilities",
-        "open_job_details",
-        "open_jobbbler_page",
-        "plan_job_workflow",
-        "search_jobs",
-      ]);
+    await expect(page).toHaveURL(/\/jobs\/job_/, { timeout: 20_000 });
+    await expect.poll(() => registeredToolNames(page)).toEqual([...allSiteTools]);
   });
 
-  test("keeps the guide as the starter screen when no agent is connected", async ({ page }) => {
+  test("keeps the agent view honest when no agent is connected", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByRole("tab", { name: "Guide" })).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByText("Try it with one prompt")).toBeVisible();
+    await expect(page.getByRole("complementary", { name: "Agent view" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Activity" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(
       /unavailable|browser/i,
     );
 
-    await page.getByRole("tab", { name: "Guide" }).press("End");
+    await page.getByRole("tab", { name: "Tools" }).click();
     await expect(page.getByRole("tab", { name: "Tools" })).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByRole("heading", { name: "Site-wide" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "View all 29 tools" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Available tools" })).toBeVisible();
+    await expect(page.getByText("24 tools")).toBeVisible();
     await expect(page.getByText("plan_job_workflow").first()).toBeVisible();
+
+    await page.getByRole("tab", { name: "Guide" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Use Jobbbler from your agent chat" }),
+    ).toBeVisible();
   });
 });

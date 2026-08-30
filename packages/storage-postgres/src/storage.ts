@@ -228,12 +228,19 @@ async function updateVersioned<T extends { readonly id: string; readonly version
   record: T,
   expectedVersion: number,
 ): Promise<T> {
-  const existing = await get<T>(sql, kind, record.id);
-  if (existing === null) throw domain("NOT_FOUND", `${kind} was not found.`);
-  if (existing.version !== expectedVersion)
-    throw domain("CONFLICT", `${kind} changed after it was read. Refresh and retry.`);
   const stored = { ...record, version: expectedVersion + 1 } as T;
-  return write(sql, kind, stored);
+  const rows = await sql<EntityRow[]>`
+    UPDATE jobbbler.entity_records
+    SET owner_id = ${ownerOf(stored)},
+        body = ${sql.json(stored)},
+        version = ${stored.version},
+        updated_at = ${timestamp((stored as { readonly updatedAt?: unknown }).updatedAt)}
+    WHERE kind = ${kind} AND id = ${stored.id} AND version = ${expectedVersion}
+    RETURNING id, owner_id, body, version`;
+  if (rows[0] !== undefined) return body<T>(rows[0]);
+  const existing = await get<T>(sql, kind, stored.id);
+  if (existing === null) throw domain("NOT_FOUND", `${kind} was not found.`);
+  throw domain("CONFLICT", `${kind} changed after it was read. Refresh and retry.`);
 }
 
 async function requireWorkItemMutation(
@@ -882,27 +889,20 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
       },
       async suggestLocations(query, limit) {
         const normalizedQuery = query.trim().slice(0, 120).toLocaleLowerCase("en");
+        if (normalizedQuery.length === 0) return [];
         const safeLimit = Math.min(20, Math.max(1, Math.trunc(limit)));
         const prefixUpperBound = `${normalizedQuery}${String.fromCodePoint(0x10ffff)}`;
-        const rows =
-          normalizedQuery.length === 0
-            ? await sql<{ readonly value: string }[]>`
-                SELECT min(value) AS value
-                FROM jobbbler.job_location_suggestions
-                GROUP BY normalized_value
-                ORDER BY count(*) DESC, normalized_value ASC
-                LIMIT ${safeLimit}`
-            : await sql<{ readonly value: string }[]>`
-                SELECT min(value) AS value
-                FROM jobbbler.job_location_suggestions
-                WHERE normalized_value COLLATE "C" >= ${normalizedQuery}
-                  AND normalized_value COLLATE "C" < ${prefixUpperBound}
-                GROUP BY normalized_value
-                ORDER BY
-                  CASE WHEN normalized_value = ${normalizedQuery} THEN 0 ELSE 1 END,
-                  count(*) DESC,
-                  normalized_value ASC
-                LIMIT ${safeLimit}`;
+        const rows = await sql<{ readonly value: string }[]>`
+          SELECT min(value) AS value
+          FROM jobbbler.job_location_suggestions
+          WHERE normalized_value COLLATE "C" >= ${normalizedQuery}
+            AND normalized_value COLLATE "C" < ${prefixUpperBound}
+          GROUP BY normalized_value
+          ORDER BY
+            CASE WHEN normalized_value = ${normalizedQuery} THEN 0 ELSE 1 END,
+            count(*) DESC,
+            normalized_value ASC
+          LIMIT ${safeLimit}`;
         return rows.map(({ value }) => value);
       },
     },
