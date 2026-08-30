@@ -12,7 +12,10 @@ const config = {
   anonKey: "public-anon-key-with-at-least-32-characters",
 };
 
-function client(claim: unknown = ownerId) {
+function client(
+  claim: unknown = ownerId,
+  subscribeStatus: "SUBSCRIBED" | "CHANNEL_ERROR" = "SUBSCRIBED",
+) {
   let broadcast: (() => void) | undefined;
   const channel = {
     on: vi.fn(
@@ -21,7 +24,10 @@ function client(claim: unknown = ownerId) {
         return channel;
       },
     ),
-    subscribe: vi.fn(() => channel),
+    subscribe: vi.fn((callback?: (status: "SUBSCRIBED" | "CHANNEL_ERROR") => void) => {
+      callback?.(subscribeStatus);
+      return channel;
+    }),
   };
   const realtimeClient = {
     auth: {
@@ -44,23 +50,34 @@ function client(claim: unknown = ownerId) {
 describe("Supabase activity wakeup adapter", () => {
   it("is disabled without explicit public configuration", async () => {
     const createClient = vi.fn();
-    const remove = await subscribeToSupabaseActivityWakeups(vi.fn(), {
+    const subscription = await subscribeToSupabaseActivityWakeups(vi.fn(), {
       config: { enabled: false, url: null, anonKey: null },
       createClient,
     });
     expect(createClient).not.toHaveBeenCalled();
-    expect(remove()).toBeUndefined();
+    expect(subscription).toBeNull();
   });
 
   it("refuses a channel unless a signed Supabase session carries a valid owner claim", async () => {
     const invalid = client("not-an-owner-id");
-    const remove = await subscribeToSupabaseActivityWakeups(vi.fn(), {
+    const subscription = await subscribeToSupabaseActivityWakeups(vi.fn(), {
       config,
       createClient: () => invalid.realtimeClient,
     });
     expect(invalid.realtimeClient.channel).not.toHaveBeenCalled();
     expect(invalid.realtimeClient.realtime.setAuth).not.toHaveBeenCalled();
-    remove();
+    expect(subscription).toBeNull();
+  });
+
+  it("reports an inactive transport when the private channel cannot confirm subscription", async () => {
+    const rejected = client(ownerId, "CHANNEL_ERROR");
+    const subscription = await subscribeToSupabaseActivityWakeups(vi.fn(), {
+      config,
+      createClient: () => rejected.realtimeClient,
+    });
+
+    expect(subscription).toBeNull();
+    expect(rejected.realtimeClient.removeChannel).toHaveBeenCalledWith(rejected.channel);
   });
 
   it("uses a private owner channel carrying only an empty wakeup signal", async () => {
@@ -88,7 +105,8 @@ describe("Supabase activity wakeup adapter", () => {
       "signed-supabase-user-jwt",
     );
 
-    remove();
+    expect(remove).not.toBeNull();
+    remove?.();
     expect(configured.realtimeClient.removeChannel).toHaveBeenCalledWith(configured.channel);
   });
 });

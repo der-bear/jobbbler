@@ -69,13 +69,15 @@ describe("owner activity feed", () => {
     feed.stop();
   });
 
-  it("backs off idle visible polling and caps it at thirty seconds", async () => {
+  it("backs off idle visible polling after the wake transport is confirmed", async () => {
     const fetchPage = vi.fn().mockResolvedValue(page({ events: [] }));
+    const randomSamples = [0.5, 0.5, 1];
     const feed = startOwnerActivityFeed({
       activities: { mergeCommitted: vi.fn() },
       fetchPage,
       isVisible: () => true,
-      random: () => 0.5,
+      random: () => randomSamples.shift() ?? 1,
+      subscribeWakeups: async () => () => undefined,
     });
 
     await vi.advanceTimersByTimeAsync(0);
@@ -94,6 +96,97 @@ describe("owner activity feed", () => {
     expect(fetchPage).toHaveBeenCalledTimes(4);
     await vi.advanceTimersByTimeAsync(30_000);
     expect(fetchPage).toHaveBeenCalledTimes(5);
+    feed.stop();
+  });
+
+  it("keeps the server polling cadence when the wake transport is omitted", async () => {
+    const fetchPage = vi.fn().mockResolvedValue(page({ events: [] }));
+    const feed = startOwnerActivityFeed({
+      activities: { mergeCommitted: vi.fn() },
+      fetchPage,
+      isVisible: () => true,
+      random: () => 0.5,
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(5_000);
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(fetchPage).toHaveBeenCalledTimes(3);
+    feed.stop();
+  });
+
+  it("keeps the server polling cadence while wake transport confirmation is pending", async () => {
+    const fetchPage = vi.fn().mockResolvedValue(page({ events: [] }));
+    const feed = startOwnerActivityFeed({
+      activities: { mergeCommitted: vi.fn() },
+      fetchPage,
+      isVisible: () => true,
+      random: () => 0.5,
+      subscribeWakeups: () => new Promise(() => undefined),
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(5_000);
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(fetchPage).toHaveBeenCalledTimes(3);
+    feed.stop();
+  });
+
+  it("polls immediately when a pending wake transport becomes confirmed", async () => {
+    let confirmSubscription: ((remove: () => void) => void) | undefined;
+    const fetchPage = vi.fn().mockResolvedValue(page({ events: [] }));
+    const feed = startOwnerActivityFeed({
+      activities: { mergeCommitted: vi.fn() },
+      fetchPage,
+      isVisible: () => true,
+      random: () => 0.5,
+      subscribeWakeups: () =>
+        new Promise((resolve) => {
+          confirmSubscription = resolve;
+        }),
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+    confirmSubscription?.(() => undefined);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+    feed.stop();
+  });
+
+  it("keeps the server polling cadence after wake transport confirmation is rejected", async () => {
+    const fetchPage = vi.fn().mockResolvedValue(page({ events: [] }));
+    const feed = startOwnerActivityFeed({
+      activities: { mergeCommitted: vi.fn() },
+      fetchPage,
+      isVisible: () => true,
+      random: () => 0.5,
+      subscribeWakeups: async () => {
+        throw new Error("Realtime unavailable.");
+      },
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(5_000);
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(fetchPage).toHaveBeenCalledTimes(3);
+    feed.stop();
+  });
+
+  it("keeps the server polling cadence when wake transport setup resolves inactive", async () => {
+    const fetchPage = vi.fn().mockResolvedValue(page({ events: [] }));
+    const feed = startOwnerActivityFeed({
+      activities: { mergeCommitted: vi.fn() },
+      fetchPage,
+      isVisible: () => true,
+      random: () => 0.5,
+      subscribeWakeups: async () => null,
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(5_000);
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(fetchPage).toHaveBeenCalledTimes(3);
     feed.stop();
   });
 
@@ -137,12 +230,14 @@ describe("owner activity feed", () => {
       fetchPage: lowerFetch,
       isVisible: () => true,
       random: () => 0,
+      subscribeWakeups: async () => () => undefined,
     });
     const upper = startOwnerActivityFeed({
       activities: { mergeCommitted: vi.fn() },
       fetchPage: upperFetch,
       isVisible: () => true,
       random: () => 1,
+      subscribeWakeups: async () => () => undefined,
     });
 
     await vi.advanceTimersByTimeAsync(0);
@@ -150,6 +245,39 @@ describe("owner activity feed", () => {
     expect(lowerFetch).toHaveBeenCalledTimes(2);
     expect(upperFetch).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(2_000);
+    expect(upperFetch).toHaveBeenCalledTimes(2);
+    lower.stop();
+    upper.stop();
+  });
+
+  it("retains downward jitter when the idle delay reaches the thirty-second cap", async () => {
+    const lowerFetch = vi.fn().mockResolvedValue(page({ events: [], pollAfterMs: 30_000 }));
+    const upperFetch = vi.fn().mockResolvedValue(page({ events: [], pollAfterMs: 30_000 }));
+    const lower = startOwnerActivityFeed({
+      activities: { mergeCommitted: vi.fn() },
+      fetchPage: lowerFetch,
+      isVisible: () => true,
+      random: () => 0,
+      subscribeWakeups: async () => () => undefined,
+    });
+    const upper = startOwnerActivityFeed({
+      activities: { mergeCommitted: vi.fn() },
+      fetchPage: upperFetch,
+      isVisible: () => true,
+      random: () => 1,
+      subscribeWakeups: async () => () => undefined,
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(26_999);
+    expect(lowerFetch).toHaveBeenCalledTimes(1);
+    expect(upperFetch).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(lowerFetch).toHaveBeenCalledTimes(2);
+    expect(upperFetch).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(2_999);
+    expect(upperFetch).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
     expect(upperFetch).toHaveBeenCalledTimes(2);
     lower.stop();
     upper.stop();
@@ -215,5 +343,40 @@ describe("owner activity feed", () => {
     feed.stop();
     expect(removeWakeup).toHaveBeenCalledOnce();
     expect(activeSignal?.aborted).toBe(true);
+  });
+
+  it("resets idle backoff when a wake is consumed after an in-flight empty read", async () => {
+    let resolveFirstPage: ((value: OwnerActivityPage) => void) | undefined;
+    let wakeup: (() => void) | undefined;
+    const fetchPage = vi
+      .fn()
+      .mockImplementationOnce(
+        async () =>
+          await new Promise<OwnerActivityPage>((resolve) => {
+            resolveFirstPage = resolve;
+          }),
+      )
+      .mockResolvedValue(page({ events: [] }));
+    const feed = startOwnerActivityFeed({
+      activities: { mergeCommitted: vi.fn() },
+      fetchPage,
+      isVisible: () => true,
+      random: () => 0.5,
+      subscribeWakeups: async (wake) => {
+        wakeup = wake;
+        return () => undefined;
+      },
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+    wakeup?.();
+    resolveFirstPage?.(page({ events: [] }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(9_999);
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchPage).toHaveBeenCalledTimes(3);
+    feed.stop();
   });
 });

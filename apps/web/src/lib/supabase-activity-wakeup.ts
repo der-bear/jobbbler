@@ -1,12 +1,15 @@
 import { entityIdSchema } from "@jobbbler/contracts";
 
+export type ActivityRealtimeSubscribeStatus =
+  "SUBSCRIBED" | "TIMED_OUT" | "CLOSED" | "CHANNEL_ERROR";
+
 export interface ActivityRealtimeChannel {
   on(
     type: "broadcast",
     filter: { readonly event: "changed" },
     callback: () => void,
   ): ActivityRealtimeChannel;
-  subscribe(): ActivityRealtimeChannel;
+  subscribe(callback?: (status: ActivityRealtimeSubscribeStatus) => void): ActivityRealtimeChannel;
 }
 
 export interface ActivityRealtimeClient {
@@ -44,10 +47,6 @@ export interface SupabaseActivityWakeupOptions {
   readonly createClient?: (url: string, anonKey: string) => ActivityRealtimeClient;
 }
 
-function noSubscription(): () => void {
-  return () => undefined;
-}
-
 function validConfig(
   config: SupabaseActivityWakeupConfig,
 ): config is SupabaseActivityWakeupConfig & { readonly url: string; readonly anonKey: string } {
@@ -74,8 +73,8 @@ async function defaultClient(url: string, anonKey: string): Promise<ActivityReal
 export async function subscribeToSupabaseActivityWakeups(
   wakeup: () => void,
   options: SupabaseActivityWakeupOptions,
-): Promise<() => void> {
-  if (!validConfig(options.config)) return noSubscription();
+): Promise<(() => void) | null> {
+  if (!validConfig(options.config)) return null;
   try {
     const client =
       options.createClient === undefined
@@ -88,24 +87,33 @@ export async function subscribeToSupabaseActivityWakeups(
       session.access_token.length < 20 ||
       session.access_token.length > 8_192
     ) {
-      return noSubscription();
+      return null;
     }
     const ownerClaim = entityIdSchema.safeParse(session.user.app_metadata["jobbbler_owner_id"]);
-    if (!ownerClaim.success || !ownerClaim.data.startsWith("owner_")) return noSubscription();
+    if (!ownerClaim.success || !ownerClaim.data.startsWith("owner_")) return null;
 
     await client.realtime.setAuth(session.access_token);
     const channel = client.channel(`owner_activity:${ownerClaim.data}`, {
       config: { private: true, broadcast: { ack: false, self: false } },
     });
-    channel.on("broadcast", { event: "changed" }, () => wakeup()).subscribe();
     let removed = false;
-    return () => {
+    const remove = () => {
       if (removed) return;
       removed = true;
       void client.removeChannel(channel).catch(() => undefined);
     };
+    const subscribed = await new Promise<boolean>((resolve) => {
+      channel
+        .on("broadcast", { event: "changed" }, () => wakeup())
+        .subscribe((status) => resolve(status === "SUBSCRIBED"));
+    });
+    if (!subscribed) {
+      remove();
+      return null;
+    }
+    return remove;
   } catch {
-    return noSubscription();
+    return null;
   }
 }
 
@@ -119,7 +127,7 @@ export function publicSupabaseActivityWakeupConfig(): SupabaseActivityWakeupConf
 
 export function subscribeToConfiguredSupabaseActivityWakeups(
   wakeup: () => void,
-): Promise<() => void> {
+): Promise<(() => void) | null> {
   return subscribeToSupabaseActivityWakeups(wakeup, {
     config: publicSupabaseActivityWakeupConfig(),
   });

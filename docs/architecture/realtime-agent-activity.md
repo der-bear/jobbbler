@@ -52,13 +52,15 @@ The public contract is strict and versioned. The storage boundary rejects unknow
 
 The authoritative HTTP feed has no public or caller-selected channel parameter; the owner always comes from the verified session. PostgreSQL stores the projection in `jobbbler.owner_activity_events` with deny-by-default RLS and an owner-only read policy.
 
-The optional Supabase channel is `private: true` and carries only an empty `changed` broadcast. Its signed Supabase Auth JWT must contain a valid `app_metadata.jobbbler_owner_id` claim matching the private topic policy. Without that independently authenticated claim, the adapter refuses to subscribe. The JWT is provided through the Realtime authentication API, never a query string, channel name, log field, or broadcast payload.
+The optional Supabase channel is `private: true` and carries only an empty `changed` broadcast. Its signed Supabase Auth JWT must contain a valid `app_metadata.jobbbler_owner_id` claim matching the private topic policy. Without that independently authenticated claim, the adapter refuses to subscribe. The adapter reports the wake transport as active only after the private channel confirms `SUBSCRIBED`; channel setup errors leave polling at the server interval. The JWT is provided through the Realtime authentication API, never a query string, channel name, log field, or broadcast payload.
 
 ## Reliability
 
-- Polling starts immediately. A page with committed activity returns to the server interval; consecutive empty reads step from 10 to 20 to 30 seconds with bounded jitter so idle browser sessions do not poll in lockstep. Transport failures use a separate exponential backoff, `Retry-After` is authoritative, hidden pages wait 30 seconds, and unmount aborts in-flight work.
+- Polling starts immediately and follows the server interval while the optional wake transport is omitted, pending, inactive, or rejected. Only a private Realtime channel that confirms `SUBSCRIBED` enables aggressive idle backoff, and confirmation schedules an immediate authoritative read to close the transport handoff.
+- With a confirmed wake transport, a page with committed activity returns to the server interval and consecutive empty reads step from 10 to 20 toward a 30-second cap. Jitter is applied after capping, including a downward 27-to-30-second spread at the cap, so synchronized browser sessions do not converge on one timer.
+- Transport failures use a separate exponential backoff, `Retry-After` is authoritative, hidden pages wait 30 seconds, and unmount aborts in-flight work.
 - Catch-up is bounded to five immediate pages before returning to the normal interval.
-- Realtime wakeups are coalesced while an HTTP read is active.
+- Realtime wakeups are coalesced while an HTTP read is active. Consuming a queued wake resets idle backoff after the stale read and before the immediate authoritative read.
 - Event publishing may be at-least-once; the client deduplicates by event ID or correlation.
 - The conventional UI and local WebMCP activity remain available when the owner has no session, Supabase is absent, a private channel cannot authorize, or WebSockets are blocked.
 - UI controls never wait on the event stream to confirm a command response.
@@ -86,7 +88,7 @@ Enable the accelerator only with all of the following:
 - a signed Supabase Auth session whose app metadata carries the bound Jobbbler owner ID;
 - migration `0010` applied in Supabase.
 
-`ACTIVITY_POLL_INTERVAL_MS` controls the active fallback from 1,000 to 30,000 ms and defaults to 5,000 ms. Realtime, visibility, and explicit wakeups reset idle backoff before the next authoritative read.
+`ACTIVITY_POLL_INTERVAL_MS` controls the polling-only fallback and post-activity cadence from 1,000 to 30,000 ms and defaults to 5,000 ms. Realtime, visibility, and explicit wakeups reset idle backoff before the next authoritative read.
 
 ## UX behavior
 

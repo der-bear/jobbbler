@@ -17,7 +17,7 @@ const IDLE_JITTER_RATIO = 0.1;
 export interface OwnerActivityFeedOptions {
   readonly activities: Pick<AgentActivityStore, "mergeCommitted">;
   readonly fetchPage?: (cursor: string | null, signal: AbortSignal) => Promise<OwnerActivityPage>;
-  readonly subscribeWakeups?: (wakeup: () => void) => Promise<() => void>;
+  readonly subscribeWakeups?: (wakeup: () => void) => Promise<(() => void) | null>;
   readonly isVisible?: () => boolean;
   readonly subscribeVisibility?: (listener: () => void) => () => void;
   readonly maxCatchUpPages?: number;
@@ -67,10 +67,12 @@ function failureDelay(error: unknown, failures: number): number {
 
 function idleDelay(serverDelayMs: number, idlePolls: number, random: () => number): number {
   const multiplier = Math.min(6, 2 ** Math.min(3, idlePolls));
+  const baseDelay = boundedDelay(serverDelayMs * multiplier);
   const sample = random();
   const normalizedSample = Number.isFinite(sample) ? Math.min(1, Math.max(0, sample)) : 0.5;
-  const jitter = 1 - IDLE_JITTER_RATIO + normalizedSample * IDLE_JITTER_RATIO * 2;
-  return boundedDelay(serverDelayMs * multiplier * jitter);
+  const minimumDelay = Math.max(MIN_DELAY_MS, baseDelay * (1 - IDLE_JITTER_RATIO));
+  const maximumDelay = Math.min(MAX_DELAY_MS, baseDelay * (1 + IDLE_JITTER_RATIO));
+  return boundedDelay(minimumDelay + normalizedSample * (maximumDelay - minimumDelay));
 }
 
 function browserVisible(): boolean {
@@ -100,6 +102,7 @@ export function startOwnerActivityFeed(
   let timer: ReturnType<typeof setTimeout> | undefined;
   let requestController: AbortController | undefined;
   let removeWakeup: (() => void) | undefined;
+  let wakeTransportActive = false;
   let cursor: string | null = null;
   let failures = 0;
   let catchUpPages = 0;
@@ -151,9 +154,12 @@ export function startOwnerActivityFeed(
         if (page.events.length > 0) {
           idlePolls = 0;
           delay = boundedDelay(page.pollAfterMs);
-        } else {
+        } else if (wakeTransportActive) {
           idlePolls += 1;
           delay = idleDelay(page.pollAfterMs, idlePolls, random);
+        } else {
+          idlePolls = 0;
+          delay = boundedDelay(page.pollAfterMs);
         }
       }
     } catch (error) {
@@ -167,6 +173,7 @@ export function startOwnerActivityFeed(
       if (!stopped) {
         if (wakePending) {
           wakePending = false;
+          idlePolls = 0;
           schedule(0);
         } else {
           schedule(delay);
@@ -192,8 +199,14 @@ export function startOwnerActivityFeed(
     void options
       .subscribeWakeups(wake)
       .then((remove) => {
-        if (stopped) remove();
-        else removeWakeup = remove;
+        if (remove === null) return;
+        if (stopped) {
+          remove();
+        } else {
+          wakeTransportActive = true;
+          removeWakeup = remove;
+          wake();
+        }
       })
       .catch(() => undefined);
   }
