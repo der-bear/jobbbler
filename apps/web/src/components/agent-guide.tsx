@@ -67,24 +67,31 @@ function ToolRow({
 
 export function AgentTools({ tools, webMcpAvailable }: AgentToolsProps) {
   const registeredByName = new Map(tools.map((tool) => [tool.name, tool]));
+  const visibleToolCount = webMcpAvailable ? tools.length : totalCatalogTools;
 
   return (
     <div className={styles["guide"]}>
       <section aria-labelledby="panel-available-tools">
         <div className={styles["sectionHeading"]}>
-          <h3 id="panel-available-tools">Available tools</h3>
-          <span>{String(totalCatalogTools)} tools</span>
+          <h3 id="panel-available-tools">
+            {webMcpAvailable ? "Active tools" : "Capability catalog"}
+          </h3>
+          <span>{String(visibleToolCount)} tools</span>
         </div>
         <p className={styles["note"]}>
           {webMcpAvailable
-            ? "The same capability set stays discoverable across Jobbbler. Private actions still require an owned draft and the correct stage."
-            : "A compatible agent browser discovers this capability set automatically."}
+            ? "These tools completed browser registration for this page. Private actions still require an owned draft and the correct stage."
+            : "This is the capability catalog. A compatible agent browser registers and discovers the active set automatically."}
         </p>
         <div className={styles["capabilityGroups"]}>
           {capabilityGroups.map((group) => {
-            const groupTools = webMcpCatalog
+            const catalogGroupTools = webMcpCatalog
               .filter((route) => (group.routes as readonly string[]).includes(route.route))
               .flatMap((route) => route.tools);
+            const groupTools = webMcpAvailable
+              ? catalogGroupTools.filter((tool) => registeredByName.has(tool.name))
+              : catalogGroupTools;
+            if (groupTools.length === 0) return null;
             return (
               <section aria-label={`${group.title} capabilities`} key={group.title}>
                 <h4>{group.title}</h4>
@@ -155,7 +162,8 @@ export function AgentGuide() {
       </div>
 
       <p className={styles["panelNote"]}>
-        Activity shows what was called. Tools shows what the agent discovered.
+        Activity shows bounded call summaries. Tools shows the active set when WebMCP is connected;
+        otherwise it shows the capability catalog.
       </p>
 
       <Link className={styles["moreLink"]} href="/about/webmcp">

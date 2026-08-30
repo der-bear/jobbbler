@@ -23,6 +23,8 @@ describe("WebMCP explanation", () => {
     expect(markup).toContain("If no validated page is available, it stops");
     expect(markup).toContain("Proof you can see");
     expect(markup).toContain("The conversation stays in your agent client");
+    expect(markup).toContain("bounded summary of each call");
+    expect(markup).toContain("active browser-registered tools");
     expect(markup).toContain("Jobbbler keeps checking after the tab closes");
     expect(markup).toContain("You approve the important parts");
     expect(markup).toContain("Only you can");

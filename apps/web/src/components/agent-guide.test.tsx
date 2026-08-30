@@ -19,25 +19,30 @@ describe("AgentTools", () => {
       />,
     );
 
-    expect(markup).toContain("Available tools");
-    expect(markup).toContain("26 tools");
+    expect(markup).toContain("Active tools");
+    expect(markup).toContain("6 tools");
     expect(markup).toContain("Find");
-    expect(markup).toContain("Inspect and compare");
-    expect(markup).toContain("Alerts");
-    expect(markup).toContain("Apply");
     expect(markup).toContain("plan_job_workflow");
     expect(markup).toContain("Get the safe steps for a Jobbbler goal.");
-    expect(markup).toContain("managed internal role");
-    expect(markup).toContain("Human decision");
     expect(markup).toContain("get_search_state");
-    expect(markup).toContain("decide_application_submission");
-    expect(markup).toContain("decide_search_alert");
+    expect(markup).not.toContain("decide_application_submission");
+    expect(markup).not.toContain("decide_search_alert");
     expect(markup).not.toContain("Plan job workflow");
     expect(markup).not.toContain(">Read<");
     expect(markup).not.toContain(">Action<");
     expect(markup).not.toContain("Active now");
     expect(markup).not.toContain("All capabilities");
     expect(markup).not.toContain("Available now");
+  });
+
+  it("labels the full fallback as a capability catalog when WebMCP is unavailable", () => {
+    const markup = renderToStaticMarkup(<AgentTools tools={[]} webMcpAvailable={false} />);
+
+    expect(markup).toContain("Capability catalog");
+    expect(markup).toContain("26 tools");
+    expect(markup).toContain("decide_application_submission");
+    expect(markup).toContain("Human decision");
+    expect(markup).not.toContain("Active tools");
   });
 });
 
@@ -65,5 +70,7 @@ describe("AgentGuide", () => {
     expect(markup).toContain("Prepare answers and a short motivation note");
     expect(markup).toContain("Consent to process your data");
     expect(markup).toContain("right to withdraw it");
+    expect(markup).toContain("Activity shows bounded call summaries");
+    expect(markup).toContain("Tools shows the active set when WebMCP is connected");
   });
 });
