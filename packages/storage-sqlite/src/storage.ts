@@ -11,7 +11,7 @@ import {
   type JobSearchCriteria,
 } from "@jobbbler/contracts";
 import { DomainError } from "@jobbbler/core-domain";
-import { rankJob } from "@jobbbler/jobs-domain";
+import { annualizedSalarySortValue, rankJob } from "@jobbbler/jobs-domain";
 import {
   compareJobSearchSortKeys,
   decodeJobSearchCursor,
@@ -1167,7 +1167,7 @@ function validatedClaimKinds(kinds: ClaimWorkItemsInput["kinds"]): readonly stri
 function primarySortValue(entry: RankedJob, sort: JobSearchCriteria["sort"]): number {
   if (sort === "relevance") return entry.rank.score;
   if (sort === "salary_desc") {
-    return entry.job.salary?.maximum ?? entry.job.salary?.minimum ?? -1;
+    return annualizedSalarySortValue(entry.job.salary);
   }
   return 0;
 }

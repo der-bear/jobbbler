@@ -1,3 +1,5 @@
+import type { SalaryRange } from "@jobbbler/contracts";
+
 /**
  * Approximate mid-market rates, pinned so that cross-currency salary
  * comparisons stay deterministic and reproducible in tests and demos.
@@ -23,4 +25,19 @@ export function convertSalaryAmount(
   const toRate = EUR_PER_UNIT[toCurrency];
   if (fromRate === undefined || toRate === undefined) return null;
   return Math.round((amount * fromRate) / toRate);
+}
+
+/**
+ * Produces one deterministic annual EUR value for cross-currency salary ordering.
+ * A full-time hourly amount uses 2,080 hours per year; unavailable or unsupported
+ * compensation stays at the same sentinel used for undisclosed salaries.
+ */
+export function annualizedSalarySortValue(salary: SalaryRange | null): number {
+  if (salary === null) return -1;
+  const amount = salary.maximum ?? salary.minimum;
+  if (amount === null) return -1;
+  const eurAmount = convertSalaryAmount(amount, salary.currency, "EUR");
+  if (eurAmount === null) return -1;
+  const annualMultiplier = salary.period === "hour" ? 2_080 : salary.period === "month" ? 12 : 1;
+  return eurAmount * annualMultiplier;
 }

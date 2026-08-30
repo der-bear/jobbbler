@@ -1079,6 +1079,73 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
       ).resolves.toMatchObject({ jobs: [unknownSalary], total: 1 });
     });
 
+    it("sorts salaries by comparable annual EUR value across paginated results", async () => {
+      const current = await create();
+      await current.organizations.upsert(organization);
+      const hourlySalary = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440036",
+        salary: { minimum: 60, maximum: 70, currency: "EUR", period: "hour" } as const,
+      };
+      const usdSalary = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440037",
+        salary: { minimum: 140_000, maximum: 160_000, currency: "USD", period: "year" } as const,
+      };
+      const cadSalary = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440038",
+        salary: { minimum: 180_000, maximum: 210_000, currency: "CAD", period: "year" } as const,
+      };
+      const eurSalary = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440039",
+        salary: { minimum: 110_000, maximum: 130_000, currency: "EUR", period: "year" } as const,
+      };
+      const unknownSalary = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440040",
+        salary: null,
+      };
+      for (const candidate of [hourlySalary, usdSalary, cadSalary, eurSalary, unknownSalary]) {
+        await current.jobs.upsert(candidate);
+      }
+
+      const firstPage = await current.jobs.search({
+        criteria: { ...emptyCriteria, sort: "salary_desc", limit: 2 },
+        now,
+        limit: 2,
+      });
+      expect(firstPage).toMatchObject({ jobs: [hourlySalary, usdSalary], total: 5 });
+      expect(firstPage.nextCursor).not.toBeNull();
+
+      const secondPage = await current.jobs.search({
+        criteria: {
+          ...emptyCriteria,
+          sort: "salary_desc",
+          cursor: firstPage.nextCursor,
+          limit: 2,
+        },
+        now,
+        limit: 2,
+      });
+      expect(secondPage).toMatchObject({ jobs: [cadSalary, eurSalary], total: 5 });
+      expect(secondPage.nextCursor).not.toBeNull();
+
+      await expect(
+        current.jobs.search({
+          criteria: {
+            ...emptyCriteria,
+            sort: "salary_desc",
+            cursor: secondPage.nextCursor,
+            limit: 2,
+          },
+          now,
+          limit: 2,
+        }),
+      ).resolves.toMatchObject({ jobs: [unknownSalary], total: 5, nextCursor: null });
+    });
+
     it("treats untrusted lexical syntax as text instead of executable FTS syntax", async () => {
       const current = await create();
       await current.organizations.upsert(organization);
