@@ -1,5 +1,3 @@
-import { Buffer } from "node:buffer";
-
 import { describe, expect, it } from "vitest";
 
 import {
@@ -49,45 +47,89 @@ describe("search alert review token", () => {
     const codec = createSearchAlertReviewCodec(environment);
     const token = codec.sign(payload);
 
-    expect(codec.verify(token, payload.ownerId, "2026-08-30T09:05:00.000Z")).toEqual(payload);
+    expect(
+      codec.verify(
+        token,
+        payload.ownerId,
+        payload.requestId,
+        payload.expiresAt,
+        "2026-08-30T09:05:00.000Z",
+      ),
+    ).toEqual({
+      ownerId: payload.ownerId,
+      requestId: payload.requestId,
+      expiresAt: payload.expiresAt,
+    });
   });
 
-  it("carries endpoint identifiers but never the email or verification code", () => {
-    const token = createSearchAlertReviewCodec(environment).sign(payload);
-    const [encoded] = token.split(".");
-    const decoded = Buffer.from(encoded ?? "", "base64url").toString("utf8");
+  it("keeps the client token opaque and bound to one owner, request, and expiry", () => {
+    const codec = createSearchAlertReviewCodec(environment);
+    const token = codec.sign(payload);
 
-    expect(decoded).toContain(payload.endpointId);
-    expect(decoded).toContain(payload.challengeId);
-    expect(decoded).toContain(payload.scheduleId);
-    expect(decoded).not.toMatch(/@/u);
-    expect(decoded).not.toContain("042197");
-    expect(decoded).not.toMatch(/email|code/iu);
+    expect(token).toMatch(/^r1\.[a-z0-9]+\.[A-Za-z0-9_-]{43}$/u);
+    expect(token.length).toBeLessThan(64);
+    expect(token).not.toContain(payload.requestId);
+    expect(token).not.toContain(payload.endpointId);
+    expect(() =>
+      codec.authenticate(token, payload.ownerId, "req_650e8400-e29b-41d4-a716-446655440001"),
+    ).toThrow();
   });
 
   it("rejects an altered payload, signature, owner, request purpose, and expiry", () => {
     const codec = createSearchAlertReviewCodec(environment);
     const token = codec.sign(payload);
-    const [encoded, signature] = token.split(".");
-    const alteredPayload = `${encoded?.slice(0, -1)}${encoded?.endsWith("A") === true ? "B" : "A"}.${signature}`;
-    const alteredSignature = `${encoded}.${signature?.slice(0, -1)}${signature?.endsWith("A") === true ? "B" : "A"}`;
+    const [version, expiry, signature] = token.split(".");
+    const alteredVersion = `r2.${expiry}.${signature}`;
+    const alteredSignature = `${version}.${expiry}.${signature?.slice(0, -1)}${signature?.endsWith("A") === true ? "B" : "A"}`;
 
-    expect(() => codec.verify(alteredPayload, payload.ownerId, payload.issuedAt)).toThrow();
-    expect(() => codec.verify(alteredSignature, payload.ownerId, payload.issuedAt)).toThrow();
     expect(() =>
-      codec.verify(token, "owner_650e8400-e29b-41d4-a716-446655440000", payload.issuedAt),
+      codec.verify(
+        alteredVersion,
+        payload.ownerId,
+        payload.requestId,
+        payload.expiresAt,
+        payload.issuedAt,
+      ),
+    ).toThrow();
+    expect(() =>
+      codec.verify(
+        alteredSignature,
+        payload.ownerId,
+        payload.requestId,
+        payload.expiresAt,
+        payload.issuedAt,
+      ),
+    ).toThrow();
+    expect(() =>
+      codec.verify(
+        token,
+        "owner_650e8400-e29b-41d4-a716-446655440000",
+        payload.requestId,
+        payload.expiresAt,
+        payload.issuedAt,
+      ),
     ).toThrow();
     expect(() => codec.sign({ ...payload, purpose: "some_other_purpose" } as never)).toThrow();
-    expect(() => codec.verify(token, payload.ownerId, payload.expiresAt)).toThrow();
+    expect(() =>
+      codec.verify(token, payload.ownerId, payload.requestId, payload.expiresAt, payload.expiresAt),
+    ).toThrow();
   });
 
   it("authenticates an expired review binding so its provisional data can be removed safely", () => {
     const codec = createSearchAlertReviewCodec(environment);
     const token = codec.sign(payload);
 
-    expect(codec.authenticate(token, payload.ownerId)).toEqual(payload);
-    expect(() => codec.verify(token, payload.ownerId, payload.expiresAt)).toThrow();
-    expect(() => codec.authenticate(token, "owner_650e8400-e29b-41d4-a716-446655440000")).toThrow();
+    expect(codec.authenticate(token, payload.ownerId, payload.requestId)).toEqual({
+      ownerId: payload.ownerId,
+      requestId: payload.requestId,
+      expiresAt: payload.expiresAt,
+    });
+    expect(() =>
+      codec.verify(token, payload.ownerId, payload.requestId, payload.expiresAt, payload.expiresAt),
+    ).toThrow();
+    expect(() =>
+      codec.authenticate(token, "owner_650e8400-e29b-41d4-a716-446655440000", payload.requestId),
+    ).toThrow();
   });
 
   it("refuses tokens with a lifetime longer than fifteen minutes or invalid time order", () => {

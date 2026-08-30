@@ -894,6 +894,193 @@ describe("agent-native search alert route handlers", () => {
     expect(current.preparation.commitApproved).toHaveBeenCalledOnce();
   });
 
+  it("requires the signed token after only the durable decision remains", async () => {
+    const current = createDependencies();
+    const review = await prepare(current);
+    const first = await handleDecideSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/decision", decisionBody(review)),
+      current.dependencies,
+    );
+    expect(first.status).toBe(201);
+    const [version, expiry, signature] = review.reviewToken.split(".") as [string, string, string];
+
+    const response = await handleDecideSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/decision", {
+        ...decisionBody(review),
+        reviewToken: `${version}.${expiry}.${signature.startsWith("A") ? "B" : "A"}${signature.slice(1)}`,
+      }),
+      current.dependencies,
+    );
+
+    expect(response.status).toBe(401);
+    expect(current.preparation.commitApproved).toHaveBeenCalledOnce();
+  });
+
+  it("replays a durable decision that wins the evidence-free expiry cleanup race", async () => {
+    const winner = createDependencies();
+    const winnerReview = await prepare(winner);
+    const winnerResponse = await handleDecideSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/decision", decisionBody(winnerReview)),
+      winner.dependencies,
+    );
+    expect(winnerResponse.status).toBe(201);
+    const decisionKey = `search_alert.decision:${ownerId}:${winnerReview.requestId}`;
+    const durableDecision = winner.idempotency.records.get(decisionKey);
+    expect(durableDecision).toBeDefined();
+
+    const current = createDependencies();
+    const review = await prepare(current);
+    current.idempotency.records.delete(`search_alert.request:${ownerId}:${review.requestId}`);
+    current.setNow(review.expiresAt);
+    vi.mocked(current.preparation.expire).mockImplementationOnce(async () => {
+      current.idempotency.records.set(decisionKey, structuredClone(durableDecision!));
+      return false;
+    });
+
+    const response = await handleDecideSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/decision", decisionBody(review)),
+      current.dependencies,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(responseData(response)).resolves.toEqual(await responseData(winnerResponse));
+    expect(current.preparation.expire).toHaveBeenCalledOnce();
+  });
+
+  it("replays a durable decision that consumes request evidence after the first replay lookup", async () => {
+    const winner = createDependencies();
+    const winnerReview = await prepare(winner);
+    const winnerResponse = await handleDecideSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/decision", decisionBody(winnerReview)),
+      winner.dependencies,
+    );
+    expect(winnerResponse.status).toBe(201);
+    const decisionKey = `search_alert.decision:${ownerId}:${winnerReview.requestId}`;
+    const durableDecision = winner.idempotency.records.get(decisionKey);
+    expect(durableDecision).toBeDefined();
+
+    const current = createDependencies();
+    const review = await prepare(current);
+    const originalGet = current.idempotency.get.getMockImplementation();
+    let decisionLookups = 0;
+    current.idempotency.get.mockImplementation(async (scope, key) => {
+      if (scope === `search_alert.decision:${ownerId}` && key === review.requestId) {
+        decisionLookups += 1;
+        if (decisionLookups === 1) return null;
+      }
+      if (scope === `search_alert.request:${ownerId}` && key === review.requestId) {
+        current.idempotency.records.set(decisionKey, structuredClone(durableDecision!));
+        for (const [recordKey, record] of current.idempotency.records) {
+          if (
+            record.scope.startsWith("search_alert.") &&
+            !record.scope.startsWith(`search_alert.decision:${ownerId}`)
+          ) {
+            current.idempotency.records.delete(recordKey);
+          }
+        }
+        return null;
+      }
+      return originalGet?.(scope, key) ?? null;
+    });
+
+    const response = await handleDecideSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/decision", decisionBody(review)),
+      current.dependencies,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(responseData(response)).resolves.toEqual(await responseData(winnerResponse));
+  });
+
+  it("replays a durable decision that consumes request evidence before the second validation", async () => {
+    const winner = createDependencies();
+    const winnerReview = await prepare(winner);
+    const winnerResponse = await handleDecideSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/decision", decisionBody(winnerReview)),
+      winner.dependencies,
+    );
+    expect(winnerResponse.status).toBe(201);
+    const decisionKey = `search_alert.decision:${ownerId}:${winnerReview.requestId}`;
+    const durableDecision = winner.idempotency.records.get(decisionKey);
+    expect(durableDecision).toBeDefined();
+
+    const current = createDependencies();
+    const review = await prepare(current);
+    const originalGet = current.idempotency.get.getMockImplementation();
+    let requestLookups = 0;
+    current.idempotency.get.mockImplementation(async (scope, key) => {
+      if (scope === `search_alert.request:${ownerId}` && key === review.requestId) {
+        requestLookups += 1;
+        if (requestLookups === 2) {
+          current.idempotency.records.set(decisionKey, structuredClone(durableDecision!));
+          for (const [recordKey, record] of current.idempotency.records) {
+            if (
+              record.scope.startsWith("search_alert.") &&
+              !record.scope.startsWith(`search_alert.decision:${ownerId}`)
+            ) {
+              current.idempotency.records.delete(recordKey);
+            }
+          }
+          return null;
+        }
+      }
+      return originalGet?.(scope, key) ?? null;
+    });
+
+    const response = await handleDecideSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/decision", decisionBody(review)),
+      current.dependencies,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(responseData(response)).resolves.toEqual(await responseData(winnerResponse));
+  });
+
+  it("does not replay a durable decision after its retention deadline", async () => {
+    const current = createDependencies();
+    const review = await prepare(current);
+    const first = await handleDecideSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/decision", decisionBody(review)),
+      current.dependencies,
+    );
+    expect(first.status).toBe(201);
+    const decisionKey = `search_alert.decision:${ownerId}:${review.requestId}`;
+    const durableDecision = current.idempotency.records.get(decisionKey);
+    expect(durableDecision).toBeDefined();
+    current.setNow(durableDecision!.expiresAt);
+
+    const response = await handleDecideSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/decision", decisionBody(review)),
+      current.dependencies,
+    );
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: { details: { reason: "expired_review" } },
+    });
+    expect(current.idempotency.records.has(decisionKey)).toBe(false);
+  });
+
+  it("does not start evidence-free expiry cleanup for a tampered token", async () => {
+    const current = createDependencies();
+    const review = await prepare(current);
+    current.idempotency.records.delete(`search_alert.request:${ownerId}:${review.requestId}`);
+    current.setNow(review.expiresAt);
+    const [version, expiry, signature] = review.reviewToken.split(".") as [string, string, string];
+
+    const response = await handleDecideSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/decision", {
+        ...decisionBody(review),
+        reviewToken: `${version}.${expiry}.${signature.startsWith("A") ? "B" : "A"}${signature.slice(1)}`,
+      }),
+      current.dependencies,
+    );
+
+    expect(response.status).toBe(401);
+    expect(current.preparation.expire).not.toHaveBeenCalled();
+  });
+
   it("retains redacted review-bound consent evidence in the long-lived receipt", async () => {
     const current = createDependencies();
     const review = await prepare(current);
@@ -931,14 +1118,13 @@ describe("agent-native search alert route handlers", () => {
   it("rejects tampered, expired, request-mismatched, and owner-mismatched reviews", async () => {
     const tampered = createDependencies();
     const tamperedReview = await prepare(tampered);
-    const [tamperedPayload, tamperedSignature] = tamperedReview.reviewToken.split(".") as [
-      string,
-      string,
-    ];
+    const [tokenVersion, tokenExpiry, tamperedSignature] = tamperedReview.reviewToken.split(
+      ".",
+    ) as [string, string, string];
     const tamperedResponse = await handleDecideSearchAlert(
       privateRequest("/api/v1/agent/search-alerts/decision", {
         ...decisionBody(tamperedReview),
-        reviewToken: `${tamperedPayload}.${tamperedSignature.startsWith("A") ? "B" : "A"}${tamperedSignature.slice(1)}`,
+        reviewToken: `${tokenVersion}.${tokenExpiry}.${tamperedSignature.startsWith("A") ? "B" : "A"}${tamperedSignature.slice(1)}`,
       }),
       tampered.dependencies,
     );

@@ -7,6 +7,9 @@ import type {
   SavedSearch,
 } from "@jobbbler/contracts";
 
+import { MAX_WEBMCP_RESULT_BYTES, webMcpResultSize } from "@/lib/webmcp-tool-result";
+import { createSearchAlertReviewCodec } from "@/server/search-alert-review-token";
+
 import { createSavedToolManifests } from "./webmcp-tools";
 
 const savedSearch: SavedSearch = {
@@ -194,9 +197,6 @@ describe("saved-route WebMCP tools", () => {
       userAction: { kind: "data_consent", surface: "search_alert_consent" },
       decisionContext: {
         reviewToken: alertReview.reviewToken,
-        expiresAt: alertReview.expiresAt,
-        savedSearchId: alertReview.review.savedSearchId,
-        savedSearchVersion: alertReview.review.savedSearchVersion,
       },
       presentation: {
         title: "Review this job alert",
@@ -204,13 +204,87 @@ describe("saved-route WebMCP tools", () => {
         facts: expect.arrayContaining([
           { key: "Search", value: expect.stringContaining("platform") },
           { key: "Data", value: "Saved search criteria and delivery email" },
-          { key: "Privacy notice", value: "2026-08-29" },
+          { key: "Withdrawal", value: alertReview.review.withdrawal },
         ]),
       },
+    });
+    expect("decisionContext" in result ? result.decisionContext : undefined).toEqual({
+      reviewToken: alertReview.reviewToken,
     });
     expect(JSON.stringify(result)).not.toContain("ada@example.com");
     expect(JSON.stringify(result)).not.toContain('"review"');
     expect(new TextEncoder().encode(JSON.stringify(result)).byteLength).toBeLessThanOrEqual(1_500);
+  });
+
+  it("keeps a real server-signed alert review inside the operational output budget", async () => {
+    const reviewToken = createSearchAlertReviewCodec({
+      NODE_ENV: "test",
+      TOKEN_HASH_SECRET: "search-alert-review-test-secret-at-least-32-characters",
+    }).sign({
+      version: 1,
+      purpose: "search_alert_activation",
+      ownerId: savedSearch.ownerId,
+      requestId: alertReview.requestId,
+      savedSearchId: savedSearch.id,
+      savedSearchVersion: savedSearch.version,
+      criteria: savedSearch.criteria,
+      endpointId: schedule.delivery.endpointId,
+      challengeId: "challenge_00000001-0000-7000-8000-000000000001",
+      scheduleId: schedule.id,
+      recurrence: schedule.recurrence,
+      firstRunAt: schedule.nextRunAt,
+      privacyNoticeVersion: alertReview.review.privacyNoticeVersion,
+      issuedAt: "2026-08-29T08:00:00.000Z",
+      expiresAt: alertReview.expiresAt,
+    });
+    const manifests = createSavedToolManifests(
+      dependencies({
+        requestSearchAlert: vi.fn(async () => ({ ...alertReview, reviewToken })),
+      }),
+    );
+
+    const result = await manifests[1]!.execute(
+      {
+        name: "Senior platform roles",
+        criteria: {
+          query: "platform",
+          workModels: ["remote"],
+          seniorities: ["senior"],
+          locations: ["Europe"],
+        },
+        recurrence: schedule.recurrence,
+        email: "ada@example.com",
+      },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toMatchObject({
+      status: "requires_user_action",
+      decisionContext: { reviewToken },
+    });
+    expect(webMcpResultSize(result)).toBeLessThanOrEqual(MAX_WEBMCP_RESULT_BYTES);
+  });
+
+  it("rejects an exact alert review that cannot fit before starting verification", async () => {
+    const requestSearchAlert = vi.fn(async () => alertReview);
+    const manifests = createSavedToolManifests(dependencies({ requestSearchAlert }));
+
+    const result = await manifests[1]!.execute(
+      {
+        name: "Unreviewable alert",
+        criteria: { query: "x".repeat(500) },
+        recurrence: schedule.recurrence,
+        email: "ada@example.com",
+      },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toMatchObject({
+      status: "failed",
+      error: { code: "VALIDATION", retryable: false },
+    });
+    expect(JSON.stringify(result)).toMatch(/narrow/i);
+    expect(requestSearchAlert).not.toHaveBeenCalled();
   });
 
   it("shows every weekly check day in the external-client consent facts", async () => {

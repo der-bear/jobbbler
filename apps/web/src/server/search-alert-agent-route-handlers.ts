@@ -19,6 +19,8 @@ import type {
   SearchAlertPreparationSagaRecord,
 } from "@jobbbler/storage";
 
+import { searchAlertReviewPolicy } from "@/lib/search-alert-review-policy";
+
 import { apiErrorResponse, apiSuccessResponse } from "./api-response";
 import { readBoundedJsonBody } from "./bounded-json-body";
 import { createRequestId, getRateLimitKey } from "./context";
@@ -54,14 +56,13 @@ const REQUEST_RESULT_SCOPE_PREFIX = "search_alert.request_result";
 const DECISION_SCOPE_PREFIX = "search_alert.decision";
 const DECISION_INTENT_SCOPE_PREFIX = "search_alert.decision_intent";
 const DECISION_CLAIM_SCOPE_PREFIX = "search_alert.decision_claim";
-const PRIVACY_NOTICE_VERSION = "search-alert-v1";
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9_.:-]{1,128}$/;
 
 const reviewCopy = {
-  purpose: "Store this search and email matching-job updates.",
-  dataCategories: ["saved_search_criteria", "delivery_email"] as const,
-  retention: "Stored until the alert or delivery destination is removed.",
-  withdrawal: "Pause or delete the alert, or revoke its delivery destination, at any time.",
+  purpose: searchAlertReviewPolicy.purpose,
+  dataCategories: searchAlertReviewPolicy.dataCategories,
+  retention: searchAlertReviewPolicy.retention,
+  withdrawal: searchAlertReviewPolicy.withdrawal,
 } as const;
 
 export interface SearchAlertAgentRouteDependencies {
@@ -196,11 +197,12 @@ async function rateLimit(
   return null;
 }
 
-function validateStoredRequest(
+function storedRequestPayload(
   stored: IdempotencyRecord | null,
-  payload: SearchAlertReviewPayload,
+  expectedOwnerId: string,
+  expectedRequestId: string,
   dependencies: SearchAlertAgentRouteDependencies,
-): void {
+): SearchAlertReviewPayload {
   if (stored === null) {
     throw new DomainError({
       code: "UNAUTHORIZED",
@@ -219,10 +221,27 @@ function validateStoredRequest(
     });
   }
   if (
+    persisted.ownerId !== expectedOwnerId ||
+    persisted.requestId !== expectedRequestId ||
     stored.requestHash !==
-      createSearchAlertReviewBinding(dependencies.identity.environment, payload, "review") ||
-    !isDeepStrictEqual(persisted, payload)
+      createSearchAlertReviewBinding(dependencies.identity.environment, persisted, "review")
   ) {
+    throw new DomainError({
+      code: "UNAUTHORIZED",
+      message: "The search alert review does not match its server request.",
+      details: { reason: "stale_review" },
+    });
+  }
+  return persisted;
+}
+
+function validateStoredRequest(
+  stored: IdempotencyRecord | null,
+  payload: SearchAlertReviewPayload,
+  dependencies: SearchAlertAgentRouteDependencies,
+): void {
+  const persisted = storedRequestPayload(stored, payload.ownerId, payload.requestId, dependencies);
+  if (!isDeepStrictEqual(persisted, payload)) {
     throw new DomainError({
       code: "UNAUTHORIZED",
       message: "The search alert review does not match its server request.",
@@ -315,6 +334,35 @@ async function existingDecision(
   const stored = await dependencies.idempotency.get(decisionScope(ownerId), payload.requestId);
   if (stored === null) return null;
   return validateDecisionRecord(stored, payload, expectedDecision, dependencies).receipt;
+}
+
+async function existingDecisionReplay(
+  ownerId: string,
+  requestId: string,
+  expectedDecision: "approved" | "declined",
+  now: string,
+  dependencies: SearchAlertAgentRouteDependencies,
+): Promise<ReturnType<typeof decideSearchAlertResultSchema.parse> | null> {
+  const stored = await dependencies.idempotency.get(decisionScope(ownerId), requestId);
+  if (stored === null) return null;
+  const envelope = searchAlertDecisionEnvelopeSchema.parse(stored.responseBody);
+  if (
+    stored.key !== requestId ||
+    stored.requestHash !== envelope.evidence.reviewBinding ||
+    envelope.receipt.requestId !== requestId ||
+    envelope.receipt.decision !== expectedDecision
+  ) {
+    throw new DomainError({
+      code: "CONFLICT",
+      message: "This search alert review already has a different decision.",
+      details: { reason: "already_decided" },
+    });
+  }
+  if (hasExpired(stored.expiresAt, now)) {
+    await dependencies.idempotency.deleteExact(idempotencyIdentity(stored));
+    return null;
+  }
+  return envelope.receipt;
 }
 
 function validateDecisionIntent(
@@ -734,7 +782,7 @@ export async function handleRequestSearchAlert(
         scheduleId: durableSaga.saga.scheduleId,
         recurrence: input.recurrence,
         firstRunAt,
-        privacyNoticeVersion: PRIVACY_NOTICE_VERSION,
+        privacyNoticeVersion: searchAlertReviewPolicy.privacyNoticeVersion,
         issuedAt: durableSaga.saga.issuedAt,
         expiresAt,
       });
@@ -784,7 +832,7 @@ export async function handleRequestSearchAlert(
           recurrence: input.recurrence,
           firstRunAt,
           ...reviewCopy,
-          privacyNoticeVersion: PRIVACY_NOTICE_VERSION,
+          privacyNoticeVersion: searchAlertReviewPolicy.privacyNoticeVersion,
         },
       });
       const resultPut = await dependencies.idempotency.putIfAbsent({
@@ -865,16 +913,83 @@ export async function handleDecideSearchAlert(
     if (limited !== null) return limited;
 
     const now = dependencies.identity.now();
-    const payload = dependencies.reviewCodec.authenticate(input.reviewToken, current.owner.id);
-    if (payload.requestId !== input.requestId) {
+    const tokenBinding = dependencies.reviewCodec.authenticate(
+      input.reviewToken,
+      current.owner.id,
+      input.requestId,
+    );
+    const replay = await existingDecisionReplay(
+      current.owner.id,
+      input.requestId,
+      input.decision,
+      now,
+      dependencies,
+    );
+    if (replay !== null) {
+      return apiSuccessResponse(replay, { requestId: apiRequestId });
+    }
+    const storedRequest = await dependencies.idempotency.get(
+      requestScope(current.owner.id),
+      input.requestId,
+    );
+    if (storedRequest === null) {
+      const decisionAfterRequestRace = await existingDecisionReplay(
+        current.owner.id,
+        input.requestId,
+        input.decision,
+        now,
+        dependencies,
+      );
+      if (decisionAfterRequestRace !== null) {
+        return apiSuccessResponse(decisionAfterRequestRace, { requestId: apiRequestId });
+      }
+      if (hasExpired(tokenBinding.expiresAt, now)) {
+        const expired = await dependencies.preparation.expire({
+          ownerId: current.owner.id,
+          requestId: input.requestId,
+          reviewEvidenceHash: createSearchAlertReviewBinding(
+            dependencies.identity.environment,
+            tokenBinding,
+            "review",
+          ),
+          reviewExpiresAt: tokenBinding.expiresAt,
+          now,
+        });
+        if (!expired) {
+          const decisionAfterCleanupRace = await existingDecisionReplay(
+            current.owner.id,
+            input.requestId,
+            input.decision,
+            now,
+            dependencies,
+          );
+          if (decisionAfterCleanupRace !== null) {
+            return apiSuccessResponse(decisionAfterCleanupRace, { requestId: apiRequestId });
+          }
+        }
+        throw new DomainError({
+          code: "UNAUTHORIZED",
+          message: "The search alert review has expired.",
+          details: { reason: "expired_review" },
+        });
+      }
+      throw new DomainError({
+        code: "UNAUTHORIZED",
+        message: "The search alert review is no longer available.",
+        details: { reason: "stale_review" },
+      });
+    }
+    const payload = storedRequestPayload(
+      storedRequest,
+      current.owner.id,
+      input.requestId,
+      dependencies,
+    );
+    if (tokenBinding.expiresAt !== payload.expiresAt) {
       throw new DomainError({
         code: "UNAUTHORIZED",
         message: "The decision does not match the exact search alert review.",
       });
-    }
-    const replay = await existingDecision(current.owner.id, payload, input.decision, dependencies);
-    if (replay !== null) {
-      return apiSuccessResponse(replay, { requestId: apiRequestId });
     }
 
     const reviewEvidenceHash = createSearchAlertReviewBinding(
@@ -915,12 +1030,30 @@ export async function handleDecideSearchAlert(
           details: { reason: "expired_review" },
         });
       }
-      validateStoredRequest(
-        await dependencies.idempotency.get(requestScope(current.owner.id), payload.requestId),
-        payload,
-        dependencies,
+      const currentStoredRequest = await dependencies.idempotency.get(
+        requestScope(current.owner.id),
+        payload.requestId,
       );
-      dependencies.reviewCodec.verify(input.reviewToken, current.owner.id, now);
+      if (currentStoredRequest === null) {
+        const decisionAfterValidationRace = await existingDecisionReplay(
+          current.owner.id,
+          input.requestId,
+          input.decision,
+          now,
+          dependencies,
+        );
+        if (decisionAfterValidationRace !== null) {
+          return apiSuccessResponse(decisionAfterValidationRace, { requestId: apiRequestId });
+        }
+      }
+      validateStoredRequest(currentStoredRequest, payload, dependencies);
+      dependencies.reviewCodec.verify(
+        input.reviewToken,
+        current.owner.id,
+        input.requestId,
+        payload.expiresAt,
+        now,
+      );
 
       if (input.decision === "approved") {
         const currentFirstRunAt = dependencies.prospectiveRunAt(

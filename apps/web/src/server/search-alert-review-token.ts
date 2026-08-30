@@ -15,8 +15,8 @@ const TOKEN_DOMAIN = "jobbbler:search-alert-review:v1";
 const LOCAL_SIGNING_SECRET = "jobbbler-local-search-alert-review-change-before-production";
 const SECRET_MINIMUM_LENGTH = 32;
 const MAX_TOKEN_LIFETIME_MS = 15 * 60 * 1_000;
-const ENCODED_PAYLOAD_MAX_LENGTH = 3_000;
-const TOKEN_PATTERN = /^([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]{43})$/u;
+const TOKEN_VERSION = "r1";
+const TOKEN_PATTERN = /^r1\.([a-z0-9]{1,13})\.([A-Za-z0-9_-]{43})$/u;
 
 export const searchAlertReviewPayloadSchema = z.strictObject({
   version: z.literal(1),
@@ -37,6 +37,12 @@ export const searchAlertReviewPayloadSchema = z.strictObject({
 });
 
 export type SearchAlertReviewPayload = z.infer<typeof searchAlertReviewPayloadSchema>;
+
+export interface SearchAlertReviewTokenBinding {
+  readonly ownerId: string;
+  readonly requestId: string;
+  readonly expiresAt: string;
+}
 
 function signingSecret(environment: RuntimeEnvironment): string {
   const configured = environment["TOKEN_HASH_SECRET"];
@@ -70,20 +76,30 @@ function assertLifetime(payload: SearchAlertReviewPayload): void {
   }
 }
 
-function signature(secret: string, encodedPayload: string): Buffer {
+function encodedExpiry(expiresAt: string): string {
+  return instant(expiresAt).toString(36);
+}
+
+function decodedExpiry(value: string): string {
+  const parsed = Number.parseInt(value, 36);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) throw invalidReview();
+  return new Date(parsed).toISOString();
+}
+
+function signature(secret: string, binding: SearchAlertReviewTokenBinding): Buffer {
   return createHmac("sha256", secret)
     .update(TOKEN_DOMAIN)
     .update("\u0000")
-    .update(encodedPayload)
+    .update(JSON.stringify(binding))
     .digest();
 }
 
 function hasValidSignature(
   secret: string,
-  encodedPayload: string,
+  binding: SearchAlertReviewTokenBinding,
   encodedSignature: string,
 ): boolean {
-  const expected = signature(secret, encodedPayload);
+  const expected = signature(secret, binding);
   const syntacticallyValid = /^[A-Za-z0-9_-]{43}$/u.test(encodedSignature);
   const decoded = syntacticallyValid
     ? Buffer.from(encodedSignature, "base64url")
@@ -98,29 +114,35 @@ function hasValidSignature(
 
 export function createSearchAlertReviewCodec(environment: RuntimeEnvironment = process.env): {
   sign(payload: SearchAlertReviewPayload): string;
-  authenticate(token: string, expectedOwnerId: string): SearchAlertReviewPayload;
-  verify(token: string, expectedOwnerId: string, now: string): SearchAlertReviewPayload;
+  authenticate(
+    token: string,
+    expectedOwnerId: string,
+    expectedRequestId: string,
+  ): SearchAlertReviewTokenBinding;
+  verify(
+    token: string,
+    expectedOwnerId: string,
+    expectedRequestId: string,
+    expectedExpiresAt: string,
+    now: string,
+  ): SearchAlertReviewTokenBinding;
 } {
   const secret = signingSecret(environment);
-  function authenticate(token: string, expectedOwnerId: string): SearchAlertReviewPayload {
+  function authenticate(
+    token: string,
+    expectedOwnerId: string,
+    expectedRequestId: string,
+  ): SearchAlertReviewTokenBinding {
     try {
-      if (token.length > 4_096) throw invalidReview();
       const match = TOKEN_PATTERN.exec(token);
       if (match === null) throw invalidReview();
-      const encodedPayload = match[1]!;
-      const encodedSignature = match[2]!;
-      if (
-        encodedPayload.length > ENCODED_PAYLOAD_MAX_LENGTH ||
-        !hasValidSignature(secret, encodedPayload, encodedSignature)
-      ) {
-        throw invalidReview();
-      }
-      const payload = searchAlertReviewPayloadSchema.parse(
-        JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")),
-      );
-      assertLifetime(payload);
-      if (payload.ownerId !== expectedOwnerId) throw invalidReview();
-      return payload;
+      const binding: SearchAlertReviewTokenBinding = {
+        ownerId: entityIdSchema.parse(expectedOwnerId),
+        requestId: entityIdSchema.parse(expectedRequestId),
+        expiresAt: decodedExpiry(match[1]!),
+      };
+      if (!hasValidSignature(secret, binding, match[2]!)) throw invalidReview();
+      return binding;
     } catch {
       throw invalidReview();
     }
@@ -129,21 +151,23 @@ export function createSearchAlertReviewCodec(environment: RuntimeEnvironment = p
     sign(rawPayload) {
       const payload = searchAlertReviewPayloadSchema.parse(rawPayload);
       assertLifetime(payload);
-      const encodedPayload = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
-      if (encodedPayload.length > ENCODED_PAYLOAD_MAX_LENGTH) {
-        throw new TypeError("Search alert review payload is too large.");
-      }
-      return `${encodedPayload}.${signature(secret, encodedPayload).toString("base64url")}`;
+      const binding: SearchAlertReviewTokenBinding = {
+        ownerId: payload.ownerId,
+        requestId: payload.requestId,
+        expiresAt: payload.expiresAt,
+      };
+      return `${TOKEN_VERSION}.${encodedExpiry(payload.expiresAt)}.${signature(secret, binding).toString("base64url")}`;
     },
     authenticate,
-    verify(token, expectedOwnerId, now) {
+    verify(token, expectedOwnerId, expectedRequestId, expectedExpiresAt, now) {
       try {
-        const payload = authenticate(token, expectedOwnerId);
-        const nowMs = instant(now);
-        if (instant(payload.issuedAt) > nowMs || instant(payload.expiresAt) <= nowMs) {
+        const binding = authenticate(token, expectedOwnerId, expectedRequestId);
+        if (binding.expiresAt !== isoInstantSchema.parse(expectedExpiresAt)) {
           throw invalidReview();
         }
-        return payload;
+        const nowMs = instant(now);
+        if (instant(binding.expiresAt) <= nowMs) throw invalidReview();
+        return binding;
       } catch {
         throw invalidReview();
       }

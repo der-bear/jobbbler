@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { collectPageErrors } from "./page-errors";
+
 const exampleOutcome = "senior full-stack engineer";
 const seededSearch =
   "/jobs?q=senior+full-stack+engineer&category=software_engineering&work=remote&seniority=senior&location=Europe&salary_min=100000&currency=EUR&exclude=agency";
@@ -12,6 +14,25 @@ const seededRole = {
 function resultCard(page: Page, title: string, company: string) {
   return page.getByRole("article", { name: `${title} at ${company}` });
 }
+
+const pageErrors = new WeakMap<Page, () => readonly string[]>();
+
+test.beforeEach(async ({ page }) => {
+  pageErrors.set(
+    page,
+    collectPageErrors(page, {
+      expectedHttpErrors: [
+        // Signed-out visitors have no private activity stream; the panel then
+        // renders its intentional browser-mode empty state.
+        { method: "GET", pathname: "/api/v1/owners/activity", status: 401 },
+      ],
+    }),
+  );
+});
+
+test.afterEach(async ({ page }) => {
+  expect(pageErrors.get(page)?.() ?? [], "Browser errors").toEqual([]);
+});
 
 test.describe("public job search workspace", () => {
   test("server-renders the Home preview without a browser search", async ({ page }) => {
@@ -141,9 +162,7 @@ test.describe("public job search workspace", () => {
     });
     await page.goto("/");
 
-    await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(
-      /browser mode/i,
-    );
+    await expect(page.getByRole("button", { name: /Agent view — Browser mode/i })).toBeVisible();
     const outcome = page.getByRole("searchbox", { name: "Search jobs" });
     await outcome.fill(exampleOutcome);
     await outcome.press("Enter");

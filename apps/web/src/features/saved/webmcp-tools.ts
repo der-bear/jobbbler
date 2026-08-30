@@ -18,16 +18,20 @@ import type { JsonSchema, JsonValue, ToolManifest } from "@jobbbler/webmcp";
 
 import { jobSearchToolInput, jobSearchToolInputJsonSchema } from "@/features/search/webmcp-tools";
 import type { LatestSearchRun } from "@/lib/latest-run";
+import { maskEmailAddress } from "@/lib/mask-email-address";
 
 import {
+  MAX_WEBMCP_RESULT_BYTES,
   completedWebMcpResult,
   requiresUserActionWebMcpResult,
   safeWebMcpErrorResult,
+  webMcpResultSize,
   type CompletedWebMcpResult,
   type RequiresUserActionWebMcpResult,
   type SafeWebMcpErrorResult,
 } from "@/lib/webmcp-tool-result";
 import type { WebMcpNavigate } from "@/lib/webmcp-navigation";
+import { searchAlertReviewPolicy } from "@/lib/search-alert-review-policy";
 
 const emptyInputSchema = {
   type: "object",
@@ -315,6 +319,82 @@ function describeRecurrence(recurrence: RequestSearchAlertResult["review"]["recu
   return `Weekly on ${naturalList(recurrence.days.map(humanize))} at ${recurrence.time} (${recurrence.timeZone})`;
 }
 
+function searchAlertReviewResult(
+  result: RequestSearchAlertResult,
+  maximumBytes = MAX_WEBMCP_RESULT_BYTES,
+): RequiresUserActionWebMcpResult {
+  return requiresUserActionWebMcpResult({
+    summary: "Review this exact job alert in the agent client.",
+    kind: "data_consent",
+    surface: "search_alert_consent",
+    requestId: result.requestId,
+    nextTool: "decide_search_alert",
+    decisionContext: { reviewToken: result.reviewToken },
+    presentation: {
+      title: "Review this job alert",
+      prompt:
+        "Confirm the exact search, schedule, masked destination, data use, retention, and withdrawal.",
+      confirmLabel: "Verify and turn on",
+      facts: [
+        { key: "Search", value: describeSearchCriteria(result.review.criteria) },
+        { key: "Delivery", value: result.review.maskedDestination },
+        { key: "Schedule", value: describeRecurrence(result.review.recurrence) },
+        { key: "Purpose", value: result.review.purpose },
+        {
+          key: "Data",
+          value: result.review.dataCategories
+            .map((category, index) =>
+              index === 0 ? humanize(category) : category.replaceAll("_", " "),
+            )
+            .join(" and "),
+        },
+        { key: "Retention", value: result.review.retention },
+        { key: "Withdrawal", value: result.review.withdrawal },
+      ],
+    },
+    maximumBytes,
+  });
+}
+
+function assertPresentableSearchAlertReview(
+  criteria: RequestSearchAlertResult["review"]["criteria"],
+  recurrence: RequestSearchAlertResult["review"]["recurrence"],
+  email: string,
+): void {
+  const maximumEntityId = `${"r".repeat(31)}_00000000-0000-7000-8000-000000000000`;
+  const preview = searchAlertReviewResult(
+    {
+      status: "requires_user_action",
+      requestId: maximumEntityId,
+      reviewToken: `r1.${"z".repeat(13)}.${"x".repeat(43)}`,
+      expiresAt: "2026-08-30T09:15:00.000+00:00",
+      review: {
+        savedSearchId: maximumEntityId,
+        savedSearchVersion: Number.MAX_SAFE_INTEGER,
+        maskedDestination: maskEmailAddress(email),
+        criteria,
+        recurrence,
+        firstRunAt: "2026-08-31T09:15:00.000+00:00",
+        purpose: searchAlertReviewPolicy.purpose,
+        dataCategories: [...searchAlertReviewPolicy.dataCategories],
+        retention: searchAlertReviewPolicy.retention,
+        withdrawal: searchAlertReviewPolicy.withdrawal,
+        privacyNoticeVersion: searchAlertReviewPolicy.privacyNoticeVersion,
+      },
+    },
+    Number.MAX_SAFE_INTEGER,
+  );
+  if (webMcpResultSize(preview) <= MAX_WEBMCP_RESULT_BYTES) return;
+  throw new z.ZodError([
+    {
+      code: "custom",
+      path: ["criteria"],
+      message:
+        "The exact consent review is too long for one safe agent response. Narrow this alert or split it into simpler alerts.",
+    },
+  ]);
+}
+
 export function createSavedToolManifests(
   dependencies: SavedToolDependencies,
 ): readonly ToolManifest<unknown, SavedToolOutput>[] {
@@ -370,53 +450,18 @@ export function createSavedToolManifests(
     async execute(input, { signal }) {
       try {
         const parsed = requestAlertInput.parse(input);
+        const criteria = normalizeJobSearchCriteria(parsed.criteria);
+        assertPresentableSearchAlertReview(criteria, parsed.recurrence, parsed.email);
         const result = await dependencies.requestSearchAlert(
           {
             name: parsed.name,
-            criteria: normalizeJobSearchCriteria(parsed.criteria),
+            criteria,
             recurrence: parsed.recurrence,
             delivery: { channel: "email", email: parsed.email },
           },
           { signal },
         );
-        return requiresUserActionWebMcpResult({
-          summary:
-            "The exact job alert is ready for the person's consent and mailbox code in the agent client.",
-          kind: "data_consent",
-          surface: "search_alert_consent",
-          requestId: result.requestId,
-          nextTool: "decide_search_alert",
-          decisionContext: {
-            reviewToken: result.reviewToken,
-            expiresAt: result.expiresAt,
-            savedSearchId: result.review.savedSearchId,
-            savedSearchVersion: result.review.savedSearchVersion,
-          },
-          presentation: {
-            title: "Review this job alert",
-            prompt:
-              "Review the exact search, schedule, destination, data use, and retention. Enter the emailed code only if you want to turn it on.",
-            confirmLabel: "Verify and turn on",
-            facts: [
-              { key: "Search", value: describeSearchCriteria(result.review.criteria) },
-              { key: "Delivery", value: result.review.maskedDestination },
-              { key: "Schedule", value: describeRecurrence(result.review.recurrence) },
-              { key: "First check", value: result.review.firstRunAt },
-              { key: "Purpose", value: result.review.purpose },
-              {
-                key: "Data",
-                value: result.review.dataCategories
-                  .map((category, index) =>
-                    index === 0 ? humanize(category) : category.replaceAll("_", " "),
-                  )
-                  .join(" and "),
-              },
-              { key: "Retention", value: result.review.retention },
-              { key: "Withdrawal", value: result.review.withdrawal },
-              { key: "Privacy notice", value: result.review.privacyNoticeVersion },
-            ],
-          },
-        });
+        return searchAlertReviewResult(result);
       } catch (error) {
         return safeWebMcpErrorResult(
           error,

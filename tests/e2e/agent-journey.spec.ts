@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { collectPageErrors } from "./page-errors";
+
 /**
  * Drives the real WebMCP surface end to end with a recording ModelContext
  * polyfill: the page registers its tools exactly as it would for an agent
@@ -12,6 +14,26 @@ declare global {
     __agentTools: Map<string, { execute(input: unknown, options: unknown): Promise<unknown> }>;
   }
 }
+
+const pageErrors = new WeakMap<Page, () => readonly string[]>();
+
+test.beforeEach(async ({ page }) => {
+  pageErrors.set(
+    page,
+    collectPageErrors(page, {
+      expectedHttpErrors: [
+        { method: "GET", pathname: "/api/v1/owners/activity", status: 401 },
+        // The alert client creates an owner session and retries this exact
+        // idempotent request after the initial signed-out response.
+        { method: "POST", pathname: "/api/v1/agent/search-alerts/request", status: 401 },
+      ],
+    }),
+  );
+});
+
+test.afterEach(async ({ page }) => {
+  expect(pageErrors.get(page)?.() ?? [], "Browser errors").toEqual([]);
+});
 
 async function installModelContext(page: Page): Promise<void> {
   await page.addInitScript(() => {
@@ -88,10 +110,22 @@ test.describe("agent journey through the live WebMCP surface", () => {
     page,
   }) => {
     await installModelContext(page);
-    // Compile the routes the journey will visit so the dev server's on-demand
-    // build cannot trigger a full-page reload mid-navigation.
-    await page.request.get("/jobs");
-    await page.request.get("/jobs/job_00000001-0000-7000-8000-000000000001");
+    // Compile every page and route handler used by this journey before a page
+    // connects to Next's development HMR channel. A 4xx response is sufficient
+    // for POST-only handlers: importing the route module is what prevents an
+    // on-demand build from reloading the live page during a tool call.
+    for (const route of [
+      "/jobs",
+      "/jobs/job_00000001-0000-7000-8000-000000000001",
+      "/api/v1/jobs/search",
+      "/api/v1/owners/activity",
+      "/api/v1/owners/session",
+      "/api/v1/agent/search-alerts/request",
+      "/api/v1/agent/search-alerts/decision",
+    ]) {
+      const response = await page.request.get(route);
+      expect(response.status(), `Failed to prewarm ${route}`).toBeLessThan(500);
+    }
     await page.goto("/about/webmcp");
 
     await expect.poll(() => registeredToolNames(page)).toEqual([...allSiteTools]);
@@ -116,7 +150,6 @@ test.describe("agent journey through the live WebMCP surface", () => {
     const search = (await callTool(page, "search_jobs", {
       query: "senior full-stack engineer",
       workModels: ["remote"],
-      limit: 20,
     })) as { status: string; data: { jobs: readonly { id: string }[] } };
     expect(search.status).toBe("completed");
     const firstJobId = search.data.jobs[0]?.id;
@@ -155,33 +188,28 @@ test.describe("agent journey through the live WebMCP surface", () => {
       status: string;
       requestId: string;
       nextTool: string;
-      decisionContext: {
-        reviewToken: string;
-        review: {
-          criteria: { query: string | null; workModels: readonly string[] };
-          recurrence: { frequency: string; time: string; timeZone: string };
-          maskedDestination: string;
-          purpose: string;
-          retention: string;
-          withdrawal: string;
-        };
-      };
+      decisionContext: { reviewToken: string };
+      presentation: { facts: readonly { key: string; value: string }[] };
     };
-    expect(alertReview).toMatchObject({
+    expect(alertReview, JSON.stringify(alertReview)).toMatchObject({
       status: "requires_user_action",
       nextTool: "decide_search_alert",
-      decisionContext: {
-        review: {
-          criteria: {
-            query: "senior full-stack engineer",
-            workModels: ["remote"],
+      decisionContext: { reviewToken: expect.stringMatching(/^r1\./u) },
+      presentation: {
+        facts: expect.arrayContaining([
+          { key: "Search", value: expect.stringContaining("senior full-stack engineer") },
+          { key: "Delivery", value: expect.stringMatching(/^a[•]+@example\.test$/u) },
+          { key: "Schedule", value: "Daily at 09:00 (Europe/Kyiv)" },
+          {
+            key: "Purpose",
+            value: "Store this search and email matching-job updates.",
           },
-          recurrence: { frequency: "daily", time: "09:00", timeZone: "Europe/Kyiv" },
-          maskedDestination: expect.stringMatching(/^a[•]+@example\.test$/u),
-          purpose: "Store this search and email matching-job updates.",
-          retention: "Stored until the alert or delivery destination is removed.",
-          withdrawal: expect.stringContaining("Pause or delete the alert"),
-        },
+          {
+            key: "Retention",
+            value: "Stored until the alert or delivery destination is removed.",
+          },
+          { key: "Withdrawal", value: expect.stringContaining("Pause or delete the alert") },
+        ]),
       },
     });
     expect(JSON.stringify(alertReview)).not.toContain("agent-e2e@example.test");
@@ -225,7 +253,7 @@ test.describe("agent journey through the live WebMCP surface", () => {
 
     await page.getByRole("tab", { name: "Tools" }).click();
     await expect(page.getByRole("tab", { name: "Tools" })).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByRole("heading", { name: "Available tools" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Capability catalog" })).toBeVisible();
     await expect(page.getByText(`${String(allSiteTools.length)} tools`)).toBeVisible();
     await expect(page.getByText("plan_job_workflow").first()).toBeVisible();
 

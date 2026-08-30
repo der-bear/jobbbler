@@ -10,6 +10,8 @@ import {
 
 import { DomainError, type EmailProtector, type SecretCodec } from "@jobbbler/core-domain";
 
+import { maskEmailAddress } from "@/lib/mask-email-address";
+
 type RuntimeEnvironment = Readonly<Record<string, string | undefined>>;
 
 const LOCAL_TOKEN_SECRET = "jobbbler-local-token-secret-change-before-production";
@@ -30,15 +32,6 @@ function requiredSecret(
 
 function encryptionKey(secret: string): Uint8Array {
   return createHash("sha256").update("jobbbler:email:v1\u0000").update(secret).digest();
-}
-
-function maskEmail(normalized: string): string {
-  const separator = normalized.lastIndexOf("@");
-  if (separator < 1)
-    throw new DomainError({ code: "VALIDATION", message: "Invalid email address." });
-  const local = normalized.slice(0, separator);
-  const domain = normalized.slice(separator + 1);
-  return `${local.slice(0, 1)}${"•".repeat(Math.min(Math.max(local.length - 1, 2), 5))}@${domain}`;
 }
 
 export interface RevealableEmailProtector extends EmailProtector {
@@ -82,7 +75,7 @@ export function createEmailProtector(
           .update(`jobbbler:email-lookup:v1\u0000${normalized}`)
           .digest("hex"),
         addressCiphertext: [iv, tag, encrypted].map((part) => part.toString("base64url")).join("."),
-        maskedAddress: maskEmail(normalized),
+        maskedAddress: maskEmailAddress(normalized),
       };
     },
     reveal(ciphertext) {
