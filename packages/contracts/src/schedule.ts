@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { entityIdSchema, isoInstantSchema } from "./common.js";
+import { emailAddressSchema } from "./identity.js";
 import { jobSearchCriteriaSchema } from "./search.js";
 
 export const weekdaySchema = z.enum([
@@ -109,6 +110,68 @@ export const updateJobAlertScheduleInputSchema = z
     message: "Provide a recurrence or delivery change.",
   });
 
+export const requestSearchAlertInputSchema = z.strictObject({
+  name: z.string().trim().min(1).max(100),
+  criteria: jobSearchCriteriaSchema,
+  recurrence: scheduleRecurrenceSchema,
+  delivery: z.strictObject({
+    channel: z.literal("email"),
+    email: emailAddressSchema,
+  }),
+});
+
+const searchAlertReviewSchema = z.strictObject({
+  savedSearchId: entityIdSchema,
+  savedSearchVersion: z.number().int().nonnegative(),
+  maskedDestination: z.string().trim().min(3).max(320),
+  criteria: jobSearchCriteriaSchema,
+  recurrence: scheduleRecurrenceSchema,
+  firstRunAt: isoInstantSchema,
+  purpose: z.string().trim().min(1).max(240),
+  dataCategories: z.tuple([z.literal("saved_search_criteria"), z.literal("delivery_email")]),
+  retention: z.string().trim().min(1).max(240),
+  withdrawal: z.string().trim().min(1).max(240),
+  privacyNoticeVersion: z.string().trim().min(1).max(40),
+});
+
+export const requestSearchAlertResultSchema = z.strictObject({
+  status: z.literal("requires_user_action"),
+  requestId: entityIdSchema,
+  reviewToken: z.string().min(1).max(4_096),
+  expiresAt: isoInstantSchema,
+  review: searchAlertReviewSchema,
+});
+
+export const decideSearchAlertInputSchema = z.strictObject({
+  requestId: entityIdSchema,
+  reviewToken: z.string().min(1).max(4_096),
+  code: z.string().regex(/^\d{6}$/),
+  decision: z.enum(["approved", "declined"]),
+  channel: z.literal("agent_client"),
+});
+
+const searchAlertDecisionResultBaseSchema = z.strictObject({
+  status: z.literal("completed"),
+  requestId: entityIdSchema,
+  channel: z.literal("agent_client"),
+  savedSearchId: entityIdSchema,
+  decidedAt: isoInstantSchema,
+  summary: z.string().trim().min(1).max(240),
+});
+
+export const decideSearchAlertResultSchema = z.discriminatedUnion("decision", [
+  searchAlertDecisionResultBaseSchema.extend({
+    decision: z.literal("approved"),
+    scheduleId: entityIdSchema,
+    nextRunAt: isoInstantSchema,
+  }),
+  searchAlertDecisionResultBaseSchema.extend({
+    decision: z.literal("declined"),
+    scheduleId: z.null(),
+    nextRunAt: z.null(),
+  }),
+]);
+
 export type ScheduleRecurrence = z.infer<typeof scheduleRecurrenceSchema>;
 export type Weekday = z.infer<typeof weekdaySchema>;
 export type SavedSearch = z.infer<typeof savedSearchSchema>;
@@ -116,3 +179,7 @@ export type JobAlertSchedule = z.infer<typeof jobAlertScheduleSchema>;
 export type ScheduleJobAlertInput = z.infer<typeof scheduleJobAlertInputSchema>;
 export type SetJobAlertEnabledInput = z.infer<typeof setJobAlertEnabledInputSchema>;
 export type UpdateJobAlertScheduleInput = z.infer<typeof updateJobAlertScheduleInputSchema>;
+export type RequestSearchAlertInput = z.infer<typeof requestSearchAlertInputSchema>;
+export type RequestSearchAlertResult = z.infer<typeof requestSearchAlertResultSchema>;
+export type DecideSearchAlertInput = z.infer<typeof decideSearchAlertInputSchema>;
+export type DecideSearchAlertResult = z.infer<typeof decideSearchAlertResultSchema>;
