@@ -18,6 +18,6 @@
   },
   "sourceUrl": "https://jobicy.com/api/v2/remote-jobs",
   "termsUrl": "https://jobicy.com/jobs-rss-feed",
-  "userAgent": "Jobbbler/0.1 (+https://jobbbler.example/about/sources)",
+  "userAgent": "Jobbbler/0.1",
   "notes": "Cache centrally, poll at most four times per day, preserve Jobicy attribution and canonical URLs."
 }

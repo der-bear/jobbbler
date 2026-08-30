@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import pino from "pino";
 
 import { createCatalogConnectors, type JobConnector } from "@jobbbler/connectors";
+import { jobbblerUserAgent } from "@jobbbler/core-domain";
 
 import { runAlertDeliveryBatch, runAlertScheduler } from "./alert-worker.js";
 import { createAlertDeliverySender } from "./alert-sender.js";
@@ -121,7 +122,9 @@ async function main(): Promise<void> {
 
   try {
     const connectors = runsCatalog(mode)
-      ? createCatalogConnectors((input, init) => fetch(input, init)).filter(
+      ? createCatalogConnectors((input, init) => fetch(input, init), {
+          userAgent: jobbblerUserAgent(process.env, "/about/sources"),
+        }).filter(
           ({ policy }) => policy.enabled && policy.allowedPurposes.includes("job_discovery"),
         )
       : [];

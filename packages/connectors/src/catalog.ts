@@ -21,8 +21,12 @@ export function getBuiltInSourcePolicies(): SourcePolicy[] {
   );
 }
 
-export function createCatalogConnectors(fetch: FetchLike): JobConnector[] {
-  return getBuiltInSourcePolicies().map((policy) => {
+export function createCatalogConnectors(
+  fetch: FetchLike,
+  options: Readonly<{ userAgent: string }>,
+): JobConnector[] {
+  return getBuiltInSourcePolicies().map((builtInPolicy) => {
+    const policy = sourcePolicySchema.parse({ ...builtInPolicy, userAgent: options.userAgent });
     if (policy.sourceKey === "jobicy") return createJobicyConnector({ policy, fetch });
     if (policy.sourceKey === "remoteok") return createRemoteOkConnector({ policy, fetch });
     return createArbeitnowConnector({ policy, fetch });

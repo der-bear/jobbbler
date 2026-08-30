@@ -1,12 +1,11 @@
 import { createDecipheriv, createHash } from "node:crypto";
 
-import { DomainError } from "@jobbbler/core-domain";
+import { DomainError, jobbblerUserAgent } from "@jobbbler/core-domain";
 
 import type { AlertDeliverySender } from "./alert-worker.js";
 
 const EMAIL_AAD = "jobbbler:email:v1";
 const RESEND_URL = "https://api.resend.com/emails";
-const RESEND_USER_AGENT = "Jobbbler/0.1 (+https://jobbbler.example)";
 const RESEND_TIMEOUT_MS = 8_000;
 
 type Environment = Readonly<Record<string, string | undefined>>;
@@ -139,6 +138,7 @@ export function createAlertDeliverySender(
     });
   }
   const piiEncryptionKey = requiredPiiSecret(environment);
+  const userAgent = jobbblerUserAgent(environment);
 
   return {
     async send(input) {
@@ -152,7 +152,7 @@ export function createAlertDeliverySender(
             authorization: `Bearer ${apiKey}`,
             "content-type": "application/json",
             "idempotency-key": `alert-${input.deliveryId}`,
-            "user-agent": RESEND_USER_AGENT,
+            "user-agent": userAgent,
           },
           body: JSON.stringify({
             from,

@@ -36,6 +36,7 @@ describe("alert delivery sender", () => {
     const sender = createAlertDeliverySender(
       {
         NODE_ENV: "production",
+        PUBLIC_BASE_URL: "https://jobs.example.org",
         NOTIFICATION_DRIVER: "resend",
         PII_ENCRYPTION_KEY: key,
         RESEND_API_KEY: "re_test_secret",
@@ -49,7 +50,7 @@ describe("alert delivery sender", () => {
       method: "POST",
       headers: expect.objectContaining({
         "idempotency-key": "alert-delivery_550e8400-e29b-41d4-a716-446655440000",
-        "user-agent": "Jobbbler/0.1 (+https://jobbbler.example)",
+        "user-agent": "Jobbbler/0.1 (+https://jobs.example.org)",
       }),
       signal: expect.any(AbortSignal),
     });
@@ -83,6 +84,7 @@ describe("alert delivery sender", () => {
     const sender = createAlertDeliverySender(
       {
         NODE_ENV: "production",
+        PUBLIC_BASE_URL: "https://jobs.example.org",
         NOTIFICATION_DRIVER: "resend",
         PII_ENCRYPTION_KEY: key,
         RESEND_API_KEY: "re_test_secret",
@@ -94,5 +96,17 @@ describe("alert delivery sender", () => {
     await expect(sender.send(message)).rejects.toEqual(
       expect.objectContaining<Partial<DomainError>>({ code: "DEPENDENCY", retryable: true }),
     );
+  });
+
+  it("rejects missing production origin before accepting alert work", () => {
+    expect(() =>
+      createAlertDeliverySender({
+        NODE_ENV: "production",
+        NOTIFICATION_DRIVER: "resend",
+        PII_ENCRYPTION_KEY: key,
+        RESEND_API_KEY: "re_test_secret",
+        EMAIL_FROM: "Jobbbler <alerts@jobbbler.example>",
+      }),
+    ).toThrow("PUBLIC_BASE_URL");
   });
 });

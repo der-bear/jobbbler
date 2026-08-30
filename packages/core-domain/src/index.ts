@@ -9,6 +9,7 @@ export * from "./ids.js";
 export * from "./notifications/notification.js";
 export * from "./ownership/service.js";
 export * from "./ownership/types.js";
+export * from "./public-origin.js";
 export * from "./result.js";
 export * from "./saved-searches/service.js";
 export * from "./schedules/schedule.js";

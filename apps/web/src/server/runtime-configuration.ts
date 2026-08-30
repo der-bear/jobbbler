@@ -1,4 +1,4 @@
-import { DomainError } from "@jobbbler/core-domain";
+import { DomainError, resolvePublicOrigin } from "@jobbbler/core-domain";
 
 type RuntimeEnvironment = Readonly<Record<string, string | undefined>>;
 
@@ -12,28 +12,6 @@ export interface RuntimeConfigurationSummary {
 
 function configurationError(message: string): never {
   throw new DomainError({ code: "DEPENDENCY", message });
-}
-
-function publicOrigin(environment: RuntimeEnvironment, production: boolean): string {
-  const configured = environment["PUBLIC_BASE_URL"] ?? "http://localhost:3000";
-  try {
-    const url = new URL(configured);
-    if (
-      (production && url.protocol !== "https:") ||
-      (!production && url.protocol !== "https:" && url.protocol !== "http:") ||
-      url.username !== "" ||
-      url.password !== "" ||
-      (url.pathname !== "" && url.pathname !== "/") ||
-      url.search !== "" ||
-      url.hash !== ""
-    ) {
-      configurationError("PUBLIC_BASE_URL must be a clean HTTPS origin in production.");
-    }
-    return url.origin;
-  } catch (error) {
-    if (error instanceof DomainError) throw error;
-    return configurationError("PUBLIC_BASE_URL must be a valid public origin.");
-  }
 }
 
 function databaseDriver(
@@ -112,7 +90,7 @@ export function validateRuntimeConfiguration(
 
   return {
     environment: production ? "production" : "development",
-    publicOrigin: publicOrigin(environment, production),
+    publicOrigin: resolvePublicOrigin(environment),
     databaseDriver: databaseDriver(environment, production),
     notificationDriver: notificationDriver(environment, production),
     trustedProxy,

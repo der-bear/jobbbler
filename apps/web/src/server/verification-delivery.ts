@@ -1,4 +1,4 @@
-import { DomainError } from "@jobbbler/core-domain";
+import { DomainError, jobbblerUserAgent } from "@jobbbler/core-domain";
 
 import { canExposeLocalOtp, type RevealableEmailProtector } from "./identity-security";
 import type { VerificationDelivery } from "./identity-route-handlers";
@@ -37,6 +37,7 @@ export function createVerificationDelivery(
 
   const apiKey = required(environment, "RESEND_API_KEY");
   const from = required(environment, "EMAIL_FROM");
+  const userAgent = jobbblerUserAgent(environment);
   return {
     async deliverVerification(input) {
       const destination = email.reveal(input.encryptedAddress);
@@ -48,7 +49,7 @@ export function createVerificationDelivery(
             authorization: `Bearer ${apiKey}`,
             "content-type": "application/json",
             "idempotency-key": `verify-${input.challengeId}`,
-            "user-agent": "Jobbbler/0.1 (+https://jobbbler.example)",
+            "user-agent": userAgent,
           },
           body: JSON.stringify({
             from,

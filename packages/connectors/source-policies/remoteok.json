@@ -18,6 +18,6 @@
   },
   "sourceUrl": "https://remoteok.com/api",
   "termsUrl": "https://remoteok.com/legal",
-  "userAgent": "Jobbbler/0.1 (+https://jobbbler.example/about/sources)",
+  "userAgent": "Jobbbler/0.1",
   "notes": "Cache centrally, poll at most twice per day, show a followed Remote OK backlink anywhere its records appear, and never use its logo."
 }

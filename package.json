@@ -25,6 +25,7 @@
     "db:backup": "node --disable-warning=DEP0205 --import tsx scripts/backup-sqlite.ts",
     "db:restore-verify": "node --disable-warning=DEP0205 --import tsx scripts/restore-verify-sqlite.ts",
     "db:export-sqlite": "node --disable-warning=DEP0205 --import tsx scripts/export-sqlite.ts",
+    "db:migrate-postgres": "node --disable-warning=DEP0205 --import tsx scripts/migrate-postgres.ts",
     "db:import-postgres": "node --disable-warning=DEP0205 --import tsx scripts/import-postgres.ts",
     "db:verify-postgres": "node --disable-warning=DEP0205 --import tsx scripts/verify-migration.ts",
     "smoke:production": "node --disable-warning=DEP0205 --import tsx scripts/smoke-production.ts",

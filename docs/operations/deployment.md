@@ -11,11 +11,18 @@ docker build --target web --tag jobbbler-web:local \
 docker build --target worker --tag jobbbler-worker:local .
 ```
 
-Run both images with the same server-only PostgreSQL `DATABASE_URL`. Never put that URL, service-role credentials, token-hash secrets, or encryption keys in `NEXT_PUBLIC_*` variables, an image layer, browser configuration, or logs.
+Run both images with the same server-only PostgreSQL `DATABASE_URL` and set
+`PUBLIC_BASE_URL` to the deployed clean HTTPS origin. That origin identifies
+Jobbbler in canonical links and outbound provider requests; production startup
+fails closed when it is absent or unsafe. Never put the database URL,
+service-role credentials, token-hash secrets, or encryption keys in
+`NEXT_PUBLIC_*` variables, an image layer, browser configuration, or logs.
 
 Production web traffic must enter through a trusted ingress that terminates HTTPS and replaces, rather than appends to, client-IP forwarding headers. Set `TRUST_PROXY_HEADERS=true` only behind that boundary. Do not expose the production container directly with `docker run --publish`; direct exposure either fails runtime validation or lets clients influence the rate-limit identity.
 
-Before either runtime starts, apply the checked-in PostgreSQL migrations and run the verified import from [postgres-cutover-and-rollback.md](postgres-cutover-and-rollback.md). The migration job needs deployment credentials; browser credentials are never sufficient.
+Before either runtime starts, apply the checked-in PostgreSQL migrations with
+`DATABASE_URL=... pnpm db:migrate-postgres` and run the verified import from
+[postgres-cutover-and-rollback.md](postgres-cutover-and-rollback.md). The migration job needs deployment credentials; browser credentials are never sufficient. The command is checksum-bound and exits without opening a fallback database when `DATABASE_URL` is absent.
 
 Start one worker cycle before asking the web service to become ready. A fresh production database intentionally reports web readiness as unavailable until a recent worker heartbeat proves that background processing can reach the same database.
 

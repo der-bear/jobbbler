@@ -18,6 +18,6 @@
   },
   "sourceUrl": "https://www.arbeitnow.com/api/job-board-api",
   "termsUrl": "https://www.arbeitnow.com/terms",
-  "userAgent": "Jobbbler/0.1 (+https://jobbbler.example/about/sources)",
+  "userAgent": "Jobbbler/0.1",
   "notes": "Connector is implemented for evaluation but production ingestion remains disabled until commercial display, caching, retention, and downstream use are clarified in writing."
 }

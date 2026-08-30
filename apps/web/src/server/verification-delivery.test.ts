@@ -40,6 +40,7 @@ describe("verification delivery", () => {
       {
         ...secrets,
         NODE_ENV: "production",
+        PUBLIC_BASE_URL: "https://jobs.example.org",
         NOTIFICATION_DRIVER: "resend",
         RESEND_API_KEY: "re_test",
         EMAIL_FROM: "Jobbbler <identity@jobbbler.example>",
@@ -64,7 +65,7 @@ describe("verification delivery", () => {
         headers: expect.objectContaining({
           authorization: "Bearer re_test",
           "idempotency-key": "verify-challenge_550e8400-e29b-41d4-a716-446655440002",
-          "user-agent": "Jobbbler/0.1 (+https://jobbbler.example)",
+          "user-agent": "Jobbbler/0.1 (+https://jobs.example.org)",
         }),
       }),
     );
@@ -91,6 +92,7 @@ describe("verification delivery", () => {
       {
         ...secrets,
         NODE_ENV: "production",
+        PUBLIC_BASE_URL: "https://jobs.example.org",
         NOTIFICATION_DRIVER: "resend",
         RESEND_API_KEY: "re_test",
         EMAIL_FROM: "Jobbbler <identity@jobbbler.example>",
@@ -107,6 +109,21 @@ describe("verification delivery", () => {
         challengeId: "challenge_550e8400-e29b-41d4-a716-446655440002",
       }),
     ).rejects.toMatchObject({ code: "DEPENDENCY", retryable: true });
+  });
+
+  it("rejects missing production origin before accepting delivery work", () => {
+    expect(() =>
+      createVerificationDelivery(
+        {
+          ...secrets,
+          NODE_ENV: "production",
+          NOTIFICATION_DRIVER: "resend",
+          RESEND_API_KEY: "re_test",
+          EMAIL_FROM: "Jobbbler <identity@jobbbler.example>",
+        },
+        createEmailProtector(secrets),
+      ),
+    ).toThrow("PUBLIC_BASE_URL");
   });
 
   it("rejects capture on a deployed development preview", () => {

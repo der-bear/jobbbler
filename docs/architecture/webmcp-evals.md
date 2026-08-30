@@ -87,6 +87,33 @@ These are isolated model-judgment runs, not production telemetry. The checked-in
 deterministic suites separately verify schemas, execution, cancellation,
 bounded output, UI synchronization, storage atomicity, and builds.
 
+## Current handler-execution pass — 30 August 2026
+
+The release candidate was also exercised through the real WebMCP manifests and
+production handlers, separately from the judgment fixtures above:
+
+| Runner and effort | Executed checks | Result  | Main coverage                                                                                                                                                                                             |
+| ----------------- | --------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Luna, low         | 50              | 50 pass | Discovery and planning; search, filters, state, details, navigation, comparison, alerts, applications, strict-schema failures, cancellation, and cross-route inventory                                    |
+| Terra, medium     | 10              | 10 pass | Pagination, comparison recovery, cancellation propagation, assistance consent, answer preparation, exact submission review, withdrawal, alert activation, conflict recovery, and a browser route sequence |
+
+The Luna pass combined 48 direct manifest probes with two targeted production
+handler tests: direct consent withdrawal without private-page navigation, and
+stale authorization rejection before activation. The Terra browser scenario
+kept the same sorted 26-tool inventory across How it works, search results, and
+a role page while executing
+`plan_job_workflow → search_jobs → request_search_alert → decide_search_alert`
+(declined) `→ open_job_details`. No scenario received a fabricated owner ID,
+request ID, mailbox code, or approval.
+
+The same revision passed `pnpm verify` (127 test files and 721 tests; the
+zero-service run intentionally skipped 5 files and 83 environment-gated cases),
+the production build, and all 14 Chromium E2E checks. The E2E suite includes
+ordinary search, hydration, URL-backed filters, role provenance, theme
+persistence, WebMCP fallback, mobile layout, reduced motion, and the live agent
+journey. These are pre-release checks against controlled fixtures, not claims
+about production traffic or model behavior outside the tested prompts.
+
 ### Earlier tuning pass
 
 An earlier 24-tool Luna pass initially scored 48/50 because two attempts tried
