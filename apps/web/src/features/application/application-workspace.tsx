@@ -13,7 +13,6 @@ import {
   applicationWorkspaceSchema,
   jobDetailResultSchema,
   type ApplicationAnswer,
-  type AgentOperation,
   type ApplicationWorkspace as ApplicationWorkspaceState,
   type Job,
 } from "@jobbbler/contracts";
@@ -32,8 +31,10 @@ import {
   applicationNextAction,
   applicationReadiness,
   bindApplicationServerClock,
+  createApplicationAgentAuthorization,
   isAgentAssistedApplication,
   mountApplicationExpiryClock,
+  type ApplicationAgentCredential,
   type BoundApplicationServerClock,
 } from "./application-model";
 import type { ApplicationSubmissionReviewRequest, ApplicationToolReadiness } from "./webmcp-tools";
@@ -48,12 +49,6 @@ type ScreenState =
       readonly job: Job;
     }
   | { readonly kind: "error"; readonly message: string };
-
-interface AgentCredential {
-  readonly sessionId: string;
-  readonly token: string;
-  readonly expiresAt: string;
-}
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiClientError) return error.message;
@@ -97,7 +92,10 @@ function laterServerTime(left: string, right: string): string {
   return Date.parse(left) >= Date.parse(right) ? left : right;
 }
 
-function useApplicationServerClock(workspace: ApplicationWorkspaceState | null): Readonly<{
+function useApplicationServerClock(
+  workspace: ApplicationWorkspaceState | null,
+  credentialExpiresAt: string | null,
+): Readonly<{
   now: string | null;
   current(): string;
 }> {
@@ -122,13 +120,14 @@ function useApplicationServerClock(workspace: ApplicationWorkspaceState | null):
     return mountApplicationExpiryClock({
       workspace,
       clock: binding.clock,
+      additionalExpiries: credentialExpiresAt === null ? [] : [credentialExpiresAt],
       onTick: (now) =>
         setSnapshot((current) => ({
           draftId: workspace.draft.id,
           now: current?.draftId === workspace.draft.id ? laterServerTime(current.now, now) : now,
         })),
     });
-  }, [workspace]);
+  }, [credentialExpiresAt, workspace]);
 
   const fallback = workspace?.serverNow ?? "1970-01-01T00:00:00.000Z";
   const draftId = workspace?.draft.id ?? null;
@@ -150,17 +149,22 @@ function useApplicationServerClock(workspace: ApplicationWorkspaceState | null):
 }
 
 export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>) {
+  return <DraftApplicationWorkspace key={draftId} draftId={draftId} />;
+}
+
+function DraftApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>) {
   const toast = useToast();
   const [state, setState] = useState<ScreenState>({ kind: "loading" });
   const [values, setValues] = useState<Readonly<Record<string, string>>>({});
   const [confirmation, setConfirmation] = useState<ApplicationConfirmationView | null>(null);
-  const [agentCredential, setAgentCredential] = useState<AgentCredential | null>(null);
+  const [agentCredential, setAgentCredential] = useState<ApplicationAgentCredential | null>(null);
   const [submissionReview, setSubmissionReview] =
     useState<ApplicationSubmissionReviewRequest | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const applicationClock = useApplicationServerClock(
     state.kind === "ready" ? state.workspace : null,
+    agentCredential?.expiresAt ?? null,
   );
 
   const load = useCallback(
@@ -209,22 +213,13 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
 
     const workspace = state.workspace;
     const job = state.job;
-    const now = applicationClock.now ?? workspace.serverNow;
-    const credential =
-      agentCredential !== null && agentCredential.expiresAt > now ? agentCredential : null;
-    const authorizedOperations = new Set<AgentOperation>(
-      credential === null
-        ? []
-        : workspace.delegationRequests
-            .filter(
-              (delegation) =>
-                delegation.agentSessionId === credential.sessionId &&
-                delegation.status === "active" &&
-                delegation.expiresAt > now,
-            )
-            .flatMap(({ operations }) => operations),
-    );
-    const requireCredential = (): AgentCredential => {
+    const authorization = createApplicationAgentAuthorization({
+      workspace,
+      credential: agentCredential,
+      currentTime: applicationClock.current,
+    });
+    const requireCredential = (): ApplicationAgentCredential => {
+      const credential = authorization.currentCredential();
       if (credential === null) throw new Error("Request agent authority before continuing.");
       return credential;
     };
@@ -240,10 +235,10 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
       currentReadiness: () =>
         toolReadiness(workspace, confirmation !== null, applicationClock.current()),
       allowsAgentSubmission: () => job.applyMode === "internal",
-      hasAgentCredential: () => credential !== null,
-      isOperationAuthorized: (operation) => authorizedOperations.has(operation),
+      hasAgentCredential: () => authorization.currentCredential() !== null,
+      isOperationAuthorized: authorization.isOperationAuthorized,
       async requestAgentAccess(operations, { signal }) {
-        let currentCredential = credential;
+        let currentCredential = authorization.currentCredential();
         if (currentCredential === null) {
           currentCredential = await queryApi(
             `/api/v1/applications/${encodeURIComponent(draftId)}/agent-sessions`,

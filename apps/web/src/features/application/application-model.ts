@@ -1,4 +1,5 @@
 import type {
+  AgentOperation,
   ApplicationAnswer,
   ApplicationAgentState,
   ApplicationWorkspace,
@@ -84,6 +85,47 @@ export interface BoundApplicationServerClock {
   readonly clock: ApplicationServerClock;
 }
 
+export interface ApplicationAgentCredential {
+  readonly sessionId: string;
+  readonly token: string;
+  readonly expiresAt: string;
+}
+
+export function createApplicationAgentAuthorization(
+  input: Readonly<{
+    workspace: Pick<ApplicationWorkspace, "delegationRequests">;
+    credential: ApplicationAgentCredential | null;
+    currentTime(): string;
+  }>,
+): Readonly<{
+  currentCredential(): ApplicationAgentCredential | null;
+  isOperationAuthorized(operation: AgentOperation): boolean;
+}> {
+  const credentialAt = (now: string): ApplicationAgentCredential | null =>
+    input.credential !== null &&
+    instantMilliseconds(input.credential.expiresAt) > instantMilliseconds(now)
+      ? input.credential
+      : null;
+
+  return {
+    currentCredential: () => credentialAt(input.currentTime()),
+    isOperationAuthorized(operation) {
+      const now = input.currentTime();
+      const credential = credentialAt(now);
+      return (
+        credential !== null &&
+        input.workspace.delegationRequests.some(
+          (delegation) =>
+            delegation.agentSessionId === credential.sessionId &&
+            delegation.status === "active" &&
+            instantMilliseconds(delegation.expiresAt) > instantMilliseconds(now) &&
+            delegation.operations.includes(operation),
+        )
+      );
+    },
+  };
+}
+
 export function bindApplicationServerClock(
   current: BoundApplicationServerClock | null,
   workspace: Pick<ApplicationWorkspace, "draft" | "serverNow">,
@@ -102,6 +144,7 @@ export function bindApplicationServerClock(
 export function nextApplicationAuthorizationExpiry(
   workspace: ApplicationWorkspace,
   now: string,
+  additionalExpiries: readonly string[] = [],
 ): string | null {
   const current = instantMilliseconds(now);
   const expiries = workspace.delegationRequests
@@ -110,6 +153,12 @@ export function nextApplicationAuthorizationExpiry(
         (status === "requested" || status === "active") && instantMilliseconds(expiresAt) > current,
     )
     .map(({ expiresAt }) => expiresAt);
+  expiries.push(
+    ...additionalExpiries.filter((expiresAt) => {
+      const expiry = instantMilliseconds(expiresAt);
+      return Number.isFinite(expiry) && expiry > current;
+    }),
+  );
   if (isLiveApplicationDataGrant(workspace.dataGrant, now)) {
     expiries.push(workspace.dataGrant.expiresAt);
   }
@@ -123,6 +172,7 @@ export function mountApplicationExpiryClock(
   input: Readonly<{
     workspace: ApplicationWorkspace;
     clock: Pick<ApplicationServerClock, "now">;
+    additionalExpiries?: readonly string[];
     onTick(now: string): void;
   }>,
 ): () => void {
@@ -131,7 +181,11 @@ export function mountApplicationExpiryClock(
   let timer: ReturnType<typeof globalThis.setTimeout> | null = null;
 
   const schedule = (): void => {
-    const nextExpiry = nextApplicationAuthorizationExpiry(input.workspace, current);
+    const nextExpiry = nextApplicationAuthorizationExpiry(
+      input.workspace,
+      current,
+      input.additionalExpiries,
+    );
     if (nextExpiry === null || stopped) return;
     const delay = Math.max(
       0,

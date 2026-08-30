@@ -9,6 +9,7 @@ import {
   applicationReadiness,
   applicationStage,
   bindApplicationServerClock,
+  createApplicationAgentAuthorization,
   createServerDerivedApplicationClock,
   isAgentAssistedApplication,
   mountApplicationExpiryClock,
@@ -341,5 +342,59 @@ describe("mounted application authorization clock", () => {
       stage: "permission",
     });
     stop();
+  });
+
+  it("reclassifies at a credential-only expiry when no grant or delegation is live", () => {
+    let monotonicMilliseconds = 0;
+    const clock = createServerDerivedApplicationClock(base.serverNow, () => monotonicMilliseconds);
+    const observed: string[] = [];
+    const stop = mountApplicationExpiryClock({
+      workspace: base,
+      clock,
+      additionalExpiries: ["2026-08-29T10:02:01.000Z"],
+      onTick: (now) => observed.push(now),
+    });
+
+    monotonicMilliseconds = 999;
+    vi.advanceTimersByTime(999);
+    expect(observed).toEqual([]);
+    monotonicMilliseconds = 1_000;
+    vi.advanceTimersByTime(1);
+    expect(observed).toEqual(["2026-08-29T10:02:01.000Z"]);
+    stop();
+  });
+
+  it("re-evaluates a held credential at every authorization invocation", () => {
+    let now = base.serverNow;
+    const sessionId = "agent_session_550e8400-e29b-41d4-a716-446655440000";
+    const authorization = createApplicationAgentAuthorization({
+      workspace: {
+        ...base,
+        delegationRequests: [
+          {
+            id: "delegation_550e8400-e29b-41d4-a716-446655440000",
+            agentSessionId: sessionId,
+            operations: ["edit_application"],
+            purpose: "Prepare this application.",
+            status: "active",
+            expiresAt: "2026-08-29T10:12:00.000Z",
+            approvedAt: base.serverNow,
+          },
+        ],
+      },
+      credential: {
+        sessionId,
+        token: "credential-token",
+        expiresAt: "2026-08-29T10:02:01.000Z",
+      },
+      currentTime: () => now,
+    });
+
+    expect(authorization.currentCredential()?.token).toBe("credential-token");
+    expect(authorization.isOperationAuthorized("edit_application")).toBe(true);
+
+    now = "2026-08-29T10:02:01.000Z";
+    expect(authorization.currentCredential()).toBeNull();
+    expect(authorization.isOperationAuthorized("edit_application")).toBe(false);
   });
 });
