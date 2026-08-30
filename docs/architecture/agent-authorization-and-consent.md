@@ -6,7 +6,7 @@
 
 Jobbbler uses progressive human identity and explicit, revocable agent delegation. It does not give a model a reusable application key. A model-visible bearer secret could be copied into conversation history, logs, another tool call, or another origin and cannot reliably prove which agent is presenting it.
 
-Instead, WebMCP returns non-secret resource references. Authority stays server-side and is reached through the current secure human session plus a narrowly scoped delegation record. A compatible external agent client may later use a standard OAuth sender-constrained token profile, but the browser experience will not claim cryptographic agent identity unless the client API actually provides it.
+Instead, WebMCP returns non-secret resource references. Authority stays server-side and is reached through the current secure human session plus a narrowly scoped delegation record. The imperative WebMCP API standardizes neither a native consent UI nor cryptographic proof that a tool decision came from a human, model, or agent vendor. A compatible external agent client may use its own interaction UI, show or observe the current tab or surface, or later use a standard OAuth sender-constrained token profile. The browser experience will not claim cryptographic identity unless the client API actually provides it.
 
 ## Four independent controls
 
@@ -39,8 +39,10 @@ The current implementation keeps identity portable across both storage adapters.
 1. A WebMCP command reaches the Policy Enforcement Point in the BFF.
 2. The backend evaluates the owner session, agent session, resource, action, state, expiry, and risk.
 3. If authority is absent but requestable, the response is a structured denial with a non-secret, server-issued request ID, bounded presentation facts or a compact owner-review reference, and `requires_user_action` status.
-4. The external agent client presents the named resource, operations, purpose,
-   duration, and affected data classes through its own user-interaction surface.
+4. A compatible external agent client presents the named resource, operations,
+   purpose, duration, and affected data classes through its own interaction UI
+   or by showing the current Jobbbler surface. Neither path is a standardized
+   WebMCP consent UI.
 5. The person explicitly approves or declines there. While that request is
    active, the person can explicitly withdraw it through the same outcome tool.
    Silence and unrelated free-form text are not decisions.
@@ -82,12 +84,14 @@ The agent may request a data operation. For the final application review,
 Jobbbler freezes every exact field value and sensitivity marker on the visible
 owner review surface. WebMCP returns only a compact request-bound reference
 with the review URL, recipient, purpose, field and sensitivity counts, notice
-version, draft version, and expiry; the exact values do not enter the tool
-result or external agent client. The matching decision tool accepts only the
-exact live request ID, current draft version, and normalized decision. The
-server rechecks that exact request against the unchanged review snapshot, then
-stores the request-bound `agent_client` action and a hash of the reviewed
-values as evidence, not the raw values. This verifies the exact request and
+version, draft version, and expiry; the exact values are not serialized into the
+WebMCP JSON result. They remain on the visible owner review page, which a
+compatible client may show or observe as the current tab or surface. The
+matching decision tool accepts only the exact live request ID, current draft
+version, and normalized decision. The server rechecks that exact request against
+the unchanged review snapshot, then stores the request-bound `agent_client`
+action. Stored consent evidence represents the reviewed values with field keys
+and a payload hash, not the raw values. This verifies the exact request and
 server state, not the human, model, or agent-vendor identity.
 
 Before optional AI processing or disclosure to an employer, the visible owner

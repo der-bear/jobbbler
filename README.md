@@ -114,7 +114,7 @@ validate explicit IDs, ownership, and workflow state at execution time:
   `get_latest_search_update` (reads only what changed since the last check,
   not the full result list). Alert setup stays in the external agent client:
   one tool prepares the exact review and sends a mailbox code; the second
-  accepts only the person's request-bound decision and, on approval, that code.
+  accepts only an explicit request-bound decision and, on approval, that code.
 - Application `/apply/:draftId`: seven outcome-oriented tools —
   `get_application_readiness`, `request_application_assistance`,
   `decide_application_assistance`, `propose_application_updates`,
@@ -129,11 +129,18 @@ reusable agent token, confirmation secret, raw email destination, or
 ciphertext. `request_submission_review` freezes the exact application on the
 visible owner review surface and returns only a compact request-bound reference:
 review URL, recipient, purpose, field and sensitivity counts, notice version,
-draft version, and expiry. Exact application values do not travel in its
-WebMCP result or the external agent client. `request_search_alert` returns the
-masked destination, exact policy, expiry, and an opaque request-bound
-continuation token. Neither result returns a reusable credential or performs
-the final action.
+draft version, and expiry. Exact application values are not serialized into its
+WebMCP JSON result. They remain on the visible owner review page, which a
+compatible agent client may show or observe as the current tab or surface.
+Stored consent evidence represents those values with field keys and a payload
+hash, not the raw values. `request_search_alert` returns the masked destination,
+exact policy, expiry, and an opaque request-bound continuation token. Neither
+result returns a reusable credential or performs the final action.
+
+The imperative WebMCP API standardizes neither a native consent UI nor
+cryptographic agent/human identity proof. Jobbbler binds each explicit
+client-supplied decision to the live server request and resource version without
+claiming to prove who supplied it.
 
 See the [actual `registerTool` implementation](packages/webmcp/src/register.ts),
 the [WebMCP capability matrix](docs/architecture/webmcp-capability-matrix.md),

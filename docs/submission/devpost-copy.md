@@ -37,11 +37,12 @@ alive.
 
 That setup is agent-native too. `request_search_alert` prepares the exact
 criteria, recurrence, masked email destination, purpose, retention, and right
-to withdraw, then sends a six-digit mailbox code. The external agent client
-presents that review and collects the person's decision. Only
+to withdraw, then sends a six-digit mailbox code. A compatible external agent
+client presents that review through its own interaction UI and collects an
+explicit decision. Only
 `decide_search_alert` with the same expiring server request — and the code on
 approval — activates the unchanged schedule. No Jobbbler page interaction or
-account form is required, and the agent cannot self-approve.
+account form is required; tool access alone is not approval.
 
 The next time the agent asks, `get_latest_search_update` answers with only
 what changed, not the full result list again: "Since the last check: three new
@@ -64,10 +65,11 @@ When the journey reaches an application, speed stops being the point.
 - Sharing reviewed data requires explicit permission bound to the exact
   reviewed payload, recipient, purpose, fields, and notice — permission
   applies only to this exact application. The visible owner review surface
-  presents every exact value and sensitivity marker. WebMCP and the external
-  agent client receive only a compact request-bound reference with recipient,
-  purpose, counts, notice, draft version, expiry, and review URL, then relay the
-  person's decision. The server accepts only the exact live request ID and
+  presents every exact value and sensitivity marker. The WebMCP JSON result
+  carries only a compact request-bound reference with recipient, purpose,
+  counts, notice, draft version, expiry, and review URL. A compatible agent
+  client may show or observe the current owner-review page before relaying the
+  explicit decision. The server accepts only the exact live request ID and
   draft version and stores the decision channel as request-bound evidence. It
   verifies that exact request and unchanged review, not the person's identity.
 - The person can withdraw consent through the same agent interface in one tool
@@ -98,6 +100,12 @@ next step instead of pretending to succeed. The visible interface and WebMCP are
 two adapters over the same server commands, so the URL, filters, results,
 alerts, permissions, and receipts stay consistent whether a person or an agent
 acted.
+
+The imperative WebMCP API does not standardize a native consent UI or provide
+cryptographic proof that a tool decision came from an agent or a human. A
+compatible client may use its own interaction UI and may show or observe the
+current Jobbbler tab. Jobbbler binds explicit client-supplied decisions to live
+server requests without claiming identity proof.
 
 `plan_job_workflow` is an optional advisory tool. It returns recommended safe
 steps for the agent's current Jobbbler context and is advisory only — it plans, it
@@ -154,7 +162,8 @@ consumes a short-lived single-use confirmation for the idempotent submit. The
 stored consent receipt records the decision channel as evidence and
 deliberately proves the request and server state, not cryptographic human
 identity. Raw chat, reusable credentials, and exact application values stay
-out of WebMCP results and stored consent evidence. The same global tool surface
+out of WebMCP JSON results. Stored consent evidence represents those values with
+field keys and a review hash, not the raw values. The same global tool surface
 lets the person withdraw that consent in one call; future consent-based
 processing stops while historical submission receipts remain honest.
 
