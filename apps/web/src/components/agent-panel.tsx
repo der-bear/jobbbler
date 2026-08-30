@@ -167,7 +167,12 @@ export function AgentPanelSurface({
       panelRef.current?.querySelectorAll<HTMLElement>(
         'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
       ) ?? [],
-    ).filter((element) => !element.hidden && element.closest("[hidden]") === null);
+    ).filter(
+      (element) =>
+        !element.hidden &&
+        element.closest("[hidden]") === null &&
+        element.getClientRects().length > 0,
+    );
     const first = focusable[0];
     const last = focusable.at(-1);
     if (first === undefined || last === undefined) return;
@@ -199,7 +204,7 @@ export function AgentPanelSurface({
         onKeyDown={resizeWithKeyboard}
         onPointerDown={startResize}
         role="separator"
-        tabIndex={0}
+        tabIndex={modal ? -1 : 0}
       />
 
       <header className={styles["header"]}>

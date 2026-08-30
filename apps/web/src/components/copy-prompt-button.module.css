@@ -33,7 +33,7 @@
 }
 
 .button:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--jb-signal) 34%, transparent);
+  outline: 2px solid var(--jb-focus);
   outline-offset: 2px;
 }
 

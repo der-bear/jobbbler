@@ -65,9 +65,9 @@
 
 .heroSearch:focus-within {
   border-color: var(--jb-signal);
-  box-shadow:
-    0 16px 44px color-mix(in srgb, var(--color-ink) 8%, transparent),
-    0 0 0 3px color-mix(in srgb, var(--jb-signal) 14%, transparent);
+  outline: 2px solid var(--jb-focus);
+  outline-offset: 2px;
+  box-shadow: 0 16px 44px color-mix(in srgb, var(--color-ink) 8%, transparent);
 }
 
 .heroField {
@@ -164,6 +164,19 @@
   display: grid;
 }
 
+.advancedFilters,
+.advancedFilterBody {
+  display: grid;
+}
+
+.advancedFilters {
+  min-inline-size: 0;
+}
+
+.advancedSummary {
+  display: none;
+}
+
 .railSearch,
 .railLocation {
   display: flex;
@@ -180,7 +193,8 @@
 .railSearch:focus-within,
 .railLocation:focus-within {
   border-color: var(--jb-signal);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--jb-signal) 12%, transparent);
+  outline: 2px solid var(--jb-focus);
+  outline-offset: 2px;
 }
 
 .railSearch > svg {
@@ -275,6 +289,8 @@
 .filterRow input:focus-visible,
 .filterRow select:focus-visible {
   border-color: var(--jb-signal);
+  outline: 2px solid var(--jb-focus);
+  outline-offset: 2px;
 }
 
 .salaryLabel {
@@ -761,6 +777,59 @@
     padding: 20px 20px 18px;
   }
 
+  .advancedFilters {
+    margin-block-start: 4px;
+    border-block-start: 1px solid var(--color-line);
+  }
+
+  .advancedSummary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 18px;
+    inline-size: 100%;
+    min-block-size: 48px;
+    align-items: center;
+    gap: 8px;
+    border: 0;
+    padding: 0;
+    color: var(--color-ink);
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 650;
+    text-align: start;
+  }
+
+  .advancedSummary span:nth-child(2) {
+    color: var(--color-ink-muted);
+    font-size: 11px;
+    font-weight: 550;
+  }
+
+  .advancedSummary svg {
+    color: var(--color-ink-muted);
+    transition: transform var(--motion-fast) var(--ease-standard);
+  }
+
+  .advancedSummary[aria-expanded="true"] svg {
+    transform: rotate(180deg);
+  }
+
+  .advancedSummary:focus-visible {
+    border-radius: var(--radius-sm);
+    outline: 3px solid var(--jb-focus);
+    outline-offset: 2px;
+  }
+
+  .advancedFilterBody {
+    display: none;
+    padding-block-end: 4px;
+  }
+
+  .advancedFilterBodyOpen {
+    display: grid;
+  }
+
   .results {
     padding: 22px 0 38px;
   }
@@ -839,6 +908,10 @@
   .hero,
   .heroSearch,
   .heroSearch > button {
+    transition: none;
+  }
+
+  .advancedSummary svg {
     transition: none;
   }
 }

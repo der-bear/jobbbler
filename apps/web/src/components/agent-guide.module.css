@@ -128,8 +128,7 @@
 }
 
 .sectionHeading,
-.toolTitle,
-.toolMeta {
+.toolHeading {
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -178,14 +177,14 @@
   border-block-end: 1px solid var(--color-line);
 }
 
-.toolTitle {
+.toolHeading {
   justify-content: space-between;
 }
 
-.toolTitle strong {
+.toolHeading code {
   color: var(--color-ink);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 620;
 }
 
 .guide code {
@@ -201,21 +200,15 @@
 .toolList p {
   margin: 1px 0 0;
   color: var(--color-ink-muted);
-  font-size: 11px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
-.toolMeta {
-  margin-block-start: 3px;
-  color: var(--color-ink-subtle);
-  font-family: var(--jb-font-mono);
-  font-size: 9px;
-  text-transform: uppercase;
-}
-
-.toolMeta span + span::before {
-  margin-inline-end: 8px;
-  content: "·";
+.humanDecision {
+  flex: 0 0 auto;
+  color: var(--color-signal-strong);
+  font-size: 10px;
+  font-weight: 650;
 }
 
 .moreLink {

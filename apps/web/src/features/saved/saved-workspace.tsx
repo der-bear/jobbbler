@@ -510,10 +510,15 @@ export function SavedWorkspace() {
                   </span>
                   {pendingRevokeId === endpoint.id ? (
                     <span className={styles["revokeActions"]}>
-                      <button onClick={() => setPendingRevokeId(null)} type="button">
+                      <button
+                        aria-label={`Cancel revoking ${endpoint.maskedDestination}`}
+                        onClick={() => setPendingRevokeId(null)}
+                        type="button"
+                      >
                         Cancel
                       </button>
                       <button
+                        aria-label={`Confirm revoking ${endpoint.maskedDestination}`}
                         disabled={status === "working"}
                         onClick={() => void revokeEndpoint(endpoint)}
                         type="button"
@@ -522,7 +527,11 @@ export function SavedWorkspace() {
                       </button>
                     </span>
                   ) : (
-                    <button onClick={() => setPendingRevokeId(endpoint.id)} type="button">
+                    <button
+                      aria-label={`Revoke ${endpoint.maskedDestination}`}
+                      onClick={() => setPendingRevokeId(endpoint.id)}
+                      type="button"
+                    >
                       Revoke
                     </button>
                   )}
@@ -893,7 +902,7 @@ export function SavedWorkspace() {
         </section>
       </div>
       <div aria-live="polite" className="sr-only">
-        {status === "working" ? "Saving your private alert settings." : ""}
+        {status === "working" ? "Working on your private alert settings." : ""}
       </div>
     </div>
   );

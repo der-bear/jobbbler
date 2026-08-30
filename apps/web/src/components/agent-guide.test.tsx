@@ -25,9 +25,14 @@ describe("AgentTools", () => {
     expect(markup).toContain("Inspect and compare");
     expect(markup).toContain("Alerts");
     expect(markup).toContain("Apply");
-    expect(markup).toContain("Action");
+    expect(markup).toContain("plan_job_workflow");
+    expect(markup).toContain("Get the safe steps for a Jobbbler goal.");
+    expect(markup).toContain("Human decision");
     expect(markup).toContain("get_search_state");
     expect(markup).toContain("decide_application_submission");
+    expect(markup).not.toContain("Plan job workflow");
+    expect(markup).not.toContain(">Read<");
+    expect(markup).not.toContain(">Action<");
     expect(markup).not.toContain("Active now");
     expect(markup).not.toContain("All capabilities");
     expect(markup).not.toContain("Available now");

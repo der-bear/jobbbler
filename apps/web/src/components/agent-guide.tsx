@@ -30,11 +30,6 @@ function toolPurpose(tool: RegisteredToolSummary): string {
   return compactPurposes[tool.name] ?? tool.purpose;
 }
 
-function toolTitle(name: string): string {
-  const title = name.replaceAll("_", " ");
-  return title.charAt(0).toUpperCase() + title.slice(1);
-}
-
 const approvalTools = new Set([
   "request_application_assistance",
   "decide_application_assistance",
@@ -56,15 +51,13 @@ function ToolRow({
 }>) {
   return (
     <li>
-      <div className={styles["toolTitle"]}>
-        <strong>{toolTitle(tool.name)}</strong>
+      <div className={styles["toolHeading"]}>
+        <code>{tool.name}</code>
+        {approvalTools.has(tool.name) ? (
+          <span className={styles["humanDecision"]}>Human decision</span>
+        ) : null}
       </div>
-      <code>{tool.name}</code>
       <p>{toolPurpose(tool)}</p>
-      <div className={styles["toolMeta"]}>
-        <span>{tool.readOnly ? "Read" : "Action"}</span>
-        {approvalTools.has(tool.name) ? <span>Human step</span> : null}
-      </div>
     </li>
   );
 }

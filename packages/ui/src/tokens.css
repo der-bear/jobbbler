@@ -1,6 +1,6 @@
 :root {
   --jb-font-ui: var(--font-manrope, Manrope, ui-sans-serif, system-ui, sans-serif);
-  --jb-font-mono: var(--jb-font-ui);
+  --jb-font-mono: var(--font-ibm-plex-mono, ui-monospace, "SFMono-Regular", monospace);
   --jb-canvas: #ffffff;
   --jb-surface: #ffffff;
   --jb-surface-muted: #f6f6f4;

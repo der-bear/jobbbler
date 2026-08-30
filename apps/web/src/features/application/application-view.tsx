@@ -307,7 +307,7 @@ function CompletePanel({ workspace }: Readonly<{ workspace: ApplicationWorkspace
           </dl>
         </details>
       )}
-      <Link className={styles["primaryLink"]} href="/applications">
+      <Link className={styles["secondaryLink"]} href="/applications">
         Back to applications
       </Link>
     </section>
@@ -338,7 +338,7 @@ function LegacyExternalPanel({
           Continue on the employer&apos;s website
         </a>
       )}
-      <Link className={styles["primaryLink"]} href="/applications">
+      <Link className={styles["secondaryLink"]} href="/applications">
         Back to applications
       </Link>
     </section>

@@ -389,7 +389,8 @@ button.jb-chip {
 
 .jb-multiselect__control:focus-visible {
   border-color: var(--jb-signal);
-  outline: 0;
+  outline: 2px solid var(--jb-focus);
+  outline-offset: 2px;
 }
 
 .jb-multiselect__popover {
@@ -420,6 +421,8 @@ button.jb-chip {
 
 .jb-multiselect__search:focus-visible {
   border-color: var(--jb-signal);
+  outline: 2px solid var(--jb-focus);
+  outline-offset: 2px;
 }
 
 .jb-multiselect__list {

@@ -67,4 +67,22 @@ describe("AgentPanelSurface", () => {
     expect(markup).toContain('aria-valuenow="420"');
     expect(markup).toContain('tabindex="0"');
   });
+
+  it("removes the hidden desktop resizer from the mobile dialog tab order", () => {
+    const markup = renderToStaticMarkup(
+      <AgentPanelSurface
+        activities={[]}
+        modal
+        onClose={vi.fn()}
+        onWidthChange={vi.fn()}
+        registeredTools={coreTools}
+        retry={vi.fn()}
+        status="ready"
+        supported
+        width={380}
+      />,
+    );
+
+    expect(markup).toMatch(/aria-label="Resize agent panel"[^>]*tabindex="-1"/);
+  });
 });

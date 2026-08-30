@@ -11,7 +11,7 @@ import {
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import {
@@ -191,6 +191,18 @@ function SearchFilters({
   onDraftChange: (next: SearchDraft) => void;
   onCommit: (next: SearchDraft) => void;
 }>) {
+  const advancedFiltersReactId = useId();
+  const advancedFiltersId = `advanced-search-filters-${advancedFiltersReactId.replaceAll(":", "")}`;
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const activeAdvancedFilterCount = [
+    draft.workModels.length > 0,
+    draft.categories.length > 0,
+    draft.seniorities.length > 0,
+    draft.postedWithinDays !== "",
+    draft.minimumSalary !== "",
+    draft.excludeKeywords.trim().length > 0,
+  ].filter(Boolean).length;
+
   function toggleWorkModel(value: WorkModel) {
     const workModels = draft.workModels.includes(value)
       ? draft.workModels.filter((item) => item !== value)
@@ -239,114 +251,136 @@ function SearchFilters({
           />
         </div>
       </div>
-      <fieldset className={styles["choiceRow"]}>
-        <legend>Work model</legend>
-        <div>
-          {workModelSchema.options.map((value) => (
-            <button
-              aria-pressed={draft.workModels.includes(value)}
-              key={value}
-              onClick={() => toggleWorkModel(value)}
-              type="button"
-            >
-              {workModelLabel(value)}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-      <div className={styles["filterRow"]}>
-        <span>Function</span>
-        <MultiSelect
-          label="Function"
-          onChange={(categories) =>
-            onCommit({ ...draft, categories: categories as readonly JobCategory[] })
-          }
-          options={jobCategorySchema.options.map((value) => ({
-            value,
-            label: categoryLabel(value),
-          }))}
-          placeholder="Any function"
-          searchable
-          selected={draft.categories}
-        />
-      </div>
-      <div className={styles["filterRow"]}>
-        <span>Seniority</span>
-        <MultiSelect
-          label="Seniority"
-          onChange={(seniorities) =>
-            onCommit({ ...draft, seniorities: seniorities as readonly Seniority[] })
-          }
-          options={senioritySchema.options.map((value) => ({
-            value,
-            label: seniorityLabel(value),
-          }))}
-          placeholder="Any level"
-          selected={draft.seniorities}
-        />
-      </div>
-      <label className={styles["filterRow"]}>
-        <span>Date posted</span>
-        <select
-          onChange={(event) => onCommit({ ...draft, postedWithinDays: event.target.value })}
-          value={draft.postedWithinDays}
+      <div className={styles["advancedFilters"]}>
+        <button
+          aria-controls={advancedFiltersId}
+          aria-expanded={advancedOpen}
+          className={styles["advancedSummary"]}
+          onClick={() => setAdvancedOpen((open) => !open)}
+          type="button"
         >
-          <option value="">Any time</option>
-          <option value="1">Past 24 hours</option>
-          <option value="7">Past week</option>
-          <option value="30">Past month</option>
-        </select>
-      </label>
-      <div className={styles["filterRow"]}>
-        <span className={styles["salaryLabel"]}>
-          Minimum salary
-          <strong>
-            {draft.minimumSalary === "" || draft.minimumSalary === "0"
-              ? "Any"
-              : `${draft.currency} ${Intl.NumberFormat("en").format(Number(draft.minimumSalary))}+`}
-          </strong>
-        </span>
-        <span className={styles["salaryInput"]}>
-          <CurrencySelector
-            onChange={(currency) => onCommit({ ...draft, currency })}
-            value={draft.currency}
-          />
-          <select
-            aria-label="Minimum annual salary"
-            onChange={(event) => onCommit({ ...draft, minimumSalary: event.target.value })}
-            value={draft.minimumSalary}
-          >
-            <option value="">Any salary</option>
-            {draft.minimumSalary !== "" &&
-            !salaryThresholds.includes(
-              Number(draft.minimumSalary) as (typeof salaryThresholds)[number],
-            ) ? (
-              <option value={draft.minimumSalary}>
-                {Intl.NumberFormat("en", { notation: "compact" }).format(
-                  Number(draft.minimumSalary),
-                )}
-                +
-              </option>
-            ) : null}
-            {salaryThresholds.map((amount) => (
-              <option key={amount} value={String(amount)}>
-                {Intl.NumberFormat("en", { notation: "compact" }).format(amount)}+
-              </option>
-            ))}
-          </select>
-        </span>
+          <span>More filters</span>
+          <span>
+            {activeAdvancedFilterCount === 0
+              ? "Optional"
+              : `${String(activeAdvancedFilterCount)} active`}
+          </span>
+          <CaretDownIcon aria-hidden="true" size={14} />
+        </button>
+        <div
+          className={`${styles["advancedFilterBody"]} ${advancedOpen ? styles["advancedFilterBodyOpen"] : ""}`}
+          id={advancedFiltersId}
+        >
+          <fieldset className={styles["choiceRow"]}>
+            <legend>Work model</legend>
+            <div>
+              {workModelSchema.options.map((value) => (
+                <button
+                  aria-pressed={draft.workModels.includes(value)}
+                  key={value}
+                  onClick={() => toggleWorkModel(value)}
+                  type="button"
+                >
+                  {workModelLabel(value)}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <div className={styles["filterRow"]}>
+            <span>Function</span>
+            <MultiSelect
+              label="Function"
+              onChange={(categories) =>
+                onCommit({ ...draft, categories: categories as readonly JobCategory[] })
+              }
+              options={jobCategorySchema.options.map((value) => ({
+                value,
+                label: categoryLabel(value),
+              }))}
+              placeholder="Any function"
+              searchable
+              selected={draft.categories}
+            />
+          </div>
+          <div className={styles["filterRow"]}>
+            <span>Seniority</span>
+            <MultiSelect
+              label="Seniority"
+              onChange={(seniorities) =>
+                onCommit({ ...draft, seniorities: seniorities as readonly Seniority[] })
+              }
+              options={senioritySchema.options.map((value) => ({
+                value,
+                label: seniorityLabel(value),
+              }))}
+              placeholder="Any level"
+              selected={draft.seniorities}
+            />
+          </div>
+          <label className={styles["filterRow"]}>
+            <span>Date posted</span>
+            <select
+              onChange={(event) => onCommit({ ...draft, postedWithinDays: event.target.value })}
+              value={draft.postedWithinDays}
+            >
+              <option value="">Any time</option>
+              <option value="1">Past 24 hours</option>
+              <option value="7">Past week</option>
+              <option value="30">Past month</option>
+            </select>
+          </label>
+          <div className={styles["filterRow"]}>
+            <span className={styles["salaryLabel"]}>
+              Minimum salary
+              <strong>
+                {draft.minimumSalary === "" || draft.minimumSalary === "0"
+                  ? "Any"
+                  : `${draft.currency} ${Intl.NumberFormat("en").format(Number(draft.minimumSalary))}+`}
+              </strong>
+            </span>
+            <span className={styles["salaryInput"]}>
+              <CurrencySelector
+                onChange={(currency) => onCommit({ ...draft, currency })}
+                value={draft.currency}
+              />
+              <select
+                aria-label="Minimum annual salary"
+                onChange={(event) => onCommit({ ...draft, minimumSalary: event.target.value })}
+                value={draft.minimumSalary}
+              >
+                <option value="">Any salary</option>
+                {draft.minimumSalary !== "" &&
+                !salaryThresholds.includes(
+                  Number(draft.minimumSalary) as (typeof salaryThresholds)[number],
+                ) ? (
+                  <option value={draft.minimumSalary}>
+                    {Intl.NumberFormat("en", { notation: "compact" }).format(
+                      Number(draft.minimumSalary),
+                    )}
+                    +
+                  </option>
+                ) : null}
+                {salaryThresholds.map((amount) => (
+                  <option key={amount} value={String(amount)}>
+                    {Intl.NumberFormat("en", { notation: "compact" }).format(amount)}+
+                  </option>
+                ))}
+              </select>
+            </span>
+          </div>
+          <label className={styles["filterRow"]}>
+            <span>Exclude</span>
+            <input
+              maxLength={240}
+              onBlur={() => onCommit(draft)}
+              onChange={(event) => onDraftChange({ ...draft, excludeKeywords: event.target.value })}
+              onKeyDown={commitOnEnter}
+              placeholder="agency, crypto"
+              value={draft.excludeKeywords}
+            />
+          </label>
+        </div>
       </div>
-      <label className={styles["filterRow"]}>
-        <span>Exclude</span>
-        <input
-          maxLength={240}
-          onBlur={() => onCommit(draft)}
-          onChange={(event) => onDraftChange({ ...draft, excludeKeywords: event.target.value })}
-          onKeyDown={commitOnEnter}
-          placeholder="agency, crypto"
-          value={draft.excludeKeywords}
-        />
-      </label>
     </form>
   );
 }

@@ -191,9 +191,9 @@
   .panel {
     position: fixed;
     z-index: 70;
-    inset-block: 60px 78px;
-    inset-inline-end: 0;
-    inline-size: min(420px, 94vw);
+    inset-block: 60px 0;
+    inset-inline: 0;
+    inline-size: 100vw;
     block-size: auto;
     border-block-start: 1px solid var(--color-line);
     box-shadow: var(--shadow-floating);

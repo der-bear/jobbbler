@@ -10,7 +10,8 @@
 }
 
 .backLink,
-.primaryLink {
+.primaryLink,
+.secondaryLink {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -294,8 +295,20 @@
 .actions .primaryAction,
 .primaryLink {
   border-color: var(--jb-signal);
-  color: var(--color-signal-on, #06170d);
+  color: var(--jb-signal-contrast);
   background: var(--jb-signal);
+}
+
+.secondaryLink {
+  margin-block-start: 18px;
+  text-decoration: underline;
+  text-decoration-color: var(--color-line-strong);
+  text-underline-offset: 4px;
+}
+
+.secondaryLink:hover {
+  color: var(--color-ink);
+  text-decoration-color: currentColor;
 }
 
 .reviewList,
@@ -452,7 +465,7 @@
   min-block-size: 38px;
   border: 1px solid var(--jb-signal);
   padding: 8px 12px;
-  color: var(--color-signal-on, #06170d);
+  color: var(--jb-signal-contrast);
   background: var(--jb-signal);
   font: inherit;
   font-size: 11px;
@@ -495,7 +508,7 @@
 
 .primaryLink {
   margin-block-start: 28px;
-  color: var(--color-signal-on, #06170d);
+  color: var(--jb-signal-contrast);
 }
 
 .trustRail {

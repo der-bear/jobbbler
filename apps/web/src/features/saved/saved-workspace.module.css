@@ -335,13 +335,20 @@
 }
 
 .endpointList button {
+  min-block-size: 32px;
   border: 0;
+  padding-inline: 6px;
   background: transparent;
   color: var(--color-ink-muted);
   cursor: pointer;
   font: inherit;
+  font-size: 11px;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+.revokeActions {
+  gap: 10px;
 }
 
 .endpointList .revokeActions button:last-child,

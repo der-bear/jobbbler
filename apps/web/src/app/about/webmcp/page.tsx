@@ -94,7 +94,7 @@ export default function WebMcpAboutPage() {
               <strong>Proof you can see</strong>
               <p>
                 Open Agent view to see the tools the browser discovered and the result of each call.
-                It is a compact judge-facing window, not a second product.
+                It keeps the technical proof visible without changing the job portal.
               </p>
             </div>
           </div>
