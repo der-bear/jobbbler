@@ -41,7 +41,8 @@ describe("AgentTools", () => {
     expect(markup).toContain("Capability catalog");
     expect(markup).toContain("26 tools");
     expect(markup).toContain("decide_application_submission");
-    expect(markup).toContain("Human decision");
+    expect(markup).toContain("Decision required");
+    expect(markup).not.toContain("Human decision");
     expect(markup).not.toContain("Active tools");
   });
 });

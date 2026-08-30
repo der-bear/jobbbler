@@ -35,7 +35,7 @@ const agentCan = [
   "Continue to an available validated employer page for an external role; otherwise stop",
 ] as const;
 
-const onlyYouCan = [
+const decisionsForYou = [
   "Approve, decline, or withdraw draft-bound assistance in your external agent client",
   "Choose what candidate data is shared and why",
   "Confirm the exact final application in your external agent client",
@@ -124,17 +124,17 @@ export default function WebMcpAboutPage() {
             </ul>
           </div>
           <div>
-            <h3>Only you can</h3>
+            <h3>Needs your decision</h3>
             <ul>
-              {onlyYouCan.map((item) => (
+              {decisionsForYou.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
           </div>
           <p className={styles["controlNote"]}>
             <ShieldCheckIcon aria-hidden="true" size={18} />
-            Tool discovery is not treated as identity or permission. Every private action is
-            rechecked by Jobbbler.
+            Tool discovery is not identity or permission. Jobbbler verifies the exact request, not
+            who clicked in another app.
           </p>
         </div>
       </section>

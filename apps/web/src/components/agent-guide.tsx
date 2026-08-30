@@ -57,7 +57,7 @@ function ToolRow({
       <div className={styles["toolHeading"]}>
         <code>{tool.name}</code>
         {approvalTools.has(tool.name) ? (
-          <span className={styles["humanDecision"]}>Human decision</span>
+          <span className={styles["humanDecision"]}>Decision required</span>
         ) : null}
       </div>
       <p>{toolPurpose(tool)}</p>

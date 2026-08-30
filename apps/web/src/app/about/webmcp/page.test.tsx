@@ -27,7 +27,9 @@ describe("WebMCP explanation", () => {
     expect(markup).toContain("active browser-registered tools");
     expect(markup).toContain("Jobbbler keeps checking after the tab closes");
     expect(markup).toContain("You approve the important parts");
-    expect(markup).toContain("Only you can");
+    expect(markup).toContain("Needs your decision");
+    expect(markup).toContain("verifies the exact request, not who clicked in another app");
+    expect(markup).not.toContain("Only you can");
     expect(markup).not.toContain("Every tool, page by page");
     expect(markup).not.toContain("request_application_access");
     expect(markup).not.toContain("chat input");
