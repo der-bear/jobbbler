@@ -74,8 +74,13 @@ export interface RequiresUserActionWebMcpResult {
     readonly kind:
       "agent_authorization" | "data_consent" | "action_confirmation" | "identity_verification";
     readonly surface:
-      "application_authorization" | "data_consent" | "application_review" | "identity_verification";
+      | "application_authorization"
+      | "data_consent"
+      | "application_review"
+      | "identity_verification"
+      | "search_alert_consent";
   };
+  readonly decisionContext?: JsonValue;
   readonly presentation?: UserActionPresentation;
 }
 
@@ -122,6 +127,7 @@ export function requiresUserActionWebMcpResult(
     surface: RequiresUserActionWebMcpResult["userAction"]["surface"];
     requestId?: string;
     nextTool?: string;
+    decisionContext?: JsonValue;
     presentation?: UserActionPresentation;
     maximumBytes?: number;
   }>,
@@ -133,6 +139,9 @@ export function requiresUserActionWebMcpResult(
       requestId: options.requestId ?? requestId(),
       ...(options.nextTool === undefined ? {} : { nextTool: options.nextTool }),
       userAction: { kind: options.kind, surface: options.surface },
+      ...(options.decisionContext === undefined
+        ? {}
+        : { decisionContext: options.decisionContext }),
       ...(options.presentation === undefined ? {} : { presentation: options.presentation }),
     },
     options.maximumBytes,

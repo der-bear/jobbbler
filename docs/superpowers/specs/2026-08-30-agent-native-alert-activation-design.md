@@ -61,8 +61,8 @@ server must validate the one-time code against its stored challenge.
 `request_search_alert` accepts:
 
 - a short saved-search name;
-- canonical `JobSearchCriteria` (normally from `search_jobs` or the visible
-  search state);
+- the same model-friendly search preferences as `search_jobs`, which the tool
+  canonicalizes before storage;
 - a daily or weekly recurrence with an IANA timezone; and
 - the delivery email supplied by the person in the external agent client.
 
@@ -88,8 +88,9 @@ mailbox code plus an explicit activation decision. No site click is required.
 
 ## Decision flow
 
-`decide_search_alert` accepts the server request ID, opaque review token,
-six-digit code, and `approved` or `declined`.
+`decide_search_alert` accepts the server request ID, opaque review token, and
+`approved` or `declined`. Approval also requires the six-digit mailbox code;
+decline deliberately does not.
 
 The server validates, in order:
 
@@ -100,8 +101,9 @@ The server validates, in order:
 5. the person's decision channel (`agent_client`); and
 6. the one-time verification code.
 
-On `declined`, the server records the declined request and creates no schedule;
-the private saved search remains available and the pending endpoint expires.
+On `declined`, the server records the declined request, abandons that exact
+pending challenge, and creates no schedule. The private saved search remains
+available.
 
 On `approved`, the server verifies the endpoint and calls the existing schedule
 service with only the recurrence and endpoint bound into the signed review. The
@@ -109,9 +111,9 @@ schedule service revalidates ownership and returns an identical existing
 schedule on retry, making activation idempotent. The response contains the
 saved-search and schedule IDs, first run, and a receipt-like safe summary.
 
-The route publishes a redacted owner activity event with agent provenance,
-request ID, policy version, and resource versions. It never records the email,
-code, or token.
+The route publishes a redacted owner activity event with agent provenance, the
+request correlation ID, and the affected aggregate version. It never records
+the email, code, or token.
 
 ## Consent and verification semantics
 

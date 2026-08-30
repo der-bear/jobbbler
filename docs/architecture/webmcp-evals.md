@@ -2,7 +2,7 @@
 
 The fixtures under `evals/webmcp/` test whether an external model selects the
 right Jobbbler tool, supplies valid arguments, preserves order, and stops for
-the person's decision. Every fixture exposes the same 24-tool list that the
+the person's decision. Every fixture exposes the same 26-tool list that the
 production page registers on every route. Route and workflow state live in the
 case context; they do not artificially hide competing tools from the model.
 
@@ -27,17 +27,17 @@ decision points.
 
 ## Coverage
 
-| Fixture            | Main outcomes tested                                                                                                                     |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `search.json`      | Exact and paraphrased search, active state, opening a role, monitoring plan, vague intent, premature comparison, invalid salary range    |
-| `detail.json`      | Source-backed role facts, application capability and mode-aware planning, explicit comparison, missing target, invalid ID                |
-| `compare.json`     | Current comparison, ordinal removal, addition, ambiguous ranking, unselected role                                                        |
-| `saved.json`       | Alert reading, pause or resume by exact schedule ID, reopen criteria, latest delta, recovery-first planning, ambiguity, unknown schedule |
-| `application.json` | Readiness, request-bound assistance approval and withdrawal, atomic answer batch, final review, and isolated submission decisions        |
+| Fixture            | Main outcomes tested                                                                                                                    |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `search.json`      | Exact and paraphrased search, active state, opening a role, monitoring plan, vague intent, premature comparison, invalid salary range   |
+| `detail.json`      | Source-backed role facts, application capability and mode-aware planning, explicit comparison, missing target, invalid ID               |
+| `compare.json`     | Current comparison, ordinal removal, addition, ambiguous ranking, unselected role                                                       |
+| `saved.json`       | Agent-native alert request and decision, missing or stale review refusal, alert reading, pause, reopen, latest delta, recovery planning |
+| `application.json` | Readiness, request-bound assistance approval and withdrawal, atomic answer batch, final review, and isolated submission decisions       |
 
 ## Evaluation method
 
-1. Load the complete 24 manifests and the case's route/state context.
+1. Load the complete 26 manifests and the case's route/state context.
 2. Run direct, paraphrased, ambiguous, wrong-order, and invalid-input prompts.
 3. Score tool selection, argument accuracy, safe sequencing, and refusal to
    invent a human decision.
@@ -46,25 +46,38 @@ decision points.
 5. Deterministic tests still own tool logic, atomicity, output size, and UI
    synchronization; probabilistic evals own model routing quality.
 
-## Pre-release model pass — 30 August 2026
+## Current pre-release model pass — 30 August 2026
 
-- Luna at low effort: 50 isolated routing decisions. The first pass scored
-  48/50; both misses tried to compare before two exact role IDs existed. After
-  the `compare_jobs` description was tightened to forbid one-role calls, the
-  two cases were re-run and the final result was 50/50.
-- Terra at medium effort: 10/10 end-to-end routing decisions, including alert
-  disambiguation, assistance authorization, batched application preparation,
-  and presentation of the exact final submission decision while it remained pending.
-- A follow-up pass confirmed that `prepare_application` creates or reopens a
-  draft but grants no preparation authority, while `open_jobbbler_page` clearly
-  separates the Applications list from an exact private application.
+- Luna at low effort: 50/50 independent decisions against the current global
+  26-tool surface. The set contains 25 direct, 7 paraphrased, 5 ambiguous, 8
+  wrong-order, and 5 invalid-input cases. Every tool is the actual expected
+  outcome of at least one case; inventory lists alone do not count as coverage.
+- Terra at medium effort: 10/10 end-to-end workflows. These covered broad-search
+  clarification, comparison, managed application assistance, exact pending
+  submission review, external-employer stop, alert request plus mailbox
+  approval, decline, missing/wrong-code recovery, alert pause/resume/latest
+  update, and arbitrary-page recovery.
+- Both models kept consent and submission decisions with the person, used only
+  server-returned IDs and tokens, never invented a mailbox code, and did not
+  claim that an external employer received an application.
+
+The run found no routing or schema ambiguity. Terra did identify one useful
+recoverability refinement: an incorrect mailbox code and an expired alert review
+should be distinguishable through a typed safe error, rather than requiring the
+agent to interpret message text. That is a result-contract improvement, not a
+reason to weaken the approval boundary.
 
 These are isolated model-judgment runs, not production telemetry. The checked-in
 deterministic suites separately verify schemas, execution, cancellation,
 bounded output, UI synchronization, storage atomicity, and builds.
-The mode-aware application-plan and recovery-first cases were added after that
-recorded model pass. The next fresh model pass must include all 50 current cases
-rather than count any later additions as historical successes.
+
+### Earlier tuning pass
+
+An earlier 24-tool Luna pass initially scored 48/50 because two attempts tried
+to compare before two exact role IDs existed. Tightening the `compare_jobs`
+contract produced 50/50 on re-run. Those historical numbers are retained only
+as evidence that the descriptions were iterated; they are not substituted for
+the current 26-tool results above.
 
 The judge demo should show one natural-language search, one comparison, one
 saved-search delta, and the application sequence from assistance request through

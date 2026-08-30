@@ -17,8 +17,8 @@ target captures.
    - Caption: “One exact review — recipient, purpose, synthetic values, and sensitivity markers — before one explicit decision shares or submits anything.”
    - Alt text: “External agent client showing the exact pending review for a synthetic internal-role application, including the recipient, purpose, fictional field values, sensitivity markers, and untouched approve and decline controls.”
 4. **`media/02-saved-alert.png` — Verified alert**
-   - Caption: “A verified private workspace turns a saved search into a durable, truthfully reported alert.”
-   - Alt text: “Dark-mode Saved page showing a verified private workspace, one platform-role search checked daily, and confirmations that email verification and alert activation succeeded.”
+   - Caption: “One exact decision in the agent client turns a saved search into a durable, truthfully reported alert.”
+   - Alt text: “Dark-mode Saved page showing one platform-role search checked daily after its exact criteria, schedule, masked destination, and data terms were approved in an external agent client.”
 
 ## Capture checklist
 

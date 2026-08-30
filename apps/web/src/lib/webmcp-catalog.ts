@@ -123,6 +123,16 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
         readOnly: true,
       },
       {
+        name: "request_search_alert",
+        purpose: "Prepare one email job alert for an explicit decision in the agent client.",
+        readOnly: false,
+      },
+      {
+        name: "decide_search_alert",
+        purpose: "Record the person's exact alert decision and activate only the reviewed alert.",
+        readOnly: false,
+      },
+      {
         name: "set_job_alert_state",
         purpose: "Pause or resume one existing saved job alert in the current private workspace.",
         readOnly: false,

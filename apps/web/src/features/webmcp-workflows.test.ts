@@ -78,6 +78,48 @@ describe("plan_job_workflow", () => {
     });
   });
 
+  it("keeps alert setup entirely agent-native with one explicit external-client decision", async () => {
+    const planner = createWorkflowPlannerTool({
+      route: "/",
+      availableTools: () => [
+        "search_jobs",
+        "get_search_state",
+        "request_search_alert",
+        "decide_search_alert",
+        "get_saved_alerts",
+      ],
+    });
+
+    const result = await planner.execute(
+      { goal: "monitor_search" },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toMatchObject({
+      status: "completed",
+      data: {
+        nextTool: "search_jobs",
+        steps: [
+          expect.objectContaining({ tool: "search_jobs" }),
+          expect.objectContaining({ tool: "get_search_state", needs: ["detail=exact"] }),
+          expect.objectContaining({
+            tool: "request_search_alert",
+            ask: expect.stringContaining("agent client"),
+          }),
+          expect.objectContaining({
+            tool: "decide_search_alert",
+            needs: expect.arrayContaining(["requestId", "reviewToken"]),
+          }),
+          expect.objectContaining({ tool: "get_saved_alerts" }),
+          expect.objectContaining({ tool: "get_latest_search_update" }),
+          expect.objectContaining({ tool: "open_saved_search" }),
+          expect.objectContaining({ tool: "set_job_alert_state" }),
+        ],
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain("Saved page");
+  });
+
   it("branches managed and external applications after the capability check", async () => {
     const planner = createWorkflowPlannerTool({
       route: "/jobs/:jobId",
@@ -156,6 +198,8 @@ describe("plan_job_workflow", () => {
         "get_comparison",
         "add_job_to_comparison",
         "get_saved_alerts",
+        "request_search_alert",
+        "decide_search_alert",
         "get_latest_search_update",
         "open_saved_search",
         "set_job_alert_state",

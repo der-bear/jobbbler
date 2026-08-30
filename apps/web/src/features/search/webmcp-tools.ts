@@ -18,6 +18,7 @@ import type { JsonSchema, JsonValue, ToolManifest } from "@jobbbler/webmcp";
 
 import { searchInputToSearchParams } from "@/lib/search-url";
 import {
+  MAX_EXACT_REVIEW_RESULT_BYTES,
   completedWebMcpResult,
   safeWebMcpErrorResult,
   type CompletedWebMcpResult,
@@ -30,7 +31,19 @@ const emptyInputSchema = {
   properties: {},
 } as const satisfies JsonSchema;
 
-const searchInputJsonSchema = {
+const searchStateInputSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    detail: {
+      type: "string",
+      description: "summary for display; exact for criteria reusable by request_search_alert.",
+      enum: ["summary", "exact"],
+    },
+  },
+} as const satisfies JsonSchema;
+
+export const jobSearchToolInputJsonSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
@@ -136,7 +149,10 @@ const searchInputJsonSchema = {
 } as const satisfies JsonSchema;
 
 const emptyInput = z.strictObject({});
-const publicJobSearchInput = jobSearchInputSchema.omit({ cursor: true });
+const searchStateInput = z.strictObject({
+  detail: z.enum(["summary", "exact"]).default("summary"),
+});
+export const jobSearchToolInput = jobSearchInputSchema.omit({ cursor: true });
 
 export interface SearchWebMcpState {
   readonly criteria: JobSearchCriteria;
@@ -221,6 +237,32 @@ function compactCriteria(criteria: JobSearchCriteria): JsonValue {
   };
 }
 
+function reusableCriteria(criteria: JobSearchCriteria): JsonValue {
+  return {
+    ...(criteria.query === null ? {} : { query: criteria.query }),
+    ...(criteria.categories.length === 0 ? {} : { categories: criteria.categories }),
+    ...(criteria.workModels.length === 0 ? {} : { workModels: criteria.workModels }),
+    ...(criteria.seniorities.length === 0 ? {} : { seniorities: criteria.seniorities }),
+    ...(criteria.locations.length === 0 ? {} : { locations: criteria.locations }),
+    ...(criteria.skills.length === 0 ? {} : { skills: criteria.skills }),
+    ...(criteria.excludeKeywords.length === 0 ? {} : { excludeKeywords: criteria.excludeKeywords }),
+    ...(criteria.salary === null
+      ? {}
+      : {
+          salary: {
+            ...(criteria.salary.minimum === null ? {} : { minimum: criteria.salary.minimum }),
+            ...(criteria.salary.maximum === null ? {} : { maximum: criteria.salary.maximum }),
+            ...(criteria.salary.currency === null ? {} : { currency: criteria.salary.currency }),
+            period: criteria.salary.period,
+            unknownPolicy: criteria.salary.unknownPolicy,
+          },
+        }),
+    ...(criteria.postedWithinDays === null ? {} : { postedWithinDays: criteria.postedWithinDays }),
+    sort: criteria.sort,
+    limit: criteria.limit,
+  };
+}
+
 function compactSearchResult(result: SearchJobsResult): JsonValue {
   return {
     total: result.total,
@@ -246,11 +288,11 @@ export function createSearchToolManifests(
     purpose: "Search the public technology-job catalog and synchronize the visible results.",
     description:
       "Search Jobbbler's source-backed technology roles with the preferences the person supplied. Ask for one useful preference when the request gives no role, skill, location, work model, or other search criterion. Applies validated criteria to the visible page and returns compact matches with IDs.",
-    inputSchema: searchInputJsonSchema,
+    inputSchema: jobSearchToolInputJsonSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
       try {
-        const parsed = publicJobSearchInput.parse(input);
+        const parsed = jobSearchToolInput.parse(input);
         const result = await dependencies.searchJobs(parsed, { signal });
         const parameters = searchInputToSearchParams(parsed);
         const href = parameters.size === 0 ? "/jobs" : `/jobs?${parameters.toString()}`;
@@ -277,15 +319,14 @@ export function createSearchToolManifests(
 
   const getSearchState: ToolManifest<unknown, SearchToolOutput> = {
     name: "get_search_state",
-    purpose:
-      "Read a bounded summary of the visible search constraints and result count without rerunning search.",
+    purpose: "Read the visible search constraints and result count without rerunning the search.",
     description:
-      "Read the visible filters and result count currently shown on Jobbbler. The bounded response explicitly reports any shortened or omitted criteria. Use before refining an existing search or explaining active constraints. This does not run a new search.",
-    inputSchema: emptyInputSchema,
+      "Read the visible filters and result count. Use detail=summary for a bounded explanation, or detail=exact to receive complete criteria in the input shape accepted by request_search_alert. This never runs a new search.",
+    inputSchema: searchStateInputSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     async execute(input, { signal }) {
       try {
-        emptyInput.parse(input);
+        const parsed = searchStateInput.parse(input);
         const rawState = dependencies.getSearchState();
         if (rawState === null) {
           return completedWebMcpResult({
@@ -297,6 +338,18 @@ export function createSearchToolManifests(
           "criteria" in rawState
             ? rawState
             : { criteria: normalizeJobSearchCriteria(rawState), total: null };
+        if (parsed.detail === "exact") {
+          return completedWebMcpResult({
+            summary: "Read the exact visible search criteria for reuse.",
+            data: {
+              ready: true,
+              total: state.total,
+              criteria: reusableCriteria(state.criteria),
+            },
+            facts: [{ key: "visible_total", value: state.total }],
+            maximumBytes: MAX_EXACT_REVIEW_RESULT_BYTES,
+          });
+        }
         return completedWebMcpResult({
           summary: "Read the visible search state.",
           data: {

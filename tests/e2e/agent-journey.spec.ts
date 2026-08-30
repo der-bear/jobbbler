@@ -59,6 +59,7 @@ const allSiteTools = [
   "compare_jobs",
   "decide_application_assistance",
   "decide_application_submission",
+  "decide_search_alert",
   "get_application_readiness",
   "get_comparison",
   "get_job_application_capability",
@@ -75,6 +76,7 @@ const allSiteTools = [
   "propose_application_updates",
   "remove_job_from_comparison",
   "request_application_assistance",
+  "request_search_alert",
   "request_submission_review",
   "search_jobs",
   "set_job_alert_state",
@@ -95,7 +97,7 @@ test.describe("agent journey through the live WebMCP surface", () => {
     await expect.poll(() => registeredToolNames(page)).toEqual([...allSiteTools]);
     await expect(page.getByRole("complementary", { name: "Agent view" })).toBeVisible();
     await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(
-      "24 tools active. Discovery is automatic.",
+      `${String(allSiteTools.length)} tools active. Discovery is automatic.`,
     );
 
     const plan = (await callTool(page, "plan_job_workflow", { goal: "monitor_search" })) as {
@@ -122,7 +124,7 @@ test.describe("agent journey through the live WebMCP surface", () => {
     await expect.poll(() => registeredToolNames(page)).toEqual([...allSiteTools]);
     await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(/ready/i);
     await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(
-      "24 tools active. Discovery is automatic.",
+      `${String(allSiteTools.length)} tools active. Discovery is automatic.`,
     );
 
     const activityTab = page.getByRole("tab", { name: /Activity/ });
@@ -133,6 +135,61 @@ test.describe("agent journey through the live WebMCP surface", () => {
       }),
     ).toBeVisible();
     await expect(page.getByText("Complete", { exact: true }).first()).toBeVisible();
+
+    const alertReview = (await callTool(page, "request_search_alert", {
+      name: "Agent E2E platform roles",
+      criteria: {
+        query: "senior full-stack engineer",
+        workModels: ["remote"],
+        sort: "relevance",
+        limit: 20,
+      },
+      recurrence: { frequency: "daily", time: "09:00", timeZone: "Europe/Kyiv" },
+      email: "agent-e2e@example.test",
+    })) as {
+      status: string;
+      requestId: string;
+      nextTool: string;
+      decisionContext: {
+        reviewToken: string;
+        review: {
+          criteria: { query: string | null; workModels: readonly string[] };
+          recurrence: { frequency: string; time: string; timeZone: string };
+          maskedDestination: string;
+          purpose: string;
+          retention: string;
+          withdrawal: string;
+        };
+      };
+    };
+    expect(alertReview).toMatchObject({
+      status: "requires_user_action",
+      nextTool: "decide_search_alert",
+      decisionContext: {
+        review: {
+          criteria: {
+            query: "senior full-stack engineer",
+            workModels: ["remote"],
+          },
+          recurrence: { frequency: "daily", time: "09:00", timeZone: "Europe/Kyiv" },
+          maskedDestination: expect.stringMatching(/^a[•]+@example\.test$/u),
+          purpose: "Store this search and email matching-job updates.",
+          retention: "Stored until the alert or delivery destination is removed.",
+          withdrawal: expect.stringContaining("Pause or delete the alert"),
+        },
+      },
+    });
+    expect(JSON.stringify(alertReview)).not.toContain("agent-e2e@example.test");
+
+    const declinedAlert = (await callTool(page, "decide_search_alert", {
+      requestId: alertReview.requestId,
+      reviewToken: alertReview.decisionContext.reviewToken,
+      decision: "declined",
+    })) as { status: string; data: { decision: string; scheduleId: string | null } };
+    expect(declinedAlert).toMatchObject({
+      status: "completed",
+      data: { decision: "declined", scheduleId: null },
+    });
 
     const opened = (await callTool(page, "open_job_details", { jobId: firstJobId })) as {
       status: string;
@@ -159,7 +216,7 @@ test.describe("agent journey through the live WebMCP surface", () => {
     await page.getByRole("tab", { name: "Tools" }).click();
     await expect(page.getByRole("tab", { name: "Tools" })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("heading", { name: "Available tools" })).toBeVisible();
-    await expect(page.getByText("24 tools")).toBeVisible();
+    await expect(page.getByText(`${String(allSiteTools.length)} tools`)).toBeVisible();
     await expect(page.getByText("plan_job_workflow").first()).toBeVisible();
 
     await page.getByRole("tab", { name: "Guide" }).click();

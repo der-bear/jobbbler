@@ -1,19 +1,31 @@
 import { z } from "zod";
 
 import {
+  decideSearchAlertResultSchema,
+  emailAddressSchema,
   entityIdSchema,
+  scheduleRecurrenceSchema,
+  type DecideSearchAlertInput,
+  type DecideSearchAlertResult,
   type JobAlertSchedule,
+  type RequestSearchAlertInput,
+  type RequestSearchAlertResult,
   type SavedSearch,
   type SetJobAlertEnabledInput,
 } from "@jobbbler/contracts";
+import { normalizeJobSearchCriteria } from "@jobbbler/jobs-domain";
 import type { JsonSchema, JsonValue, ToolManifest } from "@jobbbler/webmcp";
 
+import { jobSearchToolInput, jobSearchToolInputJsonSchema } from "@/features/search/webmcp-tools";
 import type { LatestSearchRun } from "@/lib/latest-run";
 
 import {
+  MAX_EXACT_REVIEW_RESULT_BYTES,
   completedWebMcpResult,
+  requiresUserActionWebMcpResult,
   safeWebMcpErrorResult,
   type CompletedWebMcpResult,
+  type RequiresUserActionWebMcpResult,
   type SafeWebMcpErrorResult,
 } from "@/lib/webmcp-tool-result";
 
@@ -42,6 +54,149 @@ const stateInputSchema = {
 
 const emptyInput = z.strictObject({});
 const stateInput = z.strictObject({ scheduleId: entityIdSchema, enabled: z.boolean() });
+
+const recurrenceInputSchema = {
+  oneOf: [
+    {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        frequency: { type: "string", enum: ["daily"] },
+        time: {
+          type: "string",
+          description: "Local 24-hour time in HH:mm format.",
+          pattern: "^([01]\\d|2[0-3]):[0-5]\\d$",
+        },
+        timeZone: {
+          type: "string",
+          description: "IANA time zone, for example Europe/Kyiv.",
+          maxLength: 120,
+        },
+      },
+      required: ["frequency", "time", "timeZone"],
+    },
+    {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        frequency: { type: "string", enum: ["weekly"] },
+        time: {
+          type: "string",
+          description: "Local 24-hour time in HH:mm format.",
+          pattern: "^([01]\\d|2[0-3]):[0-5]\\d$",
+        },
+        timeZone: {
+          type: "string",
+          description: "IANA time zone, for example Europe/Kyiv.",
+          maxLength: 120,
+        },
+        days: {
+          type: "array",
+          description: "Unique weekdays on which to check.",
+          minItems: 1,
+          maxItems: 7,
+          uniqueItems: true,
+          items: {
+            type: "string",
+            enum: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
+          },
+        },
+      },
+      required: ["frequency", "time", "timeZone", "days"],
+    },
+  ],
+} as const satisfies JsonSchema;
+
+const requestAlertInputSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    name: {
+      type: "string",
+      description: "Short human-readable name for this alert.",
+      minLength: 1,
+      maxLength: 100,
+    },
+    criteria: {
+      ...jobSearchToolInputJsonSchema,
+      description: "Raw search_jobs preferences or get_search_state exact criteria.",
+    },
+    recurrence: recurrenceInputSchema,
+    email: {
+      type: "string",
+      description: "Delivery email the person explicitly supplied.",
+      format: "email",
+      maxLength: 320,
+    },
+  },
+  required: ["name", "criteria", "recurrence", "email"],
+} as const satisfies JsonSchema;
+
+const decisionInputSchema = {
+  oneOf: [
+    {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        requestId: {
+          type: "string",
+          description: "Exact request ID returned by request_search_alert.",
+          pattern: "^[a-z][a-z0-9_]*_[0-9a-f-]{36}$",
+        },
+        reviewToken: {
+          type: "string",
+          description: "Opaque review token returned by request_search_alert.",
+          maxLength: 4_096,
+        },
+        decision: { type: "string", enum: ["approved"] },
+        code: {
+          type: "string",
+          description: "6-digit code the person received at the reviewed email address.",
+          pattern: "^\\d{6}$",
+        },
+      },
+      required: ["requestId", "reviewToken", "decision", "code"],
+    },
+    {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        requestId: {
+          type: "string",
+          description: "Exact request ID returned by request_search_alert.",
+          pattern: "^[a-z][a-z0-9_]*_[0-9a-f-]{36}$",
+        },
+        reviewToken: {
+          type: "string",
+          description: "Opaque review token returned by request_search_alert.",
+          maxLength: 4_096,
+        },
+        decision: { type: "string", enum: ["declined"] },
+      },
+      required: ["requestId", "reviewToken", "decision"],
+    },
+  ],
+} as const satisfies JsonSchema;
+
+const requestAlertInput = z.strictObject({
+  name: z.string().trim().min(1).max(100),
+  criteria: jobSearchToolInput,
+  recurrence: scheduleRecurrenceSchema,
+  email: emailAddressSchema,
+});
+const decisionInput = z.discriminatedUnion("decision", [
+  z.strictObject({
+    requestId: entityIdSchema,
+    reviewToken: z.string().min(1).max(4_096),
+    decision: z.literal("approved"),
+    code: z.string().regex(/^\d{6}$/u),
+  }),
+  z.strictObject({
+    requestId: entityIdSchema,
+    reviewToken: z.string().min(1).max(4_096),
+    decision: z.literal("declined"),
+  }),
+]);
 
 const openSavedInputSchema = {
   type: "object",
@@ -74,6 +229,14 @@ const latestUpdateInputSchema = {
 export interface SavedToolDependencies {
   listSavedSearches(options: Readonly<{ signal: AbortSignal }>): Promise<readonly SavedSearch[]>;
   listSchedules(options: Readonly<{ signal: AbortSignal }>): Promise<readonly JobAlertSchedule[]>;
+  requestSearchAlert(
+    input: RequestSearchAlertInput,
+    options: Readonly<{ signal: AbortSignal }>,
+  ): Promise<RequestSearchAlertResult>;
+  decideSearchAlert(
+    input: DecideSearchAlertInput,
+    options: Readonly<{ signal: AbortSignal }>,
+  ): Promise<DecideSearchAlertResult>;
   setScheduleEnabled(
     scheduleId: string,
     input: SetJobAlertEnabledInput,
@@ -88,10 +251,68 @@ export interface SavedToolDependencies {
   ): Promise<LatestSearchRun>;
 }
 
-type SavedToolOutput = CompletedWebMcpResult<JsonValue> | SafeWebMcpErrorResult;
+type SavedToolOutput =
+  CompletedWebMcpResult<JsonValue> | RequiresUserActionWebMcpResult | SafeWebMcpErrorResult;
 
 function short(value: string, maximum: number): string {
   return value.length <= maximum ? value : `${value.slice(0, maximum - 1)}…`;
+}
+
+function humanize(value: string): string {
+  const words = value.replaceAll("_", " ");
+  return `${words.slice(0, 1).toUpperCase()}${words.slice(1)}`;
+}
+
+function naturalList(values: readonly string[]): string {
+  if (values.length <= 1) return values[0] ?? "";
+  if (values.length === 2) return `${values[0]} and ${values[1]}`;
+  return `${values.slice(0, -1).join(", ")}, and ${values.at(-1)}`;
+}
+
+function describeSearchCriteria(criteria: RequestSearchAlertResult["review"]["criteria"]): string {
+  const parts: string[] = [];
+  if (criteria.query !== null) parts.push(`“${criteria.query}”`);
+  if (criteria.categories.length > 0) {
+    parts.push(`categories: ${criteria.categories.map(humanize).join(", ")}`);
+  }
+  if (criteria.workModels.length > 0) {
+    parts.push(`work model: ${criteria.workModels.map(humanize).join(", ")}`);
+  }
+  if (criteria.seniorities.length > 0) {
+    parts.push(`seniority: ${criteria.seniorities.map(humanize).join(", ")}`);
+  }
+  if (criteria.locations.length > 0) parts.push(`location: ${criteria.locations.join(", ")}`);
+  if (criteria.skills.length > 0) parts.push(`skills: ${criteria.skills.join(", ")}`);
+  if (criteria.excludeKeywords.length > 0) {
+    parts.push(`exclude: ${criteria.excludeKeywords.join(", ")}`);
+  }
+  if (criteria.salary !== null) {
+    const range = [criteria.salary.minimum, criteria.salary.maximum]
+      .filter((value): value is number => value !== null)
+      .map((value) => value.toLocaleString("en-US"));
+    const amount =
+      range.length === 2 ? `${range[0]}–${range[1]}` : range[0] === undefined ? "any" : range[0];
+    const currency =
+      criteria.salary.currency === null ? "currency unspecified" : criteria.salary.currency;
+    parts.push(
+      `salary: ${currency} ${amount} per ${criteria.salary.period}; undisclosed: ${criteria.salary.unknownPolicy}`,
+    );
+  }
+  if (criteria.postedWithinDays !== null) {
+    parts.push(`posted within ${String(criteria.postedWithinDays)} days`);
+  }
+  parts.push(`sort: ${humanize(criteria.sort)}`, `up to ${String(criteria.limit)} matches`);
+  if (criteria.unresolvedAssumptions.length > 0) {
+    parts.push(`assumptions: ${criteria.unresolvedAssumptions.join(", ")}`);
+  }
+  return parts.join(" · ");
+}
+
+function describeRecurrence(recurrence: RequestSearchAlertResult["review"]["recurrence"]): string {
+  if (recurrence.frequency === "daily") {
+    return `Daily at ${recurrence.time} (${recurrence.timeZone})`;
+  }
+  return `Weekly on ${naturalList(recurrence.days.map(humanize))} at ${recurrence.time} (${recurrence.timeZone})`;
 }
 
 export function createSavedToolManifests(
@@ -135,6 +356,113 @@ export function createSavedToolManifests(
         });
       } catch (error) {
         return safeWebMcpErrorResult(error, signal, "Saved alert state accepts no arguments.");
+      }
+    },
+  };
+
+  const requestSearchAlert: ToolManifest<unknown, SavedToolOutput> = {
+    name: "request_search_alert",
+    purpose: "Prepare one email job alert for an explicit decision in the external agent client.",
+    description:
+      "Prepare an exact review for one saved search, schedule, and email destination. Use preferences the person supplied. This sends a 6-digit mailbox code, creates no active alert, and requires the person's explicit decision through decide_search_alert.",
+    inputSchema: requestAlertInputSchema,
+    annotations: { readOnlyHint: false, untrustedContentHint: true },
+    async execute(input, { signal }) {
+      try {
+        const parsed = requestAlertInput.parse(input);
+        const result = await dependencies.requestSearchAlert(
+          {
+            name: parsed.name,
+            criteria: normalizeJobSearchCriteria(parsed.criteria),
+            recurrence: parsed.recurrence,
+            delivery: { channel: "email", email: parsed.email },
+          },
+          { signal },
+        );
+        return requiresUserActionWebMcpResult({
+          summary:
+            "The exact job alert is ready for the person's consent and mailbox code in the agent client.",
+          kind: "data_consent",
+          surface: "search_alert_consent",
+          requestId: result.requestId,
+          nextTool: "decide_search_alert",
+          maximumBytes: MAX_EXACT_REVIEW_RESULT_BYTES,
+          decisionContext: {
+            reviewToken: result.reviewToken,
+            expiresAt: result.expiresAt,
+            review: result.review,
+          },
+          presentation: {
+            title: "Review this job alert",
+            prompt:
+              "Review the exact search, schedule, destination, data use, and retention. Enter the emailed code only if you want to turn it on.",
+            confirmLabel: "Verify and turn on",
+            facts: [
+              { key: "Search", value: describeSearchCriteria(result.review.criteria) },
+              { key: "Delivery", value: result.review.maskedDestination },
+              { key: "Schedule", value: describeRecurrence(result.review.recurrence) },
+              { key: "First check", value: result.review.firstRunAt },
+              { key: "Purpose", value: result.review.purpose },
+              {
+                key: "Data",
+                value: result.review.dataCategories
+                  .map((category, index) =>
+                    index === 0 ? humanize(category) : category.replaceAll("_", " "),
+                  )
+                  .join(" and "),
+              },
+              { key: "Retention", value: result.review.retention },
+              { key: "Withdrawal", value: result.review.withdrawal },
+              { key: "Privacy notice", value: result.review.privacyNoticeVersion },
+            ],
+          },
+        });
+      } catch (error) {
+        return safeWebMcpErrorResult(
+          error,
+          signal,
+          "Provide a name, raw search criteria, recurrence, and delivery email.",
+        );
+      }
+    },
+  };
+
+  const decideSearchAlert: ToolManifest<unknown, SavedToolOutput> = {
+    name: "decide_search_alert",
+    purpose: "Record the person's exact alert decision from the external agent client.",
+    description:
+      "Continue the exact request from request_search_alert. Approval requires the person's explicit decision and the 6-digit code sent to the reviewed email; decline requires no code. Never infer approval or invent a code. This activates only the unchanged reviewed alert.",
+    inputSchema: decisionInputSchema,
+    annotations: { readOnlyHint: false, untrustedContentHint: true },
+    async execute(input, { signal }) {
+      try {
+        const parsed = decisionInput.parse(input);
+        const result = decideSearchAlertResultSchema.parse(
+          await dependencies.decideSearchAlert({ ...parsed, channel: "agent_client" }, { signal }),
+        );
+        return completedWebMcpResult({
+          summary: result.summary,
+          data: {
+            requestId: result.requestId,
+            decision: result.decision,
+            savedSearchId: result.savedSearchId,
+            scheduleId: result.scheduleId,
+            nextRunAt: result.nextRunAt,
+            decidedAt: result.decidedAt,
+          },
+          resources: [
+            { type: "saved_search", id: result.savedSearchId, label: "Saved job search" },
+            ...(result.scheduleId === null
+              ? []
+              : [{ type: "job_alert", id: result.scheduleId, label: "Active job alert" }]),
+          ],
+        });
+      } catch (error) {
+        return safeWebMcpErrorResult(
+          error,
+          signal,
+          "Provide the exact review request and the person's approval with code or decline.",
+        );
       }
     },
   };
@@ -300,5 +628,12 @@ export function createSavedToolManifests(
     },
   };
 
-  return [getSavedAlerts, setJobAlertState, openSavedSearch, getLatestSearchUpdate];
+  return [
+    getSavedAlerts,
+    requestSearchAlert,
+    decideSearchAlert,
+    setJobAlertState,
+    openSavedSearch,
+    getLatestSearchUpdate,
+  ];
 }

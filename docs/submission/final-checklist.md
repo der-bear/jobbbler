@@ -18,11 +18,15 @@
 
 - [ ] Verify WebMCP in a supported browser context using the real registered
       tools.
-- [ ] Verify the global Agent layer on more than one route: the same 24 focused
+- [ ] Verify the global Agent layer on more than one route: the same 26 focused
       imperative tools stay registered everywhere, and state-gated tools
       answer with a clear next step when they are not ready.
 - [ ] Record actual registration/readiness, tool activity, search, compare,
       saved alert, and application boundaries.
+- [ ] Demonstrate the agent-native alert pair from the external client:
+      `request_search_alert` returns the exact review with a masked destination,
+      the person decides and supplies the mailbox code there, and
+      `decide_search_alert` activates only the unchanged request.
 - [ ] Confirm the video matches the storyboard's 0–160s beats and narration
       lines, including the delta beat (“Since the last check…”) and the
       person's decision stop before anything is shared or submitted.
@@ -37,6 +41,9 @@
 
 - [ ] Use a synthetic/owned verified endpoint; do not display its full address
       or OTP.
+- [ ] Verify a declined alert review creates no schedule, a missing or wrong
+      mailbox code activates nothing, and an approved exact review produces one
+      non-null schedule and a retry-stable receipt.
 - [ ] Show real latest-run and delivery state, including a truthful retry-safe
       state if used.
 - [ ] Use the clearly fictional internal-demo employer for application footage.

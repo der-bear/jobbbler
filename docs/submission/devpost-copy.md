@@ -35,6 +35,14 @@ once; after the tab closes, Jobbbler's own server keeps checking on schedule —
 an honest server-side continuation, not a claim that the browser agent remains
 alive.
 
+That setup is agent-native too. `request_search_alert` prepares the exact
+criteria, recurrence, masked email destination, purpose, retention, and right
+to withdraw, then sends a six-digit mailbox code. The external agent client
+presents that review and collects the person's decision. Only
+`decide_search_alert` with the same expiring server request — and the code on
+approval — activates the unchanged schedule. No Jobbbler page interaction or
+account form is required, and the agent cannot self-approve.
+
 The next time the agent asks, `get_latest_search_update` answers with only
 what changed, not the full result list again: "Since the last check: three new
 roles, one updated, two closed." The person hears the delta, decides in
@@ -80,7 +88,7 @@ When the journey reaches an application, speed stops being the point.
 > safest useful path through them—without executing the plan or granting
 > authority.
 
-Jobbbler registers 24 focused WebMCP tools directly in the page. The same set
+Jobbbler registers 26 focused WebMCP tools directly in the page. The same set
 stays discoverable on every page, so an agent never loses a capability by
 navigating. Private and workflow-specific tools are state-gated at execution —
 when their required ID, ownership, or stage is not ready they return a clear
@@ -113,16 +121,17 @@ Jobbbler is a TypeScript monorepo with a Next.js web app, domain packages,
 portable SQLite/PostgreSQL storage adapters, connector workers, and an
 accessible shared UI system. Its catalog normalizes policy-controlled job
 records, retains source evidence, and ranks salaries currency-aware (EUR, USD,
-GBP, CAD at pinned rates) with human-readable evidence strings. All 24 focused
+GBP, CAD at pinned rates) with human-readable evidence strings. All 26 focused
 WebMCP tools are registered on every page and gate private or state-specific
 behavior at execution time.
 
 WebMCP capability is live while the page is open; durable alerts are an honest
 server-side continuation, not a claim that the browser agent remains alive.
 Alerts evaluate saved-search changes deterministically, queue idempotent
-deliveries, and require a verified email endpoint — and the first visit needs
-no account at all: a loginless private owner session with passwordless email
-recovery.
+deliveries, and require a verified email endpoint. The request/decision pair
+binds the person's external-client decision to one exact alert policy and
+mailbox challenge. The first visit needs no account at all: a loginless private
+owner session with passwordless email recovery.
 
 The application flow is agent-first with request-bound human decisions. The
 agent checks readiness, calls `request_application_assistance`, and waits while
@@ -165,7 +174,7 @@ request; an incompatible pending grant is withdrawn and replaced.
 
 ## Accomplishments we are proud of
 
-- A real WebMCP surface: 24 focused tools for job, comparison, saved-search,
+- A real WebMCP surface: 26 focused tools for job, comparison, saved-search,
   and application work — all discoverable from any page, each honest about
   when its prerequisites have not arrived.
 - A zero-configuration website encounter: the agent opens Jobbbler and
@@ -176,6 +185,8 @@ request; an incompatible pending grant is withdrawn and replaced.
 - A delta channel (`get_latest_search_update`) that reports only what changed
   since the last check, backed by a worker that keeps running after the tab
   closes.
+- An agent-native alert activation pair that combines an exact consent review,
+  mailbox verification, idempotent scheduling, and no required site touch.
 - Capability negotiation (`get_job_application_capability`) that states up
   front what an agent may prepare and what stays human.
 - Search, comparison, saved alerts, and an internal demo application form

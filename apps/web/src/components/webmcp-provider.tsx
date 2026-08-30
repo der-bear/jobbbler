@@ -44,6 +44,7 @@ import {
 import { compareApiUrl } from "@/features/compare/compare-state";
 import { createJobDetailToolManifests } from "@/features/job-detail/webmcp-tools";
 import { createSearchToolManifests } from "@/features/search/webmcp-tools";
+import { decideSearchAlert, requestSearchAlert } from "@/features/saved/search-alert-client";
 import { createSavedToolManifests } from "@/features/saved/webmcp-tools";
 import { createSiteWideToolManifests } from "@/features/site-wide-webmcp-tools";
 import { ApiClientError, queryApi } from "@/lib/query-client";
@@ -194,6 +195,8 @@ function savedManifests(
       queryApi("/api/v1/saved-searches", savedSearchSchema.array(), { signal }),
     listSchedules: ({ signal }) =>
       queryApi("/api/v1/schedules", jobAlertScheduleSchema.array(), { signal }),
+    requestSearchAlert,
+    decideSearchAlert,
     setScheduleEnabled: (scheduleId, input, { signal }) =>
       queryApi(`/api/v1/schedules/${encodeURIComponent(scheduleId)}`, jobAlertScheduleSchema, {
         method: "PATCH",

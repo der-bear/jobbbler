@@ -32,6 +32,8 @@ function toolPurpose(tool: RegisteredToolSummary): string {
 }
 
 const approvalTools = new Set([
+  "request_search_alert",
+  "decide_search_alert",
   "request_application_assistance",
   "decide_application_assistance",
   "request_submission_review",
@@ -122,7 +124,7 @@ export function AgentGuide() {
           </li>
           <li>
             <span>3</span>
-            <p>Review the exact application in your agent client</p>
+            <p>Review requested consent or a final action in your agent client</p>
           </li>
         </ol>
         <AgentExamplePrompt className={styles["prompt"]} promptClassName={styles["promptText"]} />

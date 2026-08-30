@@ -265,6 +265,40 @@ describe("route-scoped WebMCP tool manifests", () => {
       },
     });
     expectBoundedJson(output);
+
+    const exact = await tool(manifests, "get_search_state").execute(
+      { detail: "exact" },
+      { signal: new AbortController().signal },
+    );
+    expect(exact).toMatchObject({
+      status: "completed",
+      data: {
+        ready: true,
+        total: 7,
+        criteria: {
+          query: criteria.query,
+          categories: criteria.categories,
+          workModels: criteria.workModels,
+          seniorities: criteria.seniorities,
+          locations: criteria.locations,
+          skills: criteria.skills,
+          excludeKeywords: criteria.excludeKeywords,
+          sort: criteria.sort,
+          limit: criteria.limit,
+        },
+      },
+    });
+    expect(JSON.stringify(exact)).not.toContain("truncation");
+    expect(new TextEncoder().encode(JSON.stringify(exact)).byteLength).toBeLessThanOrEqual(
+      64 * 1_024,
+    );
+
+    await expectSafeRejection(
+      tool(manifests, "get_search_state").execute(
+        { detail: "verbose" },
+        { signal: new AbortController().signal },
+      ),
+    );
   });
 
   it("creates detail route tools, forwards cancellation to typed commands, and synchronizes detail and comparison UI", async () => {

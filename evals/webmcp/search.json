@@ -16,6 +16,8 @@
     "remove_job_from_comparison",
     "add_job_to_comparison",
     "get_saved_alerts",
+    "request_search_alert",
+    "decide_search_alert",
     "set_job_alert_state",
     "open_saved_search",
     "get_latest_search_update",
@@ -187,27 +189,6 @@
       }
     },
     {
-      "id": "search-direct-start-application",
-      "category": "direct",
-      "context": {
-        "results": [
-          {
-            "id": "job_550e8400-e29b-41d4-a716-446655440000",
-            "title": "Senior Full-Stack Engineer",
-            "organization": "Jobbbler Demo Systems"
-          }
-        ]
-      },
-      "prompt": "Start a private application for the Senior Full-Stack Engineer role, but do not share or submit anything.",
-      "expected": {
-        "kind": "tool_call",
-        "tool": "get_job_application_capability",
-        "arguments": {
-          "jobId": "job_550e8400-e29b-41d4-a716-446655440000"
-        }
-      }
-    },
-    {
       "id": "search-direct-filter-vocabulary",
       "category": "direct",
       "context": {
@@ -220,6 +201,22 @@
         "kind": "tool_call",
         "tool": "get_search_filters",
         "arguments": {}
+      }
+    },
+    {
+      "id": "search-direct-open-applications-workspace",
+      "category": "direct",
+      "context": {
+        "currentRoute": "/jobs",
+        "ownerSessionAvailable": true
+      },
+      "prompt": "Open my Jobbbler Applications workspace. Do not create a new draft.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "open_jobbbler_page",
+        "arguments": {
+          "page": "applications"
+        }
       }
     },
     {

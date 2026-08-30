@@ -16,6 +16,8 @@
     "remove_job_from_comparison",
     "add_job_to_comparison",
     "get_saved_alerts",
+    "request_search_alert",
+    "decide_search_alert",
     "set_job_alert_state",
     "open_saved_search",
     "get_latest_search_update",
@@ -28,23 +30,6 @@
     "withdraw_application_consent"
   ],
   "cases": [
-    {
-      "id": "compare-direct-read-current-set",
-      "category": "direct",
-      "context": {
-        "comparisonJobIds": [
-          "job_00000001-0000-7000-8000-000000000001",
-          "job_00000004-0000-7000-8000-000000000004",
-          "job_0000000d-0000-7000-8000-00000000000d"
-        ]
-      },
-      "prompt": "Show the current comparison.",
-      "expected": {
-        "kind": "tool_call",
-        "tool": "get_comparison",
-        "arguments": {}
-      }
-    },
     {
       "id": "compare-paraphrased-read-current-set",
       "category": "paraphrased",
@@ -60,25 +45,6 @@
         "kind": "tool_call",
         "tool": "get_comparison",
         "arguments": {}
-      }
-    },
-    {
-      "id": "compare-direct-remove-second-job",
-      "category": "direct",
-      "context": {
-        "comparisonJobIds": [
-          "job_00000001-0000-7000-8000-000000000001",
-          "job_00000004-0000-7000-8000-000000000004",
-          "job_0000000d-0000-7000-8000-00000000000d"
-        ]
-      },
-      "prompt": "Remove the second job from this comparison.",
-      "expected": {
-        "kind": "tool_call",
-        "tool": "remove_job_from_comparison",
-        "arguments": {
-          "jobId": "job_00000004-0000-7000-8000-000000000004"
-        }
       }
     },
     {

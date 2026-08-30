@@ -124,6 +124,8 @@ describe("route tool manifests", () => {
       saved: createSavedToolManifests({
         listSavedSearches: never,
         listSchedules: never,
+        requestSearchAlert: never,
+        decideSearchAlert: never,
         setScheduleEnabled: never,
         onScheduleCommitted: () => undefined,
         savedSearchHref: () => "/",

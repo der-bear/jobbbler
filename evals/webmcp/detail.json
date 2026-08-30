@@ -16,6 +16,8 @@
     "remove_job_from_comparison",
     "add_job_to_comparison",
     "get_saved_alerts",
+    "request_search_alert",
+    "decide_search_alert",
     "set_job_alert_state",
     "open_saved_search",
     "get_latest_search_update",
@@ -28,58 +30,6 @@
     "withdraw_application_consent"
   ],
   "cases": [
-    {
-      "id": "detail-direct-current-job",
-      "category": "direct",
-      "context": {
-        "currentJobId": "job_00000001-0000-7000-8000-000000000001"
-      },
-      "prompt": "Show the full details for this job.",
-      "expected": {
-        "kind": "tool_call",
-        "tool": "get_job_details",
-        "arguments": {
-          "jobId": "job_00000001-0000-7000-8000-000000000001"
-        }
-      }
-    },
-    {
-      "id": "detail-paraphrased-current-job",
-      "category": "paraphrased",
-      "context": {
-        "currentJobId": "job_00000001-0000-7000-8000-000000000001"
-      },
-      "prompt": "Give me the specifics behind the role I am viewing.",
-      "expected": {
-        "kind": "tool_call",
-        "tool": "get_job_details",
-        "arguments": {
-          "jobId": "job_00000001-0000-7000-8000-000000000001"
-        }
-      }
-    },
-    {
-      "id": "detail-direct-compare-current-and-known-job",
-      "category": "direct",
-      "context": {
-        "currentJobId": "job_00000001-0000-7000-8000-000000000001",
-        "visibleJobIds": [
-          "job_00000001-0000-7000-8000-000000000001",
-          "job_00000004-0000-7000-8000-000000000004"
-        ]
-      },
-      "prompt": "Compare this job with job_00000004-0000-7000-8000-000000000004.",
-      "expected": {
-        "kind": "tool_call",
-        "tool": "compare_jobs",
-        "arguments": {
-          "jobIds": [
-            "job_00000001-0000-7000-8000-000000000001",
-            "job_00000004-0000-7000-8000-000000000004"
-          ]
-        }
-      }
-    },
     {
       "id": "detail-paraphrased-compare-current-and-known-job",
       "category": "paraphrased",
@@ -153,6 +103,25 @@
       "expected": {
         "kind": "tool_call",
         "tool": "get_job_application_capability",
+        "arguments": {
+          "jobId": "job_00000001-0000-7000-8000-000000000001"
+        }
+      }
+    },
+    {
+      "id": "detail-direct-prepare-managed-application",
+      "category": "direct",
+      "context": {
+        "currentJobId": "job_00000001-0000-7000-8000-000000000001",
+        "applicationCapability": {
+          "applyMode": "internal",
+          "internalPreparationAvailable": true
+        }
+      },
+      "prompt": "You already confirmed this is a managed internal role. Prepare its private application draft, but do not share or submit anything.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "prepare_application",
         "arguments": {
           "jobId": "job_00000001-0000-7000-8000-000000000001"
         }

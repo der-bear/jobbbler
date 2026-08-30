@@ -37,7 +37,7 @@ interface WorkflowPlan {
   readonly branches?: readonly WorkflowBranch[];
 }
 
-export const workflowVersion = "2.1";
+export const workflowVersion = "2.2";
 export const MAX_WORKFLOW_PLAN_RESULT_BYTES = 2_048;
 
 export const workflowBoundaries: readonly string[] = [
@@ -115,11 +115,28 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
         requiredInputs: ["known search criteria"],
         humanAction: false,
       },
-      { intent: "Confirm the exact criteria", tool: "get_search_state", humanAction: false },
       {
-        intent: "Save it as an email alert",
-        tool: null,
-        humanAction: "Choose Save alert and verify a delivery email on the Saved page.",
+        intent: "Read criteria in the exact reusable shape",
+        tool: "get_search_state",
+        requiredInputs: ["detail=exact"],
+        humanAction: false,
+      },
+      {
+        intent: "Prepare the exact alert review and send its mailbox code",
+        tool: "request_search_alert",
+        requiredInputs: [
+          "name",
+          "criteria from get_search_state.data.criteria",
+          "recurrence",
+          "email",
+        ],
+        humanAction: "Review the exact alert and decide in the external agent client.",
+      },
+      {
+        intent: "Record the exact decision and activate only if approved",
+        tool: "decide_search_alert",
+        requiredInputs: ["requestId", "reviewToken", "decision", "6-digit code only for approval"],
+        humanAction: false,
       },
       { intent: "Review saved alerts later", tool: "get_saved_alerts", humanAction: false },
       {

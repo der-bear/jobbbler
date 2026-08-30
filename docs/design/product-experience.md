@@ -71,7 +71,7 @@ commands and policies.
   the agent-assisted application path, its draft is read-only on the site and
   its revisions, assistance decisions, and submission decisions stay in the
   external agent client. Active assistance remains request-bound and revocable.
-- A compatible browser agent can start on any page with the complete 24-tool
+- A compatible browser agent can start on any page with the complete 26-tool
   set and execute structured actions without simulating DOM clicks. Six are
   clear entry points; the rest validate their prerequisites when called. The
   same capability set remains discoverable across navigation.
@@ -89,7 +89,7 @@ commands and policies.
 
 ## Route experience
 
-The catalog has **24 focused tools**, all registered on every page. Six are
+The catalog has **26 focused tools**, all registered on every page. Six are
 clear entry points; private and stage-specific tools remain state-gated at
 execution.
 
@@ -130,12 +130,12 @@ view” button opens it. It is a transparency layer, not a competing
 workspace and not a source of authority.
 
 - The header states the panel's purpose in one line; a status row shows the
-  live WebMCP state and the 24 capabilities discoverable across Jobbbler.
+  live WebMCP state and the 26 capabilities discoverable across Jobbbler.
 - Three tabs, in this order: **Activity**, **Tools**, and **Guide**.
 - Activity entries are two-level: the human sentence comes first, then the
   technical line — tool name, status, and duration. Running work, required
   approval, and failures surface automatically.
-- The Tools tab shows all 24 tools grouped by outcome and explains that private
+- The Tools tab shows all 26 tools grouped by outcome and explains that private
   actions still require an owned draft and the correct stage.
 - The Guide tab offers “Try it in 10 seconds”, the suggested workflows, and a
   note that `plan_job_workflow` serves the same plans to agents — advisory
@@ -152,7 +152,7 @@ The submission should show a real external browser-agent session rather than a
 simulated chat inside Jobbbler:
 
 1. The user asks for a job outcome in the agent client.
-2. The agent opens Jobbbler, discovers the same 24 focused tools on any page,
+2. The agent opens Jobbbler, discovers the same 26 focused tools on any page,
    and may ask `plan_job_workflow` for recommended safe steps when useful.
 3. It invokes `search_jobs`; the real URL, filters, and results update.
 4. Navigation preserves the entire tool set; role and application actions

@@ -19,7 +19,7 @@ anything is shared or submitted.
 
 The technology that makes this possible is WebMCP — no separately installed or
 declared MCP server. A global Agent layer is available on every page: the same
-24 focused tools stay discoverable across navigation, while private and
+26 focused tools stay discoverable across navigation, while private and
 workflow-specific actions enforce IDs, ownership, and state when executed.
 
 > Not an AI job board. A proof that any data-rich website can become safely
@@ -37,7 +37,7 @@ Built for the OpenAI WebMCP Challenge.
   salary semantics, what to verify, and fit evidence stay visible in the
   interface. Salary ranking is currency-aware (EUR, USD, GBP, and CAD at pinned
   rates) and explains itself with evidence strings.
-- **Global agent layer.** Twenty-four focused tools for search, roles,
+- **Global agent layer.** Twenty-six focused tools for search, roles,
   comparison, saved alerts, and applications — all registered on every page,
   so navigation never costs an agent a capability. State-gated tools answer
   with a clear next step when
@@ -95,7 +95,7 @@ results. A browser capability is never treated as identity or authorization.
 `plan_job_workflow` returns recommended safe steps for a goal from the current
 page. It is advisory only: it plans, it never acts.
 
-The catalog has **24 focused tools**, all registered on every page. Six are
+The catalog has **26 focused tools**, all registered on every page. Six are
 clear entry points — `plan_job_workflow`, `get_search_filters`, `search_jobs`,
 `open_job_details`, `prepare_application`, and `open_jobbbler_page`. The
 remaining tools are grouped below by the product area they operate on and
@@ -109,9 +109,12 @@ validate explicit IDs, ownership, and workflow state at execution time:
   `compare_jobs`
 - Comparison `/compare`: `get_comparison`, `add_job_to_comparison`,
   `remove_job_from_comparison`
-- Saved `/saved`: `get_saved_alerts`, `set_job_alert_state`,
-  `open_saved_search`, `get_latest_search_update` (reads only what changed
-  since the last check, not the full result list)
+- Saved `/saved`: `get_saved_alerts`, `request_search_alert`,
+  `decide_search_alert`, `set_job_alert_state`, `open_saved_search`, and
+  `get_latest_search_update` (reads only what changed since the last check,
+  not the full result list). Alert setup stays in the external agent client:
+  one tool prepares the exact review and sends a mailbox code; the second
+  accepts only the person's request-bound decision and, on approval, that code.
 - Application `/apply/:draftId`: seven outcome-oriented tools —
   `get_application_readiness`, `request_application_assistance`,
   `decide_application_assistance`, `propose_application_updates`,
@@ -120,13 +123,14 @@ validate explicit IDs, ownership, and workflow state at execution time:
   its stage has not arrived
 
 Readiness, activity, and safe-error results never expose an owner ID, candidate
-answer, contact detail, reusable agent token, confirmation secret, email
-destination, or ciphertext. The one deliberate exception is
-`request_submission_review`: after preparation authority exists, its bounded
-pending-decision result returns the exact reviewed field values with every
-sensitive field marked explicitly so the external agent client can show what
-would be submitted. It still returns no reusable credential and submits
-nothing.
+answer, contact detail, reusable agent token, confirmation secret, raw email
+destination, or ciphertext. Two deliberately bounded pending-decision results
+carry only what the external agent client needs to present an exact review.
+`request_submission_review` returns the reviewed application field values with
+every sensitive field marked explicitly. `request_search_alert` returns the
+masked destination, exact policy, expiry, and an opaque request-bound
+continuation token. Neither result returns a reusable credential or performs
+the final action.
 
 See the [actual `registerTool` implementation](packages/webmcp/src/register.ts),
 the [WebMCP capability matrix](docs/architecture/webmcp-capability-matrix.md),
@@ -136,7 +140,7 @@ and the [authorization and consent design](docs/architecture/agent-authorization
 
 ```mermaid
 flowchart LR
-  Browser[React interface + global 24-tool WebMCP surface] --> API[Next.js BFF and command boundary]
+  Browser[React interface + global 26-tool WebMCP surface] --> API[Next.js BFF and command boundary]
   API --> Domain[Framework-free domain services]
   Domain --> Storage[Portable repository contracts]
   Storage --> SQLite[(SQLite local)]

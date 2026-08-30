@@ -20,7 +20,7 @@ describe("AgentTools", () => {
     );
 
     expect(markup).toContain("Available tools");
-    expect(markup).toContain("24 tools");
+    expect(markup).toContain("26 tools");
     expect(markup).toContain("Find");
     expect(markup).toContain("Inspect and compare");
     expect(markup).toContain("Alerts");
@@ -31,6 +31,7 @@ describe("AgentTools", () => {
     expect(markup).toContain("Human decision");
     expect(markup).toContain("get_search_state");
     expect(markup).toContain("decide_application_submission");
+    expect(markup).toContain("decide_search_alert");
     expect(markup).not.toContain("Plan job workflow");
     expect(markup).not.toContain(">Read<");
     expect(markup).not.toContain(">Action<");
@@ -58,7 +59,7 @@ describe("AgentGuide", () => {
     expect(markup).toContain("2");
     expect(markup).toContain("Paste it into your agent client");
     expect(markup).toContain("3");
-    expect(markup).toContain("Review the exact application in your agent client");
+    expect(markup).toContain("Review requested consent or a final action in your agent client");
     expect(markup).toContain("What the tools handle");
     expect(markup).toContain("What stays with you");
     expect(markup).toContain("Prepare answers and a short motivation note");

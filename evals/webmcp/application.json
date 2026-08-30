@@ -16,6 +16,8 @@
     "remove_job_from_comparison",
     "add_job_to_comparison",
     "get_saved_alerts",
+    "request_search_alert",
+    "decide_search_alert",
     "set_job_alert_state",
     "open_saved_search",
     "get_latest_search_update",
@@ -228,42 +230,6 @@
       "expected": {
         "kind": "tool_call",
         "tool": "withdraw_application_consent",
-        "arguments": {
-          "draftId": "application_550e8400-e29b-41d4-a716-446655440000"
-        }
-      }
-    },
-    {
-      "id": "about-plan-find-roles-before-execution",
-      "category": "direct",
-      "route": "/about/webmcp",
-      "context": {
-        "searchCriteriaKnown": false
-      },
-      "prompt": "I am reading the WebMCP guide. Give me an advisory sequence for finding and inspecting matching roles, but do not execute a search or open anything yet.",
-      "expected": {
-        "kind": "tool_call",
-        "tool": "plan_job_workflow",
-        "arguments": {
-          "goal": "find_roles"
-        }
-      }
-    },
-    {
-      "id": "application-recover-assistance-after-withdrawal",
-      "category": "direct",
-      "context": {
-        "application": {
-          "draftId": "application_550e8400-e29b-41d4-a716-446655440000",
-          "agentAuthorityStatus": "withdrawn",
-          "dataPermissionStatus": "withdrawn",
-          "missingFieldKeys": ["work_authorization"]
-        }
-      },
-      "prompt": "I changed my mind and want fresh help preparing this application. Ask me again for permission; do not reuse the authority or consent I withdrew.",
-      "expected": {
-        "kind": "tool_call",
-        "tool": "request_application_assistance",
         "arguments": {
           "draftId": "application_550e8400-e29b-41d4-a716-446655440000"
         }
