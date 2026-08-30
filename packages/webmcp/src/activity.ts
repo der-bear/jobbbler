@@ -56,6 +56,11 @@ export class AgentActivityStore {
     return () => this.#listeners.delete(listener);
   }
 
+  clear(): void {
+    if (this.#activities.length === 0) return;
+    this.#publish([]);
+  }
+
   start(
     toolName: string,
     safeSummary: string,
@@ -78,7 +83,12 @@ export class AgentActivityStore {
     return id;
   }
 
-  finish(id: string, status: Exclude<AgentActivityStatus, "running">, safeSummary: string): void {
+  finish(
+    id: string,
+    status: Exclude<AgentActivityStatus, "running">,
+    safeSummary: string,
+    affectedResourceIds?: readonly string[],
+  ): void {
     const index = this.#activities.findIndex((activity) => activity.id === id);
     if (index === -1) return;
     const current = this.#activities[index]!;
@@ -91,6 +101,9 @@ export class AgentActivityStore {
               status,
               safeSummary,
               completedAt: this.#clock.now().toISOString(),
+              ...(affectedResourceIds === undefined
+                ? {}
+                : { affectedResourceIds: [...affectedResourceIds] }),
             }
           : activity,
       ),
@@ -98,10 +111,7 @@ export class AgentActivityStore {
   }
 
   mergeCommitted(activities: readonly AgentActivity[]): void {
-    const committed = activities.map((activity) => ({
-      ...toolActivitySchema.parse(activity),
-      affectedResourceIds: [],
-    }));
+    const committed = activities.map((activity) => toolActivitySchema.parse(activity));
     const next = [...this.#activities];
     let changed = false;
     for (const activity of committed) {
@@ -118,8 +128,12 @@ export class AgentActivityStore {
         continue;
       }
       const current = next[index]!;
-      if (JSON.stringify(current) === JSON.stringify(activity)) continue;
-      next[index] = activity;
+      const reconciled =
+        activity.affectedResourceIds.length === 0 && current.affectedResourceIds.length > 0
+          ? { ...activity, affectedResourceIds: [...current.affectedResourceIds] }
+          : activity;
+      if (JSON.stringify(current) === JSON.stringify(reconciled)) continue;
+      next[index] = reconciled;
       changed = true;
     }
     if (!changed) return;

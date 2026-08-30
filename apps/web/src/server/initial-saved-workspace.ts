@@ -1,4 +1,4 @@
-import { ownerSummary } from "@jobbbler/core-domain";
+import { isDomainError, ownerSummary } from "@jobbbler/core-domain";
 
 import type { SavedWorkspaceInitialData } from "@/features/saved/saved-workspace-loader";
 
@@ -38,7 +38,8 @@ export async function loadInitialSavedWorkspace(
       savedSearches: searches,
       schedules,
     };
-  } catch {
-    return null;
+  } catch (error) {
+    if (isDomainError(error) && error.code === "UNAUTHORIZED") return null;
+    throw error;
   }
 }

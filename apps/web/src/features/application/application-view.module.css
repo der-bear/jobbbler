@@ -15,6 +15,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  min-block-size: 44px;
   color: var(--color-ink-muted);
   font-size: 13px;
   font-weight: 650;
@@ -29,7 +30,6 @@
 .eyebrow {
   margin: 22px 0 0;
   color: var(--color-ink-muted);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.1em;
@@ -83,7 +83,6 @@
   block-size: 22px;
   border: 1px solid var(--color-line-strong);
   border-radius: 50%;
-  font-family: var(--jb-font-mono);
   font-size: 11px;
 }
 
@@ -147,7 +146,6 @@
   flex: 0 0 auto;
   margin: 0;
   color: var(--jb-signal);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -165,6 +163,13 @@
   display: grid;
   gap: 22px;
   margin-block-start: 34px;
+}
+
+.saveStatus {
+  margin: 10px 0 0;
+  color: var(--color-ink-subtle);
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .field {
@@ -188,7 +193,6 @@
 .fieldLabel span,
 .suggestion {
   color: var(--color-ink-subtle);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -269,7 +273,7 @@
 
 .actions button,
 .primaryLink {
-  min-block-size: 42px;
+  min-block-size: 44px;
   border: 1px solid var(--color-line-strong);
   padding: 9px 15px;
   color: var(--color-ink);
@@ -337,7 +341,6 @@
   display: block;
   margin-block-start: 4px;
   color: var(--color-ink-subtle);
-  font-family: var(--jb-font-mono);
   font-size: 8px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -476,7 +479,6 @@
 .receiptDate {
   margin: 10px 0 0;
   color: var(--jb-signal);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -504,6 +506,38 @@
   block-size: 34px;
   margin-block-end: 18px;
   color: var(--jb-signal);
+}
+
+.statusIcon {
+  inline-size: 34px;
+  block-size: 34px;
+  margin-block-end: 18px;
+  color: var(--color-danger, #b84f45);
+}
+
+.submittedSnapshot {
+  margin-block-start: 34px;
+  border-block-start: 2px solid var(--jb-signal);
+  padding-block-start: 20px;
+}
+
+.submittedSnapshot h3 {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 17px;
+  font-weight: 620;
+  letter-spacing: -0.025em;
+}
+
+.submittedSnapshot > p {
+  margin: 7px 0 0;
+  color: var(--color-ink-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.submittedSnapshot dd {
+  white-space: pre-wrap;
 }
 
 .primaryLink {
@@ -648,4 +682,34 @@
   color: var(--color-ink-muted);
   font-size: 13px;
   line-height: 1.5;
+}
+
+/*
+ * Loading mirrors the review document rather than announcing itself as a
+ * headline, so the page keeps its shape while the draft arrives.
+ */
+.skeleton {
+  display: grid;
+  gap: 14px;
+}
+
+.skeleton span {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+}
+
+.skeletonTitle {
+  block-size: 34px;
+  inline-size: min(100%, 24ch);
+}
+
+.skeletonLine {
+  block-size: 14px;
+  inline-size: min(100%, 56ch);
+}
+
+.skeletonLineShort {
+  block-size: 14px;
+  inline-size: min(100%, 38ch);
 }

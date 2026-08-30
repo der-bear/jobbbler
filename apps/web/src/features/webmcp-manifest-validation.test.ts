@@ -42,6 +42,7 @@ function applicationManifests(
   return createApplicationToolManifests({
     currentReadiness: () => ({
       state,
+      roleStatus: "open",
       missingFieldKeys: missing ? ["full_name"] : [],
       missingFieldLabels: missing ? ["Full name"] : [],
       nextAction: state.receiptStatus !== "none" ? "complete" : missing ? "prepare" : "review",
@@ -76,6 +77,12 @@ describe("route tool manifests", () => {
         disposition: "created" as const,
         nextTool: "get_application_readiness" as const,
       }),
+      startOwnerRecovery: never,
+      completeOwnerRecovery: never,
+      startEmailVerification: never,
+      completeEmailVerification: never,
+      listApplications: never,
+      onWorkspaceRecovered: () => undefined,
     });
     const candidates = [
       createWorkflowPlannerTool({ route: "/about/webmcp", availableTools: () => [] }),
@@ -87,7 +94,11 @@ describe("route tool manifests", () => {
       "get_search_filters",
       "search_jobs",
       "open_job_details",
+      "prepare_application",
+      "get_applications",
       "open_jobbbler_page",
+      "enable_workspace_recovery",
+      "recover_jobbbler_workspace",
     ];
     const core = names.map((name) => {
       const manifest = candidates.find((candidate) => candidate.name === name);
@@ -127,7 +138,9 @@ describe("route tool manifests", () => {
         requestSearchAlert: never,
         decideSearchAlert: never,
         setScheduleEnabled: never,
+        deleteSavedSearch: never,
         onScheduleCommitted: () => undefined,
+        onSavedSearchDeleted: () => undefined,
         savedSearchHref: () => "/",
         getLatestRun: never,
         onNavigate: () => undefined,

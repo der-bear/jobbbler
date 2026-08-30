@@ -20,8 +20,33 @@ export function resolveCompareSelection(values: readonly string[]): CompareSelec
 
 export function compareApiUrl(jobIds: readonly string[], criteriaSearch = ""): string {
   const parameters = new URLSearchParams(criteriaSearch);
+  parameters.delete("compare");
+  parameters.delete("id");
   for (const jobId of jobIds) parameters.append("id", jobId);
   return `/api/v1/jobs/compare?${parameters.toString()}`;
+}
+
+export function comparePageHref(jobIds: readonly string[], criteriaSearch = ""): string {
+  const parameters = new URLSearchParams(criteriaSearch);
+  parameters.delete("compare");
+  parameters.delete("id");
+  for (const jobId of jobIds) parameters.append("id", jobId);
+  return parameters.size === 0 ? "/compare" : `/compare?${parameters.toString()}`;
+}
+
+export function comparisonSearchHref(jobIds: readonly string[], criteriaSearch = ""): string {
+  const parameters = new URLSearchParams(criteriaSearch);
+  parameters.delete("compare");
+  parameters.delete("id");
+  for (const jobId of jobIds) parameters.append("compare", jobId);
+  return parameters.size === 0 ? "/jobs" : `/jobs?${parameters.toString()}`;
+}
+
+export function removeComparedJob(
+  jobIds: readonly string[],
+  removedJobId: string,
+): readonly string[] {
+  return jobIds.filter((jobId) => jobId !== removedJobId);
 }
 
 export function comparisonRowVisibility(fits: readonly JobFit[]): Readonly<{

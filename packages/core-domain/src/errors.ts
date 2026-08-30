@@ -1,5 +1,18 @@
 import type { ApiErrorCode } from "@jobbbler/contracts";
 
+const domainErrorBrand = Symbol.for("@jobbbler/core-domain/DomainError");
+const apiErrorCodes = new Set<string>([
+  "VALIDATION",
+  "UNAUTHORIZED",
+  "FORBIDDEN",
+  "NOT_FOUND",
+  "CONFLICT",
+  "RATE_LIMITED",
+  "DEPENDENCY",
+  "CANCELLED",
+  "INTERNAL",
+]);
+
 export interface DomainErrorOptions {
   code: ApiErrorCode;
   message: string;
@@ -16,6 +29,7 @@ export interface SafeDomainError {
 }
 
 export class DomainError extends Error {
+  readonly [domainErrorBrand] = true;
   readonly code: ApiErrorCode;
   readonly retryable: boolean;
   readonly details: Readonly<Record<string, unknown>> | undefined;
@@ -40,5 +54,31 @@ export class DomainError extends Error {
 }
 
 export function isDomainError(value: unknown): value is DomainError {
-  return value instanceof DomainError;
+  if (value instanceof DomainError) return true;
+  if (typeof value !== "object" || value === null) return false;
+
+  const candidate = value as {
+    readonly [domainErrorBrand]?: unknown;
+    readonly code?: unknown;
+    readonly details?: unknown;
+    readonly message?: unknown;
+    readonly name?: unknown;
+    readonly retryable?: unknown;
+    readonly toSafeObject?: unknown;
+  };
+  const detailsAreSafe =
+    candidate.details === undefined ||
+    (typeof candidate.details === "object" &&
+      candidate.details !== null &&
+      !Array.isArray(candidate.details));
+
+  return (
+    (candidate[domainErrorBrand] === true || candidate.name === "DomainError") &&
+    typeof candidate.code === "string" &&
+    apiErrorCodes.has(candidate.code) &&
+    typeof candidate.message === "string" &&
+    typeof candidate.retryable === "boolean" &&
+    detailsAreSafe &&
+    typeof candidate.toSafeObject === "function"
+  );
 }

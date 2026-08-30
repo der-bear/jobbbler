@@ -10,14 +10,25 @@ const seededRole = {
   company: "Jobbbler Demo Systems",
   title: "Senior Full-Stack Engineer",
 } as const;
+const missingJobId = "job_750e8400-e29b-41d4-a716-446655440000";
 
 function resultCard(page: Page, title: string, company: string) {
   return page.getByRole("article", { name: `${title} at ${company}` });
 }
 
+async function firstJobIds(page: Page, count = 2): Promise<readonly string[]> {
+  const response = await page.request.get(`/api/v1/jobs/search?limit=${String(count)}`);
+  expect(response.ok()).toBe(true);
+  const payload = (await response.json()) as {
+    readonly data: { readonly jobs: readonly { readonly id: string }[] };
+  };
+  return payload.data.jobs.slice(0, count).map(({ id }) => id);
+}
+
 const pageErrors = new WeakMap<Page, () => readonly string[]>();
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page }, testInfo) => {
+  const expectsComparisonFailure = testInfo.title.includes("when comparison loading fails");
   pageErrors.set(
     page,
     collectPageErrors(page, {
@@ -25,6 +36,17 @@ test.beforeEach(async ({ page }) => {
         // Signed-out visitors have no private activity stream; the panel then
         // renders its intentional browser-mode empty state.
         { method: "GET", pathname: "/api/v1/owners/activity", status: 401 },
+        { method: "GET", pathname: `/api/v1/jobs/${missingJobId}`, status: 404 },
+        ...(expectsComparisonFailure
+          ? [{ method: "GET" as const, pathname: "/api/v1/jobs/compare", status: 502 }]
+          : []),
+      ],
+      expectedRequestFailures: [
+        {
+          errorText: "net::ERR_ABORTED",
+          method: "GET",
+          pathname: `/api/v1/jobs/${missingJobId}`,
+        },
       ],
     }),
   );
@@ -122,6 +144,186 @@ test.describe("public job search workspace", () => {
     await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
   });
 
+  test("keeps every catalog result reachable without replacing earlier pages", async ({ page }) => {
+    await page.goto("/jobs");
+
+    const roles = page.getByRole("article");
+    await expect(roles).toHaveCount(20);
+    const firstRoleName = await roles.first().getAttribute("aria-label");
+
+    const loadMore = page.getByRole("button", { name: /Load more roles/i });
+    await expect(loadMore).toHaveAttribute("aria-controls", "search-results");
+    await loadMore.click();
+
+    await expect(roles).toHaveCount(40);
+    await expect(roles.first()).toHaveAttribute("aria-label", firstRoleName ?? "");
+    await expect(page.getByText(/40 of \d+ matching jobs loaded/i)).toBeAttached();
+  });
+
+  test("keeps comparison agent-driven without adding controls to ordinary search", async ({
+    page,
+  }) => {
+    await page.goto("/jobs");
+
+    await expect(page.getByRole("button", { name: /^Add .+ to comparison$/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Remove .+ from comparison$/ })).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "Comparison selection" })).toHaveCount(0);
+
+    const jobIds = await firstJobIds(page);
+    await page.goto(`/compare?id=${jobIds.join("&id=")}`);
+    await expect(page.getByRole("region", { name: "Role comparison" })).toBeVisible();
+  });
+
+  test("offers retry, change-selection, and return paths when comparison loading fails", async ({
+    page,
+  }) => {
+    const jobIds = await firstJobIds(page);
+    let compareRequests = 0;
+    let failComparison = true;
+    await page.route("**/api/v1/jobs/compare?**", async (route) => {
+      compareRequests += 1;
+      if (failComparison) {
+        await route.fulfill({
+          body: JSON.stringify({
+            ok: false,
+            error: {
+              code: "DEPENDENCY",
+              message: "Comparison is temporarily unavailable.",
+              retryable: true,
+              requestId: "req_550e8400-e29b-41d4-a716-446655440000",
+            },
+          }),
+          contentType: "application/json",
+          status: 502,
+        });
+        return;
+      }
+      await route.continue();
+    });
+
+    await page.goto(`/compare?id=${jobIds.join("&id=")}`);
+    await expect(
+      page.getByRole("heading", { name: "Comparison is temporarily unavailable." }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Change selection" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Return to search" })).toBeVisible();
+
+    failComparison = false;
+    await page.getByRole("button", { name: "Retry comparison" }).click();
+    await expect(page.getByRole("region", { name: "Role comparison" })).toBeVisible();
+    expect(compareRequests).toBe(2);
+
+    const primaryTargets = [
+      page.getByRole("link", { name: /^Open .+ role$/ }).first(),
+      page.getByRole("link", { name: /^Remove .+ from comparison$/ }).first(),
+      page.getByRole("link", { name: "Add another role" }),
+      page.getByRole("link", { name: "Return to search" }),
+    ];
+    for (const target of primaryTargets) {
+      const box = await target.boundingBox();
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+    }
+  });
+
+  test("returns a useful page state and NOT_FOUND contract for a valid missing role", async ({
+    page,
+  }) => {
+    const response = await page.request.get(`/api/v1/jobs/${missingJobId}`);
+    expect(response.status()).toBe(404);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: false,
+      error: { code: "NOT_FOUND", message: "Job was not found." },
+    });
+
+    await page.goto(`/jobs/${missingJobId}`);
+    await expect(
+      page.getByRole("heading", {
+        name: "This role is no longer available in the current catalog.",
+      }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Return to search" })).toBeVisible();
+  });
+
+  test("ignores an older next page after the search criteria change", async ({ page }) => {
+    let markNextPageStarted: (() => void) | undefined;
+    const nextPageStarted = new Promise<void>((resolve) => {
+      markNextPageStarted = resolve;
+    });
+    await page.exposeFunction("markNextPageStarted", () => {
+      markNextPageStarted?.();
+    });
+    await page.addInitScript(() => {
+      type DeferredFetchWindow = Window &
+        typeof globalThis & {
+          markNextPageStarted: () => Promise<void>;
+          releaseNextPage: () => void;
+        };
+      const deferredWindow = window as DeferredFetchWindow;
+      const originalFetch = window.fetch.bind(window);
+      let releaseNextPage = () => undefined;
+      const nextPageReleased = new Promise<void>((resolve) => {
+        releaseNextPage = resolve;
+      });
+      deferredWindow.releaseNextPage = releaseNextPage;
+      window.fetch = async (input, init) => {
+        const url = new URL(
+          input instanceof Request ? input.url : input.toString(),
+          window.location.href,
+        );
+        if (url.pathname !== "/api/v1/jobs/search" || !url.searchParams.has("cursor")) {
+          return originalFetch(input, init);
+        }
+
+        const unabortableInit = { ...init };
+        delete unabortableInit.signal;
+        const response = await originalFetch(input, unabortableInit);
+        await deferredWindow.markNextPageStarted();
+        await nextPageReleased;
+        return response;
+      };
+    });
+
+    await page.goto("/jobs");
+    await page.getByRole("button", { name: /Load more roles/i }).click();
+    await nextPageStarted;
+
+    await expect(page.locator("#search-results")).toHaveAttribute("aria-busy", "true");
+    await expect(page.getByRole("status", { name: "Search update" })).toHaveText(
+      "Updating results…",
+    );
+
+    const sortedResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname === "/api/v1/jobs/search" &&
+        url.searchParams.get("sort") === "salary_desc" &&
+        !url.searchParams.has("cursor")
+      );
+    });
+    await page.getByRole("combobox", { name: "Sort jobs" }).selectOption("salary_desc");
+    await sortedResponse;
+    await expect.poll(() => new URL(page.url()).searchParams.get("sort")).toBe("salary_desc");
+    await expect(page.getByRole("article")).toHaveCount(20);
+    const sortedRoleNames = await page
+      .getByRole("article")
+      .evaluateAll((roles) => roles.map((role) => role.getAttribute("aria-label")));
+
+    await page.evaluate(() => {
+      (window as Window & { releaseNextPage: () => void }).releaseNextPage();
+    });
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    );
+
+    await expect(page.getByRole("article")).toHaveCount(20);
+    expect(
+      await page
+        .getByRole("article")
+        .evaluateAll((roles) => roles.map((role) => role.getAttribute("aria-label"))),
+    ).toEqual(sortedRoleNames);
+  });
+
   test("uses one clear focus treatment for the location combobox", async ({ page }) => {
     await page.goto("/jobs?sort=newest");
 
@@ -208,6 +410,21 @@ test.describe("mobile and reduced-motion public search", () => {
     await page.getByRole("button", { name: /More filters/ }).click();
     await expect(page.getByRole("button", { name: "Remote", pressed: true })).toBeVisible();
     await expect(resultCard(page, seededRole.title, seededRole.company)).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+      .toBe(true);
+  });
+
+  test("stacks comparison facts with role context instead of hiding them in a wide table", async ({
+    page,
+  }) => {
+    const jobIds = await firstJobIds(page);
+    await page.goto(`/compare?id=${jobIds.join("&id=")}`);
+
+    const comparison = page.getByRole("region", { name: "Role comparison" });
+    await expect(comparison).toBeVisible();
+    await expect(comparison.getByRole("article")).toHaveCount(2);
+    await expect(page.getByRole("table")).toBeHidden();
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
       .toBe(true);

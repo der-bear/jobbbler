@@ -1,6 +1,6 @@
 .button {
   display: inline-flex;
-  min-block-size: 38px;
+  min-block-size: 44px;
   align-items: center;
   gap: 7px;
   border: 1px solid var(--color-line-strong);
@@ -24,13 +24,19 @@
 }
 
 .button[data-compact="true"] {
-  min-block-size: 30px;
+  min-block-size: 36px;
   justify-content: center;
   gap: 5px;
   border-color: var(--color-line);
   border-radius: var(--radius-sm);
-  padding: 4px 8px;
+  padding: 6px 10px;
   font-size: 11px;
+}
+
+@media (pointer: coarse) {
+  .button[data-compact="true"] {
+    min-block-size: 44px;
+  }
 }
 
 .button:focus-visible {

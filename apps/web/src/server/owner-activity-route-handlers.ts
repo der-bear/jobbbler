@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-import { ownerActivityPageSchema } from "@jobbbler/contracts";
+import { ownerActivityClearResultSchema, ownerActivityPageSchema } from "@jobbbler/contracts";
 import { DomainError } from "@jobbbler/core-domain";
 import type { OwnerActivityRepository, OwnerActivityWindow } from "@jobbbler/storage";
 
@@ -9,6 +9,7 @@ import { createRequestId } from "./context";
 import type { IdentityRouteDependencies } from "./identity-route-handlers";
 import { requireOwnerSession } from "./identity-route-handlers";
 import { sensitiveRateLimitKey } from "./identity-security";
+import { assertTrustedMutationOrigin } from "./identity-security";
 
 type RuntimeEnvironment = Readonly<Record<string, string | undefined>>;
 
@@ -27,6 +28,7 @@ export interface OwnerActivityRouteDependencies {
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 const READS_PER_MINUTE = 120;
+const CLEARS_PER_MINUTE = 10;
 const LOCAL_CURSOR_SECRET = "jobbbler-local-activity-cursor-change-before-production";
 
 function cursorSecret(environment: RuntimeEnvironment): string {
@@ -182,6 +184,51 @@ async function rateLimit(
     }),
     { requestId, retryAfterSeconds: decision.retryAfterSeconds },
   );
+}
+
+async function clearRateLimit(
+  ownerId: string,
+  requestId: string,
+  dependencies: OwnerActivityRouteDependencies,
+): Promise<Response | null> {
+  const decision = await dependencies.identity.rateLimiter.check({
+    key: sensitiveRateLimitKey("owner-activity-clear", ownerId, dependencies.identity.environment),
+    limit: CLEARS_PER_MINUTE,
+    windowMs: 60_000,
+    nowMs: dependencies.identity.nowMs(),
+  });
+  if (decision.allowed) return null;
+  return apiErrorResponse(
+    new DomainError({
+      code: "RATE_LIMITED",
+      message: "Too many history clear requests. Try again shortly.",
+      retryable: true,
+    }),
+    { requestId, retryAfterSeconds: decision.retryAfterSeconds },
+  );
+}
+
+export async function handleClearOwnerActivityRequest(
+  request: Request,
+  dependencies: OwnerActivityRouteDependencies,
+): Promise<Response> {
+  const requestId = createRequestId();
+  try {
+    assertTrustedMutationOrigin(request, dependencies.identity.environment);
+    const current = await requireOwnerSession(request, dependencies.identity);
+    const limited = await clearRateLimit(current.owner.id, requestId, dependencies);
+    if (limited !== null) return limited;
+    const data = ownerActivityClearResultSchema.parse({
+      clearedCount: await dependencies.activity.clear(current.owner.id),
+    });
+    return apiSuccessResponse(data, {
+      requestId,
+      cacheControl: "no-store",
+      headers: { vary: "Cookie", "referrer-policy": "no-referrer" },
+    });
+  } catch (error) {
+    return apiErrorResponse(error, { requestId });
+  }
 }
 
 export async function handleListOwnerActivityRequest(

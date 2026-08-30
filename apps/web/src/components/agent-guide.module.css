@@ -8,8 +8,7 @@
   gap: 10px;
 }
 
-.guide h3,
-.guide h4 {
+.guide h3 {
   margin: 0;
   color: var(--color-ink);
 }
@@ -18,14 +17,6 @@
   font-size: 14px;
   font-weight: 680;
   letter-spacing: -0.015em;
-}
-
-.guide h4 {
-  color: var(--color-ink-muted);
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.055em;
-  text-transform: uppercase;
 }
 
 .promise {
@@ -128,6 +119,32 @@
   margin-block-start: -10px;
 }
 
+.technicalDetails {
+  border-block: 1px solid var(--color-line);
+  padding-block: 10px;
+}
+
+.technicalDetails summary {
+  min-block-size: 32px;
+  cursor: pointer;
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.technicalDetails summary:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 3px solid var(--jb-focus);
+  outline-offset: 2px;
+}
+
+.technicalDetails p {
+  margin: 8px 0 2px;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .planner {
   border-block-start: 1px solid var(--color-line);
   padding-block-start: 12px;
@@ -156,12 +173,73 @@
 
 .capabilityGroups {
   display: grid;
-  gap: 20px;
+  gap: 8px;
 }
 
-.capabilityGroups > section {
+.capabilityGroup {
+  border-block: 1px solid var(--color-line);
+}
+
+.capabilityGroup + .capabilityGroup {
+  margin-block-start: -9px;
+}
+
+.capabilityGroup summary {
+  display: flex;
+  min-block-size: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.capabilityGroup summary::-webkit-details-marker {
+  display: none;
+}
+
+.capabilityGroup summary:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 3px solid var(--jb-focus);
+  outline-offset: 2px;
+}
+
+.groupHeading {
   display: grid;
-  gap: 7px;
+  min-inline-size: 0;
+  gap: 2px;
+}
+
+.groupHeading strong {
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 670;
+}
+
+.groupHeading small {
+  overflow: hidden;
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.groupCount {
+  display: grid;
+  min-inline-size: 24px;
+  min-block-size: 24px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-surface-subtle);
+  color: var(--color-ink-muted);
+  font-family: var(--jb-font-mono);
+  font-size: 10px;
+}
+
+.capabilityGroup[open] .groupCount {
+  background: var(--color-signal-soft);
+  color: var(--color-signal-strong);
 }
 
 .toolList {

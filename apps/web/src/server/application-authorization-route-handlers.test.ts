@@ -951,6 +951,50 @@ describe("application authorization route handlers", () => {
     });
   });
 
+  it("blocks new application authority after closure but still withdraws live consent", async () => {
+    const current = dependencies();
+    vi.mocked(current.jobs.getById).mockResolvedValue({ ...job, status: "closed" });
+    current.richDataGrants.listByDraft = vi.fn(async () => [
+      { ...grant, status: "active" as const, approvedAt: now },
+    ]);
+
+    const create = await handleCreateAgentSessionRequest(
+      request(
+        `/api/v1/applications/${draftId}/agent-sessions`,
+        "POST",
+        { requestedTtlSeconds: 600 },
+        { human: true },
+      ),
+      draftContext,
+      current,
+    );
+    expect(create.status).toBe(409);
+    await expect(create.json()).resolves.toMatchObject({
+      error: { message: "Role closed — nothing submitted." },
+    });
+    expect(current.agentSessions.insert).not.toHaveBeenCalled();
+
+    const withdraw = await handleWithdrawApplicationConsentRequest(
+      request(
+        `/api/v1/applications/${draftId}/consent`,
+        "DELETE",
+        {
+          interaction: {
+            channel: "agent_client",
+            requestId: "interaction_760e8400-e29b-41d4-a716-446655440088",
+            affirmation: "withdrawn",
+            evidenceVersion: "agent-interaction-v1",
+          },
+        },
+        { human: true },
+      ),
+      draftContext,
+      current,
+    );
+    expect(withdraw.status).toBe(200);
+    expect(current.richDataGrants.withdraw).toHaveBeenCalledTimes(1);
+  });
+
   it("withdraws legacy external consent without editing the readable draft", async () => {
     const current = dependencies();
     vi.mocked(current.jobs.getById).mockResolvedValue({

@@ -17,6 +17,7 @@ describe("AgentPanelSurface", () => {
     const markup = renderToStaticMarkup(
       <AgentPanelSurface
         activities={[]}
+        onClearActivities={vi.fn()}
         onClose={vi.fn()}
         onWidthChange={vi.fn()}
         registeredTools={[
@@ -34,7 +35,8 @@ describe("AgentPanelSurface", () => {
       />,
     );
 
-    expect(markup).toContain("Agent view");
+    expect(markup).toContain("What your agent is doing");
+    expect(markup).not.toContain("Agent view");
     expect(markup).toContain("WebMCP ready");
     expect(markup).toContain("6 tools active. Discovery is automatic.");
     expect(markup.indexOf('id="agent-tab-activity"')).toBeLessThan(
@@ -48,10 +50,32 @@ describe("AgentPanelSurface", () => {
     expect(markup).toContain("Tool calls and visible results will appear here.");
   });
 
+  it("keeps the full catalog visible without claiming tools are active while registration prepares", () => {
+    const markup = renderToStaticMarkup(
+      <AgentPanelSurface
+        activities={[]}
+        onClearActivities={vi.fn()}
+        onClose={vi.fn()}
+        onWidthChange={vi.fn()}
+        registeredTools={coreTools}
+        retry={vi.fn()}
+        status="preparing"
+        supported
+        width={380}
+      />,
+    );
+
+    expect(markup).toContain("Preparing agent tools");
+    expect(markup).toContain("Capability catalog");
+    expect(markup).toContain("28 tools");
+    expect(markup).not.toContain("Active tools");
+  });
+
   it("exposes a keyboard-operable resize separator with its current width", () => {
     const markup = renderToStaticMarkup(
       <AgentPanelSurface
         activities={[]}
+        onClearActivities={vi.fn()}
         onClose={vi.fn()}
         onWidthChange={vi.fn()}
         registeredTools={coreTools}
@@ -72,6 +96,7 @@ describe("AgentPanelSurface", () => {
     const markup = renderToStaticMarkup(
       <AgentPanelSurface
         activities={[]}
+        onClearActivities={vi.fn()}
         modal
         onClose={vi.fn()}
         onWidthChange={vi.fn()}

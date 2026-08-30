@@ -27,6 +27,7 @@ type PanelTab = (typeof panelTabs)[number];
 interface AgentPanelSurfaceProps {
   readonly activities: readonly ToolActivity[];
   readonly modal?: boolean;
+  readonly onClearActivities: () => Promise<void>;
   readonly onClose: () => void;
   readonly onWidthChange: (width: number) => void;
   readonly registeredTools: readonly RegisteredToolSummary[];
@@ -75,6 +76,7 @@ function statusIcon(status: WebMcpRegistrationStatus) {
 export function AgentPanelSurface({
   activities,
   modal = false,
+  onClearActivities,
   onClose,
   onWidthChange,
   registeredTools,
@@ -91,6 +93,7 @@ export function AgentPanelSurface({
   const latestActivity = activities.at(-1);
   const receiptCount = activityReceiptCount(activities);
   const connection = connectionCopy(status, registeredTools.length);
+  const webMcpActive = supported && status === "ready";
 
   useEffect(() => {
     if (latestActivity === undefined) return;
@@ -187,7 +190,7 @@ export function AgentPanelSurface({
 
   return (
     <aside
-      aria-label="Agent view"
+      aria-label="What your agent is doing"
       aria-modal={modal || undefined}
       className={styles["panel"]}
       onKeyDown={handlePanelKey}
@@ -209,7 +212,7 @@ export function AgentPanelSurface({
 
       <header className={styles["header"]}>
         <div className={styles["titleRow"]}>
-          <h2>Agent view</h2>
+          <h2>What your agent is doing</h2>
           <button
             aria-label="Close agent panel"
             className={styles["close"]}
@@ -288,7 +291,10 @@ export function AgentPanelSurface({
       >
         <AgentActivityRail
           activities={activities}
-          webMcpAvailable={supported && status !== "error"}
+          onClearHistory={onClearActivities}
+          onHistoryCleared={() => tabRefs.current.activity?.focus()}
+          onOpenGuide={() => selectTab("guide", true)}
+          webMcpAvailable={webMcpActive}
         />
       </div>
       <div
@@ -299,7 +305,7 @@ export function AgentPanelSurface({
         role="tabpanel"
         tabIndex={0}
       >
-        <AgentTools tools={registeredTools} webMcpAvailable={supported && status !== "error"} />
+        <AgentTools tools={registeredTools} webMcpAvailable={webMcpActive} />
       </div>
     </aside>
   );
@@ -321,6 +327,7 @@ export function AgentPanel({
     <AgentPanelSurface
       activities={webMcp.activities}
       modal={modal}
+      onClearActivities={webMcp.clearActivities}
       onClose={onClose}
       onWidthChange={onWidthChange}
       registeredTools={webMcp.registeredTools}

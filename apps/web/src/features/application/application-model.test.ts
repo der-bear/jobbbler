@@ -5,8 +5,10 @@ import type { ApplicationWorkspace } from "@jobbbler/contracts";
 import {
   applicationAgentState,
   applicationDisclosure,
+  applicationDisclosureForValues,
   applicationNextAction,
   applicationReadiness,
+  applicationReadinessForValues,
   applicationStage,
   bindApplicationServerClock,
   createApplicationAgentAuthorization,
@@ -113,6 +115,13 @@ describe("application presentation model", () => {
             status: "submitted",
             externalUrl: null,
             createdAt: "2026-08-29T10:03:00.000Z",
+            submission: {
+              provider: "jobbbler_demo",
+              providerReferenceId: "demo_submission_550e8400-e29b-41d4-a716-446655440000",
+              recipient: base.recipient,
+              submittedAt: "2026-08-29T10:03:00.000Z",
+              fields: [{ fieldKey: "full_name", label: "Full name", value: "Ada Lovelace" }],
+            },
           },
         },
         base.serverNow,
@@ -162,6 +171,40 @@ describe("application presentation model", () => {
       required: 2,
       missingFieldKeys: ["motivation"],
       readyForReview: false,
+    });
+  });
+
+  it("updates readiness from the values currently visible in the application", () => {
+    expect(
+      applicationReadinessForValues(base, {
+        full_name: "Ada Lovelace",
+        motivation: "A role-specific answer",
+      }),
+    ).toEqual({
+      completed: 2,
+      required: 2,
+      missingFieldKeys: [],
+      readyForReview: true,
+    });
+
+    expect(
+      applicationReadinessForValues(base, {
+        full_name: "   ",
+        motivation: "A role-specific answer",
+      }).missingFieldKeys,
+    ).toEqual(["full_name"]);
+  });
+
+  it("describes the exact non-empty values currently visible before submission", () => {
+    expect(
+      applicationDisclosureForValues(base, {
+        full_name: "Ada Lovelace",
+        motivation: "A role-specific answer",
+      }),
+    ).toEqual({
+      fieldKeys: ["full_name", "motivation"],
+      categories: ["identity", "application_answers"],
+      sensitiveFieldKeys: ["full_name"],
     });
   });
 
@@ -222,6 +265,34 @@ describe("application presentation model", () => {
         external.serverNow,
       ),
     ).toBe("withdraw");
+  });
+
+  it("makes a closed nonterminal role read-only while preserving only consent withdrawal", () => {
+    expect(applicationStage(base, base.serverNow, "closed")).toBe("closed");
+    expect(applicationAgentState(base, false, base.serverNow, "closed").stage).toBe("closed");
+    expect(applicationNextAction(base, base.serverNow, false, "closed")).toBe("read_only");
+    expect(
+      applicationNextAction(
+        {
+          ...base,
+          dataGrant: {
+            id: "grant_550e8400-e29b-41d4-a716-446655440000",
+            status: "active",
+            expiresAt: "2026-08-29T10:34:00.000Z",
+          },
+        },
+        base.serverNow,
+        false,
+        "closed",
+      ),
+    ).toBe("withdraw");
+
+    const submitted = {
+      ...base,
+      draft: { ...base.draft, state: "submitted" as const },
+    };
+    expect(applicationStage(submitted, submitted.serverNow, "closed")).toBe("complete");
+    expect(applicationNextAction(submitted, submitted.serverNow, false, "closed")).toBe("complete");
   });
 
   it("keeps a terminal legacy external handoff complete without hiding independent withdrawal", () => {

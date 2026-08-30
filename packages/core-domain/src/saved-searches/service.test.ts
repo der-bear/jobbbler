@@ -27,6 +27,7 @@ const criteria = {
 function ports() {
   const saved = new Map<string, SavedSearch>();
   const schedules = new Map<string, JobAlertSchedule>();
+  let endpointStatus: "verified" | "revoked" = "verified";
   const current: SavedSearchServicePorts = {
     savedSearches: {
       insert: async (record) => (saved.set(record.id, record), record),
@@ -63,8 +64,8 @@ function ports() {
               addressHash: "hash",
               addressCiphertext: "sealed",
               maskedAddress: "p•••••@example.com",
-              status: "verified",
-              verifiedAt: now,
+              status: endpointStatus,
+              verifiedAt: endpointStatus === "verified" ? now : null,
               createdAt: now,
               updatedAt: now,
             }
@@ -75,7 +76,14 @@ function ports() {
       schedule: () => "schedule_550e8400-e29b-41d4-a716-446655440000",
     },
   };
-  return { current, saved, schedules };
+  return {
+    current,
+    saved,
+    schedules,
+    revokeEndpoint() {
+      endpointStatus = "revoked";
+    },
+  };
 }
 
 describe("saved-search and alert service", () => {
@@ -235,6 +243,48 @@ describe("saved-search and alert service", () => {
       version: 2,
       nextRunAt: "2026-08-31T09:01:20.000Z",
     });
+  });
+
+  it("keeps a schedule paused when its delivery endpoint was revoked", async () => {
+    const state = ports();
+    const service = createSavedSearchService(state.current);
+    const saved = await service.createSavedSearch(
+      ownerId,
+      { name: "Remote TypeScript", criteria },
+      now,
+    );
+    const scheduled = await service.scheduleAlert(
+      ownerId,
+      {
+        savedSearchId: saved.id,
+        expectedVersion: 0,
+        recurrence: { frequency: "daily", time: "09:00", timeZone: "UTC" },
+        delivery: { channel: "email", endpointId },
+      },
+      now,
+    );
+
+    state.revokeEndpoint();
+    const paused = await service.setScheduleEnabled(
+      ownerId,
+      scheduled.id,
+      { expectedVersion: 0, enabled: false },
+      now,
+    );
+
+    await expect(
+      service.setScheduleEnabled(
+        ownerId,
+        scheduled.id,
+        { expectedVersion: paused.version, enabled: true },
+        "2026-08-30T12:00:00.000Z",
+      ),
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+      message:
+        "This alert's delivery destination is no longer verified. Delete it and create a replacement alert with a verified address.",
+    });
+    expect(state.schedules.get(scheduled.id)).toEqual(paused);
   });
 
   it("updates recurrence and delivery with optimistic versioning and a fresh due instant", async () => {

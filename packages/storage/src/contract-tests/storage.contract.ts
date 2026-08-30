@@ -2713,6 +2713,22 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
           limit: 10,
         }),
       ).toEqual({ events: [], hasMore: false, latestSequence: other.sequence });
+      expect(await current.ownerActivity.clear(owner.id)).toBe(2);
+      expect(
+        await current.ownerActivity.listWindow({
+          ownerId: owner.id,
+          afterSequence: null,
+          limit: 10,
+        }),
+      ).toEqual({ events: [], hasMore: false, latestSequence: 0 });
+      expect(
+        await current.ownerActivity.listWindow({
+          ownerId: otherOwner.id,
+          afterSequence: null,
+          limit: 10,
+        }),
+      ).toEqual({ events: [other], hasMore: false, latestSequence: other.sequence });
+      expect(await current.ownerActivity.clear(owner.id)).toBe(0);
       await expect(
         current.ownerActivity.append({
           ownerId: owner.id,

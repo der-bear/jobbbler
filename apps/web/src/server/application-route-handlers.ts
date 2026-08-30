@@ -261,9 +261,7 @@ export async function handleStartApplication(
       key: "prepare_application",
       status: "completed",
       safeSummary:
-        result.disposition === "created"
-          ? "Application draft created."
-          : "Application draft reopened.",
+        result.disposition === "created" ? "Application prepared." : "Application reopened.",
       actorKind: "human",
       aggregate: { type: "application_draft", version: result.draft.version },
       occurredAt: now,
@@ -414,7 +412,7 @@ export async function handleApplicationCommand(
       status: "completed",
       safeSummary:
         command === "answer"
-          ? "Application draft updated."
+          ? "Application updated."
           : command === "review"
             ? "Application review sealed for candidate approval."
             : "Application requirements validated.",

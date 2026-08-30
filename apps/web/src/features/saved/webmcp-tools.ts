@@ -4,6 +4,7 @@ import {
   decideSearchAlertResultSchema,
   emailAddressSchema,
   entityIdSchema,
+  savedSearchDeletionReceiptSchema,
   scheduleRecurrenceSchema,
   type DecideSearchAlertInput,
   type DecideSearchAlertResult,
@@ -11,6 +12,7 @@ import {
   type RequestSearchAlertInput,
   type RequestSearchAlertResult,
   type SavedSearch,
+  type SavedSearchDeletionReceipt,
   type SetJobAlertEnabledInput,
 } from "@jobbbler/contracts";
 import { normalizeJobSearchCriteria } from "@jobbbler/jobs-domain";
@@ -39,25 +41,70 @@ const emptyInputSchema = {
   properties: {},
 } as const satisfies JsonSchema;
 
+const emptyInput = z.strictObject({});
+const deletionConfirmation = "DELETE_SAVED_SEARCH_AND_ALERT" as const;
+
+const scheduleStateBranch = (action: "pause" | "resume") =>
+  ({
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      action: {
+        type: "string",
+        enum: [action],
+        description:
+          action === "pause"
+            ? "Temporarily stop this alert. The saved search remains available."
+            : "Resume checking this paused alert.",
+      },
+      scheduleId: {
+        type: "string",
+        description: "The exact schedule ID returned by get_saved_alerts.",
+        pattern: "^schedule_[0-9a-f-]{36}$",
+      },
+    },
+    required: ["action", "scheduleId"],
+  }) as const;
+
 const stateInputSchema = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    scheduleId: {
-      type: "string",
-      description: "A schedule ID returned by get_saved_alerts.",
-      pattern: "^schedule_[0-9a-f-]{36}$",
+  oneOf: [
+    scheduleStateBranch("pause"),
+    scheduleStateBranch("resume"),
+    {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        action: {
+          type: "string",
+          enum: ["delete"],
+          description: "Permanently delete one saved search and stop its alert, if present.",
+        },
+        savedSearchId: {
+          type: "string",
+          description: "The exact saved search ID returned by get_saved_alerts.",
+          pattern: "^saved_search_[0-9a-f-]{36}$",
+        },
+        confirmation: {
+          type: "string",
+          enum: [deletionConfirmation],
+          description:
+            "Required only after the person explicitly asks to permanently delete this saved search and its alert.",
+        },
+      },
+      required: ["action", "savedSearchId", "confirmation"],
     },
-    enabled: {
-      type: "boolean",
-      description: "True to resume monitoring; false to pause it.",
-    },
-  },
-  required: ["scheduleId", "enabled"],
+  ],
 } as const satisfies JsonSchema;
 
-const emptyInput = z.strictObject({});
-const stateInput = z.strictObject({ scheduleId: entityIdSchema, enabled: z.boolean() });
+const stateInput = z.discriminatedUnion("action", [
+  z.strictObject({ action: z.literal("pause"), scheduleId: entityIdSchema }),
+  z.strictObject({ action: z.literal("resume"), scheduleId: entityIdSchema }),
+  z.strictObject({
+    action: z.literal("delete"),
+    savedSearchId: entityIdSchema,
+    confirmation: z.literal(deletionConfirmation),
+  }),
+]);
 
 const recurrenceInputSchema = {
   oneOf: [
@@ -250,7 +297,13 @@ export interface SavedToolDependencies {
     input: SetJobAlertEnabledInput,
     options: Readonly<{ signal: AbortSignal }>,
   ): Promise<JobAlertSchedule>;
+  deleteSavedSearch(
+    savedSearchId: string,
+    input: Readonly<{ confirmation: typeof deletionConfirmation }>,
+    options: Readonly<{ signal: AbortSignal }>,
+  ): Promise<SavedSearchDeletionReceipt>;
   onScheduleCommitted(schedule: JobAlertSchedule): Promise<void> | void;
+  onSavedSearchDeleted(receipt: SavedSearchDeletionReceipt): Promise<void> | void;
   savedSearchHref(savedSearch: SavedSearch): string;
   onNavigate: WebMcpNavigate;
   getLatestRun(
@@ -414,9 +467,9 @@ export function createSavedToolManifests(
 ): readonly ToolManifest<unknown, SavedToolOutput>[] {
   const getSavedAlerts: ToolManifest<unknown, SavedToolOutput> = {
     name: "get_saved_alerts",
-    purpose: "Read the current owner's saved searches and alert states without delivery details.",
+    purpose: "List saved searches and their optional update schedules.",
     description:
-      "Read up to six saved job alerts visible in this private workspace, including schedule state and next check. Email destinations and credentials are never returned.",
+      "Read up to six saved searches in this private workspace, including any optional email-update schedule and next check. Email destinations and credentials are never returned.",
     inputSchema: emptyInputSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -528,14 +581,45 @@ export function createSavedToolManifests(
 
   const setJobAlertState: ToolManifest<unknown, SavedToolOutput> = {
     name: "set_job_alert_state",
-    purpose: "Pause or resume one existing saved job alert in the current private workspace.",
+    purpose: "Pause, resume, or permanently delete one saved job search in this workspace.",
     description:
-      "Pause or resume one alert using the exact schedule ID returned by get_saved_alerts. If several alerts exist and the person did not identify one, ask which alert. This reversible action never changes its criteria or email destination.",
+      "Use action=pause or action=resume with the exact schedule ID returned as scheduleId by get_saved_alerts. Use action=delete only after the person explicitly asks to permanently delete one exact saved search; pass its savedSearchId and the literal confirmation DELETE_SAVED_SEARCH_AND_ALERT. 'Stop', 'turn off', or 'not now' means pause, never delete. If several alerts could match, ask which one.",
     inputSchema: stateInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
       try {
         const parsed = stateInput.parse(input);
+        if (parsed.action === "delete") {
+          const savedSearches = await dependencies.listSavedSearches({ signal });
+          if (!savedSearches.some(({ id }) => id === parsed.savedSearchId)) {
+            throw new z.ZodError([
+              {
+                code: "custom",
+                path: ["savedSearchId"],
+                message: "The saved search is not in the current private workspace.",
+              },
+            ]);
+          }
+          const receipt = savedSearchDeletionReceiptSchema.parse(
+            await dependencies.deleteSavedSearch(
+              parsed.savedSearchId,
+              { confirmation: parsed.confirmation },
+              { signal },
+            ),
+          );
+          await dependencies.onSavedSearchDeleted(receipt);
+          return completedWebMcpResult({
+            summary:
+              receipt.scheduleId === null
+                ? "Deleted this saved search."
+                : "Deleted this saved search and stopped its job alert.",
+            data: receipt,
+            resources: [
+              { type: "saved_search", id: receipt.savedSearchId, label: "Deleted saved search" },
+            ],
+            facts: [{ key: "deleted", value: true }],
+          });
+        }
         const schedules = await dependencies.listSchedules({ signal });
         const current = schedules.find(({ id }) => id === parsed.scheduleId);
         if (current === undefined) {
@@ -547,12 +631,13 @@ export function createSavedToolManifests(
             },
           ]);
         }
+        const enabled = parsed.action === "resume";
         const updated =
-          current.enabled === parsed.enabled
+          current.enabled === enabled
             ? current
             : await dependencies.setScheduleEnabled(
                 current.id,
-                { expectedVersion: current.version, enabled: parsed.enabled },
+                { expectedVersion: current.version, enabled },
                 { signal },
               );
         await dependencies.onScheduleCommitted(updated);
@@ -574,7 +659,7 @@ export function createSavedToolManifests(
         return safeWebMcpErrorResult(
           error,
           signal,
-          "Provide an alert schedule ID from get_saved_alerts and the desired enabled state.",
+          "Use action=pause or action=resume with a scheduleId from get_saved_alerts. Permanent deletion requires action=delete, a savedSearchId, and the exact confirmation literal.",
         );
       }
     },

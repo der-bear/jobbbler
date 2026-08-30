@@ -1,4 +1,5 @@
 import type { AgentActivityStore } from "./activity.js";
+import { toolResourceReferenceSchema } from "@jobbbler/contracts";
 import { isModelContextAvailable } from "./feature-detection.js";
 import { validateToolManifest } from "./manifest.js";
 import type { ModelContext, RegisteredTool, ToolManifest } from "./types.js";
@@ -11,6 +12,7 @@ function terminalActivity(output: unknown):
   | {
       readonly status: "cancelled" | "completed" | "failed" | "requires_user_action";
       readonly summary: string;
+      readonly affectedResourceIds?: readonly string[];
     }
   | undefined {
   if (typeof output !== "object" || output === null || !("status" in output)) return undefined;
@@ -25,7 +27,20 @@ function terminalActivity(output: unknown):
   }
   const summary =
     "summary" in output && typeof output.summary === "string" ? output.summary : status;
-  return { status, summary: summary.trim().slice(0, 240) || status };
+  const affectedResourceIds: string[] = [];
+  if (status === "completed" && "resources" in output && Array.isArray(output.resources)) {
+    for (const resource of output.resources) {
+      const parsed = toolResourceReferenceSchema.safeParse(resource);
+      if (!parsed.success || affectedResourceIds.includes(parsed.data.id)) continue;
+      affectedResourceIds.push(parsed.data.id);
+      if (affectedResourceIds.length === 20) break;
+    }
+  }
+  return {
+    status,
+    summary: summary.trim().slice(0, 240) || status,
+    ...(affectedResourceIds.length === 0 ? {} : { affectedResourceIds }),
+  };
 }
 
 function toolTitle(name: string): string {
@@ -53,6 +68,7 @@ function registeredTool<I, O>(
           activityId ?? "",
           terminal?.status ?? "completed",
           terminal?.summary ?? `Completed ${manifest.purpose}`,
+          terminal?.affectedResourceIds,
         );
         return output;
       } catch (error) {

@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
+import { z } from "zod";
 
-import { DomainError, type createSavedSearchService } from "@jobbbler/core-domain";
+import { savedSearchDeletionReceiptSchema } from "@jobbbler/contracts";
+import { DomainError, isDomainError, type createSavedSearchService } from "@jobbbler/core-domain";
 import type {
   AlertChangeRecord,
   AlertDeliveryRecord,
@@ -45,6 +47,10 @@ const MAX_LATEST_RUN_CHANGES = 25;
 const IDEMPOTENCY_KEY_HEADER = "idempotency-key";
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9_.:-]{1,128}$/;
 const IDEMPOTENCY_RECORD_TTL_MS = 24 * 60 * 60 * 1_000;
+const SAVED_SEARCH_DELETE_CONFIRMATION = "DELETE_SAVED_SEARCH_AND_ALERT" as const;
+const agentDeleteSavedSearchInputSchema = z.strictObject({
+  confirmation: z.literal(SAVED_SEARCH_DELETE_CONFIRMATION),
+});
 
 function readIdempotencyKey(request: Request): string | null {
   const header = request.headers.get(IDEMPOTENCY_KEY_HEADER);
@@ -59,10 +65,30 @@ function readIdempotencyKey(request: Request): string | null {
   return key;
 }
 
+function requireIdempotencyKey(request: Request): string {
+  const key = readIdempotencyKey(request);
+  if (key === null) {
+    throw new DomainError({
+      code: "VALIDATION",
+      message: "Idempotency-Key is required for this action.",
+    });
+  }
+  return key;
+}
+
 function savedSearchCreateRequestHash(body: unknown): string {
   return createHash("sha256")
     .update("jobbbler:saved-search-create:v1\u0000")
     .update(JSON.stringify(body) ?? "")
+    .digest("hex");
+}
+
+function savedSearchDeleteRequestHash(savedSearchId: string): string {
+  return createHash("sha256")
+    .update("jobbbler:saved-search-delete:v1\u0000")
+    .update(savedSearchId)
+    .update("\u0000")
+    .update(SAVED_SEARCH_DELETE_CONFIRMATION)
     .digest("hex");
 }
 
@@ -436,6 +462,62 @@ export async function handleUpdateScheduleRequest(
   }
 }
 
+async function deleteSavedSearchAndPublish(
+  ownerId: string,
+  savedSearchId: string,
+  dependencies: SavedSearchRouteDependencies,
+  requestId: string,
+  actorKind: "agent" | "human",
+) {
+  const now = dependencies.identity.now();
+  const removed = await dependencies.service.deleteSavedSearch(ownerId, savedSearchId);
+  const receipt = savedSearchDeletionReceiptSchema.parse({
+    savedSearchId: removed.savedSearch.id,
+    scheduleId: removed.schedule === null ? null : removed.schedule.id,
+    deleted: true,
+  });
+  await dependencies.activity?.publish({
+    ownerId,
+    correlationId: requestId,
+    kind: "saved_search",
+    key: "delete_saved_search",
+    status: "completed",
+    safeSummary:
+      removed.schedule === null
+        ? "Saved search removed from the private workspace."
+        : "Saved search and its job alert were removed.",
+    actorKind,
+    aggregate: { type: "saved_search", version: removed.savedSearch.version },
+    occurredAt: now,
+    effects: [
+      { target: "saved_searches", kind: "refresh" },
+      { target: "agent_activity", kind: "announce" },
+    ],
+  });
+  return receipt;
+}
+
+async function prepareSavedSearchDeletionReceipt(
+  ownerId: string,
+  savedSearchId: string,
+  dependencies: SavedSearchRouteDependencies,
+) {
+  const [savedSearches, schedules] = await Promise.all([
+    dependencies.service.listSavedSearches(ownerId),
+    dependencies.service.listSchedules(ownerId),
+  ]);
+  const savedSearch = savedSearches.find(({ id }) => id === savedSearchId);
+  if (savedSearch === undefined) {
+    throw new DomainError({ code: "NOT_FOUND", message: "Saved search was not found." });
+  }
+  const schedule = schedules.find((candidate) => candidate.savedSearchId === savedSearch.id);
+  return savedSearchDeletionReceiptSchema.parse({
+    savedSearchId: savedSearch.id,
+    scheduleId: schedule?.id ?? null,
+    deleted: true,
+  });
+}
+
 export async function handleDeleteSavedSearchRequest(
   request: Request,
   routeContext: SavedSearchRouteContext,
@@ -446,34 +528,73 @@ export async function handleDeleteSavedSearchRequest(
     assertTrustedMutationOrigin(request, dependencies.identity.environment);
     const current = await requireOwnerSession(request, dependencies.identity);
     const { savedSearchId } = await routeContext.params;
-    const now = dependencies.identity.now();
-    const removed = await dependencies.service.deleteSavedSearch(current.owner.id, savedSearchId);
-    await dependencies.activity?.publish({
-      ownerId: current.owner.id,
-      correlationId: requestId,
-      kind: "saved_search",
-      key: "delete_saved_search",
-      status: "completed",
-      safeSummary:
-        removed.schedule === null
-          ? "Saved search removed from the private workspace."
-          : "Saved search and its job alert were removed.",
-      actorKind: "human",
-      aggregate: { type: "saved_search", version: removed.savedSearch.version },
-      occurredAt: now,
-      effects: [
-        { target: "saved_searches", kind: "refresh" },
-        { target: "agent_activity", kind: "announce" },
-      ],
-    });
-    return apiSuccessResponse(
-      {
-        savedSearchId: removed.savedSearch.id,
-        scheduleId: removed.schedule === null ? null : removed.schedule.id,
-        deleted: true,
-      },
-      { requestId },
+    const receipt = await deleteSavedSearchAndPublish(
+      current.owner.id,
+      savedSearchId,
+      dependencies,
+      requestId,
+      "human",
     );
+    return apiSuccessResponse(receipt, { requestId });
+  } catch (error) {
+    return apiErrorResponse(error, { requestId });
+  }
+}
+
+export async function handleAgentDeleteSavedSearchRequest(
+  request: Request,
+  routeContext: SavedSearchRouteContext,
+  dependencies: SavedSearchRouteDependencies,
+): Promise<Response> {
+  const requestId = createRequestId();
+  try {
+    const command = await privateMutation(request, dependencies);
+    agentDeleteSavedSearchInputSchema.parse(command.body);
+    const { savedSearchId } = await routeContext.params;
+    const idempotencyKey = requireIdempotencyKey(request);
+    const scope = `saved_search.delete:${command.ownerId}`;
+    const requestHash = savedSearchDeleteRequestHash(savedSearchId);
+    let claim = await dependencies.idempotency.get(scope, idempotencyKey);
+    if (claim === null) {
+      const receipt = await prepareSavedSearchDeletionReceipt(
+        command.ownerId,
+        savedSearchId,
+        dependencies,
+      );
+      const now = dependencies.identity.now();
+      const put = await dependencies.idempotency.putIfAbsent({
+        scope,
+        key: idempotencyKey,
+        requestHash,
+        responseStatus: 200,
+        responseBody: receipt,
+        createdAt: now,
+        expiresAt: new Date(Date.parse(now) + IDEMPOTENCY_RECORD_TTL_MS).toISOString(),
+      });
+      claim = put.record;
+    }
+    if (claim.requestHash !== requestHash) {
+      throw new DomainError({
+        code: "CONFLICT",
+        message: "The idempotency key is already bound to a different request.",
+      });
+    }
+    const receipt = savedSearchDeletionReceiptSchema.parse(claim.responseBody);
+    try {
+      await deleteSavedSearchAndPublish(
+        command.ownerId,
+        savedSearchId,
+        dependencies,
+        requestId,
+        "agent",
+      );
+    } catch (error) {
+      if (!isDomainError(error) || error.code !== "NOT_FOUND") throw error;
+    }
+    return apiSuccessResponse(receipt, {
+      requestId,
+      status: claim.responseStatus,
+    });
   } catch (error) {
     return apiErrorResponse(error, { requestId });
   }

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { entityIdSchema, isoInstantSchema } from "./common.js";
-import { jobSchema } from "./job.js";
+import { jobSchema, jobStatusSchema } from "./job.js";
 
 export const applicationStateSchema = z.enum([
   "draft",
@@ -65,6 +65,7 @@ export const applicationListItemSchema = z.strictObject({
     id: entityIdSchema,
     title: z.string().trim().min(1).max(200),
     organizationName: z.string().trim().min(1).max(160),
+    status: jobStatusSchema,
   }),
 });
 
@@ -214,12 +215,58 @@ export const applicationDelegationSummarySchema = z.strictObject({
   approvedAt: isoInstantSchema.nullable(),
 });
 
-export const applicationReceiptSummarySchema = z.strictObject({
+export const submittedApplicationReceiptFieldSchema = z.strictObject({
+  fieldKey: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/),
+  label: z.string().trim().min(1).max(80),
+  value: applicationAnswerValueSchema,
+});
+
+const submittedApplicationReceiptFieldsSchema = z
+  .array(submittedApplicationReceiptFieldSchema)
+  .min(1)
+  .max(24)
+  .superRefine((fields, context) => {
+    const seen = new Set<string>();
+    fields.forEach((field, index) => {
+      if (seen.has(field.fieldKey)) {
+        context.addIssue({
+          code: "custom",
+          path: [index, "fieldKey"],
+          message: "Each submitted application field may appear only once.",
+        });
+      }
+      seen.add(field.fieldKey);
+    });
+  });
+
+const submittedApplicationReceiptSummarySchema = z.strictObject({
   id: entityIdSchema,
-  status: z.enum(["submitted", "handed_off"]),
+  status: z.literal("submitted"),
+  externalUrl: z.null(),
+  createdAt: isoInstantSchema,
+  submission: z.strictObject({
+    provider: z.literal("jobbbler_demo"),
+    providerReferenceId: z.string().trim().min(1).max(160),
+    recipient: z.strictObject({
+      id: entityIdSchema,
+      name: z.string().trim().min(1).max(160),
+    }),
+    submittedAt: isoInstantSchema,
+    fields: submittedApplicationReceiptFieldsSchema,
+  }),
+});
+
+const handedOffApplicationReceiptSummarySchema = z.strictObject({
+  id: entityIdSchema,
+  status: z.literal("handed_off"),
   externalUrl: z.string().url().startsWith("https://").nullable(),
   createdAt: isoInstantSchema,
 });
+
+export const applicationReceiptSummarySchema = z.discriminatedUnion("status", [
+  submittedApplicationReceiptSummarySchema,
+  handedOffApplicationReceiptSummarySchema,
+]);
 
 export const applicationWorkspaceSchema = z.strictObject({
   serverNow: isoInstantSchema,
@@ -262,7 +309,15 @@ export const applicationAgentStateSchema = z.strictObject({
   jobId: entityIdSchema,
   applyMode: z.enum(["internal", "external"]),
   state: applicationStateSchema,
-  stage: z.enum(["profile", "review", "permission", "confirmation", "legacy_external", "complete"]),
+  stage: z.enum([
+    "profile",
+    "review",
+    "permission",
+    "confirmation",
+    "legacy_external",
+    "closed",
+    "complete",
+  ]),
   version: z.number().int().nonnegative(),
   requiredFields: z.number().int().nonnegative(),
   completedRequiredFields: z.number().int().nonnegative(),

@@ -1,4 +1,4 @@
-import type { Page, Response } from "@playwright/test";
+import type { Page, Request, Response } from "@playwright/test";
 
 export interface ExpectedHttpError {
   readonly method?: string;
@@ -8,10 +8,21 @@ export interface ExpectedHttpError {
 
 export interface PageErrorOptions {
   readonly expectedHttpErrors?: readonly ExpectedHttpError[];
+  readonly expectedRequestFailures?: readonly ExpectedRequestFailure[];
+}
+
+export interface ExpectedRequestFailure {
+  readonly errorText: string | RegExp;
+  readonly method?: string;
+  readonly pathname: string | RegExp;
 }
 
 const httpFailureConsolePattern =
   /^Failed to load resource: the server responded with a status of \d{3}\b/u;
+
+function matches(value: string, candidate: string | RegExp): boolean {
+  return typeof candidate === "string" ? candidate === value : candidate.test(value);
+}
 
 export function isExpectedHttpError(
   response: Response,
@@ -23,9 +34,21 @@ export function isExpectedHttpError(
     (candidate) =>
       candidate.status === response.status() &&
       (candidate.method === undefined || candidate.method === request.method()) &&
-      (typeof candidate.pathname === "string"
-        ? candidate.pathname === pathname
-        : candidate.pathname.test(pathname)),
+      matches(pathname, candidate.pathname),
+  );
+}
+
+export function isExpectedRequestFailure(
+  request: Request,
+  expected: readonly ExpectedRequestFailure[],
+): boolean {
+  const pathname = new URL(request.url()).pathname;
+  const errorText = request.failure()?.errorText ?? "unknown error";
+  return expected.some(
+    (candidate) =>
+      (candidate.method === undefined || candidate.method === request.method()) &&
+      matches(pathname, candidate.pathname) &&
+      matches(errorText, candidate.errorText),
   );
 }
 
@@ -52,6 +75,7 @@ export function collectPageErrors(
     }
   });
   page.on("requestfailed", (request) => {
+    if (isExpectedRequestFailure(request, options.expectedRequestFailures ?? [])) return;
     errors.push(
       `requestfailed: ${request.method()} ${request.url()}: ${request.failure()?.errorText ?? "unknown error"}`,
     );

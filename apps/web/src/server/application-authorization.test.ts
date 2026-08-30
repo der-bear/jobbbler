@@ -190,4 +190,21 @@ describe("application data-grant authorization composition", () => {
       message: "This role accepts applications on the employer's website.",
     });
   });
+
+  it("never presents or authorizes disclosure after the role closes", async () => {
+    const current = repositories();
+    current.jobs.getById.mockResolvedValue({ ...job, status: "closed" });
+    const policy = createApplicationDataGrantAuthorizationPolicy(current);
+
+    await expect(policy.consentPresentation(ownerId, draftId)).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "Role closed — nothing submitted.",
+    });
+    await expect(
+      policy.assertDataGrantRequest({ ownerId, draftId, request: exactRequest }),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "Role closed — nothing submitted.",
+    });
+  });
 });

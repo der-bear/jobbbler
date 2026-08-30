@@ -8,7 +8,6 @@ export const ownerSummarySchema = z.strictObject({
   id: entityIdSchema,
   kind: ownerKindSchema,
   verified: z.boolean(),
-  recoverable: z.boolean(),
 });
 
 export const emailAddressSchema = z

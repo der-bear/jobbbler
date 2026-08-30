@@ -65,7 +65,7 @@ function dependencies(
         encryptedAddress: "protected-email-envelope",
       })),
       completeEmailVerification: vi.fn(async () => ({
-        owner: { id: owner.id, kind: "guest" as const, verified: true, recoverable: true },
+        owner: { id: owner.id, kind: "guest" as const, verified: true },
         endpointId: "endpoint_550e8400-e29b-41d4-a716-446655440003",
         verifiedAt: now,
       })),
@@ -154,7 +154,10 @@ describe("owner identity route handlers", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
       ok: true,
-      data: { owner: { id: owner.id, recoverable: false }, expiresAt: session.expiresAt },
+      data: {
+        owner: { id: owner.id, kind: owner.kind, verified: owner.verified },
+        expiresAt: session.expiresAt,
+      },
     });
   });
 

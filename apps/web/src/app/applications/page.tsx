@@ -5,8 +5,8 @@ import { ApplicationsWorkspace } from "@/features/application/application-list";
 import { loadInitialApplications } from "@/server/initial-applications";
 
 export const metadata: Metadata = {
-  title: "Applications",
-  description: "Continue drafts and view applications you started on Jobbbler.",
+  title: "My applications",
+  description: "Continue applications and view private submission receipts on Jobbbler.",
 };
 
 export default async function ApplicationsPage() {

@@ -68,5 +68,10 @@ export const ownerActivityPageSchema = z.strictObject({
   pollAfterMs: z.number().int().min(1_000).max(30_000),
 });
 
+export const ownerActivityClearResultSchema = z.strictObject({
+  clearedCount: z.number().int().nonnegative(),
+});
+
 export type OwnerActivityEvent = z.infer<typeof ownerActivityEventSchema>;
 export type OwnerActivityPage = z.infer<typeof ownerActivityPageSchema>;
+export type OwnerActivityClearResult = z.infer<typeof ownerActivityClearResultSchema>;

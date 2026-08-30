@@ -13,18 +13,27 @@ import {
   applicationWorkspaceSchema,
   jobDetailResultSchema,
   type ApplicationAnswer,
+  type ApplicationReceiptSummary,
   type ApplicationWorkspace as ApplicationWorkspaceState,
   type Job,
 } from "@jobbbler/contracts";
 import { useToast } from "@jobbbler/ui";
 
 import { ApiClientError, queryApi } from "@/lib/query-client";
+import { markOwnerSessionStarted } from "@/lib/owner-session-marker";
 
 import {
   ApplicationView,
   type ApplicationAction,
   type ApplicationConfirmationView,
 } from "./application-view";
+import {
+  clearApplicationAgentCredential,
+  restoreApplicationAgentCredential,
+  storeApplicationAgentCredential,
+  type ApplicationAgentCredentialStorage,
+} from "./application-agent-credential-vault";
+import { persistApplicationField } from "./application-field-persistence";
 import { finalizeApplication } from "./application-finalization";
 import {
   applicationAgentState,
@@ -37,7 +46,11 @@ import {
   type ApplicationAgentCredential,
   type BoundApplicationServerClock,
 } from "./application-model";
-import type { ApplicationSubmissionReviewRequest, ApplicationToolReadiness } from "./webmcp-tools";
+import type {
+  ApplicationSubmissionDecisionOutcome,
+  ApplicationSubmissionReviewRequest,
+  ApplicationToolReadiness,
+} from "./webmcp-tools";
 import { publishApplicationWebMcpSurface } from "./webmcp-surface";
 import styles from "./application-view.module.css";
 
@@ -49,6 +62,11 @@ type ScreenState =
       readonly job: Job;
     }
   | { readonly kind: "error"; readonly message: string };
+
+export interface InitialApplicationWorkspace {
+  readonly workspace: ApplicationWorkspaceState;
+  readonly job: Job;
+}
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiClientError) return error.message;
@@ -72,24 +90,35 @@ function fieldValues(workspace: ApplicationWorkspaceState): Record<string, strin
 
 function toolReadiness(
   workspace: ApplicationWorkspaceState,
+  roleStatus: Job["status"],
   finalConfirmationReady = false,
   now = workspace.serverNow,
 ): ApplicationToolReadiness {
   const progress = applicationReadiness(workspace);
-  const state = applicationAgentState(workspace, finalConfirmationReady, now);
+  const state = applicationAgentState(workspace, finalConfirmationReady, now, roleStatus);
   return {
     state,
+    roleStatus,
     missingFieldKeys: progress.missingFieldKeys,
     missingFieldLabels: progress.missingFieldKeys.map(
       (fieldKey) =>
         workspace.requirements.find((field) => field.fieldKey === fieldKey)?.label ?? fieldKey,
     ),
-    nextAction: applicationNextAction(workspace, now, finalConfirmationReady),
+    nextAction: applicationNextAction(workspace, now, finalConfirmationReady, roleStatus),
   };
 }
 
 function laterServerTime(left: string, right: string): string {
   return Date.parse(left) >= Date.parse(right) ? left : right;
+}
+
+function applicationCredentialStorage(): ApplicationAgentCredentialStorage | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
 }
 
 function useApplicationServerClock(
@@ -148,20 +177,38 @@ function useApplicationServerClock(
   return useMemo(() => ({ now, current }), [current, now]);
 }
 
-export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>) {
-  return <DraftApplicationWorkspace key={draftId} draftId={draftId} />;
+export function ApplicationWorkspace({
+  draftId,
+  initial = null,
+}: Readonly<{ draftId: string; initial?: InitialApplicationWorkspace | null }>) {
+  return <DraftApplicationWorkspace initial={initial} key={draftId} draftId={draftId} />;
 }
 
-function DraftApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>) {
+function DraftApplicationWorkspace({
+  draftId,
+  initial,
+}: Readonly<{ draftId: string; initial: InitialApplicationWorkspace | null }>) {
   const toast = useToast();
-  const [state, setState] = useState<ScreenState>({ kind: "loading" });
-  const [values, setValues] = useState<Readonly<Record<string, string>>>({});
+  const [state, setState] = useState<ScreenState>(() =>
+    initial === null ? { kind: "loading" } : { kind: "ready", ...initial },
+  );
+  const stateRef = useRef(state);
+  const [values, setValues] = useState<Readonly<Record<string, string>>>(() =>
+    initial === null ? {} : fieldValues(initial.workspace),
+  );
   const [confirmation, setConfirmation] = useState<ApplicationConfirmationView | null>(null);
   const [agentCredential, setAgentCredential] = useState<ApplicationAgentCredential | null>(null);
+  const [credentialVaultReady, setCredentialVaultReady] = useState(false);
   const [submissionReview, setSubmissionReview] =
     useState<ApplicationSubmissionReviewRequest | null>(null);
   const [busy, setBusy] = useState(false);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [actionError, setActionError] = useState<string | null>(null);
+  const saveChain = useRef<Promise<void>>(Promise.resolve());
+  const saveRevision = useRef(0);
+  useEffect(() => {
+    if (initial !== null) markOwnerSessionStarted();
+  }, [initial]);
   const applicationClock = useApplicationServerClock(
     state.kind === "ready" ? state.workspace : null,
     agentCredential?.expiresAt ?? null,
@@ -183,7 +230,9 @@ function DraftApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>) {
             signal === undefined ? {} : { signal },
           )
         ).job;
-      setState({ kind: "ready", workspace, job });
+      const nextState = { kind: "ready", workspace, job } as const;
+      stateRef.current = nextState;
+      setState(nextState);
       setValues(fieldValues(workspace));
       return workspace;
     },
@@ -191,12 +240,13 @@ function DraftApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>) {
   );
 
   useEffect(() => {
+    if (initial !== null) return;
     const controller = new AbortController();
     void load(controller.signal).catch((error: unknown) => {
       if (!controller.signal.aborted) setState({ kind: "error", message: errorMessage(error) });
     });
     return () => controller.abort();
-  }, [load]);
+  }, [initial, load]);
 
   useEffect(() => {
     if (confirmation === null) return;
@@ -210,7 +260,35 @@ function DraftApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>) {
   }, [applicationClock, confirmation]);
 
   useEffect(() => {
-    if (state.kind !== "ready") {
+    if (credentialVaultReady || state.kind !== "ready") return;
+    const storage = applicationCredentialStorage();
+    setAgentCredential(
+      storage === null
+        ? null
+        : restoreApplicationAgentCredential(storage, draftId, applicationClock.current()),
+    );
+    setCredentialVaultReady(true);
+  }, [applicationClock, credentialVaultReady, draftId, state.kind]);
+
+  useEffect(() => {
+    if (!credentialVaultReady || agentCredential === null) return;
+    const expire = () => {
+      const storage = applicationCredentialStorage();
+      if (storage !== null) clearApplicationAgentCredential(storage, draftId);
+      setAgentCredential(null);
+    };
+    const remaining =
+      Date.parse(agentCredential.expiresAt) - Date.parse(applicationClock.current());
+    if (!Number.isFinite(remaining) || remaining <= 0) {
+      expire();
+      return;
+    }
+    const timeout = window.setTimeout(expire, remaining);
+    return () => window.clearTimeout(timeout);
+  }, [agentCredential, applicationClock, credentialVaultReady, draftId]);
+
+  useEffect(() => {
+    if (state.kind !== "ready" || !credentialVaultReady) {
       publishApplicationWebMcpSurface(null);
       return;
     }
@@ -232,13 +310,17 @@ function DraftApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>) {
       confirmationReady = confirmation !== null,
     ) => {
       const reloaded = await load(signal);
-      return toolReadiness(reloaded, confirmationReady, reloaded.serverNow);
+      const reloadedState = stateRef.current;
+      const roleStatus =
+        reloaded.job?.status ??
+        (reloadedState.kind === "ready" ? reloadedState.job.status : "closed");
+      return toolReadiness(reloaded, roleStatus, confirmationReady, reloaded.serverNow);
     };
 
     publishApplicationWebMcpSurface({
       currentReadiness: () =>
-        toolReadiness(workspace, confirmation !== null, applicationClock.current()),
-      allowsAgentSubmission: () => job.applyMode === "internal",
+        toolReadiness(workspace, job.status, confirmation !== null, applicationClock.current()),
+      allowsAgentSubmission: () => job.applyMode === "internal" && job.status === "open",
       hasAgentCredential: () => authorization.currentCredential() !== null,
       isOperationAuthorized: authorization.isOperationAuthorized,
       async requestAgentAccess(operations, { signal }) {
@@ -253,6 +335,15 @@ function DraftApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>) {
               signal,
             },
           );
+          const storage = applicationCredentialStorage();
+          if (storage !== null) {
+            storeApplicationAgentCredential(
+              storage,
+              draftId,
+              currentCredential,
+              applicationClock.current(),
+            );
+          }
           setAgentCredential(currentCredential);
         }
         const requested = await queryApi(
@@ -311,6 +402,11 @@ function DraftApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>) {
             signal,
           },
         );
+        if (decision === "withdraw") {
+          const storage = applicationCredentialStorage();
+          if (storage !== null) clearApplicationAgentCredential(storage, draftId);
+          setAgentCredential(null);
+        }
         setSubmissionReview(null);
         return {
           state: (await reloadReadiness(signal)).state,
@@ -421,10 +517,14 @@ function DraftApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>) {
         );
         if (decision === "declined") {
           setSubmissionReview(null);
-          return reloadReadiness(signal, false);
+          return {
+            ...(await reloadReadiness(signal, false)),
+            receipt: null,
+            receiptHref: null,
+          } satisfies ApplicationSubmissionDecisionOutcome;
         }
         const approvedWorkspace = await load(signal);
-        await finalizeApplication({
+        const receipt: ApplicationReceiptSummary = await finalizeApplication({
           workspace: approvedWorkspace,
           values: fieldValues(approvedWorkspace),
           request: queryApi,
@@ -435,48 +535,99 @@ function DraftApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>) {
           signal,
         });
         setSubmissionReview(null);
-        return reloadReadiness(signal, false);
+        return {
+          ...(await reloadReadiness(signal, false)),
+          receipt,
+          receiptHref: `/apply/${encodeURIComponent(draftId)}`,
+        } satisfies ApplicationSubmissionDecisionOutcome;
       },
     });
 
     return () => publishApplicationWebMcpSurface(null);
-  }, [agentCredential, applicationClock, confirmation, draftId, load, state, submissionReview]);
+  }, [
+    agentCredential,
+    applicationClock,
+    confirmation,
+    credentialVaultReady,
+    draftId,
+    load,
+    state,
+    submissionReview,
+  ]);
 
-  async function perform(action: ApplicationAction) {
-    if (state.kind !== "ready" || busy) return;
-    const current = state.workspace;
-    if (isAgentAssistedApplication(current, applicationClock.current())) {
-      setActionError(
-        action === "review_and_submit"
-          ? "Complete the exact submission decision in your external agent client for this agent-assisted draft."
-          : "This agent-assisted draft is read-only here. Ask the agent to prepare any changes in the external client.",
-      );
+  function persistField(fieldKey: string, value: string): void {
+    const snapshot = stateRef.current;
+    if (
+      snapshot.kind !== "ready" ||
+      isAgentAssistedApplication(snapshot.workspace, applicationClock.current())
+    ) {
       return;
     }
-    if (action === "use_demo_profile") {
-      setValues((existing) => ({
-        ...existing,
-        full_name: "Alex Morgan",
-        email: "alex.morgan@example.com",
-        location: "Kyiv, Ukraine",
-        portfolio_url: "https://example.com/alex-morgan",
-        motivation:
-          "I build calm, accessible product workflows and enjoy turning complex systems into tools people can trust.",
-        work_authorization: "Authorized to work in the European Union",
-      }));
-      toast.show({
-        title: "Synthetic demo profile loaded",
-        description: "All values are fictional and remain local to this draft until you save them.",
-        tone: "info",
+    const currentValue = displayValue(
+      snapshot.workspace.draft.answers.find((answer) => answer.fieldKey === fieldKey),
+    );
+    if (currentValue === value) {
+      setSaveState("saved");
+      return;
+    }
+
+    const revision = ++saveRevision.current;
+    setSaveState("saving");
+    setActionError(null);
+    const operation = saveChain.current.then(async () => {
+      const latest = stateRef.current;
+      if (
+        latest.kind !== "ready" ||
+        isAgentAssistedApplication(latest.workspace, applicationClock.current())
+      ) {
+        return;
+      }
+      const latestValue = displayValue(
+        latest.workspace.draft.answers.find((answer) => answer.fieldKey === fieldKey),
+      );
+      if (latestValue === value) return;
+
+      const draft = await persistApplicationField({
+        workspace: latest.workspace,
+        fieldKey,
+        value,
+        request: queryApi,
       });
+      const nextState: ScreenState = {
+        ...latest,
+        workspace: { ...latest.workspace, draft },
+      };
+      stateRef.current = nextState;
+      setState(nextState);
+    });
+    saveChain.current = operation.catch(() => undefined);
+    void operation.then(
+      () => {
+        if (saveRevision.current === revision) setSaveState("saved");
+      },
+      (error: unknown) => {
+        if (saveRevision.current === revision) setSaveState("error");
+        setActionError(errorMessage(error));
+      },
+    );
+  }
+
+  async function perform(action: ApplicationAction) {
+    if (stateRef.current.kind !== "ready" || busy) return;
+    const current = stateRef.current.workspace;
+    if (isAgentAssistedApplication(current, applicationClock.current())) {
+      setActionError("Complete the final submission decision in your agent app.");
       return;
     }
     setBusy(true);
     setActionError(null);
     try {
       if (action === "review_and_submit") {
+        await saveChain.current;
+        const latest = stateRef.current;
+        if (latest.kind !== "ready") return;
         await finalizeApplication({
-          workspace: current,
+          workspace: latest.workspace,
           values,
           request: queryApi,
           idempotencyKey: crypto.randomUUID(),
@@ -507,14 +658,28 @@ function DraftApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>) {
   if (state.kind !== "ready") {
     return (
       <div className={styles["page"]}>
-        <section aria-live="polite" className={styles["stagePanel"]}>
-          <h1>{state.kind === "loading" ? "Loading your application…" : state.message}</h1>
-          {state.kind === "error" ? (
+        {state.kind === "loading" ? (
+          <section
+            aria-label="Loading your application"
+            className={styles["stagePanel"]}
+            role="status"
+          >
+            <div className={styles["skeleton"]}>
+              <span className={styles["skeletonTitle"]} />
+              <span className={styles["skeletonLine"]} />
+              <span className={styles["skeletonLine"]} />
+              <span className={styles["skeletonLineShort"]} />
+            </div>
+            <span className="sr-only">Loading your application.</span>
+          </section>
+        ) : (
+          <section aria-live="polite" className={styles["stagePanel"]}>
+            <h1>{state.message}</h1>
             <Link className={styles["backLink"]} href="/jobs">
               <ArrowLeftIcon aria-hidden="true" /> Return to search
             </Link>
-          ) : null}
-        </section>
+          </section>
+        )}
       </div>
     );
   }
@@ -527,12 +692,14 @@ function DraftApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>) {
       fieldValues={values}
       job={state.job}
       now={applicationClock.now ?? state.workspace.serverNow}
+      saveState={saveState}
       onAction={(action) => void perform(action)}
       onFieldChange={(fieldKey, value) => {
         if (!isAgentAssistedApplication(state.workspace, applicationClock.current())) {
           setValues((current) => ({ ...current, [fieldKey]: value }));
         }
       }}
+      onFieldCommit={persistField}
       workspace={state.workspace}
     />
   );

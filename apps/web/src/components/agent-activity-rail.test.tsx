@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { ToolActivity } from "@jobbbler/contracts";
 
-import { AgentActivityRail } from "./agent-activity-rail";
+import { AgentActivityRail, groupedActivities } from "./agent-activity-rail";
 
 const activities: readonly ToolActivity[] = [
   {
@@ -53,9 +53,32 @@ describe("AgentActivityRail", () => {
     expect(markup).not.toContain("Application workspace created.");
   });
 
+  it("removes legacy draft language from persisted activity", () => {
+    const markup = renderToStaticMarkup(
+      <AgentActivityRail
+        activities={[
+          {
+            ...activities[1]!,
+            toolName: "edit_application",
+            status: "completed",
+            safeSummary: "Application draft updated.",
+          },
+        ]}
+        webMcpAvailable
+      />,
+    );
+
+    expect(markup).toContain("Application updated.");
+    expect(markup).not.toContain("Application draft updated.");
+  });
+
   it("keeps the agent layer secondary while surfacing active work", () => {
     const markup = renderToStaticMarkup(
-      <AgentActivityRail activities={activities} webMcpAvailable />,
+      <AgentActivityRail
+        activities={activities}
+        onClearHistory={async () => undefined}
+        webMcpAvailable
+      />,
     );
 
     expect(markup).toContain("<section");
@@ -65,7 +88,17 @@ describe("AgentActivityRail", () => {
     expect(markup).toContain("Your decision needed");
     expect(markup).toContain("Finding remote product roles in Europe.");
     expect(markup).toContain("<code>search_jobs</code>");
+    expect(markup).toContain("Clear history");
+    expect(markup).toContain('aria-live="polite"');
     expect(markup).not.toContain("activity_550e8400");
+  });
+
+  it("does not show a meaningless clear action for an empty history", () => {
+    const markup = renderToStaticMarkup(
+      <AgentActivityRail activities={[]} onClearHistory={async () => undefined} webMcpAvailable />,
+    );
+
+    expect(markup).not.toContain("Clear history");
   });
 
   it("shows a plain-language browser fallback without nested disclosures", () => {
@@ -74,7 +107,7 @@ describe("AgentActivityRail", () => {
     );
 
     expect(markup).toContain("No agent actions in this browser.");
-    expect(markup).toContain("The job portal still works normally.");
+    expect(markup).toContain("Agent tools are off in this browser. You can still search here.");
     expect(markup).not.toContain("<details");
   });
 
@@ -84,6 +117,14 @@ describe("AgentActivityRail", () => {
     expect(markup).toContain("No agent activity yet");
     expect(markup).toContain("Tool calls and visible results will appear here.");
     expect(markup).not.toContain("Copy prompt");
+  });
+
+  it("offers a direct path to the guide from an empty panel", () => {
+    const markup = renderToStaticMarkup(
+      <AgentActivityRail activities={[]} onOpenGuide={() => undefined} webMcpAvailable />,
+    );
+
+    expect(markup).toContain("How to start");
   });
 
   it("groups repeated identical calls so the judge timeline stays readable", () => {
@@ -103,5 +144,85 @@ describe("AgentActivityRail", () => {
     expect(markup).toContain("4 similar calls grouped");
     expect(markup).not.toContain("1 similar calls grouped");
     expect(markup).not.toContain("0 ms");
+  });
+
+  it("explains when earlier activity is hidden and offers a way to reveal it", () => {
+    const distinct = Array.from({ length: 6 }, (_, index): ToolActivity => ({
+      ...activities[0]!,
+      id: `activity_${String(index)}-550e8400-e29b-41d4-a716-446655440000`,
+      correlationId: `correlation_${String(index)}-550e8400-e29b-41d4-a716-446655440000`,
+      safeSummary: `Search ${String(index + 1)} completed.`,
+      status: "completed",
+      completedAt: `2026-08-29T10:24:0${String(index)}.500Z`,
+    }));
+    const markup = renderToStaticMarkup(
+      <AgentActivityRail activities={distinct} maxItems={4} webMcpAvailable />,
+    );
+
+    expect(markup).toContain("Showing the 4 most recent actions.");
+    expect(markup).toContain("Show 2 earlier");
+  });
+
+  it("keeps identical application calls separate when they affect different drafts", () => {
+    const first = {
+      ...activities[1]!,
+      id: "activity_750e8400-e29b-41d4-a716-446655440000",
+      toolName: "edit_application",
+      status: "completed" as const,
+      safeSummary: "Application draft updated.",
+      affectedResourceIds: ["draft_750e8400-e29b-41d4-a716-446655440000"],
+    };
+    const second: ToolActivity = {
+      ...first,
+      id: "activity_850e8400-e29b-41d4-a716-446655440000",
+      correlationId: "correlation_850e8400-e29b-41d4-a716-446655440000",
+      affectedResourceIds: ["draft_850e8400-e29b-41d4-a716-446655440000"],
+    };
+
+    expect(groupedActivities([first, second])).toHaveLength(2);
+  });
+
+  it("groups identical retries that affect the same application draft", () => {
+    const first = {
+      ...activities[1]!,
+      id: "activity_950e8400-e29b-41d4-a716-446655440000",
+      toolName: "edit_application",
+      status: "completed" as const,
+      safeSummary: "Application draft updated.",
+      affectedResourceIds: ["draft_950e8400-e29b-41d4-a716-446655440000"],
+    };
+    const retry: ToolActivity = {
+      ...first,
+      id: "activity_a50e8400-e29b-41d4-a716-446655440000",
+      correlationId: "correlation_a50e8400-e29b-41d4-a716-446655440000",
+    };
+
+    expect(groupedActivities([first, retry])).toMatchObject([
+      { count: 2, activity: { ...retry, safeSummary: "Application updated." } },
+    ]);
+  });
+
+  it("uses correlation to distinguish otherwise identical calls without resources", () => {
+    const first: ToolActivity = {
+      ...activities[0]!,
+      status: "completed",
+      safeSummary: "Search completed.",
+      completedAt: "2026-08-29T10:24:01.000Z",
+      affectedResourceIds: [],
+    };
+    const differentRequest: ToolActivity = {
+      ...first,
+      id: "activity_b50e8400-e29b-41d4-a716-446655440000",
+      correlationId: "correlation_b50e8400-e29b-41d4-a716-446655440000",
+    };
+    const sameRequest: ToolActivity = {
+      ...first,
+      id: "activity_c50e8400-e29b-41d4-a716-446655440000",
+    };
+
+    expect(groupedActivities([first, differentRequest])).toHaveLength(2);
+    expect(groupedActivities([first, sameRequest])).toMatchObject([
+      { count: 2, activity: sameRequest },
+    ]);
   });
 });

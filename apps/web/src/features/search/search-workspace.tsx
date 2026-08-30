@@ -3,7 +3,7 @@
 import {
   ArrowClockwiseIcon,
   BriefcaseIcon,
-  BellSimpleIcon,
+  BookmarkSimpleIcon,
   CaretDownIcon,
   ClockIcon,
   MagnifyingGlassIcon,
@@ -26,6 +26,7 @@ import {
   type JobSummary,
   type SearchJobsResult,
   type Seniority,
+  type ToolActivity,
   type WorkModel,
 } from "@jobbbler/contracts";
 import { MultiSelect } from "@jobbbler/ui";
@@ -51,6 +52,17 @@ import styles from "./search-workspace.module.css";
 const salaryThresholds = [
   40_000, 60_000, 80_000, 100_000, 120_000, 150_000, 200_000, 250_000,
 ] as const;
+
+export function shouldPulseResultsForActivity(
+  activity: ToolActivity | undefined,
+  mountedAt: number,
+): boolean {
+  return (
+    activity?.toolName === "search_jobs" &&
+    activity.status === "completed" &&
+    Date.parse(activity.startedAt) >= mountedAt
+  );
+}
 
 interface SearchDraft {
   readonly query: string;
@@ -127,6 +139,23 @@ function errorMessage(error: unknown): string {
   return "Search is temporarily unavailable. Please retry.";
 }
 
+function mergeSearchPage(
+  current: SearchJobsResult,
+  next: SearchJobsResult,
+  requestedCursor: string,
+): SearchJobsResult {
+  if (current.nextCursor !== requestedCursor) return current;
+
+  const knownJobIds = new Set(current.jobs.map(({ id }) => id));
+  const appendedJobs = next.jobs.filter(({ id }) => !knownJobIds.has(id));
+  return {
+    ...next,
+    criteria: current.criteria,
+    jobs: [...current.jobs, ...appendedJobs],
+    warnings: [...new Set([...current.warnings, ...next.warnings])],
+  };
+}
+
 function hasMeaningfulSearchCriteria(input: JobSearchInput): boolean {
   return (
     (input.query?.trim().length ?? 0) > 0 ||
@@ -161,7 +190,9 @@ export function deriveSearchPresentation(
       ? "Latest technology roles"
       : hasCriteria
         ? `${String(result?.total ?? 0)} matches`
-        : "All technology roles",
+        : result === null
+          ? "Technology roles"
+          : `${String(result.total)} technology roles`,
     landing,
     resultLayout: landing ? "cards" : "list",
     showHeroSearch: landing,
@@ -452,21 +483,25 @@ export function SearchWorkspace({
     initialSearch.error === null ? "ready" : "error",
   );
   const [error, setError] = useState<string | null>(initialSearch.error);
-  const activityCount = webMcp.activities.length;
-  const seenActivityCount = useRef(0);
-
+  const [failedPageCursor, setFailedPageCursor] = useState<string | null>(null);
   const [agentPulse, setAgentPulse] = useState(false);
+  const mountedAt = useRef(Date.now());
+  const lastPulsedActivityId = useRef<string | null>(null);
+  const latestActivity = webMcp.activities.at(-1);
 
   useEffect(() => {
-    if (activityCount > seenActivityCount.current) {
-      setAgentPulse(true);
-      const timer = window.setTimeout(() => setAgentPulse(false), 900);
-      seenActivityCount.current = activityCount;
-      return () => window.clearTimeout(timer);
+    if (
+      latestActivity === undefined ||
+      !shouldPulseResultsForActivity(latestActivity, mountedAt.current) ||
+      lastPulsedActivityId.current === latestActivity.id
+    ) {
+      return undefined;
     }
-    seenActivityCount.current = activityCount;
-    return undefined;
-  }, [activityCount]);
+    lastPulsedActivityId.current = latestActivity.id;
+    setAgentPulse(true);
+    const timer = window.setTimeout(() => setAgentPulse(false), 900);
+    return () => window.clearTimeout(timer);
+  }, [latestActivity]);
   const requestSequence = useRef(0);
   const activeSearch = useRef<AbortController | null>(null);
 
@@ -482,6 +517,7 @@ export function SearchWorkspace({
       window.history[history === "push" ? "pushState" : "replaceState"]({}, "", target);
       setStatus("loading");
       setError(null);
+      setFailedPageCursor(null);
 
       try {
         const next = await queryApi(
@@ -502,6 +538,45 @@ export function SearchWorkspace({
       }
     },
     [mode],
+  );
+
+  const loadMore = useCallback(
+    async (cursorOverride?: string) => {
+      const cursor = cursorOverride ?? result?.nextCursor;
+      if (cursor === null || cursor === undefined || status === "loading") return;
+
+      activeSearch.current?.abort();
+      const controller = new AbortController();
+      activeSearch.current = controller;
+      const sequence = requestSequence.current + 1;
+      requestSequence.current = sequence;
+      const parameters = searchInputToSearchParams({ ...applied, cursor });
+      setStatus("loading");
+      setError(null);
+      setFailedPageCursor(null);
+
+      try {
+        const next = await queryApi(
+          `/api/v1/jobs/search?${parameters.toString()}`,
+          searchJobsResultSchema,
+          { signal: controller.signal },
+        );
+        if (requestSequence.current !== sequence) return;
+        setResult((current) =>
+          current === null ? current : mergeSearchPage(current, next, cursor),
+        );
+        setStatus("ready");
+      } catch (searchError) {
+        if (controller.signal.aborted) return;
+        if (requestSequence.current !== sequence) return;
+        setFailedPageCursor(cursor);
+        setError(errorMessage(searchError));
+        setStatus("error");
+      } finally {
+        if (activeSearch.current === controller) activeSearch.current = null;
+      }
+    },
+    [applied, result?.nextCursor, status],
   );
 
   useEffect(() => () => activeSearch.current?.abort(), []);
@@ -538,6 +613,7 @@ export function SearchWorkspace({
           setDraft(draftFromInput(input));
           setResult(committedResult);
           setError(null);
+          setFailedPageCursor(null);
           setStatus("ready");
         });
       }),
@@ -557,7 +633,7 @@ export function SearchWorkspace({
     return parameters.size === 0 ? "" : `?${parameters.toString()}`;
   }, [applied]);
 
-  const saveAlertHref = useMemo(() => {
+  const saveSearchHref = useMemo(() => {
     const parameters = searchInputToSearchParams(applied);
     parameters.set("create", "1");
     return `/saved?${parameters.toString()}`;
@@ -567,6 +643,7 @@ export function SearchWorkspace({
     () => deriveSearchPresentation(applied, result, mode),
     [applied, mode, result],
   );
+
   function commitDraft(next: SearchDraft) {
     setDraft(next);
     const input = inputFromDraft(next);
@@ -646,9 +723,9 @@ export function SearchWorkspace({
           </div>
           {presentation.landing ? null : (
             <div className={styles["resultsControls"]}>
-              <Link className={styles["saveAlertLink"]} href={saveAlertHref}>
-                <BellSimpleIcon aria-hidden="true" size={16} />
-                Save alert
+              <Link className={styles["saveAlertLink"]} href={saveSearchHref}>
+                <BookmarkSimpleIcon aria-hidden="true" size={16} />
+                Save search
               </Link>
               <label className={styles["sortControl"]}>
                 <span>Sort</span>
@@ -671,11 +748,17 @@ export function SearchWorkspace({
 
         <div aria-atomic="true" aria-live="polite" className="sr-only">
           {status === "ready" && result !== null
-            ? `${String(result.total)} matching jobs loaded.`
+            ? `${String(presentation.visibleJobs.length)} of ${String(result.total)} matching jobs loaded.`
             : status === "error"
               ? error
               : ""}
         </div>
+
+        {status === "loading" && result !== null ? (
+          <div aria-label="Search update" aria-live="polite" className="sr-only" role="status">
+            Updating results…
+          </div>
+        ) : null}
 
         {status === "loading" && result === null ? <SearchSkeleton /> : null}
 
@@ -686,7 +769,14 @@ export function SearchWorkspace({
               <strong>We could not refresh this search.</strong>
               <p>{error}</p>
             </div>
-            <button onClick={() => void runSearch(applied, "replace")} type="button">
+            <button
+              onClick={() =>
+                failedPageCursor === null
+                  ? void runSearch(applied, "replace")
+                  : void loadMore(failedPageCursor)
+              }
+              type="button"
+            >
               <ArrowClockwiseIcon aria-hidden="true" size={16} />
               Retry
             </button>
@@ -703,9 +793,11 @@ export function SearchWorkspace({
 
         {presentation.visibleJobs.length > 0 ? (
           <div
+            aria-busy={status === "loading"}
             className={styles["resultList"]}
             data-layout={presentation.resultLayout}
             data-loading={String(status === "loading")}
+            id="search-results"
           >
             {presentation.visibleJobs.map((job) => (
               <JobResult
@@ -720,7 +812,24 @@ export function SearchWorkspace({
 
         {presentation.landing && (result?.total ?? 0) > presentation.visibleJobs.length ? (
           <div className={styles["landingFooter"]}>
-            <Link href="/jobs?sort=newest&limit=50">View all roles</Link>
+            <Link href="/jobs?sort=newest">View all roles</Link>
+          </div>
+        ) : null}
+
+        {!presentation.landing &&
+        result?.nextCursor !== null &&
+        result?.nextCursor !== undefined ? (
+          <div className={styles["landingFooter"]}>
+            <button
+              aria-controls="search-results"
+              aria-disabled={status === "loading"}
+              aria-label="Load more roles"
+              className={styles["saveAlertLink"]}
+              onClick={() => void loadMore()}
+              type="button"
+            >
+              {status === "loading" ? "Loading more roles…" : "Load more roles"}
+            </button>
           </div>
         ) : null}
 

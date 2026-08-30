@@ -37,5 +37,7 @@ describe("SearchFilters", () => {
     expect(markup).toContain("Optional");
     expect(markup).toContain("Work model");
     expect(markup).toContain("Minimum salary");
+    expect(markup).toContain("Save search");
+    expect(markup).not.toContain("Save alert");
   });
 });

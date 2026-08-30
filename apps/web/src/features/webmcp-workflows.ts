@@ -14,6 +14,7 @@ export const workflowGoals = [
   "compare_roles",
   "monitor_search",
   "prepare_application",
+  "enable_recovery",
   "recover_workspace",
 ] as const;
 
@@ -37,7 +38,7 @@ interface WorkflowPlan {
   readonly branches?: readonly WorkflowBranch[];
 }
 
-export const workflowVersion = "2.2";
+export const workflowVersion = "2.5";
 export const MAX_WORKFLOW_PLAN_RESULT_BYTES = 2_048;
 
 export const workflowBoundaries: readonly string[] = [
@@ -143,7 +144,7 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
         ],
         humanAction: false,
       },
-      { intent: "Review saved alerts later", tool: "get_saved_alerts", humanAction: false },
+      { intent: "Review saved searches later", tool: "get_saved_alerts", humanAction: false },
       {
         intent: "Read only what changed since the last check",
         tool: "get_latest_search_update",
@@ -157,9 +158,9 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
         humanAction: false,
       },
       {
-        intent: "Pause or resume checking",
+        intent: "Manage alert",
         tool: "set_job_alert_state",
-        requiredInputs: ["scheduleId", "enabled"],
+        requiredInputs: ["action,target,delete-confirmation"],
         humanAction: false,
       },
     ],
@@ -174,91 +175,99 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
         humanAction: false,
       },
       {
-        intent: "Check application capability",
-        tool: "get_job_application_capability",
+        intent: "Create or reopen the private application",
+        tool: "prepare_application",
         requiredInputs: ["jobId"],
         humanAction: false,
       },
+      {
+        intent: "Check missing facts",
+        tool: "get_application_readiness",
+        requiredInputs: ["draftId"],
+        humanAction: false,
+      },
+      {
+        intent: "Request preparation assistance",
+        tool: "request_application_assistance",
+        requiredInputs: ["draftId"],
+        humanAction: "Ask in the agent client: allow this application only.",
+      },
+      {
+        intent: "Record assistance decision",
+        tool: "decide_application_assistance",
+        requiredInputs: ["draftId", "requestId", "decision"],
+        humanAction: false,
+      },
+      {
+        intent: "Propose bounded truthful answers",
+        tool: "propose_application_updates",
+        requiredInputs: ["draftId", "patches: fieldKey + value"],
+        humanAction: "Ask only for missing facts; never invent them.",
+      },
+      {
+        intent: "Present the exact submission review",
+        tool: "request_submission_review",
+        requiredInputs: ["draftId"],
+        humanAction: "Ask for the final decision in the agent client.",
+      },
+      {
+        intent: "Submit once only if approved",
+        tool: "decide_application_submission",
+        requiredInputs: ["draftId", "requestId", "draftVersion", "decision"],
+        humanAction: false,
+      },
     ],
-    branches: [
+  },
+  enable_recovery: {
+    title: "Enable optional workspace recovery",
+    steps: [
       {
-        when: "applyMode=internal",
-        steps: [
-          {
-            intent: "Prepare the internal application",
-            tool: "prepare_application",
-            requiredInputs: ["jobId"],
-            humanAction: false,
-          },
-          {
-            intent: "Check missing facts",
-            tool: "get_application_readiness",
-            requiredInputs: ["draftId"],
-            humanAction: false,
-          },
-          {
-            intent: "Request preparation assistance",
-            tool: "request_application_assistance",
-            requiredInputs: ["draftId"],
-            humanAction: "Ask in the agent client whether to allow this draft only.",
-          },
-          {
-            intent: "Record assistance decision",
-            tool: "decide_application_assistance",
-            requiredInputs: ["draftId", "requestId", "decision"],
-            humanAction: false,
-          },
-          {
-            intent: "Propose bounded truthful answers",
-            tool: "propose_application_updates",
-            requiredInputs: ["draftId", "patches: fieldKey + value"],
-            humanAction: "Ask only for missing facts; never invent them.",
-          },
-          {
-            intent: "Present the exact submission review",
-            tool: "request_submission_review",
-            requiredInputs: ["draftId"],
-            humanAction: "Ask for the final decision in the agent client.",
-          },
-          {
-            intent: "Submit once only if approved",
-            tool: "decide_application_submission",
-            requiredInputs: ["draftId", "requestId", "draftVersion", "decision"],
-            humanAction: false,
-          },
-        ],
+        intent: "Send a verification code for optional workspace recovery",
+        tool: "enable_workspace_recovery",
+        requiredInputs: ["action=start", "email explicitly supplied by the person"],
+        humanAction: "Ask for an email in the agent client only if the person wants recovery.",
       },
       {
-        when: "applyMode=external and employerSite.available=true",
-        steps: [
-          {
-            intent: "Open the validated employer page",
-            tool: null,
-            humanAction: "Open validated HTTPS employer page; create no draft or submission claim.",
-          },
+        intent: "Complete optional recovery setup",
+        tool: "enable_workspace_recovery",
+        requiredInputs: [
+          "action=complete",
+          "challengeId from start",
+          "6-digit code from the person",
         ],
-      },
-      {
-        when: "applyMode=external and employerSite.available=false",
-        steps: [
-          {
-            intent: "Stop: employer page unavailable",
-            tool: null,
-            humanAction: "Stop: no validated HTTPS employer page; no draft or submission claim.",
-          },
-        ],
+        humanAction: "Ask for the six-digit code in the agent client.",
       },
     ],
   },
   recover_workspace: {
-    title: "Restore saved work",
+    title: "Restore private work",
     steps: [
       {
-        intent: "Restore with the verified email",
-        tool: null,
-        humanAction: "Open the Saved page and use “Restore with email”; enter the one-time code.",
+        intent: "Send a recovery code",
+        tool: "recover_jobbbler_workspace",
+        requiredInputs: ["action=start", "verified email supplied by the person"],
+        humanAction: "Ask for the verified email in the agent client.",
       },
-      { intent: "Confirm the restored alerts", tool: "get_saved_alerts", humanAction: false },
+      {
+        intent: "Complete workspace recovery",
+        tool: "recover_jobbbler_workspace",
+        requiredInputs: [
+          "action=complete",
+          "recoveryId from start",
+          "6-digit code from the person",
+        ],
+        humanAction: "Ask for the six-digit code in the agent client.",
+      },
+      {
+        intent: "Confirm the restored applications",
+        tool: "get_applications",
+        humanAction: false,
+      },
+      {
+        intent: "Confirm the restored saved searches",
+        tool: "get_saved_alerts",
+        humanAction: false,
+      },
     ],
   },
 };
@@ -287,7 +296,7 @@ function preferredTool(goal: WorkflowGoal, route: string): string | null {
   if (goal === "compare_roles" && route === "/compare") return "get_comparison";
   if (goal === "monitor_search" && route === "/saved") return "get_saved_alerts";
   if (goal === "prepare_application" && route === "/jobs/:jobId") {
-    return "get_job_application_capability";
+    return "prepare_application";
   }
   if (goal === "find_roles" && route === "/jobs/:jobId") return "get_job_details";
   return null;

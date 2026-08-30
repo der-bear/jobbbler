@@ -1,6 +1,6 @@
 "use client";
 
-import { BellSimpleIcon, BriefcaseIcon, CircleIcon, FileTextIcon } from "@phosphor-icons/react";
+import { BookmarkSimpleIcon, BriefcaseIcon, CircleIcon, FileTextIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
@@ -13,12 +13,13 @@ import { useWebMcp } from "./webmcp-provider";
 import styles from "./app-shell.module.css";
 
 const navigation = [
-  { href: "/jobs", label: "Jobs", icon: BriefcaseIcon },
-  { href: "/saved", label: "Alerts", icon: BellSimpleIcon },
-  { href: "/applications", label: "Applications", icon: FileTextIcon },
+  { href: "/jobs", label: "Open roles", icon: BriefcaseIcon },
+  { href: "/saved", label: "Saved searches", icon: BookmarkSimpleIcon },
+  { href: "/applications", label: "My applications", icon: FileTextIcon },
 ] as const;
 
 function isCurrentRoute(pathname: string, href: string): boolean {
+  if (href === "/applications" && pathname.startsWith("/apply/")) return true;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -56,8 +57,14 @@ export function AppHeaderSurface({
 }>) {
   return (
     <header className={styles["header"]} inert={blocked || undefined}>
-      <Link aria-label="Jobbbler home" className={styles["wordmark"]} href="/">
-        Jobbbler
+      <Link
+        aria-label="Jobbbler home"
+        className={styles["wordmark"]}
+        data-status={agentStatus}
+        href="/"
+      >
+        <span>Jobbbler</span>
+        <CircleIcon aria-hidden="true" className={styles["wordmarkDot"]} size={7} weight="fill" />
       </Link>
       <nav aria-label="Primary navigation" className={styles["navigation"]}>
         {navigation.map(({ href, label, icon: Icon }) => (
@@ -75,15 +82,14 @@ export function AppHeaderSurface({
       <div className={styles["actions"]}>
         <button
           aria-expanded={agentOpen}
-          aria-label={`Agent view — ${agentStatusLabel}`}
+          aria-label={`Agent activity — ${agentStatusLabel}`}
           className={styles["agentView"]}
           data-status={agentStatus}
           onClick={onAgentToggle}
           ref={agentButtonRef}
           type="button"
         >
-          <CircleIcon aria-hidden="true" size={8} weight="fill" />
-          <span>Agent view</span>
+          <span>Agent activity</span>
           <span className="sr-only">{agentStatusLabel}</span>
         </button>
         <ThemeToggle />
@@ -104,7 +110,6 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     const query = window.matchMedia("(max-width: 1080px)");
     const update = () => {
       setCompactAgentPanel(query.matches);
-      if (query.matches) setAgentPanelOpen(false);
     };
     update();
     query.addEventListener("change", update);

@@ -74,6 +74,12 @@ export const savedSearchSchema = z.strictObject({
   updatedAt: isoInstantSchema,
 });
 
+export const savedSearchDeletionReceiptSchema = z.strictObject({
+  savedSearchId: entityIdSchema,
+  scheduleId: entityIdSchema.nullable(),
+  deleted: z.literal(true),
+});
+
 export const jobAlertScheduleSchema = z.strictObject({
   id: entityIdSchema,
   ownerId: entityIdSchema,
@@ -192,6 +198,7 @@ export const decideSearchAlertResultSchema = z.discriminatedUnion("decision", [
 export type ScheduleRecurrence = z.infer<typeof scheduleRecurrenceSchema>;
 export type Weekday = z.infer<typeof weekdaySchema>;
 export type SavedSearch = z.infer<typeof savedSearchSchema>;
+export type SavedSearchDeletionReceipt = z.infer<typeof savedSearchDeletionReceiptSchema>;
 export type JobAlertSchedule = z.infer<typeof jobAlertScheduleSchema>;
 export type ScheduleJobAlertInput = z.infer<typeof scheduleJobAlertInputSchema>;
 export type SetJobAlertEnabledInput = z.infer<typeof setJobAlertEnabledInputSchema>;

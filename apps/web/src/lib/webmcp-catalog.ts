@@ -46,8 +46,7 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
       },
       {
         name: "prepare_application",
-        purpose:
-          "Create or reopen one private application draft for an explicitly chosen managed internal role.",
+        purpose: "Create or reopen one private Jobbbler application for a chosen role.",
         readOnly: false,
       },
       {
@@ -76,11 +75,6 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
       {
         name: "get_job_details",
         purpose: "Inspect the source-backed facts and fit evidence for the role open on this page.",
-        readOnly: true,
-      },
-      {
-        name: "get_job_application_capability",
-        purpose: "Learn how the role on this page accepts applications before starting one.",
         readOnly: true,
       },
       {
@@ -117,24 +111,34 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
     title: "Saved searches",
     tools: [
       {
-        name: "get_saved_alerts",
+        name: "enable_workspace_recovery",
+        purpose: "Optionally add passwordless recovery to the current private Jobbbler workspace.",
+        readOnly: false,
+      },
+      {
+        name: "recover_jobbbler_workspace",
         purpose:
-          "Read the current owner's saved searches and alert states without delivery details.",
+          "Restore applications and saved searches with an email and one-time code from the person.",
+        readOnly: false,
+      },
+      {
+        name: "get_saved_alerts",
+        purpose: "List saved searches and their optional update schedules.",
         readOnly: true,
       },
       {
         name: "request_search_alert",
-        purpose: "Prepare one email job alert for an explicit decision in the agent client.",
+        purpose: "Prepare email updates for one saved search and request an explicit decision.",
         readOnly: false,
       },
       {
         name: "decide_search_alert",
-        purpose: "Record the person's exact alert decision and activate only the reviewed alert.",
+        purpose: "Record the exact decision and activate only the reviewed email updates.",
         readOnly: false,
       },
       {
         name: "set_job_alert_state",
-        purpose: "Pause or resume one existing saved job alert in the current private workspace.",
+        purpose: "Pause, resume, or permanently delete one saved job search in this workspace.",
         readOnly: false,
       },
       {
@@ -155,6 +159,11 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
     title: "Apply",
     note: "Discoverable on every page and state-gated at execution. In the agent flow, decisions stay in the agent client and Jobbbler stores the resulting consent evidence.",
     tools: [
+      {
+        name: "get_applications",
+        purpose: "List private applications and receipt availability without returning answers.",
+        readOnly: true,
+      },
       {
         name: "get_application_readiness",
         purpose: "Check what one private application still needs without returning its answers.",

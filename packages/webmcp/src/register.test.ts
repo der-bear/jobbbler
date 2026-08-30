@@ -59,6 +59,24 @@ describe("WebMCP framework core", () => {
     ]);
   });
 
+  it("clears the local activity history and publishes one empty snapshot", () => {
+    const activities = new AgentActivityStore();
+    const snapshots: (readonly unknown[])[] = [];
+    activities.start("search_jobs", "Finding roles.");
+    const unsubscribe = activities.subscribe((snapshot) => {
+      snapshots.push(snapshot);
+    });
+
+    activities.clear();
+    const cleared = activities.snapshot();
+    activities.clear();
+    unsubscribe();
+
+    expect(cleared).toEqual([]);
+    expect(Object.isFrozen(cleared)).toBe(true);
+    expect(snapshots).toHaveLength(1);
+  });
+
   it("reconciles durable activity by id or correlation without duplicating local execution", () => {
     const activities = new AgentActivityStore({
       now: () => new Date("2026-08-29T10:00:00.000Z"),
@@ -110,6 +128,34 @@ describe("WebMCP framework core", () => {
       toolName: "start_application",
       correlationId: "server_request_550e8400-e29b-41d4-a716-446655440000",
     });
+  });
+
+  it("preserves known local resources when the matching committed event omits them", () => {
+    const activities = new AgentActivityStore({
+      now: () => new Date("2026-08-29T10:00:00.000Z"),
+    });
+    const draftId = "draft_550e8400-e29b-41d4-a716-446655440000";
+    const correlationId = "corr_650e8400-e29b-41d4-a716-446655440000";
+    const localId = activities.start("edit_application", "Updating application draft.", {
+      correlationId,
+      affectedResourceIds: [draftId],
+    });
+    activities.finish(localId, "completed", "Application draft updated.");
+
+    activities.mergeCommitted([
+      {
+        id: "activity_650e8400-e29b-41d4-a716-446655440000",
+        toolName: "edit_application",
+        status: "completed",
+        safeSummary: "Application draft updated.",
+        correlationId,
+        startedAt: "2026-08-29T10:00:00.000Z",
+        completedAt: "2026-08-29T10:00:01.000Z",
+        affectedResourceIds: [],
+      },
+    ]);
+
+    expect(activities.snapshot()).toMatchObject([{ affectedResourceIds: [draftId] }]);
   });
 
   it("builds bounded, JSON-serializable object schemas", () => {
@@ -307,6 +353,39 @@ describe("WebMCP framework core", () => {
         safeSummary: "Read the role and its source-backed fit evidence.",
       },
     ]);
+  });
+
+  it("records a bounded set of affected resources from a completed tool result", async () => {
+    const modelContext = new FakeModelContext();
+    const activities = new AgentActivityStore();
+    const resources = Array.from({ length: 22 }, (_, index) => ({
+      type: "application",
+      id: `draft_550e8400-e29b-41d4-a716-${String(index + 1).padStart(12, "0")}`,
+      label: `Application ${String(index + 1)}`,
+    }));
+    await registerToolSet(
+      [
+        manifest({
+          execute: async () => ({
+            count: resources.length,
+            status: "completed" as const,
+            summary: "Application drafts updated.",
+            resources,
+          }),
+        }),
+      ],
+      { modelContext, activities },
+    );
+
+    await modelContext.registrations[0]!.tool.execute(
+      { query: "platform" },
+      { signal: new AbortController().signal },
+    );
+
+    const affectedResourceIds = activities.snapshot()[0]?.affectedResourceIds;
+    expect(affectedResourceIds).toHaveLength(20);
+    expect(affectedResourceIds?.[0]).toBe("draft_550e8400-e29b-41d4-a716-000000000001");
+    expect(affectedResourceIds?.[19]).toBe("draft_550e8400-e29b-41d4-a716-000000000020");
   });
 
   it("preserves a safe returned terminal envelope in the activity timeline", async () => {

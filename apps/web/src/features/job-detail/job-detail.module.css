@@ -36,6 +36,48 @@
   text-wrap: balance;
 }
 
+/*
+ * The loading state mirrors the article layout instead of announcing itself as
+ * a headline, so the page does not visibly change shape once facts arrive.
+ */
+.skeleton {
+  display: grid;
+  gap: 14px;
+  padding-block-start: 12px;
+}
+
+.skeleton span {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+}
+
+.skeletonTitle {
+  block-size: clamp(40px, 5vw, 62px);
+  inline-size: min(100%, 15ch);
+}
+
+.skeletonOrg {
+  block-size: 18px;
+  inline-size: 22ch;
+}
+
+.skeletonMeta {
+  block-size: 14px;
+  inline-size: 38ch;
+}
+
+.skeletonLine {
+  block-size: 14px;
+  inline-size: min(100%, 62ch);
+  margin-block-start: 10px;
+}
+
+.skeletonLineShort {
+  block-size: 14px;
+  inline-size: min(100%, 44ch);
+}
+
 .organization {
   margin: 0;
   color: var(--color-ink-muted);
@@ -64,9 +106,26 @@
   gap: 5px;
 }
 
-.summary {
+.description {
   max-inline-size: 78ch;
-  margin: 20px 0 0;
+  margin-block-start: clamp(32px, 5vw, 52px);
+}
+
+.description h2 {
+  margin: 0 0 18px;
+  color: var(--color-ink);
+  font-size: clamp(20px, 2.4vw, 28px);
+  font-weight: 560;
+  letter-spacing: -0.035em;
+}
+
+.summary {
+  display: grid;
+  gap: 16px;
+}
+
+.summary p {
+  margin: 0;
   color: var(--color-ink);
   font-size: 16px;
   line-height: 1.65;
@@ -88,6 +147,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  min-block-size: 44px;
   color: var(--color-signal-strong);
   font-size: 13px;
   font-weight: 650;
@@ -155,7 +215,6 @@
 .unknowns h3 {
   margin: 0 0 14px;
   color: var(--color-ink);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.09em;
@@ -220,7 +279,6 @@
 .skills span {
   border: 1px solid var(--color-line-strong);
   color: var(--color-ink-muted);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
   padding: 6px 9px;
 }
@@ -245,7 +303,6 @@
 
 .provenanceList dt {
   color: var(--color-ink-subtle);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;

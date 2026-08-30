@@ -18,6 +18,7 @@ import {
   backToSearchHref,
   externalApplicationUrl,
   hasMeaningfulSearchCriteria,
+  jobSummaryParagraphs,
   supportsJobbblerPreparation,
 } from "./job-detail";
 import { applicationCapabilityData, applicationCapabilitySummary } from "./application-capability";
@@ -170,6 +171,71 @@ describe("job-detail fit explanation", () => {
     expect(hasMeaningfulSearchCriteria("?sort=relevance")).toBe(false);
     expect(hasMeaningfulSearchCriteria("?q=platform&sort=relevance")).toBe(true);
     expect(hasMeaningfulSearchCriteria("?location=Europe")).toBe(true);
+  });
+
+  it("renders the complete public detail description", () => {
+    const fullDescription = `Opening context. ${"Source-backed role detail. ".repeat(32)}Final detail.`;
+    const markup = renderToStaticMarkup(
+      createElement(JobDetail, {
+        jobId: job.id,
+        criteriaSearch: "",
+        initialResult: { job: { ...job, summary: fullDescription }, fit: noEvidenceFit },
+      }),
+    );
+
+    expect(fullDescription.length).toBeGreaterThan(600);
+    expect(jobSummaryParagraphs(fullDescription).join(" ")).toBe(fullDescription);
+    expect(markup).toContain("About the role");
+    expect(markup).toContain("Final detail.");
+  });
+
+  it("turns a dense source description into readable paragraphs without dropping words", () => {
+    const description =
+      "First sentence explains the context. Second sentence explains the work. Third sentence covers collaboration. Fourth sentence covers success. Fifth sentence covers the team.";
+
+    expect(jobSummaryParagraphs(description)).toEqual([
+      "First sentence explains the context. Second sentence explains the work.",
+      "Third sentence covers collaboration. Fourth sentence covers success.",
+      "Fifth sentence covers the team.",
+    ]);
+  });
+
+  it("places the return path before the role heading and the application action after key facts", () => {
+    const markup = renderToStaticMarkup(
+      createElement(JobDetail, {
+        jobId: job.id,
+        criteriaSearch: "?q=platform",
+        initialResult: { job: { ...job, applyMode: "internal" }, fit: noEvidenceFit },
+      }),
+    );
+
+    expect(markup.indexOf("Back to search")).toBeLessThan(
+      markup.indexOf("Senior Product Engineer"),
+    );
+    expect(markup.indexOf("Remote · Europe")).toBeLessThan(markup.indexOf(">Apply<"));
+    expect(markup.indexOf(">Apply<")).toBeLessThan(
+      markup.indexOf("Build calm, accessible collaboration workflows."),
+    );
+  });
+
+  it("does not tell people to recheck a fictional demo posting on another site", () => {
+    const markup = renderToStaticMarkup(
+      createElement(JobDetail, {
+        jobId: job.id,
+        criteriaSearch: "",
+        initialResult: {
+          job: {
+            ...job,
+            applyMode: "internal",
+            source: { key: "jobbbler_demo", label: "Jobbbler demo", url: null },
+          },
+          fit: noEvidenceFit,
+        },
+      }),
+    );
+
+    expect(markup).toContain("Fictional role created for this product demonstration.");
+    expect(markup).not.toContain("Recheck the original posting before applying.");
   });
 
   it("uses one concise explanation when active filters exclude a role without evidence", () => {

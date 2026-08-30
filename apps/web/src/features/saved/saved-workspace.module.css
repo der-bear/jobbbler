@@ -17,7 +17,6 @@
 .eyebrow {
   margin: 0;
   color: var(--color-ink-muted);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.11em;
@@ -67,7 +66,6 @@
 .identityHeading span,
 .previewRow span {
   color: var(--color-ink-subtle);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -136,8 +134,9 @@
   border: 1px solid var(--color-line-strong);
   border-radius: 999px;
   color: var(--color-ink-muted);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
+  font-weight: 620;
+  letter-spacing: 0.06em;
   padding: 7px 10px;
   text-transform: uppercase;
 }
@@ -189,6 +188,49 @@
   gap: 16px;
 }
 
+.form .choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  cursor: pointer;
+}
+
+.form .choice > input {
+  inline-size: 18px;
+  min-block-size: 18px;
+  block-size: 18px;
+  flex: 0 0 18px;
+  margin: 1px 0 0;
+  padding: 0;
+  accent-color: var(--jb-signal);
+}
+
+.form .choice > span {
+  display: grid;
+  gap: 3px;
+  color: var(--color-ink);
+  font-size: 12px;
+  letter-spacing: 0;
+  line-height: 1.4;
+  text-transform: none;
+}
+
+.choice strong {
+  font-weight: 650;
+}
+
+.choice small {
+  color: var(--color-ink-subtle);
+  font-size: 11px;
+}
+
+.composer > .primaryButton {
+  margin-block-start: 18px;
+}
+
 .form label {
   display: grid;
   gap: 7px;
@@ -197,7 +239,6 @@
 .form label > span,
 .weekdayFieldset legend {
   color: var(--color-ink-muted);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -277,7 +318,8 @@
 
 .primaryButton,
 .secondaryButton,
-.quietButton {
+.quietButton,
+.dangerButton {
   display: inline-flex;
   min-block-size: 42px;
   align-items: center;
@@ -298,6 +340,16 @@
 
 .primaryButton:hover {
   background: var(--jb-signal-strong);
+}
+
+.dangerButton {
+  border: 1px solid var(--jb-danger);
+  background: var(--jb-danger);
+  color: white;
+}
+
+.dangerButton:hover {
+  filter: brightness(0.94);
 }
 
 .secondaryButton,
@@ -330,7 +382,6 @@
 .endpointList > div {
   justify-content: space-between;
   color: var(--color-ink-muted);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
 }
 
@@ -371,7 +422,8 @@
 }
 
 .primaryButton:disabled,
-.quietButton:disabled {
+.quietButton:disabled,
+.dangerButton:disabled {
   cursor: wait;
   opacity: 0.55;
 }
@@ -379,7 +431,6 @@
 .hint {
   margin: -7px 0 0;
   color: var(--color-signal-strong);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
 }
 
@@ -407,6 +458,30 @@
   text-align: end;
 }
 
+.previewRow .changeValue {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.changeValue s {
+  color: var(--color-ink-subtle);
+  font-weight: 500;
+}
+
+.changeValue span {
+  color: inherit;
+  font-size: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
+}
+
+.changeValue svg {
+  flex: 0 0 auto;
+}
+
 .buttonRow {
   margin-block-start: 20px;
 }
@@ -415,6 +490,7 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  min-block-size: 44px;
   color: var(--color-signal-strong);
   font-size: 11px;
   font-weight: 620;
@@ -437,7 +513,6 @@
   align-items: center;
   gap: 6px;
   color: var(--color-ink-subtle);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -461,7 +536,6 @@
 
 .savedTopline small {
   color: var(--color-ink-subtle);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
 }
 
@@ -492,13 +566,62 @@
   margin-block-start: 18px;
 }
 
+.removeConfirmation {
+  display: grid;
+  gap: 12px;
+  margin-block-start: 16px;
+  border-block-start: 1px solid color-mix(in srgb, var(--jb-danger) 36%, var(--color-line));
+  padding-block-start: 16px;
+}
+
+.removeConfirmation p {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.removeConfirmation label {
+  display: grid;
+  gap: 7px;
+}
+
+.removeConfirmation label > span {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.removeConfirmation input {
+  inline-size: min(100%, 420px);
+  min-block-size: 42px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+  outline: 0;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  padding: 9px 11px;
+  font-size: 13px;
+}
+
+.removeConfirmation input:focus-visible {
+  border-color: var(--jb-danger);
+  outline: 3px solid var(--jb-focus);
+  outline-offset: 2px;
+}
+
+.removeConfirmation > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .latestRun {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 16px;
   margin-block-start: 14px;
   color: var(--color-ink-muted);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
   letter-spacing: 0.02em;
   line-height: 1.5;
@@ -509,17 +632,23 @@
   color: var(--jb-danger);
 }
 
+/*
+ * The empty state is framed as a placeholder panel with a next step, so the
+ * section reads as one block instead of stranded text in an open column.
+ */
 .empty {
   display: grid;
-  min-block-size: 310px;
+  min-block-size: 210px;
   align-content: center;
   justify-items: start;
-  border-block-end: 1px solid var(--color-line);
+  border: 1px dashed var(--color-line-strong);
+  border-radius: var(--radius-lg);
+  padding: clamp(24px, 4vw, 40px);
   color: var(--color-ink-subtle);
 }
 
 .empty h3 {
-  margin: 17px 0 7px;
+  margin: 14px 0 7px;
   color: var(--color-ink);
   font-size: 18px;
 }
@@ -530,6 +659,33 @@
   color: var(--color-ink-muted);
   font-size: 12px;
   line-height: 1.55;
+}
+
+.emptyAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-block-size: 44px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 999px;
+  padding-inline: 18px;
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: 620;
+  text-decoration: none;
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    background var(--motion-fast) var(--ease-standard);
+}
+
+.emptyAction:hover {
+  border-color: var(--color-ink);
+  background: var(--color-surface-subtle);
+}
+
+.emptyAction:focus-visible {
+  outline: 3px solid var(--jb-focus);
+  outline-offset: 3px;
 }
 
 .error,
@@ -620,6 +776,10 @@
     grid-column: 2;
     justify-self: start;
     text-align: start;
+  }
+
+  .previewRow .changeValue {
+    justify-content: flex-start;
   }
 
   .buttonRow,

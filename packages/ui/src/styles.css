@@ -147,7 +147,6 @@ button:disabled {
   border-radius: 999px;
   color: var(--jb-text);
   display: inline-flex;
-  font-family: var(--jb-font-mono);
   font-size: 0.75rem;
   gap: 0.25rem;
   line-height: 1;
@@ -196,7 +195,6 @@ button.jb-chip {
 }
 .jb-card__eyebrow {
   color: var(--jb-text-muted);
-  font-family: var(--jb-font-mono);
   font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -330,8 +328,8 @@ button.jb-chip {
   background: var(--jb-surface);
   border: 1px solid var(--jb-border-strong);
   color: var(--jb-text);
-  height: 2.375rem;
-  width: 2.375rem;
+  height: 2.75rem;
+  width: 2.75rem;
 }
 
 @keyframes jb-spin {
@@ -381,6 +379,11 @@ button.jb-chip {
 .jb-multiselect__control svg {
   flex: 0 0 auto;
   color: var(--jb-text-muted);
+  transition: transform var(--jb-duration-fast) var(--jb-ease);
+}
+
+.jb-multiselect__control svg[data-open="true"] {
+  transform: rotate(180deg);
 }
 
 .jb-multiselect__control[data-active="false"] > span {
@@ -388,9 +391,8 @@ button.jb-chip {
 }
 
 .jb-multiselect__control:focus-visible {
-  border-color: var(--jb-signal);
-  outline: 2px solid var(--jb-focus);
-  outline-offset: 2px;
+  outline: 3px solid var(--jb-focus);
+  outline-offset: -3px;
 }
 
 .jb-multiselect__popover {
@@ -420,9 +422,8 @@ button.jb-chip {
 }
 
 .jb-multiselect__search:focus-visible {
-  border-color: var(--jb-signal);
-  outline: 2px solid var(--jb-focus);
-  outline-offset: 2px;
+  outline: 3px solid var(--jb-focus);
+  outline-offset: -3px;
 }
 
 .jb-multiselect__list {
@@ -434,32 +435,49 @@ button.jb-chip {
   list-style: none;
 }
 
-.jb-multiselect__list label {
+.jb-multiselect__option {
   display: flex;
+  inline-size: 100%;
+  min-block-size: 34px;
   align-items: center;
   gap: 9px;
+  border: 0;
   border-radius: var(--jb-radius-sm);
+  background: transparent;
+  color: var(--jb-text);
   padding: 7px 8px;
   font-size: 13px;
   cursor: pointer;
+  text-align: start;
 }
 
-.jb-multiselect__list label:hover {
+.jb-multiselect__option:hover,
+.jb-multiselect__option[aria-selected="true"] {
   background: var(--jb-surface-muted);
 }
 
-.jb-multiselect .jb-multiselect__list input {
-  inline-size: 15px;
-  block-size: 15px;
-  min-block-size: 0;
-  flex: 0 0 auto;
-  margin: 0;
-  border: 0;
-  padding: 0;
-  accent-color: var(--jb-signal);
+.jb-multiselect__option:focus-visible {
+  outline: 3px solid var(--jb-focus);
+  outline-offset: -3px;
 }
 
-.jb-multiselect__list label span {
+.jb-multiselect__indicator {
+  display: inline-grid;
+  inline-size: 16px;
+  block-size: 16px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--jb-border-strong);
+  border-radius: 3px;
+  color: var(--jb-signal-contrast);
+}
+
+.jb-multiselect__indicator[data-selected="true"] {
+  border-color: var(--jb-signal);
+  background: var(--jb-signal);
+}
+
+.jb-multiselect__option > span:last-child {
   flex: 1;
   text-align: start;
 }

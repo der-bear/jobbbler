@@ -38,6 +38,28 @@ describe("API response envelope", () => {
     expect(body).not.toContain("stack");
   });
 
+  it("keeps a branded NOT_FOUND response safe across a duplicated domain module", async () => {
+    const foreignError = Object.assign(new Error("Job was not found."), {
+      name: "DomainError",
+      code: "NOT_FOUND" as const,
+      retryable: false,
+      details: undefined,
+      [Symbol.for("@jobbbler/core-domain/DomainError")]: true,
+      toSafeObject: () => ({
+        code: "NOT_FOUND" as const,
+        message: "Job was not found.",
+        retryable: false,
+      }),
+    });
+    const response = apiErrorResponse(foreignError, { requestId });
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: false,
+      error: { code: "NOT_FOUND", message: "Job was not found.", retryable: false },
+    });
+  });
+
   it("returns generic internal errors and rate-limit retry headers", async () => {
     const internal = apiErrorResponse(new Error("SQLITE_SECRET"), { requestId });
     expect(internal.status).toBe(500);

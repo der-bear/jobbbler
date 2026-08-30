@@ -43,10 +43,10 @@ describe("plan_job_workflow", () => {
     expect(result).toMatchObject({ status: "completed", data: { nextTool } });
   });
 
-  it("keeps recovery on its human verification step before reading private alerts", async () => {
+  it("keeps workspace recovery entirely in the external agent client", async () => {
     const planner = createWorkflowPlannerTool({
       route: "/saved",
-      availableTools: () => ["get_saved_alerts"],
+      availableTools: () => ["recover_jobbbler_workspace", "get_applications", "get_saved_alerts"],
     });
 
     const result = await planner.execute(
@@ -57,25 +57,74 @@ describe("plan_job_workflow", () => {
     expect(result).toMatchObject({
       status: "completed",
       data: {
-        nextTool: null,
-        nextInputs: [],
-        nextHumanAction:
-          "Open the Saved page and use “Restore with email”; enter the one-time code.",
+        nextTool: "recover_jobbbler_workspace",
+        nextInputs: ["action=start", "verified email supplied by the person"],
+        nextHumanAction: "Ask for the verified email in the agent client.",
         steps: [
           {
-            intent: "Restore with the verified email",
-            tool: null,
-            needs: [],
-            ask: "Open the Saved page and use “Restore with email”; enter the one-time code.",
+            intent: "Send a recovery code",
+            tool: "recover_jobbbler_workspace",
+            needs: ["action=start", "verified email supplied by the person"],
+            ask: "Ask for the verified email in the agent client.",
           },
           {
-            intent: "Confirm the restored alerts",
+            intent: "Complete workspace recovery",
+            tool: "recover_jobbbler_workspace",
+            needs: ["action=complete", "recoveryId from start", "6-digit code from the person"],
+            ask: "Ask for the six-digit code in the agent client.",
+          },
+          {
+            intent: "Confirm the restored applications",
+            tool: "get_applications",
+            needs: [],
+          },
+          {
+            intent: "Confirm the restored saved searches",
             tool: "get_saved_alerts",
             needs: [],
           },
         ],
       },
     });
+    expect(JSON.stringify(result)).not.toContain("Open the Saved page");
+  });
+
+  it("explains optional recovery setup without confusing it with consent or alerts", async () => {
+    const planner = createWorkflowPlannerTool({
+      route: "/applications",
+      availableTools: () => ["enable_workspace_recovery"],
+    });
+
+    const result = await planner.execute(
+      { goal: "enable_recovery" },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toMatchObject({
+      status: "completed",
+      data: {
+        nextTool: "enable_workspace_recovery",
+        nextInputs: ["action=start", "email explicitly supplied by the person"],
+        steps: [
+          {
+            intent: "Send a verification code for optional workspace recovery",
+            tool: "enable_workspace_recovery",
+            needs: ["action=start", "email explicitly supplied by the person"],
+            ask: "Ask for an email in the agent client only if the person wants recovery.",
+          },
+          {
+            intent: "Complete optional recovery setup",
+            tool: "enable_workspace_recovery",
+            needs: ["action=complete", "challengeId from start", "6-digit code from the person"],
+            ask: "Ask for the six-digit code in the agent client.",
+          },
+        ],
+      },
+    });
+    const serialized = JSON.stringify(result);
+    expect(serialized).toContain("optional");
+    expect(serialized).not.toContain("consent");
+    expect(serialized).not.toContain("alert subscription");
   });
 
   it("keeps alert setup entirely agent-native with one explicit external-client decision", async () => {
@@ -117,20 +166,28 @@ describe("plan_job_workflow", () => {
           expect.objectContaining({ tool: "get_saved_alerts" }),
           expect.objectContaining({ tool: "get_latest_search_update" }),
           expect.objectContaining({ tool: "open_saved_search" }),
-          expect.objectContaining({ tool: "set_job_alert_state" }),
+          expect.objectContaining({
+            tool: "set_job_alert_state",
+            needs: ["action,target,delete-confirmation"],
+          }),
         ],
       },
     });
     expect(JSON.stringify(result)).not.toContain("Saved page");
   });
 
-  it("branches managed and external applications after the capability check", async () => {
+  it("plans one direct Jobbbler-managed application path without capability preflight", async () => {
     const planner = createWorkflowPlannerTool({
       route: "/jobs/:jobId",
       availableTools: () => [
         "open_job_details",
-        "get_job_application_capability",
         "prepare_application",
+        "get_application_readiness",
+        "request_application_assistance",
+        "decide_application_assistance",
+        "propose_application_updates",
+        "request_submission_review",
+        "decide_application_submission",
       ],
     });
 
@@ -142,51 +199,31 @@ describe("plan_job_workflow", () => {
     expect(result).toMatchObject({
       status: "completed",
       data: {
-        nextTool: "get_job_application_capability",
+        nextTool: "prepare_application",
         nextInputs: ["jobId"],
-        steps: expect.arrayContaining([
+        steps: [
           {
-            intent: "Check application capability",
-            tool: "get_job_application_capability",
+            intent: "Open the role",
+            tool: "open_job_details",
             needs: ["jobId"],
           },
-        ]),
-        branches: expect.arrayContaining([
           {
-            when: "applyMode=internal",
-            steps: expect.arrayContaining([
-              {
-                intent: "Prepare the internal application",
-                tool: "prepare_application",
-                needs: ["jobId"],
-              },
-            ]),
+            intent: "Create or reopen the private application",
+            tool: "prepare_application",
+            needs: ["jobId"],
           },
-          {
-            when: "applyMode=external and employerSite.available=true",
-            steps: [
-              {
-                intent: "Open the validated employer page",
-                tool: null,
-                needs: [],
-                ask: "Open validated HTTPS employer page; create no draft or submission claim.",
-              },
-            ],
-          },
-          {
-            when: "applyMode=external and employerSite.available=false",
-            steps: [
-              {
-                intent: "Stop: employer page unavailable",
-                tool: null,
-                needs: [],
-                ask: "Stop: no validated HTTPS employer page; no draft or submission claim.",
-              },
-            ],
-          },
-        ]),
+          expect.objectContaining({ tool: "get_application_readiness" }),
+          expect.objectContaining({ tool: "request_application_assistance" }),
+          expect.objectContaining({ tool: "decide_application_assistance" }),
+          expect.objectContaining({ tool: "propose_application_updates" }),
+          expect.objectContaining({ tool: "request_submission_review" }),
+          expect.objectContaining({ tool: "decide_application_submission" }),
+        ],
       },
     });
+    expect(JSON.stringify(result)).not.toContain("get_job_application_capability");
+    expect(JSON.stringify(result)).not.toContain("applyMode=external");
+    expect(JSON.stringify(result)).not.toContain("employer page");
   });
 
   it.each(workflowGoals)("keeps the %s plan inside the WebMCP output budget", async (goal) => {
@@ -207,7 +244,9 @@ describe("plan_job_workflow", () => {
         "get_latest_search_update",
         "open_saved_search",
         "set_job_alert_state",
-        "get_job_application_capability",
+        "enable_workspace_recovery",
+        "recover_jobbbler_workspace",
+        "get_applications",
         "prepare_application",
         "get_application_readiness",
         "request_application_assistance",

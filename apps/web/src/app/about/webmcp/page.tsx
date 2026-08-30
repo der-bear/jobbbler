@@ -1,10 +1,12 @@
 import {
+  ArrowRightIcon,
   CheckCircleIcon,
   ClockCountdownIcon,
   EyeIcon,
   ShieldCheckIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import styles from "./page.module.css";
 
@@ -31,23 +33,25 @@ const outcomeSteps = [
   },
   {
     title: "Apply",
-    copy: "For supported roles, it prepares the application. For others, it opens the employer's application page when one is available.",
+    copy: "Every role in this demo supports Apply on Jobbbler. The agent asks for short-lived permission to prepare one application. When it is ready, your final yes means Jobbbler records your consent, submits that unchanged application once, and saves a receipt. If you say no, nothing is shared or sent.",
   },
 ] as const;
 
 const agentCan = [
   "Find and compare matching roles",
   "Check saved searches for changes",
+  "Optionally add an email so applications and saved searches can be recovered",
+  "Restore applications and saved searches with the email and one-time code you provide",
   "Prepare application answers from facts you provide",
-  "Open the employer's application page when Jobbbler cannot submit directly",
+  "Relay your explicit final yes or no to Jobbbler",
 ] as const;
 
 const decisionsForYou = [
   "Facts only you can provide",
   "Whether the agent may prepare this application",
-  "Consent to process your personal data for this application",
-  "The exact final decision to submit",
-  "The right to withdraw consent at any time",
+  "The exact application, recipient, and data shown before your final decision",
+  "The final yes or no that records consent and controls submission",
+  "The right to withdraw consent for future processing",
 ] as const;
 
 export default function WebMcpAboutPage() {
@@ -58,9 +62,10 @@ export default function WebMcpAboutPage() {
         <h1>Search once. Let your agent handle the repetition.</h1>
         <p>
           Job search repeats itself. Tell a compatible browser agent what kind of technology role
-          you want. It can search, compare, keep checking, and prepare an application—while you
-          decide when your personal data may be used and whether anything is submitted. The
-          conversation stays in your agent app. No separate MCP server is needed.
+          you want. It can search, compare, and keep checking. If you choose a role with Apply on
+          Jobbbler, it asks before preparing one private application and again before Jobbbler
+          submits the exact application you reviewed. The conversation stays in your agent app. No
+          plug-in or separate server setup is needed.
         </p>
       </header>
 
@@ -113,8 +118,9 @@ export default function WebMcpAboutPage() {
           </div>
           <p className={styles["controlNote"]}>
             <ShieldCheckIcon aria-hidden="true" size={18} />
-            Opening the site gives an agent no access to your private data. Decisions are made in
-            your agent app and tied to the exact request.
+            Opening Jobbbler alone gives an agent no new authority to use your private data or
+            submit anything. Preparation permission is short-lived and limited to one application.
+            Submission requires a second, explicit decision in the same agent chat.
           </p>
         </div>
       </section>
@@ -134,8 +140,8 @@ export default function WebMcpAboutPage() {
             <div>
               <strong>See what happened.</strong>
               <p>
-                Open Agent view to see the action, its status, and the result. The rest of Jobbbler
-                stays a familiar job portal.
+                Open Agent activity to see the action, its status, and the result. The rest of
+                Jobbbler stays a familiar job portal.
               </p>
             </div>
           </div>
@@ -147,17 +153,27 @@ export default function WebMcpAboutPage() {
             </p>
           </div>
           <p className={styles["accountNote"]}>
-            No account is needed to search. Email is verified only when you ask Jobbbler to keep
-            checking for you.
+            No account is needed to search or apply. Adding an email for recovery is optional and
+            does not approve data use, submission, or email updates. If you clear this browser, the
+            same verified email and a one-time code can restore your applications and saved searches
+            from the same agent chat.
           </p>
         </div>
       </section>
 
       <footer className={styles["footer"]}>
         <p>
-          Start with a search. If you use a compatible browser agent, it can take on the repetitive
-          steps whenever you ask.
+          Browse roles yourself, or use the example request to start the same search in your agent
+          chat.
         </p>
+        <div className={styles["footerActions"]}>
+          <Link className={styles["primaryAction"]} href="/jobs">
+            Browse open roles <ArrowRightIcon aria-hidden="true" size={16} />
+          </Link>
+          <a className={styles["secondaryAction"]} href="#one-request">
+            Use the example request
+          </a>
+        </div>
       </footer>
     </article>
   );

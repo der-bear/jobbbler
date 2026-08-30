@@ -202,7 +202,7 @@ describe("progressive owner identity", () => {
         now,
       ),
     ).resolves.toMatchObject({
-      owner: { id: ids.owner(), kind: "guest", verified: true, recoverable: true },
+      owner: { id: ids.owner(), kind: "guest", verified: true },
       endpointId: ids.endpoint(),
     });
   });

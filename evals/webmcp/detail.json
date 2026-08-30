@@ -7,10 +7,12 @@
     "search_jobs",
     "open_job_details",
     "prepare_application",
+    "get_applications",
     "open_jobbbler_page",
+    "enable_workspace_recovery",
+    "recover_jobbbler_workspace",
     "get_search_state",
     "get_job_details",
-    "get_job_application_capability",
     "compare_jobs",
     "get_comparison",
     "remove_job_from_comparison",
@@ -94,15 +96,15 @@
       }
     },
     {
-      "id": "detail-direct-application-capability",
+      "id": "detail-direct-read-role-before-apply",
       "category": "direct",
       "context": {
         "currentJobId": "job_00000001-0000-7000-8000-000000000001"
       },
-      "prompt": "Before we start: can you apply for this role through Jobbbler, and what will stay with me?",
+      "prompt": "Read the role facts first so I can decide whether I want to apply.",
       "expected": {
         "kind": "tool_call",
-        "tool": "get_job_application_capability",
+        "tool": "get_job_details",
         "arguments": {
           "jobId": "job_00000001-0000-7000-8000-000000000001"
         }
@@ -112,13 +114,9 @@
       "id": "detail-direct-prepare-managed-application",
       "category": "direct",
       "context": {
-        "currentJobId": "job_00000001-0000-7000-8000-000000000001",
-        "applicationCapability": {
-          "applyMode": "internal",
-          "internalPreparationAvailable": true
-        }
+        "currentJobId": "job_00000001-0000-7000-8000-000000000001"
       },
-      "prompt": "You already confirmed this is a managed internal role. Prepare its private application draft, but do not share or submit anything.",
+      "prompt": "Create the private Jobbbler application for this role, but do not use my personal data or submit anything yet.",
       "expected": {
         "kind": "tool_call",
         "tool": "prepare_application",
@@ -128,13 +126,12 @@
       }
     },
     {
-      "id": "detail-plan-managed-or-external-application",
+      "id": "detail-plan-managed-application",
       "category": "wrong_order",
       "context": {
-        "currentJobId": "job_00000001-0000-7000-8000-000000000001",
-        "applicationCapabilityKnown": false
+        "currentJobId": "job_00000001-0000-7000-8000-000000000001"
       },
-      "prompt": "Give me a plan only for the safe application path for this role. Do not inspect the role or create anything yet; explain how we will first distinguish a managed Jobbbler application from an employer-site application.",
+      "prompt": "Give me the safe step-by-step Jobbbler application plan for this role. Do not create anything yet.",
       "expected": {
         "kind": "tool_call",
         "tool": "plan_job_workflow",

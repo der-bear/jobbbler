@@ -11,17 +11,17 @@ Jobbbler is a server-mediated job-discovery and application-preparation product.
 
 ## Identity, consent, and applications
 
-Email addresses are normalized, encrypted with AES-256-GCM using authenticated associated data, and indexed with a separate HMAC lookup digest. Public responses contain only a masked destination. Verification codes, owner-session tokens, agent-session tokens, and final-confirmation tokens are never persisted in raw form.
+Email addresses are normalized, encrypted with AES-256-GCM using authenticated associated data, and indexed with a separate HMAC lookup digest. Public responses contain only a masked destination. Verification codes, owner-session tokens, agent-session tokens, and final-confirmation tokens are never persisted in raw form. A verified email is optional workspace durability: it enables passwordless recovery and can support an explicitly approved alert, but is not application consent or a requirement for application submission.
 
 Application preparation has separate server-enforced boundaries for owner access, a narrowly scoped agent delegation, an exact reviewed disclosure, a current data grant, and a five-minute single-use human confirmation. The submission transaction checks the owner, draft version, immutable review hash, confirmation, and exact data-grant scope before advancing the draft and creating a receipt.
 
-For an external role, Jobbbler exposes only an available validated HTTPS employer application page; when none is available, the workflow stops. It creates no application draft, prepares or discloses no application data, records no receipt or handoff, and makes no submitted claim. Historical `handed_off` records remain readable only for legacy compatibility; current server and storage writers cannot create them.
+Every role in the current demo catalog uses Jobbbler-managed delivery. The application command independently rechecks that eligibility and fails closed before creating a private application for any unsupported mode. Historical `handed_off` records remain readable only for legacy compatibility; current server and storage writers cannot create them.
 
 The detailed boundary model is in [Agent authorization and data consent](architecture/agent-authorization-and-consent.md).
 
 ## WebMCP and activity
 
-WebMCP capability is feature-detected; it is not identity or authority. Registered tools use typed schemas, bounded outputs, cancellation propagation, and route/state cleanup. Server authorization remains at the HTTP command boundary.
+WebMCP capability is feature-detected; it is not identity or authority. Registered tools use typed schemas, bounded outputs, cancellation propagation, and route/state cleanup. Server authorization remains at the HTTP command boundary. `enable_workspace_recovery` is a strict two-phase wrapper around the current-owner email-verification endpoints; its output drops the email, masked destination, endpoint, local development code, owner, and verification record. It enables optional continuity only—not data consent, application approval, or an alert subscription. `get_applications` reads the existing owner-scoped list endpoint and returns only application/job identifiers, title, organization, status, update time, and receipt availability; answers, candidate fields, email, and credentials are excluded. Workspace recovery is a separate strict two-phase tool over the enumeration-resistant endpoints: the start result contains only an opaque short-lived recovery ID and expiry, completion rotates the same-origin HttpOnly session only after the correct code succeeds, and neither result echoes email or code or returns owner, private, or credential data.
 
 The Agent Activity rail combines local activity with a sanitized, owner-scoped projection. It is not the immutable audit log and is never a command channel. Authoritative state comes from the regular API. Polling is the delivery baseline; optional Supabase broadcasts carry only a wake-up signal and do not carry activity data or confer access. See [Realtime Agent Activity](architecture/realtime-agent-activity.md).
 

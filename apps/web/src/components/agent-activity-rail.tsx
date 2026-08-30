@@ -6,9 +6,10 @@ import {
   WarningCircleIcon,
   XIcon,
 } from "@phosphor-icons/react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { ToolActivity } from "@jobbbler/contracts";
+import { Button } from "@jobbbler/ui";
 
 import styles from "./agent-activity-rail.module.css";
 
@@ -16,6 +17,9 @@ export interface AgentActivityRailProps {
   readonly activities: readonly ToolActivity[];
   readonly className?: string;
   readonly maxItems?: number;
+  readonly onClearHistory?: () => Promise<void>;
+  readonly onHistoryCleared?: () => void;
+  readonly onOpenGuide?: () => void;
   readonly webMcpAvailable: boolean;
 }
 
@@ -54,6 +58,15 @@ function durationLabel(startedAt: string, completedAt: string | null): string | 
   return elapsed < 1_000 ? String(elapsed) + " ms" : (elapsed / 1_000).toFixed(1) + " s";
 }
 
+function sameActivityTarget(left: ToolActivity, right: ToolActivity): boolean {
+  const leftIds = new Set(left.affectedResourceIds);
+  const rightIds = new Set(right.affectedResourceIds);
+  if (leftIds.size === 0 || rightIds.size === 0) {
+    return leftIds.size === 0 && rightIds.size === 0 && left.correlationId === right.correlationId;
+  }
+  return leftIds.size === rightIds.size && [...leftIds].every((id) => rightIds.has(id));
+}
+
 export function groupedActivities(activities: readonly ToolActivity[]): readonly Readonly<{
   activity: ToolActivity;
   count: number;
@@ -66,7 +79,8 @@ export function groupedActivities(activities: readonly ToolActivity[]): readonly
       previous !== undefined &&
       previous.activity.toolName === activity.toolName &&
       previous.activity.status === activity.status &&
-      previous.activity.safeSummary === activity.safeSummary
+      previous.activity.safeSummary === activity.safeSummary &&
+      sameActivityTarget(previous.activity, activity)
     ) {
       previous.activity = activity;
       previous.count += 1;
@@ -78,14 +92,22 @@ export function groupedActivities(activities: readonly ToolActivity[]): readonly
 }
 
 function normalizeLegacyActivity(activity: ToolActivity): ToolActivity {
-  if (activity.toolName !== "start_application") return activity;
+  const safeSummary =
+    activity.safeSummary === "Application workspace created." ||
+    activity.safeSummary === "Application draft created."
+      ? "Application prepared."
+      : activity.safeSummary === "Application draft reopened."
+        ? "Application reopened."
+        : activity.safeSummary === "Application draft updated."
+          ? "Application updated."
+          : activity.safeSummary;
+  if (activity.toolName !== "start_application" && safeSummary === activity.safeSummary) {
+    return activity;
+  }
   return {
     ...activity,
-    toolName: "prepare_application",
-    safeSummary:
-      activity.safeSummary === "Application workspace created."
-        ? "Application prepared."
-        : activity.safeSummary,
+    toolName: activity.toolName === "start_application" ? "prepare_application" : activity.toolName,
+    safeSummary,
   };
 }
 
@@ -97,14 +119,29 @@ export function AgentActivityRail({
   activities,
   className,
   maxItems = 4,
+  onClearHistory,
+  onHistoryCleared,
+  onOpenGuide,
   webMcpAvailable,
 }: AgentActivityRailProps) {
+  const [confirmingClear, setConfirmingClear] = useState(false);
+  const [clearStatus, setClearStatus] = useState<"idle" | "pending" | "error">("idle");
+  const [clearAnnouncement, setClearAnnouncement] = useState("");
+  const [showAll, setShowAll] = useState(false);
+  const cancelClearRef = useRef<HTMLButtonElement | null>(null);
   const itemLimit = Math.max(0, maxItems);
+  const allActivities = groupedActivities(activities);
+  const hiddenCount = itemLimit === 0 ? 0 : Math.max(0, allActivities.length - itemLimit);
   const visibleActivities =
-    itemLimit === 0 ? [] : groupedActivities(activities).slice(-itemLimit).reverse();
+    itemLimit === 0 ? [] : (showAll ? allActivities : allActivities.slice(-itemLimit)).toReversed();
   const latestSourceActivity = activities.at(-1);
   const latestActivity =
     latestSourceActivity === undefined ? undefined : normalizeLegacyActivity(latestSourceActivity);
+
+  useEffect(() => {
+    if (!confirmingClear) return;
+    cancelClearRef.current?.focus();
+  }, [confirmingClear]);
 
   return (
     <section
@@ -116,6 +153,9 @@ export function AgentActivityRail({
           ? ""
           : activityPresentation[latestActivity.status].label + ": " + latestActivity.safeSummary}
       </p>
+      <p aria-live="polite" className="sr-only">
+        {clearAnnouncement}
+      </p>
 
       {visibleActivities.length === 0 ? (
         <div className={styles["empty"]} role="status">
@@ -123,34 +163,112 @@ export function AgentActivityRail({
           {webMcpAvailable ? (
             <span>Tool calls and visible results will appear here.</span>
           ) : (
-            <span>The job portal still works normally.</span>
+            <span>Agent tools are off in this browser. You can still search here.</span>
+          )}
+          {onOpenGuide === undefined ? null : (
+            <Button onClick={onOpenGuide} size="sm" variant="quiet">
+              How to start
+            </Button>
           )}
         </div>
       ) : (
-        <ol className={styles["timeline"]}>
-          {visibleActivities.map(({ activity, count }) => {
-            const presentation = activityPresentation[activity.status];
-            const duration = durationLabel(activity.startedAt, activity.completedAt);
-            return (
-              <li
-                aria-busy={activity.status === "running" || undefined}
-                data-status={activity.status}
-                key={activity.id}
-              >
-                <span className={styles["marker"]}>{presentation.icon}</span>
-                <div className={styles["entry"]}>
-                  <p>{activity.safeSummary}</p>
-                  <code>{activity.toolName}</code>
-                  <div className={styles["meta"]}>
-                    <span>{presentation.label}</span>
-                    {count > 1 ? <span>{String(count)} similar calls grouped</span> : null}
-                    {duration === null ? null : <span>{duration}</span>}
+        <>
+          <ol className={styles["timeline"]}>
+            {visibleActivities.map(({ activity, count }) => {
+              const presentation = activityPresentation[activity.status];
+              const duration = durationLabel(activity.startedAt, activity.completedAt);
+              return (
+                <li
+                  aria-busy={activity.status === "running" || undefined}
+                  data-status={activity.status}
+                  key={activity.id}
+                >
+                  <span className={styles["marker"]}>{presentation.icon}</span>
+                  <div className={styles["entry"]}>
+                    <p>{activity.safeSummary}</p>
+                    <code>{activity.toolName}</code>
+                    <div className={styles["meta"]}>
+                      <span>{presentation.label}</span>
+                      {count > 1 ? <span>{String(count)} similar calls grouped</span> : null}
+                      {duration === null ? null : <span>{duration}</span>}
+                    </div>
                   </div>
+                </li>
+              );
+            })}
+          </ol>
+          {hiddenCount > 0 ? (
+            <div className={styles["historySummary"]}>
+              <span>
+                {showAll
+                  ? `Showing all ${String(allActivities.length)} actions.`
+                  : `Showing the ${String(itemLimit)} most recent actions.`}
+              </span>
+              <Button onClick={() => setShowAll((current) => !current)} size="sm" variant="quiet">
+                {showAll ? "Show recent only" : `Show ${String(hiddenCount)} earlier`}
+              </Button>
+            </div>
+          ) : null}
+          {onClearHistory === undefined ? null : (
+            <div className={styles["historyActions"]}>
+              {confirmingClear ? (
+                <div aria-label="Confirm clearing agent activity" role="group">
+                  <p>Clear all activity history?</p>
+                  <span>This removes the activity shown here. It cannot be undone.</span>
+                  <div>
+                    <Button
+                      disabled={clearStatus === "pending"}
+                      onClick={() => {
+                        setConfirmingClear(false);
+                        setClearStatus("idle");
+                      }}
+                      ref={cancelClearRef}
+                      size="sm"
+                      variant="quiet"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      loading={clearStatus === "pending"}
+                      onClick={() => {
+                        setClearStatus("pending");
+                        void onClearHistory()
+                          .then(() => {
+                            setConfirmingClear(false);
+                            setClearStatus("idle");
+                            setClearAnnouncement("Activity history cleared.");
+                            onHistoryCleared?.();
+                          })
+                          .catch(() => setClearStatus("error"));
+                      }}
+                      size="sm"
+                      variant="danger"
+                    >
+                      Clear history
+                    </Button>
+                  </div>
+                  {clearStatus === "error" ? (
+                    <p className={styles["clearError"]} role="alert">
+                      Activity history could not be cleared. Try again.
+                    </p>
+                  ) : null}
                 </div>
-              </li>
-            );
-          })}
-        </ol>
+              ) : (
+                <Button
+                  onClick={() => {
+                    setClearAnnouncement("");
+                    setConfirmingClear(true);
+                    setClearStatus("idle");
+                  }}
+                  size="sm"
+                  variant="quiet"
+                >
+                  Clear history
+                </Button>
+              )}
+            </div>
+          )}
+        </>
       )}
     </section>
   );

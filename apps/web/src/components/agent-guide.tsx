@@ -23,8 +23,12 @@ const compactPurposes: Readonly<Record<string, string>> = {
   search_jobs: "Search the public technology-job catalog.",
   open_job_details: "Open a known role and its source-backed facts.",
   prepare_application:
-    "Prepare one application for a managed internal role without sharing or submitting data.",
-  open_jobbbler_page: "Open another Jobbbler workspace.",
+    "Create or reopen one private Jobbbler application, without sharing or submitting data.",
+  get_applications: "List private applications without returning their answers.",
+  open_jobbbler_page: "Open another Jobbbler page.",
+  enable_workspace_recovery: "Optionally add passwordless recovery to this private workspace.",
+  recover_jobbbler_workspace:
+    "Restore applications and saved searches with the email and code you provide.",
 };
 
 function toolPurpose(tool: RegisteredToolSummary): string {
@@ -44,10 +48,22 @@ const decisionTools = new Set([
 ]);
 
 const capabilityGroups = [
-  { title: "Find", routes: ["*", "/"] },
-  { title: "Inspect and compare", routes: ["/jobs/:jobId", "/compare"] },
-  { title: "Alerts", routes: ["/saved"] },
-  { title: "Apply", routes: ["/apply/:draftId"] },
+  { title: "Find", summary: "Plan and search", routes: ["*", "/"] },
+  {
+    title: "Inspect and compare",
+    summary: "Read role facts and compare a shortlist",
+    routes: ["/jobs/:jobId", "/compare"],
+  },
+  {
+    title: "Saved searches",
+    summary: "Save, monitor, reopen, pause, or remove",
+    routes: ["/saved"],
+  },
+  {
+    title: "Apply",
+    summary: "Prepare, review, consent, and submit",
+    routes: ["/apply/:draftId"],
+  },
 ] as const;
 
 function ToolRow({
@@ -85,11 +101,11 @@ export function AgentTools({ tools, webMcpAvailable }: AgentToolsProps) {
         </div>
         <p className={styles["note"]}>
           {webMcpAvailable
-            ? `${String(visibleToolCount)} Jobbbler tools are active here and stay available as the agent moves through the site. Private actions still check ownership and the current step.`
-            : "Preview the same 26 tools a compatible browser agent discovers automatically."}
+            ? `${String(visibleToolCount)} Jobbbler tools are active here and stay available as the agent moves through the site. Private actions still check ownership and this application's current step.`
+            : `Preview the same ${String(totalCatalogTools)} tools an agent-enabled browser discovers automatically.`}
         </p>
         <div className={styles["capabilityGroups"]}>
-          {capabilityGroups.map((group) => {
+          {capabilityGroups.map((group, index) => {
             const catalogGroupTools = webMcpCatalog
               .filter((route) => (group.routes as readonly string[]).includes(route.route))
               .flatMap((route) => route.tools);
@@ -98,15 +114,21 @@ export function AgentTools({ tools, webMcpAvailable }: AgentToolsProps) {
               : catalogGroupTools;
             if (groupTools.length === 0) return null;
             return (
-              <section aria-label={`${group.title} capabilities`} key={group.title}>
-                <h4>{group.title}</h4>
+              <details className={styles["capabilityGroup"]} key={group.title} open={index === 0}>
+                <summary>
+                  <span className={styles["groupHeading"]}>
+                    <strong>{group.title}</strong>
+                    <small>{group.summary}</small>
+                  </span>
+                  <span className={styles["groupCount"]}>{String(groupTools.length)}</span>
+                </summary>
                 <ul className={styles["toolList"]}>
                   {groupTools.map((tool) => {
                     const registered = registeredByName.get(tool.name);
                     return <ToolRow key={tool.name} tool={registered ?? tool} />;
                   })}
                 </ul>
-              </section>
+              </details>
             );
           })}
         </div>
@@ -119,11 +141,10 @@ export function AgentGuide() {
   return (
     <div className={styles["guide"]}>
       <section aria-labelledby="guide-try">
-        <p className={styles["promise"]}>No separate MCP server to install.</p>
         <h3 id="guide-try">Start in your agent chat</h3>
         <p className={styles["guideText"]}>
-          Share Jobbbler&apos;s link and describe what you need. When the agent opens the site, it
-          discovers all 26 available actions automatically.
+          Copy the request below into your agent chat. Your agent opens Jobbbler and finds the
+          available actions.
         </p>
         <ol className={styles["guideSteps"]}>
           <li>
@@ -152,8 +173,10 @@ export function AgentGuide() {
           <ul>
             <li>Search and compare matching roles</li>
             <li>Save a search and report only what changed</li>
+            <li>Optionally add an email so applications and saved searches can be recovered</li>
+            <li>Restore applications and saved searches with the email and code you provide</li>
             <li>Prepare truthful answers and a short motivation note from facts you provide</li>
-            <li>Open the employer&apos;s application page when Jobbbler cannot submit directly</li>
+            <li>Relay your final decision so Jobbbler can send the unchanged application once</li>
           </ul>
         </section>
         <section aria-labelledby="guide-control">
@@ -168,9 +191,18 @@ export function AgentGuide() {
       </div>
 
       <p className={styles["panelNote"]}>
-        Activity shows what happened. Tools shows all 26 capabilities and the actions that need a
+        Activity shows what happened. Tools shows every capability and the actions that need a
         decision.
       </p>
+
+      <details className={styles["technicalDetails"]}>
+        <summary>Technical details</summary>
+        <p>
+          Jobbbler exposes {String(totalCatalogTools)} WebMCP tools directly from the site. An
+          agent-enabled browser discovers them automatically, with no separate MCP server to
+          install.
+        </p>
+      </details>
 
       <Link className={styles["moreLink"]} href="/about/webmcp">
         Read how Jobbbler works <ArrowRightIcon aria-hidden="true" size={14} />

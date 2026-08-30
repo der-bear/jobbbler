@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { ownerActivityEventSchema, ownerActivityPageSchema } from "./activity";
+import {
+  ownerActivityClearResultSchema,
+  ownerActivityEventSchema,
+  ownerActivityPageSchema,
+} from "./activity";
 
 const event = {
   id: "activity_550e8400-e29b-41d4-a716-446655440000",
@@ -17,6 +21,14 @@ const event = {
 };
 
 describe("owner activity contracts", () => {
+  it("accepts a bounded clear-history receipt", () => {
+    expect(ownerActivityClearResultSchema.parse({ clearedCount: 3 })).toEqual({ clearedCount: 3 });
+    expect(ownerActivityClearResultSchema.safeParse({ clearedCount: -1 }).success).toBe(false);
+    expect(
+      ownerActivityClearResultSchema.safeParse({ clearedCount: 3, ownerId: "private" }).success,
+    ).toBe(false);
+  });
+
   it("accepts only the versioned, presentation-safe event envelope", () => {
     expect(ownerActivityEventSchema.parse(event)).toEqual(event);
     expect(ownerActivityEventSchema.safeParse({ ...event, ownerId: "owner_private" }).success).toBe(

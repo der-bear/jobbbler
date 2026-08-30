@@ -4,12 +4,15 @@ import {
   decideSearchAlertResultSchema,
   ownerSessionResultSchema,
   requestSearchAlertResultSchema,
+  savedSearchDeletionReceiptSchema,
   type DecideSearchAlertInput,
   type DecideSearchAlertResult,
   type RequestSearchAlertInput,
   type RequestSearchAlertResult,
+  type SavedSearchDeletionReceipt,
 } from "@jobbbler/contracts";
 
+import { markOwnerSessionStarted } from "@/lib/owner-session-marker";
 import { ApiClientError, queryApi, type QueryApiOptions } from "@/lib/query-client";
 
 interface SearchAlertClientDependencies {
@@ -30,10 +33,16 @@ interface SearchAlertRequestKey {
   readonly expiresAtMs: number;
 }
 
+interface SavedSearchDeletionClientDependencies {
+  readonly request: <T>(url: string, schema: ZodType<T>, options?: QueryApiOptions) => Promise<T>;
+  readonly requestKeyStorage?: SearchAlertRequestKeyStorage | undefined;
+}
+
 const REQUEST_KEY_LIFETIME_MS = 15 * 60 * 1_000;
 const REQUEST_KEY_CACHE_LIMIT = 64;
 const REQUEST_KEY_STORAGE_KEY = "jobbbler.search-alert-request-keys.v1";
 const REQUEST_FINGERPRINT_SECRET_KEY = "jobbbler.search-alert-fingerprint-secret.v1";
+const DELETE_FINGERPRINT_SECRET_KEY = "jobbbler.saved-search-delete-fingerprint-secret.v1";
 const defaultRequestKeys = new Map<string, SearchAlertRequestKey>();
 const moduleFingerprintSecret = crypto.randomUUID();
 
@@ -54,17 +63,46 @@ const defaultDependencies: SearchAlertClientDependencies = {
   nowMs: Date.now,
 };
 
-function fingerprintSecret(storage: SearchAlertRequestKeyStorage | undefined): string {
+const defaultDeletionDependencies: SavedSearchDeletionClientDependencies = {
+  request: queryApi,
+  requestKeyStorage: defaultRequestKeyStorage(),
+};
+
+function fingerprintSecret(
+  storage: SearchAlertRequestKeyStorage | undefined,
+  storageKey = REQUEST_FINGERPRINT_SECRET_KEY,
+): string {
   if (storage === undefined) return moduleFingerprintSecret;
   try {
-    const existing = storage.getItem(REQUEST_FINGERPRINT_SECRET_KEY);
+    const existing = storage.getItem(storageKey);
     if (existing !== null && /^[0-9a-f-]{36}$/u.test(existing)) return existing;
     const created = crypto.randomUUID();
-    storage.setItem(REQUEST_FINGERPRINT_SECRET_KEY, created);
+    storage.setItem(storageKey, created);
     return created;
   } catch {
     return moduleFingerprintSecret;
   }
+}
+
+async function deletionIdempotencyKey(
+  savedSearchId: string,
+  confirmation: "DELETE_SAVED_SEARCH_AND_ALERT",
+  storage: SearchAlertRequestKeyStorage | undefined,
+): Promise<string> {
+  const secret = fingerprintSecret(storage, DELETE_FINGERPRINT_SECRET_KEY);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(`jobbbler.saved-search-delete-fingerprint.v1:${secret}`),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const digest = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(`${savedSearchId}\u0000${confirmation}`),
+  );
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 async function requestFingerprint(input: RequestSearchAlertInput, secret: string): Promise<string> {
@@ -209,18 +247,22 @@ export async function requestSearchAlert(
   dependencies: SearchAlertClientDependencies = defaultDependencies,
 ): Promise<RequestSearchAlertResult> {
   const { fingerprint, key: idempotencyKey } = await idempotencyKeyFor(input, dependencies);
+  let sessionExpiresAt: string | undefined;
   try {
     const result = await postSearchAlertRequest(input, idempotencyKey, options, dependencies);
     rememberReviewExpiry(fingerprint, idempotencyKey, result, dependencies);
+    markOwnerSessionStarted();
     return result;
   } catch (error) {
     if (!(error instanceof ApiClientError) || error.code !== "UNAUTHORIZED") throw error;
-    await dependencies.request("/api/v1/owners/session", ownerSessionResultSchema, {
+    const session = await dependencies.request("/api/v1/owners/session", ownerSessionResultSchema, {
       method: "POST",
       signal: options.signal,
     });
+    sessionExpiresAt = session.expiresAt;
     const result = await postSearchAlertRequest(input, idempotencyKey, options, dependencies);
     rememberReviewExpiry(fingerprint, idempotencyKey, result, dependencies);
+    markOwnerSessionStarted(sessionExpiresAt);
     return result;
   }
 }
@@ -237,6 +279,29 @@ export function decideSearchAlert(
       method: "POST",
       body: input,
       headers: { "Idempotency-Key": dependencies.createIdempotencyKey() },
+      signal: options.signal,
+    },
+  );
+}
+
+export async function deleteSavedSearch(
+  savedSearchId: string,
+  input: Readonly<{ confirmation: "DELETE_SAVED_SEARCH_AND_ALERT" }>,
+  options: Readonly<{ signal: AbortSignal }>,
+  dependencies: SavedSearchDeletionClientDependencies = defaultDeletionDependencies,
+): Promise<SavedSearchDeletionReceipt> {
+  const idempotencyKey = await deletionIdempotencyKey(
+    savedSearchId,
+    input.confirmation,
+    dependencies.requestKeyStorage,
+  );
+  return dependencies.request(
+    `/api/v1/agent/saved-searches/${encodeURIComponent(savedSearchId)}`,
+    savedSearchDeletionReceiptSchema,
+    {
+      method: "DELETE",
+      body: input,
+      headers: { "Idempotency-Key": idempotencyKey },
       signal: options.signal,
     },
   );

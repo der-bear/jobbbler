@@ -73,6 +73,22 @@ export function backToSearchHref(criteriaSearch: string): string {
   return `/jobs${criteriaSearch.startsWith("?") ? criteriaSearch : `?${criteriaSearch}`}`;
 }
 
+export function jobSummaryParagraphs(summary: string): readonly string[] {
+  const sentences = summary
+    .trim()
+    .split(/(?<=[.!?])\s+/u)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0);
+
+  if (sentences.length < 3) return [summary.trim()];
+
+  const paragraphs: string[] = [];
+  for (let index = 0; index < sentences.length; index += 2) {
+    paragraphs.push(sentences.slice(index, index + 2).join(" "));
+  }
+  return paragraphs;
+}
+
 function errorMessage(error: unknown): string {
   if (error instanceof ApiClientError && error.code === "NOT_FOUND") {
     return "This role is no longer available in the current catalog.";
@@ -127,6 +143,10 @@ function JobIdentity({
 
   return (
     <header className={styles["identity"]}>
+      <Link className={styles["backLink"]} href={backToSearchHref(criteriaSearch)}>
+        <ArrowLeftIcon aria-hidden="true" size={16} />
+        Back to search
+      </Link>
       <div className={styles["titleRow"]}>
         <div>
           <h1>{job.title}</h1>
@@ -144,12 +164,7 @@ function JobIdentity({
         </span>
         <span>{salaryLabel(job.salary)}</span>
       </div>
-      <p className={styles["summary"]}>{job.summary}</p>
       <div className={styles["actions"]}>
-        <Link className={styles["backLink"]} href={backToSearchHref(criteriaSearch)}>
-          <ArrowLeftIcon aria-hidden="true" size={16} />
-          Back to search
-        </Link>
         {canPrepare ? (
           <button
             className={styles["applyButton"]}
@@ -176,6 +191,14 @@ function JobIdentity({
           </span>
         )}
       </div>
+      <section aria-labelledby="about-role" className={styles["description"]}>
+        <h2 id="about-role">About the role</h2>
+        <div className={styles["summary"]}>
+          {jobSummaryParagraphs(job.summary).map((paragraph, index) => (
+            <p key={`${String(index)}-${paragraph.slice(0, 32)}`}>{paragraph}</p>
+          ))}
+        </div>
+      </section>
     </header>
   );
 }
@@ -243,6 +266,8 @@ function FitEvidence({ criteriaSearch, fit }: Readonly<{ criteriaSearch: string;
 }
 
 function SourceAndFreshness({ job }: Readonly<{ job: Job }>) {
+  const isDemoPosting = job.source.key === "jobbbler_demo";
+
   return (
     <section aria-labelledby="source-and-freshness" className={styles["provenanceSection"]}>
       <div>
@@ -272,8 +297,9 @@ function SourceAndFreshness({ job }: Readonly<{ job: Job }>) {
       </dl>
       <p className={styles["sourceNote"]}>
         <ClockIcon aria-hidden="true" size={16} />
-        Facts are limited to the last observed source record. Recheck the original posting before
-        applying.
+        {isDemoPosting
+          ? "Fictional role created for this product demonstration. No real vacancy or employer is implied."
+          : "Facts are limited to the last observed source record. Recheck the original posting before applying."}
       </p>
     </section>
   );
@@ -396,10 +422,25 @@ export function JobDetail({
       />
     );
 
+  if (state.kind === "loading") {
+    return (
+      <section aria-label="Loading this role" className={styles["state"]} role="status">
+        <div className={styles["skeleton"]}>
+          <span className={styles["skeletonTitle"]} />
+          <span className={styles["skeletonOrg"]} />
+          <span className={styles["skeletonMeta"]} />
+          <span className={styles["skeletonLine"]} />
+          <span className={styles["skeletonLineShort"]} />
+        </div>
+        <span className="sr-only">Loading this role.</span>
+      </section>
+    );
+  }
+
   return (
     <section aria-live="polite" className={styles["state"]}>
-      <h1>{state.kind === "loading" ? "Loading this role…" : state.message}</h1>
-      {state.kind === "error" ? <Link href="/jobs">Return to search</Link> : null}
+      <h1>{state.message}</h1>
+      <Link href="/jobs">Return to search</Link>
     </section>
   );
 }

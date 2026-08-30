@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { DomainError } from "@jobbbler/core-domain";
 import type { IdempotencyRecord } from "@jobbbler/storage";
 
 import type { IdentityRouteDependencies } from "./identity-route-handlers";
 import {
+  handleAgentDeleteSavedSearchRequest,
   handleAgentSetScheduleEnabledRequest,
   handleCreateSavedSearchRequest,
   handleCreateScheduleRequest,
@@ -466,6 +468,9 @@ describe("saved-search and schedule route handlers", () => {
       deleted: true,
     });
     expect(current.service.deleteSavedSearch).toHaveBeenCalledWith(owner.id, saved.id);
+    expect(current.activity?.publish).toHaveBeenCalledWith(
+      expect.objectContaining({ key: "delete_saved_search", actorKind: "human" }),
+    );
 
     const missingSession = dependencies();
     missingSession.identity.identity.resolveSession = vi.fn(async () => null);
@@ -488,5 +493,221 @@ describe("saved-search and schedule route handlers", () => {
     );
     expect(forbidden.status).toBe(403);
     expect(crossOrigin.service.deleteSavedSearch).not.toHaveBeenCalled();
+  });
+
+  it("requires an exact confirmation and idempotency key for agent deletion", async () => {
+    const missingKey = dependencies();
+    const missingKeyResponse = await handleAgentDeleteSavedSearchRequest(
+      request(`/api/v1/agent/saved-searches/${saved.id}`, "DELETE", {
+        confirmation: "DELETE_SAVED_SEARCH_AND_ALERT",
+      }),
+      { params: Promise.resolve({ savedSearchId: saved.id }) },
+      missingKey,
+    );
+    expect(missingKeyResponse.status).toBe(400);
+    expect(missingKey.service.deleteSavedSearch).not.toHaveBeenCalled();
+
+    for (const body of [
+      {},
+      { confirmation: "delete" },
+      { confirmation: "DELETE_SAVED_SEARCH_AND_ALERT", enabled: false },
+    ]) {
+      const invalid = dependencies();
+      const invalidResponse = await handleAgentDeleteSavedSearchRequest(
+        request(`/api/v1/agent/saved-searches/${saved.id}`, "DELETE", body, {
+          "idempotency-key": "delete-exact-alert",
+        }),
+        { params: Promise.resolve({ savedSearchId: saved.id }) },
+        invalid,
+      );
+      expect(invalidResponse.status).toBe(400);
+      expect(invalid.service.deleteSavedSearch).not.toHaveBeenCalled();
+    }
+  });
+
+  it("replays one bounded agent deletion receipt and records agent attribution", async () => {
+    const current = dependencies();
+    let deleted = false;
+    current.service.deleteSavedSearch = vi.fn(async () => {
+      if (deleted) {
+        throw new DomainError({ code: "NOT_FOUND", message: "Saved search was not found." });
+      }
+      deleted = true;
+      return { savedSearch: saved, schedule };
+    });
+    const body = { confirmation: "DELETE_SAVED_SEARCH_AND_ALERT" };
+    const headers = { "idempotency-key": "delete-exact-alert" };
+    const routeContext = { params: Promise.resolve({ savedSearchId: saved.id }) };
+    const first = await handleAgentDeleteSavedSearchRequest(
+      request(`/api/v1/agent/saved-searches/${saved.id}`, "DELETE", body, headers),
+      routeContext,
+      current,
+    );
+    const replay = await handleAgentDeleteSavedSearchRequest(
+      request(`/api/v1/agent/saved-searches/${saved.id}`, "DELETE", body, headers),
+      routeContext,
+      current,
+    );
+
+    expect(first.status).toBe(200);
+    expect(replay.status).toBe(200);
+    const firstPayload = await first.json();
+    const replayPayload = await replay.json();
+    expect(firstPayload.data).toEqual({
+      savedSearchId: saved.id,
+      scheduleId: schedule.id,
+      deleted: true,
+    });
+    expect(replayPayload.data).toEqual(firstPayload.data);
+    expect(JSON.stringify(firstPayload)).not.toMatch(/email|endpoint/iu);
+    expect(new TextEncoder().encode(JSON.stringify(firstPayload.data)).byteLength).toBeLessThan(
+      256,
+    );
+    expect(current.service.deleteSavedSearch).toHaveBeenCalledTimes(2);
+    expect(current.activity?.publish).toHaveBeenCalledTimes(1);
+    expect(current.activity?.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: "delete_saved_search",
+        actorKind: "agent",
+        safeSummary: "Saved search and its job alert were removed.",
+      }),
+    );
+
+    const mismatch = await handleAgentDeleteSavedSearchRequest(
+      request(
+        "/api/v1/agent/saved-searches/saved_550e8400-e29b-41d4-a716-446655440009",
+        "DELETE",
+        body,
+        headers,
+      ),
+      {
+        params: Promise.resolve({
+          savedSearchId: "saved_550e8400-e29b-41d4-a716-446655440009",
+        }),
+      },
+      current,
+    );
+    expect(mismatch.status).toBe(409);
+    expect(current.service.deleteSavedSearch).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not mutate until the deletion receipt is durably claimed", async () => {
+    const current = dependencies();
+    let deleted = false;
+    current.service.listSavedSearches = vi.fn(async () => (deleted ? [] : [saved]));
+    current.service.listSchedules = vi.fn(async () => (deleted ? [] : [schedule]));
+    current.service.deleteSavedSearch = vi.fn(async () => {
+      if (deleted) {
+        throw new DomainError({ code: "NOT_FOUND", message: "Saved search was not found." });
+      }
+      deleted = true;
+      return { savedSearch: saved, schedule };
+    });
+    const put = current.idempotency.putIfAbsent;
+    current.idempotency.putIfAbsent = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("receipt store unavailable"))
+      .mockImplementation(put);
+    const body = { confirmation: "DELETE_SAVED_SEARCH_AND_ALERT" };
+    const headers = { "idempotency-key": "uncertain-delete-alert" };
+    const routeContext = { params: Promise.resolve({ savedSearchId: saved.id }) };
+
+    const uncertain = await handleAgentDeleteSavedSearchRequest(
+      request(`/api/v1/agent/saved-searches/${saved.id}`, "DELETE", body, headers),
+      routeContext,
+      current,
+    );
+    expect(uncertain.status).toBe(500);
+    expect(current.service.deleteSavedSearch).not.toHaveBeenCalled();
+    expect(current.activity?.publish).not.toHaveBeenCalled();
+
+    const retry = await handleAgentDeleteSavedSearchRequest(
+      request(`/api/v1/agent/saved-searches/${saved.id}`, "DELETE", body, headers),
+      routeContext,
+      current,
+    );
+
+    expect(retry.status).toBe(200);
+    expect((await retry.json()).data).toEqual({
+      savedSearchId: saved.id,
+      scheduleId: schedule.id,
+      deleted: true,
+    });
+    expect(current.service.deleteSavedSearch).toHaveBeenCalledTimes(1);
+    expect(current.activity?.publish).toHaveBeenCalledTimes(1);
+  });
+
+  it("coordinates concurrent same-key agent deletions and publishes one activity", async () => {
+    const current = dependencies();
+    let deleted = false;
+    let getCount = 0;
+    let releaseInitialReads: () => void = () => undefined;
+    const bothInitialReads = new Promise<void>((resolve) => {
+      releaseInitialReads = resolve;
+    });
+    current.idempotency.get = vi.fn(async () => {
+      getCount += 1;
+      if (getCount === 2) releaseInitialReads();
+      await bothInitialReads;
+      return null;
+    });
+    current.service.deleteSavedSearch = vi.fn(async () => {
+      if (deleted) {
+        throw new DomainError({ code: "NOT_FOUND", message: "Saved search was not found." });
+      }
+      deleted = true;
+      return { savedSearch: saved, schedule };
+    });
+    const body = { confirmation: "DELETE_SAVED_SEARCH_AND_ALERT" };
+    const headers = { "idempotency-key": "concurrent-delete-alert" };
+    const routeContext = { params: Promise.resolve({ savedSearchId: saved.id }) };
+
+    const first = handleAgentDeleteSavedSearchRequest(
+      request(`/api/v1/agent/saved-searches/${saved.id}`, "DELETE", body, headers),
+      routeContext,
+      current,
+    );
+    const concurrentReplay = handleAgentDeleteSavedSearchRequest(
+      request(`/api/v1/agent/saved-searches/${saved.id}`, "DELETE", body, headers),
+      routeContext,
+      current,
+    );
+    const [firstResponse, replayResponse] = await Promise.all([first, concurrentReplay]);
+
+    expect(firstResponse.status).toBe(200);
+    expect(replayResponse.status).toBe(200);
+    expect((await replayResponse.json()).data).toEqual((await firstResponse.json()).data);
+    expect(current.idempotency.putIfAbsent).toHaveBeenCalledTimes(2);
+    expect(current.service.deleteSavedSearch).toHaveBeenCalledTimes(2);
+    expect(current.activity?.publish).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not reveal a saved search outside the current owner during agent deletion", async () => {
+    const current = dependencies();
+    current.service.listSavedSearches = vi.fn(async () => []);
+    current.service.listSchedules = vi.fn(async () => []);
+    current.service.deleteSavedSearch = vi.fn(async () => {
+      throw new DomainError({ code: "NOT_FOUND", message: "Saved search was not found." });
+    });
+    const response = await handleAgentDeleteSavedSearchRequest(
+      request(
+        `/api/v1/agent/saved-searches/${saved.id}`,
+        "DELETE",
+        {
+          confirmation: "DELETE_SAVED_SEARCH_AND_ALERT",
+        },
+        { "idempotency-key": "delete-other-owner-alert" },
+      ),
+      { params: Promise.resolve({ savedSearchId: saved.id }) },
+      current,
+    );
+
+    expect(response.status).toBe(404);
+    const payload = await response.json();
+    expect(payload.error).toMatchObject({ code: "NOT_FOUND" });
+    expect(JSON.stringify(payload)).not.toMatch(/owner_|email|endpoint/iu);
+    expect(current.idempotency.putIfAbsent).not.toHaveBeenCalled();
+    expect(current.service.deleteSavedSearch).not.toHaveBeenCalled();
+    expect(current.activity?.publish).not.toHaveBeenCalled();
   });
 });

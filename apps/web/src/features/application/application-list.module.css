@@ -13,7 +13,6 @@
 .eyebrow {
   margin: 0;
   color: var(--color-ink-muted);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.1em;
@@ -98,6 +97,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  min-block-size: 44px;
   color: var(--color-ink);
   font-size: 12px;
   font-weight: 650;

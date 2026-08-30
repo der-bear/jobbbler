@@ -10,7 +10,7 @@ import type {
 import type { LatestSearchRun } from "@/lib/latest-run";
 import type { QueryApiOptions } from "@/lib/query-client";
 
-import { loadSavedWorkspaceData } from "./saved-workspace-loader";
+import { loadPrivateWorkspaceResources, loadSavedWorkspaceData } from "./saved-workspace-loader";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -25,7 +25,6 @@ const session = {
     id: "owner_00000001-0000-7000-8000-000000000001",
     kind: "guest",
     verified: false,
-    recoverable: false,
   },
   expiresAt: "2026-08-30T09:00:00.000Z",
 } as OwnerSessionResult;
@@ -55,7 +54,20 @@ const savedSearches: readonly SavedSearch[] = [
     updatedAt: "2026-08-30T09:00:00.000Z",
   },
 ];
-const schedules: readonly JobAlertSchedule[] = [];
+const schedules: readonly JobAlertSchedule[] = [
+  {
+    id: "schedule_00000001-0000-7000-8000-000000000001",
+    ownerId: session.owner.id,
+    savedSearchId: savedSearches[0]!.id,
+    recurrence: { frequency: "daily", time: "09:00", timeZone: "Europe/Kyiv" },
+    delivery: { channel: "email", endpointId: "endpoint_00000001-0000-7000-8000-000000000001" },
+    enabled: true,
+    nextRunAt: "2026-08-30T10:00:00.000Z",
+    version: 0,
+    createdAt: "2026-08-30T09:00:00.000Z",
+    updatedAt: "2026-08-30T09:00:00.000Z",
+  },
+];
 const latestRun = {
   savedSearchId: "saved_search_00000001-0000-7000-8000-000000000001",
   evaluation: null,
@@ -119,5 +131,25 @@ describe("loadSavedWorkspaceData", () => {
     await expect(loaded.latestRuns).resolves.toEqual(
       new Map([["saved_search_00000001-0000-7000-8000-000000000001", latestRun]]),
     );
+  });
+
+  it("does not request latest runs for saved searches without a schedule", async () => {
+    const request = vi.fn((url: string) => {
+      switch (url) {
+        case "/api/v1/owners/email":
+          return Promise.resolve(endpoints);
+        case "/api/v1/saved-searches":
+          return Promise.resolve(savedSearches);
+        case "/api/v1/schedules":
+          return Promise.resolve([]);
+        default:
+          throw new Error(`Unexpected request: ${url}`);
+      }
+    });
+
+    const loaded = await loadPrivateWorkspaceResources(request as never);
+
+    await expect(loaded.latestRuns).resolves.toEqual(new Map());
+    expect(request).toHaveBeenCalledTimes(3);
   });
 });

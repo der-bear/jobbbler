@@ -12,12 +12,14 @@ import {
 } from "@/server/job-route-handlers";
 import type { RateLimiter } from "@/server/rate-limit";
 
+const fullStoredDescription = "Source-backed public role detail. ".repeat(32).trim();
+
 const first: Job = {
   id: "job_550e8400-e29b-41d4-a716-446655440000",
   organizationId: "org_550e8400-e29b-41d4-a716-446655440000",
   organizationName: "Northstar Systems",
   title: "Senior Product Engineer",
-  summary: "Build TypeScript product workflows.",
+  summary: fullStoredDescription,
   categories: ["software_engineering", "product"],
   workModel: "remote",
   employmentType: "full_time",
@@ -116,11 +118,36 @@ describe("job discovery API routes", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toContain("s-maxage=300");
-    await expect(response.json()).resolves.toMatchObject({
+    const body = (await response.json()) as {
+      readonly data: { readonly job: { readonly id: string; readonly summary: string } };
+    };
+    expect(body).toMatchObject({
       ok: true,
       data: {
         job: { id: first.id },
         fit: { eligible: true, evidence: expect.arrayContaining(["Matched skills: TypeScript."]) },
+      },
+    });
+    expect(body.data.job.summary).toBe(fullStoredDescription);
+    expect(body.data.job.summary.length).toBeGreaterThan(600);
+  });
+
+  it("maps a syntactically valid missing job to the public NOT_FOUND contract", async () => {
+    const missingJobId = "job_750e8400-e29b-41d4-a716-446655440000";
+    const response = await handleJobDetailRequest(
+      new Request(`https://jobbbler.example/api/v1/jobs/${missingJobId}`),
+      { params: Promise.resolve({ id: missingJobId }) },
+      dependencies(),
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: false,
+      error: {
+        code: "NOT_FOUND",
+        message: "Job was not found.",
+        retryable: false,
+        requestId: expect.stringMatching(/^req_/),
       },
     });
   });
@@ -171,6 +198,22 @@ describe("job discovery API routes", () => {
     await expect(response.json()).resolves.toMatchObject({
       ok: true,
       data: { locations: ["Berlin, Germany", "Europe"] },
+    });
+  });
+
+  it("supplements sparse catalog location suggestions with realistic geography", async () => {
+    const current = dependencies();
+    const suggestLocations = vi.fn(async () => []);
+    const response = await handleLocationSuggestionsRequest(
+      new Request("https://jobbbler.example/api/v1/jobs/locations?q=pho&limit=8"),
+      { ...current, jobs: { ...current.jobs, suggestLocations } },
+    );
+
+    expect(response.status).toBe(200);
+    expect(suggestLocations).toHaveBeenCalledWith("pho", 8);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      data: { locations: expect.arrayContaining(["Phoenix, AZ"]) },
     });
   });
 

@@ -17,6 +17,7 @@ import {
   type ApplicationDraft,
   type ApplicationDataGrantSummary,
   type ApplicationDelegationSummary,
+  type Job,
   type RequestDataGrant,
 } from "@jobbbler/contracts";
 import {
@@ -400,25 +401,39 @@ async function requireHumanDraft(
   return { draft, ownerId: current.owner.id };
 }
 
-async function applicationJobMode(
+async function applicationJob(
   draft: ApplicationDraft,
   dependencies: ApplicationAuthorizationRouteDependencies,
-): Promise<"internal" | "external"> {
+): Promise<Job> {
   const job = await dependencies.jobs.getById(draft.jobId);
   if (job === null) {
     throw new DomainError({ code: "NOT_FOUND", message: "Application job was not found." });
   }
-  return job.applyMode;
+  return job;
+}
+
+async function applicationJobMode(
+  draft: ApplicationDraft,
+  dependencies: ApplicationAuthorizationRouteDependencies,
+): Promise<"internal" | "external"> {
+  return (await applicationJob(draft, dependencies)).applyMode;
 }
 
 async function requireInternalApplicationDraft(
   draft: ApplicationDraft,
   dependencies: ApplicationAuthorizationRouteDependencies,
 ): Promise<void> {
-  if ((await applicationJobMode(draft, dependencies)) === "external") {
+  const job = await applicationJob(draft, dependencies);
+  if (job.applyMode === "external") {
     throw new DomainError({
       code: "CONFLICT",
       message: "This role accepts applications on the employer's website.",
+    });
+  }
+  if (job.status !== "open") {
+    throw new DomainError({
+      code: "CONFLICT",
+      message: "Role closed — nothing submitted.",
     });
   }
 }

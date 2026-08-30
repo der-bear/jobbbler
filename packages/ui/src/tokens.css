@@ -26,12 +26,14 @@
   --color-canvas: var(--jb-canvas);
   --color-surface: var(--jb-surface);
   --color-surface-subtle: var(--jb-surface-muted);
+  --color-surface-raised: var(--jb-surface);
   --color-ink: var(--jb-text);
   --color-ink-muted: var(--jb-text-muted);
   --color-ink-subtle: var(--jb-text-muted);
   --color-line: var(--jb-border);
   --color-line-strong: var(--jb-border-strong);
   --color-signal-strong: var(--jb-signal-strong);
+  --color-signal-soft: color-mix(in srgb, var(--jb-signal) 12%, var(--jb-surface));
   --space-2: 0.5rem;
   --space-3: 0.75rem;
   --radius-sm: var(--jb-radius-sm);

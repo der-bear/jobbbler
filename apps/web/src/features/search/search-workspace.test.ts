@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import type { JobSummary, SearchJobsResult } from "@jobbbler/contracts";
+import type { JobSummary, SearchJobsResult, ToolActivity } from "@jobbbler/contracts";
 
-import { deriveSearchPresentation, searchWorkspaceHref } from "./search-workspace";
+import {
+  deriveSearchPresentation,
+  searchWorkspaceHref,
+  shouldPulseResultsForActivity,
+} from "./search-workspace";
 
 function job(index: number): JobSummary {
   return {
@@ -81,7 +85,7 @@ describe("deriveSearchPresentation", () => {
     expect(presentation.showHeroSearch).toBe(false);
     expect(presentation.resultLayout).toBe("list");
     expect(presentation.showFilters).toBe(true);
-    expect(presentation.heading).toBe("All technology roles");
+    expect(presentation.heading).toBe("8 technology roles");
     expect(presentation.visibleJobs).toHaveLength(8);
   });
 
@@ -105,5 +109,36 @@ describe("deriveSearchPresentation", () => {
 
     expect(presentation.landing).toBe(false);
     expect(presentation.showFilters).toBe(true);
+  });
+});
+
+describe("shouldPulseResultsForActivity", () => {
+  const completedSearch: ToolActivity = {
+    id: "activity_00000000-0000-7000-8000-000000000001",
+    toolName: "search_jobs",
+    status: "completed",
+    safeSummary: "12 matching roles found.",
+    correlationId: "correlation_00000000-0000-7000-8000-000000000001",
+    startedAt: "2026-08-30T16:00:01.000Z",
+    completedAt: "2026-08-30T16:00:01.100Z",
+    affectedResourceIds: [],
+  };
+
+  it("reserves the branded result sweep for a newly completed agent search", () => {
+    const mountedAt = Date.parse("2026-08-30T16:00:00.000Z");
+
+    expect(shouldPulseResultsForActivity(completedSearch, mountedAt)).toBe(true);
+    expect(
+      shouldPulseResultsForActivity({ ...completedSearch, toolName: "get_job_details" }, mountedAt),
+    ).toBe(false);
+    expect(
+      shouldPulseResultsForActivity({ ...completedSearch, status: "running" }, mountedAt),
+    ).toBe(false);
+    expect(
+      shouldPulseResultsForActivity(
+        { ...completedSearch, startedAt: "2026-08-30T15:59:59.000Z" },
+        mountedAt,
+      ),
+    ).toBe(false);
   });
 });

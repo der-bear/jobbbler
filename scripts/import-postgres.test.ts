@@ -280,6 +280,23 @@ describe("SQLite to PostgreSQL import planning", () => {
         withdrawn_at: null,
         version: 2,
       }),
+      row("managed_application_deliveries", {
+        id: "managed_delivery_1",
+        owner_id: "owner_1",
+        draft_id: "application_1",
+        review_id: "review_1",
+        confirmation_id: "confirmation_1",
+        idempotency_key: "submit-once",
+        provider: "jobbbler_demo",
+        provider_reference_id: "demo_submission_1",
+        recipient_id: "org_1",
+        recipient_name: "Jobbbler",
+        payload_hash: "c".repeat(64),
+        fields_json: '[{"fieldKey":"fullName","label":"Full name","value":"Ada","sensitive":true}]',
+        status: "acknowledged",
+        acknowledged_at: at,
+        created_at: at,
+      }),
       row("owner_activity_events", {
         sequence: 7,
         id: "activity_1",
@@ -344,6 +361,7 @@ describe("SQLite to PostgreSQL import planning", () => {
       job_source_link: 1,
       delegation: 1,
       rich_data_grant: 1,
+      managed_application_delivery: 1,
       owner_recovery_challenge: 1,
       owner_deletion_intent: 1,
     });
@@ -398,6 +416,18 @@ describe("SQLite to PostgreSQL import planning", () => {
       fieldKeys: ["fullName"],
       documentIds: [],
       version: 2,
+    });
+    expect(
+      plan.entities.find((entity) => entity.kind === "managed_application_delivery"),
+    ).toMatchObject({
+      id: "managed_delivery_1",
+      ownerId: "owner_1",
+      body: {
+        providerReferenceId: "demo_submission_1",
+        recipientName: "Jobbbler",
+        fields: [{ fieldKey: "fullName", label: "Full name", value: "Ada", sensitive: true }],
+        acknowledgedAt: at,
+      },
     });
     expect(plan.ownerActivities).toEqual([
       {

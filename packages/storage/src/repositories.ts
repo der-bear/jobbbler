@@ -40,6 +40,7 @@ import type {
   ApplicationReviewRecord,
   ApplicationConfirmationRecord,
   ApplicationReceiptRecord,
+  ManagedApplicationDeliveryRecord,
   MaterialApplicationEditInput,
   SealApplicationReviewInput,
   CompleteApplicationSubmissionInput,
@@ -126,6 +127,7 @@ export interface ApplicationRepository {
   listByOwner(ownerId: string): Promise<ApplicationDraft[]>;
   getLatestReview(draftId: string, ownerId: string): Promise<ApplicationReviewRecord | null>;
   getLatestReceipt(draftId: string, ownerId: string): Promise<ApplicationReceiptRecord | null>;
+  getManagedDelivery(id: string, ownerId: string): Promise<ManagedApplicationDeliveryRecord | null>;
   applyMaterialEdit(input: MaterialApplicationEditInput): Promise<ApplicationDraft>;
   sealReview(
     input: SealApplicationReviewInput,
@@ -223,6 +225,7 @@ export interface AuditRepository {
 
 export interface OwnerActivityRepository {
   append(record: NewOwnerActivityEventRecord): Promise<OwnerActivityEventRecord>;
+  clear(ownerId: string): Promise<number>;
   listWindow(input: OwnerActivityWindowInput): Promise<OwnerActivityWindow>;
 }
 

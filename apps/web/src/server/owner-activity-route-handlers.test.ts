@@ -6,6 +6,7 @@ import type { OwnerActivityRepository } from "@jobbbler/storage";
 import type { IdentityRouteDependencies } from "./identity-route-handlers";
 import {
   createOwnerActivityCursorCodec,
+  handleClearOwnerActivityRequest,
   handleListOwnerActivityRequest,
   type OwnerActivityRouteDependencies,
 } from "./owner-activity-route-handlers";
@@ -94,6 +95,7 @@ function dependencies(
     identity: ownerIdentity,
     activity: {
       append: vi.fn(),
+      clear: vi.fn(async () => 0),
       listWindow: vi.fn(async () => ({
         events: [{ sequence: 7, ownerId: owner.id, event }],
         hasMore: false,
@@ -116,6 +118,18 @@ function request(query = "", headers: HeadersInit = {}): Request {
   });
 }
 
+function clearRequest(headers: HeadersInit = {}): Request {
+  return new Request("https://jobbbler.example/api/v1/owners/activity", {
+    method: "DELETE",
+    headers: {
+      cookie: "jobbbler_owner=session-secret-with-at-least-thirty-two-characters",
+      origin: "https://jobbbler.example",
+      "sec-fetch-site": "same-origin",
+      ...headers,
+    },
+  });
+}
+
 describe("owner activity cursor", () => {
   it("is opaque, tamper evident, and bound to the exact owner", () => {
     const codec = createOwnerActivityCursorCodec(environment);
@@ -132,6 +146,35 @@ describe("owner activity cursor", () => {
 });
 
 describe("owner activity route handler", () => {
+  it("clears only the resolved owner's activity and returns a private receipt", async () => {
+    const clear = vi.fn(async () => 4);
+    const current = dependencies({ activity: { clear } });
+
+    const response = await handleClearOwnerActivityRequest(clearRequest(), current);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("vary")).toContain("Cookie");
+    expect(clear).toHaveBeenCalledWith(owner.id);
+    expect((await response.json()).data).toEqual({ clearedCount: 4 });
+  });
+
+  it("rejects unauthenticated and cross-origin history clearing", async () => {
+    const clear = vi.fn(async () => 4);
+    const unauthorized = await handleClearOwnerActivityRequest(
+      clearRequest(),
+      dependencies({ resolved: null, activity: { clear } }),
+    );
+    const crossOrigin = await handleClearOwnerActivityRequest(
+      clearRequest({ origin: "https://attacker.example", "sec-fetch-site": "cross-site" }),
+      dependencies({ activity: { clear } }),
+    );
+
+    expect(unauthorized.status).toBe(401);
+    expect(crossOrigin.status).toBe(403);
+    expect(clear).not.toHaveBeenCalled();
+  });
+
   it("requires an owner session before reading the projection", async () => {
     const activity = { listWindow: vi.fn() };
     const response = await handleListOwnerActivityRequest(

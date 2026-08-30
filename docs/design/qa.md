@@ -19,14 +19,14 @@ does not treat screenshots from an earlier build as evidence.
   a predictable order.
 - The global Agent layer is a judge- and developer-facing transparency surface,
   not a second product. Activity is the default tab, followed by Tools and
-  Guide. All 26 tools remain registered across navigation; execution still
+  Guide. All 28 tools remain registered across navigation; execution still
   enforces ownership and workflow state.
 - Empty, loading, unavailable, cancelled, user-action, and error states explain
   what happened and what can happen next without exposing private values or
   reusable identifiers.
 - Light and dark themes preserve the same reading order and semantic emphasis.
   Reduced-motion mode removes non-essential animation.
-- At mobile widths the primary human task stays first. Agent view opens only
+- At mobile widths the primary human task stays first. Agent activity opens only
   when requested and does not create horizontal page overflow.
 
 The detailed product and visual rationale is in
@@ -52,7 +52,7 @@ and submitted:
    behavior separately when assessing performance.
 6. Invoke representative WebMCP search, navigation, alert, and application
    tools. Confirm URL, visible state, Agent Activity, and the authoritative
-   result agree while all 26 tools remain discoverable.
+   result agree while all 28 tools remain discoverable.
 7. Verify the ordinary interface remains usable when WebMCP is absent or tool
    registration fails.
 8. Re-run the deterministic verification, focused browser suite, PostgreSQL

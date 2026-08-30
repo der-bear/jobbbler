@@ -18,7 +18,6 @@
 .eyebrow {
   margin: 0;
   color: var(--color-ink-muted);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.1em;
@@ -41,7 +40,6 @@
 .header > p {
   margin: 0;
   color: var(--color-ink-muted);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
   text-align: end;
 }
@@ -49,6 +47,10 @@
 .tableScroll {
   overflow-x: auto;
   border-block-end: 1px solid var(--color-line);
+}
+
+.mobileComparison {
+  display: none;
 }
 
 .comparisonTable {
@@ -75,7 +77,6 @@
 .comparisonTable tbody th {
   inline-size: 160px;
   color: var(--color-ink-muted);
-  font-family: var(--jb-font-mono);
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.08em;
@@ -103,15 +104,35 @@
   font-size: 12px;
 }
 
+.jobActions,
+.comparisonActions,
+.stateActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.comparisonActions {
+  justify-content: flex-end;
+  border-block-end: 1px solid var(--color-line);
+  padding-block: 10px;
+}
+
 .jobHeading a,
 .comparisonTable a,
+.mobileComparison a,
+.comparisonActions a,
 .empty a,
 .state a {
   display: inline-flex;
+  min-block-size: 44px;
   align-items: center;
+  justify-content: center;
   gap: 5px;
   margin-block-start: 14px;
   color: var(--color-signal-strong);
+  padding-inline: 8px;
   font-size: 12px;
   font-weight: 650;
   text-decoration: none;
@@ -119,9 +140,44 @@
 
 .jobHeading a:hover,
 .comparisonTable a:hover,
+.mobileComparison a:hover,
+.comparisonActions a:hover,
 .empty a:hover,
 .state a:hover {
   color: var(--jb-signal);
+}
+
+.jobActions a,
+.comparisonActions a {
+  margin-block-start: 0;
+}
+
+.jobActions .removeLink {
+  color: var(--color-ink-muted);
+}
+
+.stateActions {
+  margin-block-start: 18px;
+}
+
+.stateActions a {
+  margin-block-start: 0;
+}
+
+.stateActions button {
+  min-block-size: 44px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-ink);
+  padding-inline: 12px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.stateActions button:hover {
+  background: var(--color-surface-subtle);
 }
 
 .fitNotes {
@@ -193,4 +249,86 @@
   .comparisonTable td {
     padding: 16px;
   }
+
+  .tableScroll {
+    display: none;
+  }
+
+  .mobileComparison {
+    display: grid;
+    border-block-end: 1px solid var(--color-line);
+  }
+
+  .mobileComparison article {
+    padding-block: 24px;
+  }
+
+  .mobileComparison article + article {
+    border-block-start: 1px solid var(--color-line);
+  }
+
+  .mobileComparison dl {
+    display: grid;
+    gap: 0;
+    margin: 18px 0 0;
+  }
+
+  .mobileComparison dl > div {
+    display: grid;
+    grid-template-columns: minmax(112px, 0.42fr) minmax(0, 1fr);
+    gap: 14px;
+    border-block-start: 1px solid var(--color-line);
+    padding-block: 14px;
+  }
+
+  .mobileComparison dt {
+    color: var(--color-ink-muted);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+
+  .mobileComparison dd {
+    min-inline-size: 0;
+    margin: 0;
+    color: var(--color-ink-muted);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .comparisonActions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 420px) {
+  .mobileComparison dl > div {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+/*
+ * Loading mirrors the comparison table instead of announcing itself as a
+ * headline, so the layout does not jump once the facts arrive.
+ */
+.skeleton {
+  display: grid;
+  gap: 16px;
+}
+
+.skeleton span {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+}
+
+.skeletonTitle {
+  block-size: 40px;
+  inline-size: min(100%, 26ch);
+}
+
+.skeletonRow {
+  block-size: 56px;
 }

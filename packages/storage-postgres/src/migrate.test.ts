@@ -97,4 +97,29 @@ describe("PostgreSQL migration manifest", () => {
     expect(migration?.sql).toContain("TO anon");
     expect(migration?.sql).toContain("TO authenticated");
   });
+
+  it("reconciles only synthetic demo openings as first-party application roles", () => {
+    const migration = postgresMigrationManifest().find(({ version }) => version === 18);
+
+    expect(migration?.name).toBe("internal_demo_catalog");
+    expect(migration?.sql).toContain("body #>> '{source,key}' = 'jobbbler_demo'");
+    expect(migration?.sql).toContain("'{applyMode}'");
+    expect(migration?.sql).toContain("'\"internal\"'::jsonb");
+  });
+
+  it("uniquely indexes durable managed-delivery acknowledgements", () => {
+    const migration = postgresMigrationManifest().find(({ version }) => version === 19);
+
+    expect(migration?.name).toBe("managed_application_delivery");
+    expect(migration?.sql).toContain("entity_records_managed_delivery_provider_reference_unique");
+    expect(migration?.sql).toContain("entity_records_managed_delivery_idempotency_unique");
+    expect(migration?.sql).toContain("entity_records_managed_delivery_confirmation_unique");
+    expect(migration?.sql).toContain("entity_records_application_receipt_delivery_unique");
+    expect(migration?.sql).toContain("entity_records_application_receipt_confirmation_unique");
+    expect(migration?.sql).toContain("kind = 'managed_application_delivery'");
+    expect(migration?.sql).toContain("enforce_application_receipt_managed_delivery");
+    expect(migration?.sql).toContain("CREATE CONSTRAINT TRIGGER");
+    expect(migration?.sql).toContain("DEFERRABLE INITIALLY DEFERRED");
+    expect(migration?.sql).toContain("delivery.body->'fields' = NEW.body #> '{submission,fields}'");
+  });
 });

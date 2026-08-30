@@ -17,8 +17,6 @@ import {
 } from "@/lib/webmcp-tool-result";
 import type { WebMcpNavigate } from "@/lib/webmcp-navigation";
 
-import { applicationCapabilityData, applicationCapabilitySummary } from "./application-capability";
-
 const jobIdProperty = {
   type: "string",
   description: "A Jobbbler job ID returned by search_jobs or another Jobbbler tool.",
@@ -201,34 +199,5 @@ export function createJobDetailToolManifests(
     },
   };
 
-  const getApplicationCapability: ToolManifest<unknown, JobDetailToolOutput> = {
-    name: "get_job_application_capability",
-    purpose: "Learn how one explicitly identified role accepts applications before starting one.",
-    description:
-      "Read one role's application capability by Jobbbler ID: whether Jobbbler can prepare it, which decisions stay with the person, and whether a validated employer page is available. When an exact Jobbbler ID is already present in context, call this directly without searching or navigating first. For an unavailable external page, stop without creating a draft or submission claim.",
-    inputSchema: detailInputJsonSchema,
-    annotations: { readOnlyHint: true, untrustedContentHint: true },
-    async execute(input, { signal }) {
-      try {
-        const parsed = currentDetailInput.parse(input);
-        const result = await dependencies.getJobDetails(parsed, { signal });
-        return completedWebMcpResult({
-          summary: applicationCapabilitySummary(result.job),
-          data: applicationCapabilityData(result.job),
-          resources: [
-            {
-              type: "job",
-              id: result.job.id,
-              label: short(`${result.job.title} at ${result.job.organizationName}`, 70),
-            },
-          ],
-          facts: [{ key: "apply_mode", value: result.job.applyMode }],
-        });
-      } catch (error) {
-        return safeWebMcpErrorResult(error, signal, "The capability request is invalid.");
-      }
-    },
-  };
-
-  return [getJobDetails, getApplicationCapability, compareJobs];
+  return [getJobDetails, compareJobs];
 }

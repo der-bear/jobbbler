@@ -4,7 +4,11 @@ import type { SalaryRange } from "@jobbbler/contracts";
 
 import { salaryCardPresentation, salaryLabel } from "@/lib/job-format";
 
-import { fetchLocationSuggestions, locationSuggestions } from "./location-combobox";
+import {
+  fetchLocationSuggestions,
+  locationSuggestionItems,
+  locationSuggestions,
+} from "./location-combobox";
 
 describe("locationSuggestions", () => {
   it("returns a short, case-insensitive set of relevant locations without duplicates", () => {
@@ -23,9 +27,28 @@ describe("locationSuggestions", () => {
     ]);
   });
 
-  it("keeps an unmatched typed location available as valid free text", () => {
-    expect(locationSuggestions(["Europe", "Remote"], "Tallinn, Estonia")).toEqual([
-      "Tallinn, Estonia",
+  it("presents unmatched text as an explicit free-text action", () => {
+    expect(locationSuggestions(["Europe", "Remote"], "Tallinn, Estonia")).toEqual([]);
+    expect(locationSuggestionItems(["Europe", "Remote"], "Tallinn, Estonia")).toEqual([
+      {
+        kind: "free-text",
+        label: "Use \u201cTallinn, Estonia\u201d",
+        value: "Tallinn, Estonia",
+      },
+    ]);
+  });
+
+  it("keeps an explicit free-text action after realistic matching suggestions", () => {
+    expect(locationSuggestionItems(["Phoenix, AZ", "Phoenixville, PA", "Europe"], "Pho")).toEqual([
+      { kind: "suggestion", label: "Phoenix, AZ", value: "Phoenix, AZ" },
+      { kind: "suggestion", label: "Phoenixville, PA", value: "Phoenixville, PA" },
+      { kind: "free-text", label: "Use \u201cPho\u201d", value: "Pho" },
+    ]);
+  });
+
+  it("does not duplicate free text when it exactly matches a known choice", () => {
+    expect(locationSuggestionItems(["Phoenix, AZ"], "Phoenix, AZ")).toEqual([
+      { kind: "suggestion", label: "Phoenix, AZ", value: "Phoenix, AZ" },
     ]);
   });
 

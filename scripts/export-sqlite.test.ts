@@ -37,10 +37,11 @@ describe("SQLite snapshot export", () => {
     expect(first.checksum).toMatch(/^[a-f0-9]{64}$/);
     expect(first.rowCount).toBeGreaterThan(0);
     expect(first.formatVersion).toBe(2);
-    expect(first.sqliteSchemaVersion).toBe(22);
+    expect(first.sqliteSchemaVersion).toBe(24);
     expect(first.tableModes["alert_evaluation_baselines"]).toBe("aggregate");
     expect(first.tableModes["owner_activity_events"]).toBe("relational");
     expect(first.tableModes["application_reviews"]).toBe("staged_only");
+    expect(first.tableModes["managed_application_deliveries"]).toBe("entity");
   });
 
   it("excludes SQLite journals, virtual tables, and every FTS shadow table", async () => {

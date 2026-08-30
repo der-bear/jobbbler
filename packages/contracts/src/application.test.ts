@@ -4,6 +4,7 @@ import {
   applicationAgentStateSchema,
   applicationConsentWithdrawalSchema,
   applicationListItemSchema,
+  applicationReceiptSummarySchema,
   applicationSubmissionDecisionReceiptSchema,
   applicationSubmissionReviewRequestSchema,
   applicationWorkspaceSchema,
@@ -17,6 +18,42 @@ const draftId = "draft_550e8400-e29b-41d4-a716-446655440000";
 const agentSessionId = "agent_550e8400-e29b-41d4-a716-446655440000";
 
 describe("application authorization contracts", () => {
+  it("requires persisted managed-delivery facts on a submitted receipt", () => {
+    const submitted = {
+      id: "receipt_550e8400-e29b-41d4-a716-446655440000",
+      status: "submitted" as const,
+      externalUrl: null,
+      createdAt: "2026-08-29T10:05:00.000Z",
+      submission: {
+        provider: "jobbbler_demo" as const,
+        providerReferenceId: "demo_submission_550e8400-e29b-41d4-a716-446655440000",
+        recipient: {
+          id: "org_550e8400-e29b-41d4-a716-446655440000",
+          name: "Northstar Systems",
+        },
+        submittedAt: "2026-08-29T10:05:00.000Z",
+        fields: [
+          {
+            fieldKey: "full_name",
+            label: "Full name",
+            value: "Ada Lovelace",
+          },
+        ],
+      },
+    };
+
+    expect(applicationReceiptSummarySchema.parse(submitted)).toEqual(submitted);
+    expect(
+      applicationReceiptSummarySchema.safeParse({ ...submitted, submission: undefined }).success,
+    ).toBe(false);
+    expect(
+      applicationReceiptSummarySchema.safeParse({
+        ...submitted,
+        submission: { ...submitted.submission, providerReferenceId: "" },
+      }).success,
+    ).toBe(false);
+  });
+
   it("exposes a minimal private application-list item without answers or owner identity", () => {
     const item = applicationListItemSchema.parse({
       draftId,
@@ -26,10 +63,12 @@ describe("application authorization contracts", () => {
         id: "job_550e8400-e29b-41d4-a716-446655440000",
         title: "Senior Product Engineer",
         organizationName: "Northstar Systems",
+        status: "closed",
       },
     });
 
     expect(item.job.title).toBe("Senior Product Engineer");
+    expect(item.job.status).toBe("closed");
     expect(applicationListItemSchema.safeParse({ ...item, answers: [] }).success).toBe(false);
     expect(applicationListItemSchema.safeParse({ ...item, ownerId: "owner_private" }).success).toBe(
       false,
@@ -251,5 +290,6 @@ describe("application authorization contracts", () => {
     expect(
       applicationAgentStateSchema.safeParse({ ...state, answers: [{ fieldKey: "email" }] }).success,
     ).toBe(false);
+    expect(applicationAgentStateSchema.parse({ ...state, stage: "closed" }).stage).toBe("closed");
   });
 });

@@ -14,6 +14,7 @@ import { searchPostgresJobs } from "./job-search.js";
 import {
   createPostgresStorage,
   migratePostgres,
+  postgresMigrationManifest,
   resetPostgresSchema,
   type PostgresSql,
 } from "./index.js";
@@ -170,6 +171,19 @@ async function waitForBlockedEntityWrite(
   throw new Error("Timed out waiting for the stale work-item mutation to block on reclaim.");
 }
 
+async function migratePostgresThrough(sql: PostgresSql, maximumVersion: number): Promise<void> {
+  for (const migration of postgresMigrationManifest().filter(
+    ({ version }) => version <= maximumVersion,
+  )) {
+    await sql.begin(async (transaction) => {
+      await transaction.unsafe(migration.sql);
+      await transaction`
+        INSERT INTO jobbbler.schema_migrations(version, name, checksum)
+        VALUES (${migration.version}, ${migration.name}, ${migration.checksum})`;
+    });
+  }
+}
+
 describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () => {
   let close: (() => Promise<void>) | undefined;
 
@@ -199,6 +213,107 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
     expect(rows).not.toHaveLength(0);
     expect(rows.every((row) => row.rowsecurity)).toBe(true);
     await storage.close();
+  });
+
+  it("upgrades v18 and rejects a submitted receipt whose persisted delivery facts differ", async () => {
+    const storage = createPostgresStorage(databaseUrl!);
+    close = async () => storage.close();
+    await resetPostgresSchema(storage.sql);
+    await migratePostgresThrough(storage.sql, 18);
+
+    await expect(migratePostgres(storage.sql)).resolves.toEqual([
+      expect.objectContaining({ version: 19, name: "managed_application_delivery" }),
+    ]);
+
+    const now = "2026-08-29T10:00:00.000Z";
+    const ownerId = "owner-postgres-managed-integrity";
+    const fields = [
+      { fieldKey: "full_name", label: "Full name", value: "Ada Lovelace", sensitive: true },
+    ];
+    const delivery = {
+      id: "managed-delivery-postgres-integrity",
+      ownerId,
+      draftId: "application-postgres-managed-integrity",
+      reviewId: "review-postgres-managed-integrity",
+      confirmationId: "confirmation-postgres-managed-integrity",
+      idempotencyKey: "submit-postgres-managed-integrity",
+      provider: "jobbbler_demo",
+      providerReferenceId: "demo-submission-postgres-integrity",
+      recipientId: "organization-postgres-managed-integrity",
+      recipientName: "Northstar Systems",
+      payloadHash: "a".repeat(64),
+      fields,
+      status: "acknowledged",
+      acknowledgedAt: now,
+      createdAt: now,
+    };
+    await storage.sql`
+      INSERT INTO jobbbler.entity_records(kind, id, owner_id, body, version, created_at, updated_at)
+      VALUES (
+        'managed_application_delivery', ${delivery.id}, ${ownerId},
+        ${storage.sql.json(delivery)}, 0, ${now}, ${now}
+      )`;
+
+    const receipt = {
+      id: "receipt-postgres-managed-integrity",
+      ownerId,
+      draftId: delivery.draftId,
+      reviewId: delivery.reviewId,
+      confirmationId: delivery.confirmationId,
+      idempotencyKey: delivery.idempotencyKey,
+      status: "submitted",
+      externalUrl: null,
+      submission: {
+        managedDeliveryId: delivery.id,
+        provider: delivery.provider,
+        providerReferenceId: delivery.providerReferenceId,
+        recipientId: delivery.recipientId,
+        recipientName: delivery.recipientName,
+        submittedAt: delivery.acknowledgedAt,
+        fields,
+      },
+      createdAt: now,
+    };
+    await expect(
+      storage.sql`
+        INSERT INTO jobbbler.entity_records(kind, id, owner_id, body, version, created_at, updated_at)
+        VALUES (
+          'application_receipt', ${receipt.id}, ${ownerId},
+          ${storage.sql.json({
+            ...receipt,
+            submission: {
+              ...receipt.submission,
+              fields: [{ ...fields[0], label: "Changed after acknowledgement" }],
+            },
+          })},
+          0, ${now}, ${now}
+        )`,
+    ).rejects.toThrow(/exact acknowledged managed delivery/i);
+
+    await expect(
+      storage.sql`
+        INSERT INTO jobbbler.entity_records(kind, id, owner_id, body, version, created_at, updated_at)
+        VALUES (
+          'application_receipt', ${receipt.id}, ${ownerId}, ${storage.sql.json(receipt)},
+          0, ${now}, ${now}
+        )`,
+    ).resolves.toBeDefined();
+
+    await expect(
+      storage.sql`
+        INSERT INTO jobbbler.entity_records(kind, id, owner_id, body, version, created_at, updated_at)
+        VALUES (
+          'application_receipt', 'legacy-receipt-postgres-integrity', ${ownerId},
+          ${storage.sql.json({
+            ...receipt,
+            id: "legacy-receipt-postgres-integrity",
+            confirmationId: "legacy-confirmation-postgres-integrity",
+            idempotencyKey: "legacy-submit-postgres-integrity",
+            submission: null,
+          })},
+          0, ${now}, ${now}
+        )`,
+    ).resolves.toBeDefined();
   });
 
   it("pins function lookup and preserves public-job plus owner-only RLS semantics", async () => {
@@ -810,7 +925,7 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
       locations: ["Europe"],
       skills: ["TypeScript"],
       salary: null,
-      source: { key: "test", label: "Test", url: null },
+      source: { key: "jobbbler_demo", label: "Jobbbler demo", url: null },
       applyMode: "internal",
       status: "open",
       publishedAt: now,
@@ -1014,7 +1129,7 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
       id: "rich-data-grant-postgres-submission",
       ownerId,
       draftId,
-      recipientId: sessionId,
+      recipientId: organizationId,
       purpose: "Submit the selected application.",
       payloadHash: review.payloadHash,
       categories: ["identity"] as const,
@@ -1029,6 +1144,30 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
       withdrawnAt: null,
       version: 0,
     };
+    const delivery = {
+      id: "managed-delivery-postgres-auth",
+      ownerId,
+      draftId,
+      reviewId: review.id,
+      confirmationId: confirmation.id,
+      idempotencyKey: "postgres-submit-once",
+      provider: "jobbbler_demo" as const,
+      providerReferenceId: "demo-submission-postgres-auth",
+      recipientId: organizationId,
+      recipientName: "PostgreSQL Authorization Lab",
+      payloadHash: review.payloadHash,
+      fields: [
+        {
+          fieldKey: "full_name",
+          label: "Full name",
+          value: "Ada Lovelace",
+          sensitive: true,
+        },
+      ],
+      status: "acknowledged" as const,
+      acknowledgedAt: now,
+      createdAt: now,
+    };
     const receipt = {
       id: "receipt-postgres-auth",
       ownerId,
@@ -1038,6 +1177,15 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
       idempotencyKey: "postgres-submit-once",
       status: "submitted" as const,
       externalUrl: null,
+      submission: {
+        managedDeliveryId: delivery.id,
+        provider: delivery.provider,
+        providerReferenceId: delivery.providerReferenceId,
+        recipientId: delivery.recipientId,
+        recipientName: delivery.recipientName,
+        submittedAt: delivery.acknowledgedAt,
+        fields: delivery.fields,
+      },
       createdAt: now,
     };
     await storage.applications.insertConfirmation(confirmation);
@@ -1052,12 +1200,18 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: submissionGrant,
+        delivery,
         decisionChannel: "agent_client",
         receipt: {
-          ...receipt,
           id: "receipt-postgres-auth-handoff",
+          ownerId,
+          draftId,
+          reviewId: review.id,
+          confirmationId: confirmation.id,
+          idempotencyKey: receipt.idempotencyKey,
           status: "handed_off",
           externalUrl: "https://jobs.example.test/opening/42",
+          createdAt: now,
         },
         now,
       }),
@@ -1104,6 +1258,7 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: { ...submissionGrant, categories: ["contact"] },
+        delivery,
         decisionChannel: "first_party_ui",
         receipt,
         now,
@@ -1129,6 +1284,7 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: submissionGrant,
+        delivery,
         decisionChannel: "first_party_ui",
         receipt,
         now,
@@ -1149,21 +1305,157 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: submissionGrant,
+        delivery: { ...delivery, status: "not_acknowledged" as never },
         decisionChannel: "first_party_ui",
         receipt,
         now,
       }),
-    ).resolves.toMatchObject({
-      draft: { state: "submitted", version: 2 },
-      receipt,
-      inserted: true,
+    ).rejects.toMatchObject({ code: "VALIDATION" });
+    await expect(
+      storage.applications.getConfirmation(confirmation.id, ownerId),
+    ).resolves.toMatchObject({ status: "active", consumedAt: null });
+    await expect(storage.applications.getByOwner(draftId, ownerId)).resolves.toMatchObject({
+      state: "reviewed",
+      version: 1,
     });
+    await expect(storage.applications.getManagedDelivery(delivery.id, ownerId)).resolves.toBeNull();
+    await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toBeNull();
+
+    const closingStorage = createPostgresStorage(databaseUrl!);
+    const jobRowLocked = deferred();
+    const releaseJobClose = deferred();
+    const closedJob: Job = {
+      ...job,
+      status: "closed",
+      updatedAt: "2026-08-29T10:30:00.000Z",
+    };
+    const closeJob = closingStorage.sql.begin(async (transaction) => {
+      await transaction`
+        SELECT id FROM jobbbler.entity_records
+        WHERE kind = 'job' AND id = ${jobId}
+        FOR UPDATE`;
+      jobRowLocked.resolve();
+      await releaseJobClose.promise;
+      await transaction`
+        UPDATE jobbbler.entity_records
+        SET body = ${transaction.json(closedJob)},
+            updated_at = ${closedJob.updatedAt}
+        WHERE kind = 'job' AND id = ${jobId}`;
+    });
+    await jobRowLocked.promise;
+    const racedSubmission = storage.applications.completeSubmission({
+      ownerId,
+      draftId,
+      expectedDraftVersion: 1,
+      reviewId: review.id,
+      reviewPayloadHash: review.payloadHash,
+      confirmationId: confirmation.id,
+      confirmationHash: confirmation.confirmationHash,
+      grant: submissionGrant,
+      delivery,
+      decisionChannel: "first_party_ui",
+      receipt,
+      now,
+    });
+    void racedSubmission.catch(() => undefined);
+    try {
+      await waitForBlockedEntityWrite(closingStorage.sql);
+    } finally {
+      releaseJobClose.resolve();
+      await closeJob;
+      await closingStorage.close();
+    }
+    await expect(racedSubmission).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "Role closed — nothing submitted.",
+    });
+    await expect(
+      storage.applications.getConfirmation(confirmation.id, ownerId),
+    ).resolves.toMatchObject({ status: "active", consumedAt: null });
+    await expect(storage.applications.getByOwner(draftId, ownerId)).resolves.toMatchObject({
+      state: "reviewed",
+      version: 1,
+    });
+    await expect(storage.applications.getManagedDelivery(delivery.id, ownerId)).resolves.toBeNull();
+    await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toBeNull();
+    await storage.jobs.upsert({
+      ...job,
+      status: "open",
+      updatedAt: "2026-08-29T10:31:00.000Z",
+    });
+
+    const competingDelivery = {
+      ...delivery,
+      id: "managed-delivery-postgres-auth-competing",
+      providerReferenceId: "demo-submission-postgres-auth-competing",
+    };
+    const competingReceipt = {
+      ...receipt,
+      id: "receipt-postgres-auth-competing",
+      submission: {
+        ...receipt.submission,
+        managedDeliveryId: competingDelivery.id,
+        providerReferenceId: competingDelivery.providerReferenceId,
+      },
+    };
+    const results = await Promise.all([
+      storage.applications.completeSubmission({
+        ownerId,
+        draftId,
+        expectedDraftVersion: 1,
+        reviewId: review.id,
+        reviewPayloadHash: review.payloadHash,
+        confirmationId: confirmation.id,
+        confirmationHash: confirmation.confirmationHash,
+        grant: submissionGrant,
+        delivery,
+        decisionChannel: "first_party_ui",
+        receipt,
+        now,
+      }),
+      storage.applications.completeSubmission({
+        ownerId,
+        draftId,
+        expectedDraftVersion: 1,
+        reviewId: review.id,
+        reviewPayloadHash: review.payloadHash,
+        confirmationId: confirmation.id,
+        confirmationHash: confirmation.confirmationHash,
+        grant: submissionGrant,
+        delivery: competingDelivery,
+        decisionChannel: "first_party_ui",
+        receipt: competingReceipt,
+        now,
+      }),
+    ]);
+    expect(results.map(({ inserted }) => inserted).sort()).toEqual([false, true]);
+    const committed = results.find(({ inserted }) => inserted);
+    if (committed === undefined || committed.receipt.status !== "submitted") {
+      throw new Error("Concurrent submission did not persist one receipt.");
+    }
+    expect(results).toEqual([
+      expect.objectContaining({
+        draft: expect.objectContaining({ state: "submitted", version: 2 }),
+        receipt: committed.receipt,
+        delivery: committed.delivery,
+      }),
+      expect.objectContaining({
+        draft: expect.objectContaining({ state: "submitted", version: 2 }),
+        receipt: committed.receipt,
+        delivery: committed.delivery,
+      }),
+    ]);
     await expect(
       storage.delegations.insert({
         ...lateAssistance,
         id: "delegation-postgres-after-submission",
       }),
     ).rejects.toMatchObject({ code: "CONFLICT" });
+    await storage.jobs.upsert({
+      ...job,
+      status: "closed",
+      updatedAt: "2026-08-29T10:32:00.000Z",
+    });
     await expect(
       storage.applications.completeSubmission({
         ownerId,
@@ -1174,12 +1466,25 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: submissionGrant,
+        delivery: { ...delivery, id: "managed-delivery-postgres-auth-retry" },
         decisionChannel: "first_party_ui",
         receipt: { ...receipt, id: "receipt-postgres-auth-retry" },
         now,
       }),
-    ).resolves.toMatchObject({ receipt, inserted: false });
-    await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toEqual(receipt);
+    ).resolves.toMatchObject({
+      receipt: committed.receipt,
+      delivery: committed.delivery,
+      inserted: false,
+    });
+    await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toEqual(
+      committed.receipt,
+    );
+    await expect(
+      storage.applications.getManagedDelivery(
+        committed.receipt.submission.managedDeliveryId,
+        ownerId,
+      ),
+    ).resolves.toEqual(committed.delivery);
     await storage.close();
   });
 

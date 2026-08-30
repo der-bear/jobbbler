@@ -26,6 +26,7 @@
 
 .clearButton {
   display: inline-grid;
+  position: relative;
   flex: 0 0 auto;
   inline-size: 28px;
   block-size: 28px;
@@ -42,54 +43,94 @@
 }
 
 .clearButton:focus-visible {
-  outline: 2px solid var(--jb-focus);
-  outline-offset: 1px;
+  outline: 0;
 }
 
 .field > input::placeholder {
   color: var(--color-ink-subtle);
 }
 
-.options {
+.popover {
   position: absolute;
   z-index: 30;
   inset-block-start: calc(100% + 10px);
   inset-inline: -12px;
-  display: grid;
   overflow: hidden;
-  margin: 0;
   border: 1px solid var(--color-line-strong);
   border-radius: var(--jb-radius-md);
   background: var(--color-surface);
   box-shadow: var(--shadow-floating);
-  padding: 6px;
-  list-style: none;
 }
 
-.options button {
+.lookupStatus {
+  margin: 0;
+  border-block-end: 1px solid var(--color-line);
+  background: var(--color-surface-subtle);
+  color: var(--color-ink-muted);
+  padding: 9px 12px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.options {
+  display: grid;
+  overflow-y: auto;
+  max-block-size: min(304px, 48vh);
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  overscroll-behavior: contain;
+}
+
+.options > [role="option"] {
+  display: flex;
   inline-size: 100%;
   min-block-size: 38px;
-  border: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-ink-muted);
-  padding-inline: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
   text-align: start;
+  user-select: none;
 }
 
-.options button:hover,
-.options button[aria-selected="true"] {
+.options > [role="option"]:hover,
+.options > [role="option"][aria-selected="true"] {
   background: var(--color-surface-subtle);
   color: var(--color-ink);
 }
 
-.options button:focus-visible {
-  outline: 2px solid var(--jb-focus);
-  outline-offset: -2px;
+.options > [data-kind="free-text"] {
+  margin-block-start: 3px;
+  border-block-start: 1px solid var(--color-line);
+  border-start-start-radius: 0;
+  border-start-end-radius: 0;
+}
+
+.optionMeta {
+  flex: 0 0 auto;
+  color: var(--color-ink-subtle);
+  font-size: 11px;
 }
 
 @media (max-width: 800px) {
-  .options {
+  .popover {
+    inset-block-start: calc(100% + 3px);
     inset-inline: 0;
   }
+
+  .options {
+    max-block-size: min(264px, 42vh);
+  }
+}
+
+/* The visible circle stays 28px; the pointer target extends to 44px. */
+.clearButton::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
 }

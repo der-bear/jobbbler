@@ -42,6 +42,12 @@ function assertInternalApplicationJob(job: Job): void {
       message: "This role accepts applications on the employer's website.",
     });
   }
+  if (job.status !== "open") {
+    throw new DomainError({
+      code: "CONFLICT",
+      message: "Role closed — nothing submitted.",
+    });
+  }
 }
 
 export function createApplicationDataGrantAuthorizationPolicy(

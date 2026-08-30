@@ -34,6 +34,7 @@ const reviewRequestId = "review_850e8400-e29b-41d4-a716-446655440000";
 function readiness(state: ApplicationAgentState = base): ApplicationToolReadiness {
   return {
     state,
+    roleStatus: "open",
     missingFieldKeys:
       state.completedRequiredFields === state.requiredFields ? [] : ["work_authorization"],
     missingFieldLabels:
@@ -118,17 +119,39 @@ function dependencies(
       };
       return pendingReview;
     }),
-    decideSubmission: vi.fn(async (_expectedVersion: number, decision: "approved" | "declined") =>
-      readiness(
-        decision === "approved"
-          ? {
-              ...state,
-              state: "submitted",
-              stage: "complete",
-              receiptStatus: "submitted",
-            }
-          : state,
-      ),
+    decideSubmission: vi.fn(
+      async (_expectedVersion: number, decision: "approved" | "declined") => ({
+        ...readiness(
+          decision === "approved"
+            ? {
+                ...state,
+                state: "submitted",
+                stage: "complete",
+                receiptStatus: "submitted",
+              }
+            : state,
+        ),
+        receipt:
+          decision === "approved"
+            ? {
+                id: "receipt_750e8400-e29b-41d4-a716-446655440000",
+                status: "submitted" as const,
+                externalUrl: null,
+                createdAt: "2026-08-29T10:04:00.000Z",
+                submission: {
+                  provider: "jobbbler_demo" as const,
+                  providerReferenceId: "demo_submission_750e8400-e29b-41d4-a716-446655440000",
+                  recipient: {
+                    id: "org_750e8400-e29b-41d4-a716-446655440000",
+                    name: "Northstar Systems",
+                  },
+                  submittedAt: "2026-08-29T10:04:00.000Z",
+                  fields: [{ fieldKey: "full_name", label: "Full name", value: "Ada Lovelace" }],
+                },
+              }
+            : null,
+        receiptHref: decision === "approved" ? `/apply/${state.draftId}` : null,
+      }),
     ),
     allowsAgentSubmission: vi.fn(() => true),
   };
@@ -435,7 +458,19 @@ describe("application WebMCP outcomes", () => {
       signal,
       channel: "agent_client",
     });
-    expect(result).toMatchObject({ status: "completed", data: { receiptStatus: "submitted" } });
+    expect(result).toMatchObject({
+      status: "completed",
+      data: {
+        receiptStatus: "submitted",
+        receipt: {
+          id: "receipt_750e8400-e29b-41d4-a716-446655440000",
+          status: "submitted",
+          createdAt: "2026-08-29T10:04:00.000Z",
+          href: `/apply/${ready.draftId}`,
+        },
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain("ada@example.com");
   });
 });
 
@@ -525,6 +560,62 @@ describe("site-wide application tools", () => {
       "get_application_readiness",
     ]);
     expect(names(manifests)).toContain("withdraw_application_consent");
+  });
+
+  it("publishes no closed-role action and reports the exact fail-closed result", async () => {
+    const closedState = { ...base, stage: "closed" } as ApplicationAgentState;
+    const closedReadiness = {
+      ...readiness(closedState),
+      roleStatus: "closed",
+      nextAction: "read_only",
+    } as ApplicationToolReadiness;
+    const closedSurface = dependencies(closedState);
+    vi.mocked(closedSurface.currentReadiness).mockReturnValue(closedReadiness);
+    expect(names(createApplicationToolManifests(closedSurface))).toEqual([
+      "get_application_readiness",
+    ]);
+
+    const onNavigate = vi.fn();
+    const withdrawConsent = vi.fn(async () => ({
+      draftId: closedState.draftId,
+      withdrawnGrantIds: [],
+      withdrawnAt: "2026-08-29T10:05:00.000Z",
+      futureConsentProcessingStopped: true as const,
+      pastSubmissionUnaffected: false,
+    }));
+    const manifests = createStableApplicationToolManifests({
+      currentSurface: () => null,
+      readApplication: vi.fn(async () => closedReadiness),
+      withdrawConsent,
+      onNavigate,
+    });
+    const signal = new AbortController().signal;
+    const readinessResult = await manifests
+      .find(({ name }) => name === "get_application_readiness")!
+      .execute({ draftId: closedState.draftId }, { signal });
+    expect(readinessResult).toMatchObject({
+      status: "completed",
+      summary: "Role closed — nothing submitted.",
+      data: { roleStatus: "closed", stage: "closed", nextTool: null },
+    });
+
+    const blocked = await manifests
+      .find(({ name }) => name === "request_application_assistance")!
+      .execute({ draftId: closedState.draftId }, { signal });
+    expect(blocked).toMatchObject({
+      status: "failed",
+      error: {
+        code: "CONFLICT",
+        message: "Role closed — nothing submitted.",
+        retryable: false,
+      },
+    });
+    expect(onNavigate).not.toHaveBeenCalled();
+
+    await manifests
+      .find(({ name }) => name === "withdraw_application_consent")!
+      .execute({ draftId: closedState.draftId }, { signal });
+    expect(withdrawConsent).toHaveBeenCalledWith(closedState.draftId, { signal });
   });
 
   it("validates ownership before an action navigates and returns structured NOT_FOUND", async () => {

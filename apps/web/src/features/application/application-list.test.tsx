@@ -11,6 +11,7 @@ const submitted = {
     id: "job_550e8400-e29b-41d4-a716-446655440000",
     title: "Senior Product Engineer",
     organizationName: "Northstar Labs",
+    status: "open" as const,
   },
 };
 
@@ -45,22 +46,39 @@ describe("ApplicationHistory", () => {
             state: "reviewed",
             job: { ...submitted.job, title: "Staff Engineer" },
           },
+          {
+            ...submitted,
+            draftId: "application_af568400-e29b-41d4-a716-446655440000",
+            state: "handed_off",
+            job: { ...submitted.job, title: "Security Engineer" },
+          },
+          {
+            ...submitted,
+            draftId: "application_bf568400-e29b-41d4-a716-446655440000",
+            state: "reviewed",
+            job: { ...submitted.job, title: "Closed Engineer", status: "closed" },
+          },
         ]}
       />,
     );
 
-    expect(markup).toContain("Applications");
-    expect(markup).toContain("Track drafts prepared for you and see what needs your decision");
+    expect(markup).toContain("My applications");
+    expect(markup).toContain(
+      "Applications you started or allowed your agent to prepare. Continue one or open its receipt.",
+    );
     expect(markup).toContain("Senior Product Engineer");
     expect(markup).toContain("Northstar Labs");
     expect(markup).toContain("Submitted");
-    expect(markup).toContain("Open draft");
+    expect(markup).toContain("Continue application");
     expect(markup).toContain("Ready to review");
     expect(markup).toContain("Your decision needed");
     expect(markup).toContain("Review application");
     expect(markup).toContain("View receipt");
+    expect(markup).toContain("Not submitted by Jobbbler");
+    expect(markup).toContain("View next step");
+    expect(markup).toContain("Role closed");
+    expect(markup).toContain("View application");
     expect(markup).toContain(`/apply/${submitted.draftId}`);
-    expect(markup).not.toContain("handed_off");
     expect(markup).not.toContain("External handoff");
   });
 
@@ -68,8 +86,10 @@ describe("ApplicationHistory", () => {
     const markup = renderToStaticMarkup(<ApplicationHistory items={[]} />);
 
     expect(markup).toContain("No applications yet");
-    expect(markup).toContain("When your agent prepares an application, it will appear here");
-    expect(markup).toContain("Browse jobs");
+    expect(markup).toContain(
+      "You have not started an application yet. Browse roles to apply yourself, or ask your agent to prepare one after you approve.",
+    );
+    expect(markup).toContain("Browse open roles");
     expect(markup).toContain('href="/jobs"');
   });
 });

@@ -35,19 +35,23 @@ export interface SavedWorkspaceInitialData {
 
 export async function loadLatestSearchRuns(
   savedSearches: readonly SavedSearch[],
+  schedules: readonly JobAlertSchedule[],
   request: SavedWorkspaceRequest = queryApi,
 ): Promise<ReadonlyMap<string, LatestSearchRun>> {
+  const scheduledSearchIds = new Set(schedules.map((schedule) => schedule.savedSearchId));
   const runs = await Promise.all(
-    savedSearches.map(async (saved) => {
-      try {
-        return await request(
-          `/api/v1/saved-searches/${encodeURIComponent(saved.id)}/latest-run`,
-          latestSearchRunSchema,
-        );
-      } catch {
-        return null;
-      }
-    }),
+    savedSearches
+      .filter((saved) => scheduledSearchIds.has(saved.id))
+      .map(async (saved) => {
+        try {
+          return await request(
+            `/api/v1/saved-searches/${encodeURIComponent(saved.id)}/latest-run`,
+            latestSearchRunSchema,
+          );
+        } catch {
+          return null;
+        }
+      }),
   );
   return new Map(
     runs
@@ -64,7 +68,7 @@ export async function loadPrivateWorkspaceResources(
     request("/api/v1/saved-searches", savedSearchListSchema),
     request("/api/v1/schedules", scheduleListSchema),
   ]);
-  const latestRuns = loadLatestSearchRuns(savedSearches, request);
+  const latestRuns = loadLatestSearchRuns(savedSearches, schedules, request);
 
   return { endpoints, savedSearches, schedules, latestRuns };
 }

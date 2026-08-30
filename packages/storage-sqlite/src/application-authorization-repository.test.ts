@@ -673,7 +673,7 @@ describe("SQLite application authorization persistence", () => {
   });
 
   it("commits submission only for the exact current review, confirmation, and disclosure grant", async () => {
-    const { storage } = await createFixture();
+    const { filename, storage } = await createFixture();
     const reviewed = await storage.applications.update(
       {
         ...(await storage.applications.getByOwner(draftId, ownerId))!,
@@ -710,7 +710,7 @@ describe("SQLite application authorization persistence", () => {
       id: "grant_71000000-0000-7000-8000-000000000011",
       ownerId,
       draftId,
-      recipientId: agentSessionId,
+      recipientId: "org_71000000-0000-7000-8000-000000000001",
       purpose: "Submit the selected application.",
       payloadHash: review.payloadHash,
       categories: ["identity"] as const,
@@ -724,6 +724,30 @@ describe("SQLite application authorization persistence", () => {
       approvedAt: now,
       withdrawnAt: null,
     };
+    const delivery = {
+      id: "managed_delivery_71000000-0000-7000-8000-000000000011",
+      ownerId,
+      draftId,
+      reviewId: review.id,
+      confirmationId: confirmation.id,
+      idempotencyKey: "submit-task9-once",
+      provider: "jobbbler_demo" as const,
+      providerReferenceId: "demo_submission_71000000-0000-7000-8000-000000000011",
+      recipientId: grant.recipientId,
+      recipientName: "Authorization Lab",
+      payloadHash: review.payloadHash,
+      fields: [
+        {
+          fieldKey: "full_name",
+          label: "Full name",
+          value: "Ada Lovelace",
+          sensitive: true,
+        },
+      ],
+      status: "acknowledged" as const,
+      acknowledgedAt: now,
+      createdAt: now,
+    };
     const receipt = {
       id: "receipt_71000000-0000-7000-8000-000000000011",
       ownerId,
@@ -733,6 +757,15 @@ describe("SQLite application authorization persistence", () => {
       idempotencyKey: "submit-task9-once",
       status: "submitted" as const,
       externalUrl: null,
+      submission: {
+        managedDeliveryId: delivery.id,
+        provider: delivery.provider,
+        providerReferenceId: delivery.providerReferenceId,
+        recipientId: delivery.recipientId,
+        recipientName: delivery.recipientName,
+        submittedAt: delivery.acknowledgedAt,
+        fields: delivery.fields,
+      },
       createdAt: now,
     };
     await storage.applications.insertReview(review);
@@ -749,12 +782,18 @@ describe("SQLite application authorization persistence", () => {
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: { ...grant, version: 0 },
+        delivery,
         decisionChannel: "first_party_ui",
         receipt: {
-          ...receipt,
           id: "receipt_71000000-0000-7000-8000-000000000099",
+          ownerId,
+          draftId,
+          reviewId: review.id,
+          confirmationId: confirmation.id,
+          idempotencyKey: receipt.idempotencyKey,
           status: "handed_off",
           externalUrl: "https://jobs.example.test/opening/42",
+          createdAt: now,
         },
         now,
       }),
@@ -774,6 +813,7 @@ describe("SQLite application authorization persistence", () => {
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: { ...grant, version: 0, categories: ["contact"] },
+        delivery,
         decisionChannel: "first_party_ui",
         receipt,
         now,
@@ -820,6 +860,7 @@ describe("SQLite application authorization persistence", () => {
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: { ...grant, version: 0, categories: ["contact"] },
+        delivery,
         decisionChannel: "first_party_ui",
         receipt,
         now,
@@ -851,6 +892,7 @@ describe("SQLite application authorization persistence", () => {
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: { ...grant, version: 0 },
+        delivery,
         decisionChannel: "first_party_ui",
         receipt,
         now,
@@ -872,18 +914,25 @@ describe("SQLite application authorization persistence", () => {
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: { ...grant, version: 0 },
+        delivery: { ...delivery, status: "not_acknowledged" as never },
         decisionChannel: "first_party_ui",
         receipt,
         now,
       }),
-    ).resolves.toMatchObject({ draft: { state: "submitted", version: 2 }, receipt });
-    await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toEqual(receipt);
+    ).rejects.toMatchObject({ code: "VALIDATION" });
     await expect(
-      storage.delegations.insert({
-        ...lateAssistance,
-        id: "delegation_71000000-0000-7000-8000-000000000012",
-      }),
-    ).rejects.toMatchObject({ code: "CONFLICT" });
+      storage.applications.getConfirmation(confirmation.id, ownerId),
+    ).resolves.toMatchObject({ status: "active", consumedAt: null });
+    await expect(storage.applications.getByOwner(draftId, ownerId)).resolves.toMatchObject({
+      state: "reviewed",
+      version: reviewed.version,
+    });
+    await expect(storage.applications.getManagedDelivery(delivery.id, ownerId)).resolves.toBeNull();
+    await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toBeNull();
+
+    const openJob = await storage.jobs.getById(jobId);
+    expect(openJob).not.toBeNull();
+    await storage.jobs.upsert({ ...openJob!, status: "closed", updatedAt: future });
     await expect(
       storage.applications.completeSubmission({
         ownerId,
@@ -894,11 +943,86 @@ describe("SQLite application authorization persistence", () => {
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: { ...grant, version: 0 },
+        delivery,
+        decisionChannel: "first_party_ui",
+        receipt,
+        now,
+      }),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "Role closed — nothing submitted.",
+    });
+    await expect(
+      storage.applications.getConfirmation(confirmation.id, ownerId),
+    ).resolves.toMatchObject({ status: "active", consumedAt: null });
+    await expect(storage.applications.getByOwner(draftId, ownerId)).resolves.toMatchObject({
+      state: "reviewed",
+      version: reviewed.version,
+    });
+    await expect(storage.applications.getManagedDelivery(delivery.id, ownerId)).resolves.toBeNull();
+    await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toBeNull();
+    await storage.jobs.upsert({ ...openJob!, status: "open", updatedAt: future });
+
+    await expect(
+      storage.applications.completeSubmission({
+        ownerId,
+        draftId,
+        expectedDraftVersion: reviewed.version,
+        reviewId: review.id,
+        reviewPayloadHash: review.payloadHash,
+        confirmationId: confirmation.id,
+        confirmationHash: confirmation.confirmationHash,
+        grant: { ...grant, version: 0 },
+        delivery,
+        decisionChannel: "first_party_ui",
+        receipt,
+        now,
+      }),
+    ).resolves.toMatchObject({
+      draft: { state: "submitted", version: 2 },
+      receipt,
+      delivery,
+    });
+    await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toEqual(receipt);
+    await expect(storage.applications.getManagedDelivery(delivery.id, ownerId)).resolves.toEqual(
+      delivery,
+    );
+    await expect(
+      storage.delegations.insert({
+        ...lateAssistance,
+        id: "delegation_71000000-0000-7000-8000-000000000012",
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    await storage.jobs.upsert({ ...openJob!, status: "closed", updatedAt: future });
+    await expect(
+      storage.applications.completeSubmission({
+        ownerId,
+        draftId,
+        expectedDraftVersion: reviewed.version,
+        reviewId: review.id,
+        reviewPayloadHash: review.payloadHash,
+        confirmationId: confirmation.id,
+        confirmationHash: confirmation.confirmationHash,
+        grant: { ...grant, version: 0 },
+        delivery: { ...delivery, id: "managed_delivery_71000000-0000-7000-8000-000000000012" },
         decisionChannel: "first_party_ui",
         receipt: { ...receipt, id: "receipt_71000000-0000-7000-8000-000000000012" },
         now,
       }),
-    ).resolves.toMatchObject({ receipt });
+    ).resolves.toMatchObject({ receipt, delivery, inserted: false });
+    await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toEqual(receipt);
+    await expect(storage.applications.getManagedDelivery(delivery.id, ownerId)).resolves.toEqual(
+      delivery,
+    );
+    const persisted = openSqliteDatabase(filename);
+    expect(
+      persisted
+        .prepare(
+          "SELECT count(*) AS count FROM managed_application_deliveries WHERE owner_id=? AND draft_id=?",
+        )
+        .get(ownerId, draftId),
+    ).toEqual({ count: 1 });
+    persisted.close();
     storage.close();
   });
 });

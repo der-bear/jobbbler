@@ -1,5 +1,6 @@
 import type {
   AgentOperation,
+  ApplicationAnswer,
   ApplicationDraft,
   DataCategory,
   Job,
@@ -278,17 +279,63 @@ export interface ApplicationConfirmationRecord {
   readonly createdAt: string;
   readonly consumedAt: string | null;
 }
-export interface ApplicationReceiptRecord {
+
+export interface ManagedApplicationSubmissionField {
+  readonly fieldKey: string;
+  readonly label: string;
+  readonly value: ApplicationAnswer["value"];
+  readonly sensitive: boolean;
+}
+
+export interface ManagedApplicationDeliveryRecord {
   readonly id: string;
   readonly ownerId: string;
   readonly draftId: string;
   readonly reviewId: string;
   readonly confirmationId: string;
   readonly idempotencyKey: string;
-  readonly status: "submitted" | "handed_off";
-  readonly externalUrl: string | null;
+  readonly provider: "jobbbler_demo";
+  readonly providerReferenceId: string;
+  readonly recipientId: string;
+  readonly recipientName: string;
+  readonly payloadHash: string;
+  readonly fields: readonly ManagedApplicationSubmissionField[];
+  readonly status: "acknowledged";
+  readonly acknowledgedAt: string;
   readonly createdAt: string;
 }
+
+export interface SubmittedApplicationReceiptSnapshot {
+  readonly managedDeliveryId: string;
+  readonly provider: "jobbbler_demo";
+  readonly providerReferenceId: string;
+  readonly recipientId: string;
+  readonly recipientName: string;
+  readonly submittedAt: string;
+  readonly fields: readonly ManagedApplicationSubmissionField[];
+}
+
+interface ApplicationReceiptRecordBase {
+  readonly id: string;
+  readonly ownerId: string;
+  readonly draftId: string;
+  readonly reviewId: string;
+  readonly confirmationId: string;
+  readonly idempotencyKey: string;
+  readonly createdAt: string;
+}
+
+export type ApplicationReceiptRecord =
+  | (ApplicationReceiptRecordBase & {
+      readonly status: "submitted";
+      readonly externalUrl: null;
+      readonly submission: SubmittedApplicationReceiptSnapshot;
+    })
+  | (ApplicationReceiptRecordBase & {
+      readonly status: "handed_off";
+      readonly externalUrl: string | null;
+      readonly submission?: never;
+    });
 export interface MaterialApplicationEditInput {
   readonly ownerId: string;
   readonly expectedVersion: number;
@@ -324,12 +371,15 @@ export interface CompleteApplicationSubmissionInput {
   /** Decision surface whose lineage must still be valid when submission commits. */
   readonly decisionChannel: "first_party_ui" | "agent_client";
   readonly grant: SubmissionGrantScope;
+  /** Durable managed-delivery acknowledgement that must commit before submission state. */
+  readonly delivery: ManagedApplicationDeliveryRecord;
   readonly receipt: ApplicationReceiptRecord;
   readonly now: string;
 }
 export interface CompleteApplicationSubmissionResult {
   readonly draft: ApplicationDraft;
   readonly receipt: ApplicationReceiptRecord;
+  readonly delivery: ManagedApplicationDeliveryRecord;
   readonly inserted: boolean;
 }
 export interface AgentDelegationRecord {

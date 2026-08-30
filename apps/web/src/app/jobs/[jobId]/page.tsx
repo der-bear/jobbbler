@@ -1,9 +1,15 @@
 import type { JobDetailResult } from "@jobbbler/contracts";
+import type { Metadata } from "next";
 
 import { JobDetail } from "@/features/job-detail/job-detail";
 import { searchParamsToInput } from "@/lib/search-url";
 import { getDiscoveryRouteDependencies } from "@/server/commands";
 import { createPublicCommandContext, createRequestId } from "@/server/context";
+
+export const metadata: Metadata = {
+  title: "Role details",
+  description: "Review one technology role with source, freshness, compensation, and known limits.",
+};
 
 async function loadInitialResult(
   jobId: string,

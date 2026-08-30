@@ -29,15 +29,15 @@ describe("identity contracts", () => {
     ).toThrow();
   });
 
-  it("keeps recoverability explicit instead of inferring it from an owner ID", () => {
-    expect(
-      ownerSummarySchema.parse({
-        id: "owner_550e8400-e29b-41d4-a716-446655440000",
-        kind: "ephemeral",
-        verified: false,
-        recoverable: false,
-      }),
-    ).toMatchObject({ kind: "ephemeral", recoverable: false });
+  it("keeps endpoint-backed recovery capability out of the owner identity summary", () => {
+    const owner = {
+      id: "owner_550e8400-e29b-41d4-a716-446655440000",
+      kind: "ephemeral",
+      verified: false,
+    };
+
+    expect(ownerSummarySchema.parse(owner)).toEqual(owner);
+    expect(ownerSummarySchema.safeParse({ ...owner, recoverable: false }).success).toBe(false);
   });
 
   it("exposes only masked endpoint and non-secret session summaries", () => {
@@ -45,7 +45,6 @@ describe("identity contracts", () => {
       id: "owner_550e8400-e29b-41d4-a716-446655440000",
       kind: "guest",
       verified: true,
-      recoverable: true,
     };
     expect(
       ownerSessionResultSchema.parse({ owner, expiresAt: "2026-09-05T10:00:00.000Z" }),

@@ -19,7 +19,7 @@ exact application — is recorded before anything is shared or submitted.
 
 The technology that makes this possible is WebMCP — no separately installed or
 declared MCP server. A global Agent layer is available on every page: the same
-26 focused tools stay discoverable across navigation, while private and
+28 focused tools stay discoverable across navigation, while private and
 workflow-specific actions enforce IDs, ownership, and state when executed.
 
 > Not an AI job board. A proof that any data-rich website can become safely
@@ -35,37 +35,36 @@ Built for the OpenAI WebMCP Challenge.
   salary semantics, known limits, and search-fit evidence stay visible in the
   interface. Salary ranking is currency-aware (EUR, USD, GBP, and CAD at pinned
   rates) and explains itself with evidence strings.
-- **Global agent layer.** Twenty-six focused tools for search, roles,
+- **Global agent layer.** Twenty-eight focused tools for search, roles,
   comparison, saved alerts, and applications — all registered on every page,
   so navigation never costs an agent a capability. State-gated tools answer
   with a clear next step when
   their moment has not arrived, and the site describes itself — an agent can
-  read accepted filter vocabulary instead of guessing enums and ask how a role
-  accepts applications before starting one.
+  read accepted filter vocabulary and request a safe workflow instead of
+  guessing.
 - **Observable agent work.** The Agent layer uses a clear **Activity**,
   **Tools**, **Guide** hierarchy. It shows readiness, the current tools, and
   human-readable activity without taking over the normal portal. Every activity
   entry leads with a human sentence, followed by the tool name, status, and
-  duration. On mobile, an "Agent view" button opens the same layer. The
+  duration. On mobile, an "Agent activity" button opens the same layer. The
   normal UI remains usable if WebMCP is unavailable.
 - **No-login first run.** No account required: an ephemeral private owner
-  session lets someone start immediately. A verified email enables passwordless
-  recovery of saved searches without turning the first visit into an account
-  wall.
+  session lets someone start immediately. Adding a verified email is optional;
+  it enables passwordless recovery of applications and saved searches without
+  turning the first visit into an account wall or a submission requirement.
 - **Independent authority layers.** Agent delegation, payload-bound data
   permission, immutable review, and single-use confirmation are separate
-  server-enforced decisions. A purely manual internal draft can finish in the
+  server-enforced decisions. A purely manual application can finish in the
   first-party UI. Once assistance is requested or an agent suggestion exists,
   the agent presents assistance, consent, and submission decisions in the
   external agent client; the server rejects a first-party bypass and accepts
   only decisions bound to the exact server-issued request and draft version.
   Active assistance can be withdrawn through that same request-bound decision
   tool.
-- **Truthful actions.** Internal fictional-demo applications can produce an
-  immutable receipt after the exact request-bound decision. External roles open
-  an available validated HTTPS employer page; if none is available, the workflow
-  stops. Jobbbler creates no draft, receipt, handoff record, or submitted claim
-  for them.
+- **Truthful actions.** Every fictional-demo role supports Jobbbler-managed
+  delivery and can produce an immutable receipt only after the exact
+  request-bound decision. The server still fails closed for any unsupported
+  application mode.
 - **Durable automation.** Saved searches keep being checked after you close the
   page: a worker with leases, deterministic change detection, delivery
   idempotency, bounded retries, and verified encrypted email endpoints.
@@ -91,18 +90,17 @@ results. A browser capability is never treated as identity or authorization.
 `plan_job_workflow` returns recommended safe steps for a goal from the current
 page. It is advisory only: it plans, it never acts.
 
-The catalog has **26 focused tools**, all registered on every page. Six are
+The catalog has **28 focused tools**, all registered on every page. Nine are
 clear entry points — `plan_job_workflow`, `get_search_filters`, `search_jobs`,
-`open_job_details`, `prepare_application`, and `open_jobbbler_page`. The
+`open_job_details`, `prepare_application`, `get_applications`,
+`open_jobbbler_page`, `enable_workspace_recovery`, and
+`recover_jobbbler_workspace`. The
 remaining tools are grouped below by the product area they operate on and
 validate explicit IDs, ownership, and workflow state at execution time:
 
 - Search `/`: `get_search_state` (including an explicit truncation summary for
   bounded criteria)
-- Role `/jobs/:jobId`: `get_job_details`, `get_job_application_capability`
-  (how this role accepts applications — what the agent may prepare, what stays
-  human, and whether the person must continue on the employer site),
-  `compare_jobs`
+- Role `/jobs/:jobId`: `get_job_details`, `compare_jobs`
 - Comparison `/compare`: `get_comparison`, `add_job_to_comparison`,
   `remove_job_from_comparison`
 - Saved `/saved`: `get_saved_alerts`, `request_search_alert`,
@@ -111,15 +109,24 @@ validate explicit IDs, ownership, and workflow state at execution time:
   not the full result list). Alert setup stays in the external agent client:
   one tool prepares the exact review and sends a mailbox code; the second
   accepts only an explicit request-bound decision and, on approval, that code.
-- Application `/apply/:draftId`: seven outcome-oriented tools —
-  `get_application_readiness`, `request_application_assistance`,
+  `enable_workspace_recovery` optionally verifies an email for the current
+  private workspace without granting consent, submission approval, or an alert
+  subscription. `recover_jobbbler_workspace` then keeps restoration in the same
+  external agent client: one strict action accepts the verified email supplied
+  by the person; the second accepts only its exact recovery ID and six-digit
+  code. Neither response echoes the email or code or returns owner or session
+  data.
+- Application `/apply/:draftId`: eight outcome-oriented tools —
+  `get_applications`, `get_application_readiness`, `request_application_assistance`,
   `decide_application_assistance`, `propose_application_updates`,
   `request_submission_review`, `decide_application_submission`, and
   `withdraw_application_consent` — each answering with the next safe step when
   its stage has not arrived
 
-Operational WebMCP results stay within 1.5 KB; only the advisory
-`plan_job_workflow` result may use up to 2 KB. Readiness, activity, and
+Operational action results stay within 1.5 KB. The advisory
+`plan_job_workflow` result may use up to 2 KB, while `get_applications` is an
+explicitly paged private index (10 by default, 20 maximum) bounded to 16 KB.
+Readiness, activity, and
 safe-error results never expose an owner ID, candidate answer, contact detail,
 reusable agent token, confirmation secret, raw email destination, or
 ciphertext. `request_submission_review` freezes the exact application on the
@@ -146,7 +153,7 @@ and the [authorization and consent design](docs/architecture/agent-authorization
 
 ```mermaid
 flowchart LR
-  Browser[React interface + global 26-tool WebMCP surface] --> API[Next.js BFF and command boundary]
+  Browser[React interface + global 28-tool WebMCP surface] --> API[Next.js BFF and command boundary]
   API --> Domain[Framework-free domain services]
   Domain --> Storage[Portable repository contracts]
   Storage --> SQLite[(SQLite local)]

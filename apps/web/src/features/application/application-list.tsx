@@ -4,22 +4,30 @@ import { ArrowRightIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-import {
-  applicationListSchema,
-  type ApplicationListItem,
-  type ApplicationState,
-} from "@jobbbler/contracts";
+import { applicationListSchema, type ApplicationListItem } from "@jobbbler/contracts";
 
 import { ApiClientError, queryApi } from "@/lib/query-client";
+import { hasOwnerSessionMarker, markOwnerSessionStarted } from "@/lib/owner-session-marker";
 
 import styles from "./application-list.module.css";
 
-function stateLabel(state: ApplicationState): string {
+function closedNonterminal(item: ApplicationListItem): boolean {
+  return (
+    item.job.status !== "open" &&
+    item.state !== "submitted" &&
+    item.state !== "handed_off" &&
+    item.state !== "withdrawn"
+  );
+}
+
+function stateLabel(item: ApplicationListItem): string {
+  if (closedNonterminal(item)) return "Role closed";
+  const { state } = item;
   switch (state) {
     case "submitted":
       return "Submitted";
     case "handed_off":
-      return "Employer site";
+      return "Not submitted by Jobbbler";
     case "withdrawn":
       return "Withdrawn";
     case "failed":
@@ -32,18 +40,20 @@ function stateLabel(state: ApplicationState): string {
     case "awaiting_confirmation":
       return "Your decision needed";
     case "draft":
-      return "Draft";
+      return "In progress";
     default:
       return "In progress";
   }
 }
 
-function actionLabel(state: ApplicationState): string {
+function actionLabel(item: ApplicationListItem): string {
+  if (closedNonterminal(item)) return "View application";
+  const { state } = item;
   switch (state) {
     case "submitted":
       return "View receipt";
     case "handed_off":
-      return "View details";
+      return "View next step";
     case "valid":
     case "reviewed":
     case "awaiting_confirmation":
@@ -52,7 +62,7 @@ function actionLabel(state: ApplicationState): string {
     case "submitting":
       return "View status";
     case "draft":
-      return "Open draft";
+      return "Continue application";
     default:
       return "View application";
   }
@@ -66,16 +76,22 @@ export function ApplicationHistory({ items }: Readonly<{ items: readonly Applica
   return (
     <section aria-labelledby="applications-title" className={styles["page"]}>
       <header className={styles["header"]}>
-        <h1 id="applications-title">Applications</h1>
-        <p>Track drafts prepared for you and see what needs your decision.</p>
+        <h1 id="applications-title">My applications</h1>
+        <p>
+          Applications you started or allowed your agent to prepare. Continue one or open its
+          receipt.
+        </p>
       </header>
 
       {items.length === 0 ? (
         <div className={styles["empty"]}>
           <h2>No applications yet</h2>
-          <p>When your agent prepares an application, it will appear here.</p>
+          <p>
+            You have not started an application yet. Browse roles to apply yourself, or ask your
+            agent to prepare one after you approve.
+          </p>
           <Link className={styles["primaryLink"]} href="/jobs">
-            Browse jobs <ArrowRightIcon aria-hidden="true" />
+            Browse open roles <ArrowRightIcon aria-hidden="true" />
           </Link>
         </div>
       ) : (
@@ -87,11 +103,11 @@ export function ApplicationHistory({ items }: Readonly<{ items: readonly Applica
                 <p>{item.job.organizationName}</p>
               </div>
               <div className={styles["state"]}>
-                <span data-state={item.state}>{stateLabel(item.state)}</span>
+                <span data-state={item.state}>{stateLabel(item)}</span>
                 <time dateTime={item.updatedAt}>Updated {updatedLabel(item.updatedAt)}</time>
               </div>
               <Link className={styles["rowLink"]} href={`/apply/${item.draftId}`}>
-                {actionLabel(item.state)} <ArrowRightIcon aria-hidden="true" />
+                {actionLabel(item)} <ArrowRightIcon aria-hidden="true" />
               </Link>
             </li>
           ))}
@@ -111,7 +127,20 @@ export function ApplicationsWorkspace({
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
 
   useEffect(() => {
+    if (initialItems !== null) markOwnerSessionStarted();
+  }, [initialItems]);
+
+  useEffect(() => {
     if (initialItems !== null && attempt === 0) return;
+    /*
+     * A visitor without a private workspace has no applications to list, so the
+     * owner-scoped request waits for one instead of provoking an expected
+     * authorization failure on a public page.
+     */
+    if (initialItems === null && attempt === 0 && !hasOwnerSessionMarker()) {
+      setItems([]);
+      return;
+    }
     const controller = new AbortController();
     setError(null);
     void queryApi("/api/v1/applications", applicationListSchema, { signal: controller.signal })
@@ -135,7 +164,7 @@ export function ApplicationsWorkspace({
     return (
       <section className={styles["page"]}>
         <header className={styles["header"]}>
-          <h1>Applications</h1>
+          <h1>My applications</h1>
         </header>
         <div className={styles["empty"]} role="alert">
           <h2>Applications could not be loaded</h2>
@@ -152,7 +181,7 @@ export function ApplicationsWorkspace({
     return (
       <section aria-busy="true" className={styles["page"]}>
         <header className={styles["header"]}>
-          <h1>Applications</h1>
+          <h1>My applications</h1>
           <p>Loading your applications…</p>
         </header>
         <div className={styles["loading"]} role="status">

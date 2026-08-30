@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { DomainError } from "@jobbbler/core-domain";
+
 import { loadInitialSavedWorkspace } from "./initial-saved-workspace";
 
 const owner = {
@@ -41,7 +43,7 @@ describe("loadInitialSavedWorkspace", () => {
     });
 
     expect(result).toEqual({
-      owner: { id: owner.id, kind: "guest", verified: true, recoverable: true },
+      owner: { id: owner.id, kind: "guest", verified: true },
       endpoints: [
         {
           id: "endpoint_550e8400-e29b-41d4-a716-446655440000",
@@ -71,5 +73,33 @@ describe("loadInitialSavedWorkspace", () => {
         savedSearches: {} as never,
       }),
     ).resolves.toBeNull();
+  });
+
+  it("propagates backend failures into the server-render error boundary", async () => {
+    const dependencyFailure = new DomainError({
+      code: "DEPENDENCY",
+      message: "Saved-search storage is unavailable.",
+      retryable: true,
+    });
+
+    await expect(
+      loadInitialSavedWorkspace({
+        request: new Request("https://jobbbler.example/saved"),
+        identity: {
+          now: () => "2026-08-30T10:00:00.000Z",
+          environment: {},
+          identity: {
+            resolveSession: vi.fn().mockResolvedValue({ owner, session: {} }),
+            listVerificationEndpoints: vi.fn().mockResolvedValue([]),
+          },
+        } as never,
+        savedSearches: {
+          service: {
+            listSavedSearches: vi.fn().mockRejectedValue(dependencyFailure),
+            listSchedules: vi.fn().mockResolvedValue([]),
+          },
+        } as never,
+      }),
+    ).rejects.toBe(dependencyFailure);
   });
 });

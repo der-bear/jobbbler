@@ -61,8 +61,36 @@ export function locationSuggestions(options: readonly string[], query: string): 
                 locationMatchPriority(right.option, normalizedQuery) || left.index - right.index,
           )
           .map(({ option }) => option);
-  if (normalizedQuery.length > 0 && ordered.length === 0) return [query.trim()];
   return ordered.slice(0, 7);
+}
+
+export interface LocationSuggestionItem {
+  readonly kind: "suggestion" | "free-text";
+  readonly label: string;
+  readonly value: string;
+}
+
+export function locationSuggestionItems(
+  options: readonly string[],
+  query: string,
+): readonly LocationSuggestionItem[] {
+  const queryValue = query.trim();
+  const suggestions = locationSuggestions(options, queryValue);
+  const items: LocationSuggestionItem[] = suggestions.map((value) => ({
+    kind: "suggestion",
+    label: value,
+    value,
+  }));
+  if (queryValue.length === 0) return items;
+
+  const canonicalQuery = canonicalizeLocation(queryValue).toLocaleLowerCase("en");
+  const hasExactSuggestion = suggestions.some(
+    (value) => canonicalizeLocation(value).toLocaleLowerCase("en") === canonicalQuery,
+  );
+  if (!hasExactSuggestion) {
+    items.push({ kind: "free-text", label: `Use \u201c${queryValue}\u201d`, value: queryValue });
+  }
+  return items;
 }
 
 type LocationSuggestionRequest = (
@@ -113,11 +141,12 @@ export function LocationCombobox({
   const [loadStatus, setLoadStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const cache = useRef(new Map<string, readonly string[]>());
   const query = value.trim();
-  const suggestions = useMemo(
-    () => locationSuggestions([...options, ...loadedOptions], value),
+  const suggestionItems = useMemo(
+    () => locationSuggestionItems([...options, ...loadedOptions], value),
     [loadedOptions, options, value],
   );
-  const activeOption = activeIndex < 0 ? undefined : suggestions[activeIndex];
+  const activeOption = activeIndex < 0 ? undefined : suggestionItems[activeIndex];
+  const hasKnownSuggestion = suggestionItems.some(({ kind }) => kind === "suggestion");
 
   useEffect(() => {
     if (!open) return undefined;
@@ -126,7 +155,7 @@ export function LocationCombobox({
       setLoadStatus("ready");
       return undefined;
     }
-    const cacheKey = query.toLocaleLowerCase("en");
+    const cacheKey = canonicalizeLocation(query).toLocaleLowerCase("en");
     const cached = cache.current.get(cacheKey);
     if (cached !== undefined) {
       setLoadedOptions(cached);
@@ -135,6 +164,7 @@ export function LocationCombobox({
     }
 
     const controller = new AbortController();
+    setLoadedOptions([]);
     setLoadStatus("loading");
     const timer = window.setTimeout(() => {
       void loadOptions(query, controller.signal)
@@ -156,22 +186,42 @@ export function LocationCombobox({
     };
   }, [loadOptions, open, query]);
 
-  function choose(option: string) {
-    onChange(option);
-    onCommit(option);
+  useEffect(() => {
+    setActiveIndex((current) =>
+      current >= suggestionItems.length ? suggestionItems.length - 1 : current,
+    );
+  }, [suggestionItems.length]);
+
+  function choose(option: LocationSuggestionItem) {
+    onChange(option.value);
+    onCommit(option.value);
     setOpen(false);
     setActiveIndex(-1);
+  }
+
+  function moveActive(direction: 1 | -1) {
+    setActiveIndex((current) => {
+      if (suggestionItems.length === 0) return -1;
+      if (current < 0) return direction === 1 ? 0 : suggestionItems.length - 1;
+      return (current + direction + suggestionItems.length) % suggestionItems.length;
+    });
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setOpen(true);
-      setActiveIndex((current) => Math.min(current + 1, suggestions.length - 1));
+      moveActive(1);
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
       setOpen(true);
-      setActiveIndex((current) => Math.max(current - 1, 0));
+      moveActive(-1);
+    } else if (event.key === "Home" && open && suggestionItems.length > 0) {
+      event.preventDefault();
+      setActiveIndex(0);
+    } else if (event.key === "End" && open && suggestionItems.length > 0) {
+      event.preventDefault();
+      setActiveIndex(suggestionItems.length - 1);
     } else if (event.key === "Enter") {
       if (open && activeOption !== undefined) {
         event.preventDefault();
@@ -180,14 +230,27 @@ export function LocationCombobox({
     } else if (event.key === "Escape") {
       event.preventDefault();
       setOpen(false);
+      setActiveIndex(-1);
     }
   }
 
   function handleBlur(event: FocusEvent<HTMLDivElement>) {
     if (event.currentTarget.contains(event.relatedTarget)) return;
     setOpen(false);
-    onCommit(value.trim());
+    setActiveIndex(-1);
+    const committedValue = value.trim();
+    if (committedValue !== value) onChange(committedValue);
+    onCommit(committedValue);
   }
+
+  const visibleStatus =
+    loadStatus === "loading"
+      ? "Looking up locations\u2026"
+      : loadStatus === "error"
+        ? "Suggestions unavailable. You can still use your exact text."
+        : query.length > 0 && !hasKnownSuggestion
+          ? "No catalog matches. Use your exact location."
+          : null;
 
   return (
     <div className={styles["combobox"]} onBlur={handleBlur}>
@@ -198,8 +261,8 @@ export function LocationCombobox({
             open && activeOption !== undefined ? `${id}-option-${String(activeIndex)}` : undefined
           }
           aria-autocomplete="list"
-          aria-busy={loadStatus === "loading"}
-          aria-controls={`${id}-listbox`}
+          aria-busy={loadStatus === "loading" || undefined}
+          aria-controls={open ? `${id}-listbox` : undefined}
           aria-describedby={`${id}-status`}
           aria-expanded={open}
           aria-label={label}
@@ -227,6 +290,7 @@ export function LocationCombobox({
               setOpen(true);
               setActiveIndex(-1);
             }}
+            onMouseDown={(event) => event.preventDefault()}
             type="button"
           >
             <XIcon aria-hidden="true" size={13} />
@@ -239,27 +303,43 @@ export function LocationCombobox({
           : loadStatus === "error"
             ? "Suggestions are unavailable. You can still enter any location."
             : open
-              ? `${String(suggestions.length)} location suggestions available.`
+              ? `${String(suggestionItems.length)} location suggestions available.`
               : ""}
       </span>
-      {open && suggestions.length > 0 ? (
-        <ul className={styles["options"]} id={`${id}-listbox`} role="listbox">
-          {suggestions.map((option, index) => (
-            <li key={option} role="presentation">
-              <button
+      {open ? (
+        <div className={styles["popover"]}>
+          {visibleStatus === null ? null : (
+            <p aria-hidden="true" className={styles["lookupStatus"]} data-state={loadStatus}>
+              {visibleStatus}
+            </p>
+          )}
+          <ul
+            aria-label={`${label} suggestions`}
+            className={styles["options"]}
+            id={`${id}-listbox`}
+            role="listbox"
+          >
+            {suggestionItems.map((option, index) => (
+              <li
                 aria-selected={index === activeIndex}
+                data-kind={option.kind}
                 id={`${id}-option-${String(index)}`}
+                key={`${option.kind}:${option.value}`}
                 onClick={() => choose(option)}
                 onMouseDown={(event) => event.preventDefault()}
+                onMouseMove={() => setActiveIndex(index)}
                 role="option"
-                tabIndex={-1}
-                type="button"
               >
-                {option}
-              </button>
-            </li>
-          ))}
-        </ul>
+                <span>{option.label}</span>
+                {option.kind === "free-text" ? (
+                  <span aria-hidden="true" className={styles["optionMeta"]}>
+                    Free text
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
     </div>
   );

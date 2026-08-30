@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
   DecideSearchAlertInput,
@@ -8,7 +8,12 @@ import type {
 
 import { ApiClientError } from "@/lib/query-client";
 
-import { decideSearchAlert, requestSearchAlert } from "./search-alert-client";
+const marker = vi.hoisted(() => ({ markOwnerSessionStarted: vi.fn() }));
+vi.mock("@/lib/owner-session-marker", () => marker);
+
+import * as searchAlertClient from "./search-alert-client";
+
+const { decideSearchAlert, deleteSavedSearch, requestSearchAlert } = searchAlertClient;
 
 const requestInput: RequestSearchAlertInput = {
   name: "Senior platform roles",
@@ -53,6 +58,8 @@ const review: RequestSearchAlertResult = {
 };
 
 describe("agent-native search alert API client", () => {
+  beforeEach(() => marker.markOwnerSessionStarted.mockClear());
+
   it("creates an owner session once and retries the exact idempotent request", async () => {
     const unauthorized = new ApiClientError({
       code: "UNAUTHORIZED",
@@ -90,6 +97,8 @@ describe("agent-native search alert API client", () => {
         signal,
       },
     );
+    expect(marker.markOwnerSessionStarted).toHaveBeenCalledOnce();
+    expect(marker.markOwnerSessionStarted).toHaveBeenCalledWith("2026-09-30T09:00:00.000Z");
     expect(request).toHaveBeenNthCalledWith(2, "/api/v1/owners/session", expect.anything(), {
       method: "POST",
       signal,
@@ -278,6 +287,65 @@ describe("agent-native search alert API client", () => {
         headers: { "Idempotency-Key": "alert-decision-key" },
         signal,
       },
+    );
+  });
+
+  it("reuses one bounded key when an exact saved-search deletion has an uncertain outcome", async () => {
+    const failure = new ApiClientError({
+      code: "DEPENDENCY",
+      message: "The deletion may have committed.",
+      retryable: true,
+    });
+    const receipt = {
+      savedSearchId: review.review.savedSearchId,
+      scheduleId: "schedule_00000001-0000-7000-8000-000000000001",
+      deleted: true as const,
+    };
+    const request = vi.fn().mockRejectedValueOnce(failure).mockResolvedValueOnce(receipt);
+    const stored = new Map<string, string>();
+    const requestKeyStorage = {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value),
+    };
+    const input = { confirmation: "DELETE_SAVED_SEARCH_AND_ALERT" as const };
+    const signal = new AbortController().signal;
+
+    await expect(
+      deleteSavedSearch(
+        receipt.savedSearchId,
+        input,
+        { signal },
+        {
+          request: request as never,
+          requestKeyStorage,
+        },
+      ),
+    ).rejects.toBe(failure);
+    await expect(
+      deleteSavedSearch(
+        receipt.savedSearchId,
+        input,
+        { signal },
+        {
+          request: request as never,
+          requestKeyStorage,
+        },
+      ),
+    ).resolves.toEqual(receipt);
+
+    const firstOptions = request.mock.calls[0]?.[2] as {
+      readonly headers: Readonly<Record<string, string>>;
+    };
+    const replayOptions = request.mock.calls[1]?.[2] as {
+      readonly headers: Readonly<Record<string, string>>;
+    };
+    expect(firstOptions.headers["Idempotency-Key"]).toMatch(/^[0-9a-f]{64}$/u);
+    expect(replayOptions.headers).toEqual(firstOptions.headers);
+    expect(request).toHaveBeenNthCalledWith(
+      2,
+      `/api/v1/agent/saved-searches/${encodeURIComponent(receipt.savedSearchId)}`,
+      expect.anything(),
+      expect.objectContaining({ method: "DELETE", body: input, signal }),
     );
   });
 });

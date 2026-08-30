@@ -14,6 +14,7 @@ import { normalizeJobSearchCriteria } from "./search-criteria.js";
 export type JobFit = JobFitContract;
 
 const maximumPublicSummaryLength = 600;
+const maximumPublicDetailLength = 2_000;
 
 function criteriaFrom(input: JobSearchInput | JobSearchCriteria): JobSearchCriteria {
   if ("unresolvedAssumptions" in input) return jobSearchCriteriaSchema.parse(input);
@@ -56,6 +57,10 @@ export function assessJobFit(
 
 export function toSafeJob(job: Job): Job {
   return { ...job, summary: capUntrustedText(job.summary) };
+}
+
+export function toSafeJobDetail(job: Job): Job {
+  return { ...job, summary: capUntrustedText(job.summary, maximumPublicDetailLength) };
 }
 
 export function toSafeJobSummary(job: Job, fit: JobFit): JobSummary {

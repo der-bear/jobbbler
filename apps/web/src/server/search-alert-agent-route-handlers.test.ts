@@ -178,7 +178,7 @@ function createDependencies() {
     }
     endpointStatus = "verified";
     return {
-      owner: { id: ownerId, kind: "guest" as const, verified: true, recoverable: true },
+      owner: { id: ownerId, kind: "guest" as const, verified: true },
       endpointId,
       verifiedAt: now,
     };
@@ -216,7 +216,7 @@ function createDependencies() {
       }
       endpointStatus = "verified";
       return {
-        owner: { id: ownerId, kind: "guest" as const, verified: true, recoverable: true },
+        owner: { id: ownerId, kind: "guest" as const, verified: true },
         endpointId,
         verifiedAt: now,
       };

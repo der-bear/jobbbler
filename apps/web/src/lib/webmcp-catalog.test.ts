@@ -55,13 +55,22 @@ function evalExpectedToolNames(): ReadonlySet<string> {
 }
 
 describe("webMcpCatalog", () => {
-  it("documents one unique global inventory of 26 agent capabilities", () => {
+  it("documents one unique global inventory of 28 agent capabilities", () => {
     const tools = webMcpCatalog.flatMap((route) => route.tools);
     const names = tools.map(({ name }) => name);
 
-    expect(names).toHaveLength(26);
+    expect(names).toHaveLength(28);
     expect(new Set(names).size).toBe(names.length);
-    expect(names).toEqual(expect.arrayContaining(["request_search_alert", "decide_search_alert"]));
+    expect(names).not.toContain("get_job_application_capability");
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "request_search_alert",
+        "decide_search_alert",
+        "enable_workspace_recovery",
+        "recover_jobbbler_workspace",
+        "get_applications",
+      ]),
+    );
     expect(webMcpCatalog[0]?.note).toContain("Every capability stays registered");
   });
 

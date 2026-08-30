@@ -7,6 +7,7 @@ import {
   applicationDisclosureFor,
   applicationConsentPresentation,
   applicationPolicy,
+  applicationReviewFieldSnapshotHash,
   applicationReviewPayloadHash,
   assertRequestedDisclosureMatches,
   normalizeApplicationAnswer,
@@ -142,6 +143,37 @@ describe("application disclosure policy", () => {
       },
     ]);
     expect(after.valuesHash).not.toBe(before.valuesHash);
+  });
+
+  it("binds field labels into the immutable review boundary", () => {
+    const completeDraft = {
+      ...draft,
+      answers: [
+        ...draft.answers,
+        ...[
+          ["email", "ada@example.com"],
+          ["location", "London, UK"],
+          ["work_authorization", "Yes"],
+        ].map(([fieldKey, value]) => ({
+          fieldKey: fieldKey!,
+          value: value!,
+          provenance: "user_entered" as const,
+          sensitive: true,
+          acceptedByHuman: true,
+        })),
+      ],
+    };
+    const fields = applicationConsentPresentation(completeDraft, job).fields;
+    const renamed = fields.map((field) =>
+      field.fieldKey === "full_name" ? { ...field, label: "Legal name" } : field,
+    );
+
+    expect(applicationReviewFieldSnapshotHash(renamed)).not.toBe(
+      applicationReviewFieldSnapshotHash(fields),
+    );
+    expect(applicationReviewPayloadHash(draft, job)).toBe(
+      "bbfab5f9377f180f35e15fb7a75f923d5d24f5621ab9ebd174583d262975f34b",
+    );
   });
 
   it("rejects an exact review that cannot fit the bounded review snapshot", () => {

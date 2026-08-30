@@ -1,4 +1,5 @@
 import type { ApplicationListItem } from "@jobbbler/contracts";
+import { isDomainError } from "@jobbbler/core-domain";
 
 import { getApplicationRouteDependencies } from "./applications";
 import type { ApplicationRouteDependencies } from "./application-route-handlers";
@@ -16,7 +17,8 @@ export async function loadInitialApplications(
     const dependencies = options.dependencies ?? getApplicationRouteDependencies();
     const owner = await requireOwnerSession(options.request, dependencies.identity);
     return await dependencies.operations.list(owner.owner.id, dependencies.identity.now());
-  } catch {
-    return null;
+  } catch (error) {
+    if (isDomainError(error) && error.code === "UNAUTHORIZED") return null;
+    throw error;
   }
 }

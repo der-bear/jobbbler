@@ -2,7 +2,7 @@
 
 import { ArrowSquareOutIcon, CheckCircleIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   compareJobsResultSchema,
@@ -21,7 +21,14 @@ import {
 } from "@/lib/job-format";
 import { ApiClientError, queryApi } from "@/lib/query-client";
 
-import { compareApiUrl, comparisonRowVisibility, resolveCompareSelection } from "./compare-state";
+import {
+  compareApiUrl,
+  comparePageHref,
+  comparisonRowVisibility,
+  comparisonSearchHref,
+  removeComparedJob,
+  resolveCompareSelection,
+} from "./compare-state";
 import styles from "./compare-workspace.module.css";
 
 type LoadState =
@@ -34,12 +41,23 @@ function errorMessage(error: unknown): string {
   return "The comparison could not be loaded. Please retry.";
 }
 
-function JobHeading({ job }: Readonly<{ job: Job }>) {
+function JobHeading({ job, removeHref }: Readonly<{ job: Job; removeHref: string }>) {
   return (
     <div className={styles["jobHeading"]}>
       <h2>{job.title}</h2>
       <p>{job.organizationName}</p>
-      <Link href={`/jobs/${encodeURIComponent(job.id)}`}>Open role</Link>
+      <div className={styles["jobActions"]}>
+        <Link aria-label={`Open ${job.title} role`} href={`/jobs/${encodeURIComponent(job.id)}`}>
+          Open role
+        </Link>
+        <Link
+          aria-label={`Remove ${job.title} from comparison`}
+          className={styles["removeLink"]}
+          href={removeHref}
+        >
+          Remove
+        </Link>
+      </div>
     </div>
   );
 }
@@ -75,7 +93,19 @@ function RiskNotes({ fit }: Readonly<{ fit: JobFit }>) {
   );
 }
 
-function ComparisonTable({ result }: Readonly<{ result: CompareJobsResult }>) {
+function unknownCount(fit: JobFit): number {
+  return Object.values(fit.dimensions).filter((dimension) => dimension.status === "unknown").length;
+}
+
+function ComparisonTable({
+  criteriaSearch,
+  result,
+  selectedJobIds,
+}: Readonly<{
+  criteriaSearch: string;
+  result: CompareJobsResult;
+  selectedJobIds: readonly string[];
+}>) {
   const visible = comparisonRowVisibility(result.jobs.map(({ fit }) => fit));
   return (
     <div className={styles["tableScroll"]}>
@@ -85,7 +115,13 @@ function ComparisonTable({ result }: Readonly<{ result: CompareJobsResult }>) {
             <th scope="col">Criterion</th>
             {result.jobs.map(({ job }) => (
               <th key={job.id} scope="col">
-                <JobHeading job={job} />
+                <JobHeading
+                  job={job}
+                  removeHref={comparePageHref(
+                    removeComparedJob(selectedJobIds, job.id),
+                    criteriaSearch,
+                  )}
+                />
               </th>
             ))}
           </tr>
@@ -167,9 +203,7 @@ function ComparisonTable({ result }: Readonly<{ result: CompareJobsResult }>) {
             <tr>
               <th scope="row">Unknowns</th>
               {result.jobs.map(({ job, fit }) => {
-                const unknown = Object.values(fit.dimensions).filter(
-                  (dimension) => dimension.status === "unknown",
-                ).length;
+                const unknown = unknownCount(fit);
                 return (
                   <td key={job.id}>
                     {unknown === 0
@@ -182,6 +216,91 @@ function ComparisonTable({ result }: Readonly<{ result: CompareJobsResult }>) {
           ) : null}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function MobileFact({ children, label }: Readonly<{ children: React.ReactNode; label: string }>) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>{children}</dd>
+    </div>
+  );
+}
+
+function MobileComparison({
+  criteriaSearch,
+  result,
+  selectedJobIds,
+}: Readonly<{
+  criteriaSearch: string;
+  result: CompareJobsResult;
+  selectedJobIds: readonly string[];
+}>) {
+  const visible = comparisonRowVisibility(result.jobs.map(({ fit }) => fit));
+  return (
+    <div className={styles["mobileComparison"]}>
+      {result.jobs.map(({ job, fit }) => {
+        const unknown = unknownCount(fit);
+        return (
+          <article aria-label={`${job.title} at ${job.organizationName}`} key={job.id}>
+            <JobHeading
+              job={job}
+              removeHref={comparePageHref(
+                removeComparedJob(selectedJobIds, job.id),
+                criteriaSearch,
+              )}
+            />
+            <dl>
+              {visible.eligibility ? (
+                <MobileFact label="Eligibility">
+                  {fit.eligible ? "Meets current criteria" : "Does not meet current criteria"}
+                </MobileFact>
+              ) : null}
+              <MobileFact label="Work and location">
+                {workModelLabel(job.workModel)} · {job.locations.join(", ")}
+              </MobileFact>
+              <MobileFact label="Level and type">
+                {job.seniority === null ? "Seniority not stated" : seniorityLabel(job.seniority)} ·{" "}
+                {employmentLabel(job.employmentType)}
+              </MobileFact>
+              <MobileFact label="Compensation">{salaryLabel(job.salary)}</MobileFact>
+              {visible.fit ? (
+                <MobileFact label="Why it matches">
+                  <FitNotes fit={fit} />
+                </MobileFact>
+              ) : null}
+              {visible.tradeOffs ? (
+                <MobileFact label="Trade-offs">
+                  <RiskNotes fit={fit} />
+                </MobileFact>
+              ) : null}
+              <MobileFact label="Source and freshness">
+                <p className={styles["sourceFact"]}>{job.source.label}</p>
+                <p className={styles["freshness"]}>
+                  Observed {relativeFreshness(job.updatedAt).replace("Updated ", "")}
+                </p>
+                <p className={styles["freshness"]}>Published {compactDate(job.publishedAt)}</p>
+                {job.source.url === null ? (
+                  <p className={styles["unknown"]}>Original source link unavailable.</p>
+                ) : (
+                  <a href={job.source.url} rel="noreferrer" target="_blank">
+                    View original source <ArrowSquareOutIcon aria-hidden="true" size={14} />
+                  </a>
+                )}
+              </MobileFact>
+              {visible.unknowns ? (
+                <MobileFact label="Unknowns">
+                  {unknown === 0
+                    ? "No missing facts in the selected criteria."
+                    : `${String(unknown)} unanswered item${unknown === 1 ? "" : "s"} — confirm with the employer.`}
+                </MobileFact>
+              ) : null}
+            </dl>
+          </article>
+        );
+      })}
     </div>
   );
 }
@@ -205,31 +324,44 @@ export function CompareWorkspace({
   jobIds,
   criteriaSearch,
 }: Readonly<{ jobIds: readonly string[]; criteriaSearch: string }>) {
-  const selection = useMemo(() => resolveCompareSelection(jobIds), [jobIds]);
+  const selection = resolveCompareSelection(jobIds);
+  const requestUrl =
+    selection.kind === "ready" ? compareApiUrl(selection.jobIds, criteriaSearch) : null;
   const [state, setState] = useState<LoadState>({ kind: "loading" });
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
-    if (selection.kind !== "ready") return;
+    if (requestUrl === null) return;
     const controller = new AbortController();
-    setState({ kind: "loading" });
+    const startRequest = window.setTimeout(() => {
+      setState({ kind: "loading" });
+      void queryApi(requestUrl, compareJobsResultSchema, { signal: controller.signal })
+        .then((result) => setState({ kind: "ready", result }))
+        .catch((error: unknown) => {
+          if (controller.signal.aborted) return;
+          setState({ kind: "error", message: errorMessage(error) });
+        });
+    }, 0);
 
-    void queryApi(compareApiUrl(selection.jobIds, criteriaSearch), compareJobsResultSchema, {
-      signal: controller.signal,
-    })
-      .then((result) => setState({ kind: "ready", result }))
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) return;
-        setState({ kind: "error", message: errorMessage(error) });
-      });
-
-    return () => controller.abort();
-  }, [criteriaSearch, selection]);
+    return () => {
+      window.clearTimeout(startRequest);
+      controller.abort();
+    };
+  }, [loadAttempt, requestUrl]);
 
   if (selection.kind !== "ready") return <EmptyComparison kind={selection.kind} />;
+  const changeSelectionHref = comparisonSearchHref(selection.jobIds, criteriaSearch);
+  const returnToSearchHref = comparisonSearchHref([], criteriaSearch);
   if (state.kind === "loading") {
     return (
-      <section aria-live="polite" className={styles["state"]}>
-        <h1>Gathering source-backed facts</h1>
+      <section aria-label="Loading the comparison" className={styles["state"]} role="status">
+        <div className={styles["skeleton"]}>
+          <span className={styles["skeletonTitle"]} />
+          <span className={styles["skeletonRow"]} />
+          <span className={styles["skeletonRow"]} />
+          <span className={styles["skeletonRow"]} />
+        </div>
+        <span className="sr-only">Loading the comparison.</span>
       </section>
     );
   }
@@ -237,13 +369,19 @@ export function CompareWorkspace({
     return (
       <section aria-live="polite" className={styles["state"]}>
         <h1>{state.message}</h1>
-        <Link href="/jobs">Return to search</Link>
+        <div className={styles["stateActions"]}>
+          <button onClick={() => setLoadAttempt((attempt) => attempt + 1)} type="button">
+            Retry comparison
+          </button>
+          <Link href={changeSelectionHref}>Change selection</Link>
+          <Link href={returnToSearchHref}>Return to search</Link>
+        </div>
       </section>
     );
   }
 
   return (
-    <section className={styles["workspace"]}>
+    <section aria-label="Role comparison" className={styles["workspace"]}>
       <header className={styles["header"]}>
         <div>
           <h1>Compare roles on the facts</h1>
@@ -253,7 +391,22 @@ export function CompareWorkspace({
           source records
         </p>
       </header>
-      <ComparisonTable result={state.result} />
+      <nav aria-label="Comparison actions" className={styles["comparisonActions"]}>
+        <Link href={changeSelectionHref}>
+          {selection.jobIds.length < 3 ? "Add another role" : "Change roles"}
+        </Link>
+        <Link href={returnToSearchHref}>Return to search</Link>
+      </nav>
+      <ComparisonTable
+        criteriaSearch={criteriaSearch}
+        result={state.result}
+        selectedJobIds={selection.jobIds}
+      />
+      <MobileComparison
+        criteriaSearch={criteriaSearch}
+        result={state.result}
+        selectedJobIds={selection.jobIds}
+      />
       <p className={styles["footnote"]}>
         Everything shown comes from the original listings, which remain the source of truth for
         availability and application details.

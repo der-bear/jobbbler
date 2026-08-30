@@ -443,7 +443,7 @@ describe("application request bodies", () => {
       expect.objectContaining({
         kind: "application",
         key: "prepare_application",
-        safeSummary: "Application draft created.",
+        safeSummary: "Application prepared.",
         actorKind: "human",
         aggregate: { type: "application_draft", version: 0 },
       }),
@@ -492,7 +492,7 @@ describe("application request bodies", () => {
     expect(publish).toHaveBeenCalledWith(
       expect.objectContaining({
         key: "prepare_application",
-        safeSummary: "Application draft reopened.",
+        safeSummary: "Application reopened.",
         aggregate: { type: "application_draft", version: 2 },
       }),
     );

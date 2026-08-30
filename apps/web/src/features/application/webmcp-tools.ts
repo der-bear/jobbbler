@@ -6,7 +6,9 @@ import {
   type AgentOperation,
   type ApplicationAgentState,
   type ApplicationConsentWithdrawal,
+  type ApplicationReceiptSummary,
   type ApplicationSubmissionReviewRequest as ApplicationSubmissionReviewContract,
+  type Job,
 } from "@jobbbler/contracts";
 import type { ApplicationNextAction } from "./application-model";
 import type { JsonSchema, JsonValue, ToolManifest } from "@jobbbler/webmcp";
@@ -151,6 +153,7 @@ type ApplicationToolOutput =
 
 export interface ApplicationToolReadiness {
   readonly state: ApplicationAgentState;
+  readonly roleStatus: Job["status"];
   readonly missingFieldKeys: readonly string[];
   readonly missingFieldLabels: readonly string[];
   readonly nextAction: ApplicationNextAction;
@@ -199,10 +202,15 @@ export interface ApplicationToolDependencies {
     expectedVersion: number,
     decision: "approved" | "declined",
     options: Readonly<{ signal: AbortSignal; channel: "agent_client" }>,
-  ): Promise<ApplicationToolReadiness>;
+  ): Promise<ApplicationSubmissionDecisionOutcome>;
 }
 
-function safeReadiness(readiness: ApplicationToolReadiness): JsonValue {
+export interface ApplicationSubmissionDecisionOutcome extends ApplicationToolReadiness {
+  readonly receipt: ApplicationReceiptSummary | null;
+  readonly receiptHref: string | null;
+}
+
+function safeReadiness(readiness: ApplicationToolReadiness): Readonly<Record<string, JsonValue>> {
   const { state } = readiness;
   return {
     draftId: state.draftId,
@@ -210,6 +218,7 @@ function safeReadiness(readiness: ApplicationToolReadiness): JsonValue {
     applyMode: state.applyMode,
     state: state.state,
     stage: state.stage,
+    roleStatus: readiness.roleStatus,
     version: state.version,
     requiredFields: state.requiredFields,
     completedRequiredFields: state.completedRequiredFields,
@@ -225,6 +234,9 @@ function safeReadiness(readiness: ApplicationToolReadiness): JsonValue {
 
 function nextApplicationTool(readiness: ApplicationToolReadiness): string | null {
   const { state } = readiness;
+  if (state.stage === "closed") {
+    return readiness.nextAction === "withdraw" ? "withdraw_application_consent" : null;
+  }
   if (readiness.nextAction === "withdraw") return "withdraw_application_consent";
   if (readiness.nextAction === "read_only" || readiness.nextAction === "complete") return null;
   if (state.agentAuthorityStatus === "requested") return "decide_application_assistance";
@@ -237,12 +249,39 @@ function nextApplicationTool(readiness: ApplicationToolReadiness): string | null
 
 function completed(summary: string, readiness: ApplicationToolReadiness): ApplicationToolOutput {
   return completedWebMcpResult({
-    summary,
+    summary: readiness.state.stage === "closed" ? "Role closed — nothing submitted." : summary,
     data: safeReadiness(readiness),
     resources: [{ type: "application", id: readiness.state.draftId, label: "Private application" }],
     facts: [
       { key: "missing_required_fields", value: readiness.missingFieldKeys.length },
       { key: "next_action", value: readiness.nextAction },
+    ],
+  });
+}
+
+function completedSubmissionDecision(
+  summary: string,
+  outcome: ApplicationSubmissionDecisionOutcome,
+): ApplicationToolOutput {
+  return completedWebMcpResult({
+    summary,
+    data: {
+      ...safeReadiness(outcome),
+      ...(outcome.receipt === null || outcome.receiptHref === null
+        ? {}
+        : {
+            receipt: {
+              id: outcome.receipt.id,
+              status: outcome.receipt.status,
+              createdAt: outcome.receipt.createdAt,
+              href: outcome.receiptHref,
+            },
+          }),
+    },
+    resources: [{ type: "application", id: outcome.state.draftId, label: "Private application" }],
+    facts: [
+      { key: "missing_required_fields", value: outcome.missingFieldKeys.length },
+      { key: "next_action", value: outcome.nextAction },
     ],
   });
 }
@@ -298,7 +337,7 @@ function assistanceTool(
     name: "request_application_assistance",
     purpose: "Ask once for short-lived permission to prepare this private application.",
     description:
-      "Request draft-bound authority so the agent can read workflow state, prepare truthful answers, and run server safeguards. This does not share candidate data or submit the application. The person still reviews the exact application before submission.",
+      "Request application-bound authority so the agent can read workflow state, prepare truthful answers, and run server safeguards. This does not share candidate data or submit the application. The person still reviews the exact application before submission.",
     inputSchema: emptyInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -317,7 +356,7 @@ function assistanceTool(
           presentation: {
             title: "Let Jobbbler prepare this application?",
             prompt:
-              "Allow the agent to prepare this private draft from facts you provide. Nothing is shared or submitted until you review the exact application.",
+              "Allow the agent to prepare this private application from facts you provide. Nothing is shared or submitted until you review the exact application.",
             confirmLabel: "Allow once",
             facts: [
               { key: "Scope", value: "This application only" },
@@ -341,7 +380,7 @@ function assistanceDecisionTool(
     name: "decide_application_assistance",
     purpose: "Record the person's assistance decision from the agent client.",
     description:
-      "Use the exact requestId returned by request_application_assistance and the person's explicit decision: approved, declined, or withdraw. Use withdraw only to revoke active assistance bound to that request. Never infer or approve this decision on the person's behalf; when no explicit decision is present, stop and tell the person to decide in the external agent client. Approval is short-lived and draft-bound; it never shares data or submits an application.",
+      "Use the exact requestId returned by request_application_assistance and the person's explicit decision: approved, declined, or withdraw. Use withdraw only to revoke active assistance bound to that request. Never infer or approve this decision on the person's behalf; when no explicit decision is present, stop and tell the person to decide in the external agent client. Approval is short-lived and application-bound; it never shares data or submits an application.",
     inputSchema: assistanceDecisionInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -468,16 +507,15 @@ function submissionDecisionTool(
             retryable: false,
           });
         }
-        const readiness = await dependencies.decideSubmission(
-          parsed.draftVersion,
-          parsed.decision,
-          { signal, channel: "agent_client" },
-        );
-        return completed(
+        const outcome = await dependencies.decideSubmission(parsed.draftVersion, parsed.decision, {
+          signal,
+          channel: "agent_client",
+        });
+        return completedSubmissionDecision(
           parsed.decision === "approved"
             ? "Recorded consent, submitted the approved application, and saved its receipt."
             : "Declined. No data was shared and nothing was submitted.",
-          readiness,
+          outcome,
         );
       } catch (error) {
         return safeWebMcpErrorResult(
@@ -495,6 +533,7 @@ export function createApplicationToolManifests(
 ): readonly ToolManifest<unknown, ApplicationToolOutput>[] {
   const readiness = dependencies.currentReadiness();
   const tools: ToolManifest<unknown, ApplicationToolOutput>[] = [readinessTool(dependencies)];
+  if (readiness.state.stage === "closed" || readiness.roleStatus !== "open") return tools;
   if (readiness.state.applyMode === "external" || readiness.nextAction === "complete") {
     if (
       readiness.state.agentAuthorityStatus === "requested" ||
@@ -541,7 +580,7 @@ export function createApplicationToolManifests(
 
 const draftIdProperty = {
   type: "string",
-  description: "An application draft ID returned by prepare_application.",
+  description: "An application ID returned by prepare_application.",
   pattern: "^application_[0-9a-f-]{36}$",
 } as const satisfies JsonSchema;
 
@@ -581,7 +620,7 @@ const stableSubmissionDecisionInputSchema = {
 
 const stableDraftInput = z.strictObject({
   draftId: entityIdSchema.refine((value) => value.startsWith("application_"), {
-    message: "Expected an application draft ID returned by prepare_application.",
+    message: "Expected an application ID returned by prepare_application.",
   }),
 });
 const stablePatchesInput = stableDraftInput
@@ -630,7 +669,7 @@ const stableApplicationToolDefinitions: readonly StableApplicationToolDefinition
     name: "request_application_assistance",
     purpose: "Ask once for short-lived permission to prepare one private application.",
     description:
-      "Request draft-bound preparation authority. This does not disclose candidate data or submit the application, and the person still reviews the exact result.",
+      "Request application-bound preparation authority. This does not disclose candidate data or submit the application, and the person still reviews the exact result.",
     readOnly: false,
     input: "draft",
   },
@@ -755,6 +794,13 @@ export function createStableApplicationToolManifests(
             resources: [{ type: "application", id: parsed.draftId, label: "Private application" }],
           });
         }
+        if (verified.state.stage === "closed" || verified.roleStatus !== "open") {
+          return failedWebMcpResult({
+            code: "CONFLICT",
+            message: "Role closed — nothing submitted.",
+            retryable: false,
+          });
+        }
 
         let surface = dependencies.currentSurface();
         if (surfaceDraftId(surface) !== parsed.draftId) {
@@ -802,7 +848,7 @@ export function createStableApplicationToolManifests(
         return safeWebMcpErrorResult(
           error,
           signal,
-          "Provide an owner-accessible application draft ID and the documented inputs.",
+          "Provide an owner-accessible application ID and the documented inputs.",
         );
       }
     },

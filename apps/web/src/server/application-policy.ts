@@ -116,6 +116,33 @@ function hasValue(value: unknown): boolean {
   return true;
 }
 
+type ApplicationReviewFieldSnapshot = Readonly<{
+  fieldKey: string;
+  label: string;
+  value: ApplicationAnswer["value"];
+  sensitive: boolean;
+}>;
+
+function applicationReviewFields(
+  draft: ApplicationDraft,
+): readonly ApplicationReviewFieldSnapshot[] {
+  return applicationPolicy.requirements.flatMap(({ fieldKey, label, sensitive }) => {
+    const answer = draft.answers.find((candidate) => candidate.fieldKey === fieldKey);
+    return answer !== undefined && hasValue(answer.value)
+      ? [{ fieldKey, label, value: answer.value, sensitive }]
+      : [];
+  });
+}
+
+export function applicationReviewFieldSnapshotHash(
+  fields: readonly ApplicationReviewFieldSnapshot[],
+): string {
+  return createHash("sha256")
+    .update("jobbbler:application-review-fields:v1\u0000")
+    .update(JSON.stringify(fields))
+    .digest("hex");
+}
+
 export function applicationConsentPresentation(
   draft: ApplicationDraft,
   job: Job,
@@ -154,12 +181,7 @@ export function applicationConsentPresentation(
     const answer = draft.answers.find((candidate) => candidate.fieldKey === fieldKey)!;
     return { fieldKey, value: answer.value };
   });
-  const fields = included.map(({ fieldKey, label, sensitive }) => ({
-    fieldKey,
-    label,
-    value: draft.answers.find((candidate) => candidate.fieldKey === fieldKey)!.value,
-    sensitive,
-  }));
+  const fields = applicationReviewFields(draft);
   if (
     new TextEncoder().encode(JSON.stringify(fields)).byteLength >
     MAX_APPLICATION_SUBMISSION_REVIEW_FIELDS_BYTES
@@ -269,6 +291,7 @@ export function hashApplicationReviewSnapshot(
       documentIds: disclosure.documentIds,
       noticeVersion: applicationPolicy.noticeVersion,
       legalBasis: applicationPolicy.legalBasis,
+      fieldSnapshotHash: applicationReviewFieldSnapshotHash(applicationReviewFields(input.draft)),
     },
   });
   return createHash("sha256")

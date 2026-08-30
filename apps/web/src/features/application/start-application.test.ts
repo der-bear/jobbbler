@@ -1,6 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiClientError } from "@/lib/query-client";
+
+const marker = vi.hoisted(() => ({ markOwnerSessionStarted: vi.fn() }));
+vi.mock("@/lib/owner-session-marker", () => marker);
 
 import { startApplication } from "./start-application";
 
@@ -16,6 +19,8 @@ const draft = {
 };
 
 describe("startApplication", () => {
+  beforeEach(() => marker.markOwnerSessionStarted.mockClear());
+
   it("opens an existing owner-bound draft", async () => {
     const request = vi.fn().mockResolvedValue({ draft, disposition: "reopened" });
     const navigate = vi.fn();
@@ -29,6 +34,8 @@ describe("startApplication", () => {
       expect.objectContaining({ signal }),
     );
     expect(navigate).toHaveBeenCalledWith(`/apply/${draft.id}`);
+    expect(marker.markOwnerSessionStarted).toHaveBeenCalledOnce();
+    expect(marker.markOwnerSessionStarted).toHaveBeenCalledWith(undefined);
   });
 
   it("creates a private owner session on demand and retries once", async () => {
@@ -52,5 +59,7 @@ describe("startApplication", () => {
       "/api/v1/applications",
     ]);
     expect(navigate).toHaveBeenCalledWith(`/apply/${draft.id}`);
+    expect(marker.markOwnerSessionStarted).toHaveBeenCalledOnce();
+    expect(marker.markOwnerSessionStarted).toHaveBeenCalledWith("later");
   });
 });

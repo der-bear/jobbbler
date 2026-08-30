@@ -7,10 +7,12 @@
     "search_jobs",
     "open_job_details",
     "prepare_application",
+    "get_applications",
     "open_jobbbler_page",
+    "enable_workspace_recovery",
+    "recover_jobbbler_workspace",
     "get_search_state",
     "get_job_details",
-    "get_job_application_capability",
     "compare_jobs",
     "get_comparison",
     "remove_job_from_comparison",
@@ -106,24 +108,18 @@
       }
     },
     {
-      "id": "application-withdraw-active-assistance",
+      "id": "application-list-private-work-after-recovery",
       "category": "direct",
       "context": {
-        "application": {
-          "draftId": "application_550e8400-e29b-41d4-a716-446655440000",
-          "agentAuthorityStatus": "active",
-          "delegationRequestId": "delegation_650e8400-e29b-41d4-a716-446655440000"
-        },
-        "userDecision": "The person explicitly withdrew this exact active assistance request in the agent client."
+        "workspaceRecovered": true
       },
-      "prompt": "Stop helping with this application and withdraw that access now.",
+      "prompt": "Show my ten most recently updated Jobbbler applications.",
       "expected": {
         "kind": "tool_call",
-        "tool": "decide_application_assistance",
+        "tool": "get_applications",
         "arguments": {
-          "draftId": "application_550e8400-e29b-41d4-a716-446655440000",
-          "requestId": "delegation_650e8400-e29b-41d4-a716-446655440000",
-          "decision": "withdraw"
+          "limit": 10,
+          "offset": 0
         }
       }
     },

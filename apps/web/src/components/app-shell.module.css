@@ -37,6 +37,9 @@
 }
 
 .siteFooter a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
   color: var(--color-ink-muted);
   text-decoration: none;
 }
@@ -89,14 +92,25 @@
 }
 
 .wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
   justify-self: start;
-  background: linear-gradient(118deg, var(--color-ink) 35%, var(--color-signal-strong));
-  background-clip: text;
-  color: transparent;
+  color: var(--color-ink);
   font-size: 22px;
   font-weight: 750;
   letter-spacing: -0.045em;
   text-decoration: none;
+}
+
+.wordmarkDot {
+  flex: none;
+  color: var(--color-ink-subtle);
+  transition: color var(--motion-fast) var(--ease-standard);
+}
+
+.wordmark[data-status="ready"] .wordmarkDot {
+  color: var(--jb-signal);
 }
 
 .navigation {
@@ -109,6 +123,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  min-block-size: 44px;
   border-radius: var(--radius-sm);
   color: var(--color-ink-muted);
   font-size: 13px;
@@ -135,7 +150,7 @@
 
 .agentView {
   display: inline-flex;
-  min-block-size: 38px;
+  min-block-size: 44px;
   align-items: center;
   gap: 7px;
   border: 1px solid var(--color-line);
@@ -158,11 +173,8 @@
   color: var(--color-ink);
 }
 
-.agentView[data-status="ready"] > svg {
-  color: var(--color-signal-strong);
-}
-
-.agentView[data-status="error"] > svg {
+.agentView[data-status="error"] {
+  border-color: color-mix(in srgb, var(--jb-danger) 45%, var(--color-line));
   color: var(--jb-danger);
 }
 
@@ -209,7 +221,7 @@
     flex: 1;
     flex-direction: column;
     gap: 2px;
-    font-size: 11px;
+    font-size: 13px;
     padding: 6px 10px;
   }
 
@@ -226,7 +238,7 @@
   }
 
   .agentView {
-    min-block-size: 36px;
+    min-block-size: 44px;
     padding-inline: 10px;
   }
 }

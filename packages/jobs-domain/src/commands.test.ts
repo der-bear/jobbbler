@@ -109,6 +109,22 @@ describe("job discovery commands", () => {
     });
   });
 
+  it("returns the complete sanitized stored description from the detail command", async () => {
+    const storedDescription = `${"A".repeat(800)}<script>discard-me</script>${"B".repeat(200)}`;
+    const command = createGetJobCommand(
+      repository({
+        getById: vi.fn(async () => ({ ...job, summary: storedDescription })),
+      }),
+    );
+
+    const result = await command.execute(context, { jobId: job.id });
+
+    expect(result.job.summary).toBe(`${"A".repeat(800)} ${"B".repeat(200)}`);
+    expect(result.job.summary.length).toBeGreaterThan(600);
+    expect(result.job.summary).not.toContain("discard-me");
+    expect(result.job.summary).not.toContain("…");
+  });
+
   it("compares at most three known jobs in the requested order", async () => {
     const command = createCompareJobsCommand(repository());
 

@@ -585,23 +585,13 @@ describe("route-scoped WebMCP tool manifests", () => {
       onNavigate,
     }) as readonly ToolManifest[];
 
-    expectAnnotatedUntrustedRoute(manifests, [
-      "get_job_details",
-      "get_job_application_capability",
-      "compare_jobs",
-    ]);
-    expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([
-      true,
-      true,
-      false,
-    ]);
+    expectAnnotatedUntrustedRoute(manifests, ["get_job_details", "compare_jobs"]);
+    expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([true, false]);
     expect(tool(manifests, "compare_jobs").description).toContain(
       "after two or three exact job IDs are known",
     );
     expect(tool(manifests, "compare_jobs").description).toContain("Never call it with one role");
-    expect(tool(manifests, "get_job_application_capability").description).toContain(
-      "call this directly without searching",
-    );
+    expect(manifests.map(({ name }) => name)).not.toContain("get_job_application_capability");
 
     const controller = new AbortController();
     const detail = await tool(manifests, "get_job_details").execute(

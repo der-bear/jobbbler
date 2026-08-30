@@ -11,7 +11,7 @@ import {
 } from "@jobbbler/contracts";
 import { type ApplicationCommand, DomainError } from "@jobbbler/core-domain";
 
-import { assessJobFit, toSafeJob, toSafeJobSummary } from "./fit.js";
+import { assessJobFit, toSafeJobDetail, toSafeJobSummary } from "./fit.js";
 import { normalizeJobSearchCriteria } from "./search-criteria.js";
 
 /**
@@ -86,7 +86,7 @@ export function createGetJobCommand(
         throw new DomainError({ code: "NOT_FOUND", message: "Job was not found." });
       }
       return jobDetailResultSchema.parse({
-        job: toSafeJob(job),
+        job: toSafeJobDetail(job),
         fit: assessJobFit(job, parsed.criteria, context.clock.now()),
       });
     },

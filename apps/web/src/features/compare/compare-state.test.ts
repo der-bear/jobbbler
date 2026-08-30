@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import type { JobFit } from "@jobbbler/contracts";
 
-import { compareApiUrl, comparisonRowVisibility, resolveCompareSelection } from "./compare-state";
+import {
+  compareApiUrl,
+  comparePageHref,
+  comparisonRowVisibility,
+  comparisonSearchHref,
+  removeComparedJob,
+  resolveCompareSelection,
+} from "./compare-state";
 
 const rank: JobFit["dimensions"]["text"] = {
   status: "not_requested",
@@ -55,6 +62,19 @@ describe("shareable comparison state", () => {
     expect(compareApiUrl(["job_alpha"], "work=remote&salary_min=100000&currency=EUR")).toBe(
       "/api/v1/jobs/compare?work=remote&salary_min=100000&currency=EUR&id=job_alpha",
     );
+  });
+
+  it("builds stable human compare, add-more, and remove URLs without changing agent API state", () => {
+    expect(comparePageHref(["job_alpha", "job/a b"], "work=remote&sort=newest")).toBe(
+      "/compare?work=remote&sort=newest&id=job_alpha&id=job%2Fa+b",
+    );
+    expect(comparisonSearchHref(["job_alpha", "job/a b"], "work=remote&sort=newest")).toBe(
+      "/jobs?work=remote&sort=newest&compare=job_alpha&compare=job%2Fa+b",
+    );
+    expect(removeComparedJob(["job_alpha", "job_beta", "job_gamma"], "job_beta")).toEqual([
+      "job_alpha",
+      "job_gamma",
+    ]);
   });
 
   it("hides comparison rows that repeat no decision-useful information", () => {

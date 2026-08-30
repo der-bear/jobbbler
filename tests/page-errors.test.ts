@@ -65,4 +65,30 @@ describe("E2E browser error collection", () => {
       "requestfailed: GET https://jobbbler.example/_next/app.js: net::ERR_FAILED",
     ]);
   });
+
+  it("allows an exact declared abort while retaining unrelated request failures", () => {
+    const current = recordingPage();
+    const errors = collectPageErrors(current.page, {
+      expectedRequestFailures: [
+        {
+          method: "GET",
+          pathname: "/api/v1/jobs/job_missing",
+          errorText: "net::ERR_ABORTED",
+        },
+      ],
+    });
+
+    current.emit(
+      "requestfailed",
+      request("https://jobbbler.example/api/v1/jobs/job_missing", "GET", "net::ERR_ABORTED"),
+    );
+    current.emit(
+      "requestfailed",
+      request("https://jobbbler.example/_next/app.js", "GET", "net::ERR_ABORTED"),
+    );
+
+    expect(errors()).toEqual([
+      "requestfailed: GET https://jobbbler.example/_next/app.js: net::ERR_ABORTED",
+    ]);
+  });
 });

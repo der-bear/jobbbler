@@ -6,6 +6,11 @@ import {
 } from "@jobbbler/contracts";
 import type { AgentActivityStore } from "@jobbbler/webmcp";
 
+import {
+  clearOwnerSessionMarker,
+  hasOwnerSessionMarker,
+  subscribeOwnerSessionStarted,
+} from "./owner-session-marker";
 import { ApiClientError, queryApi } from "./query-client";
 
 const MIN_DELAY_MS = 1_000;
@@ -22,6 +27,8 @@ export interface OwnerActivityFeedOptions {
   readonly subscribeVisibility?: (listener: () => void) => () => void;
   readonly maxCatchUpPages?: number;
   readonly random?: () => number;
+  readonly hasOwnerSession?: () => boolean;
+  readonly subscribeOwnerSession?: (listener: () => void) => () => void;
 }
 
 export interface OwnerActivityFeedController {
@@ -107,6 +114,8 @@ export function startOwnerActivityFeed(
   let failures = 0;
   let catchUpPages = 0;
   let idlePolls = 0;
+  let waitingForOwnerSession = false;
+  let removeOwnerSessionListener: (() => void) | undefined;
 
   const clearTimer = () => {
     if (timer === undefined) return;
@@ -115,7 +124,7 @@ export function startOwnerActivityFeed(
   };
 
   const schedule = (delayMs: number) => {
-    if (stopped) return;
+    if (stopped || waitingForOwnerSession) return;
     clearTimer();
     timer = setTimeout(
       () => {
@@ -126,8 +135,22 @@ export function startOwnerActivityFeed(
     );
   };
 
+  const waitForOwnerSession = () => {
+    waitingForOwnerSession = true;
+    clearTimer();
+    if (removeOwnerSessionListener !== undefined) return;
+    const remove = subscribeOwnerSession(() => {
+      if (stopped) return;
+      removeOwnerSessionListener?.();
+      removeOwnerSessionListener = undefined;
+      waitingForOwnerSession = false;
+      schedule(0);
+    });
+    removeOwnerSessionListener = remove;
+  };
+
   const poll = async () => {
-    if (stopped) return;
+    if (stopped || waitingForOwnerSession) return;
     if (inFlight) {
       wakePending = true;
       return;
@@ -164,13 +187,18 @@ export function startOwnerActivityFeed(
       }
     } catch (error) {
       if (stopped || requestController.signal.aborted) return;
+      if (error instanceof ApiClientError && error.code === "UNAUTHORIZED") {
+        clearOwnerSessionMarker();
+        waitForOwnerSession();
+        return;
+      }
       failures += 1;
       catchUpPages = 0;
       delay = failureDelay(error, failures);
     } finally {
       inFlight = false;
       requestController = undefined;
-      if (!stopped) {
+      if (!stopped && !waitingForOwnerSession) {
         if (wakePending) {
           wakePending = false;
           idlePolls = 0;
@@ -183,7 +211,7 @@ export function startOwnerActivityFeed(
   };
 
   const wake = () => {
-    if (stopped) return;
+    if (stopped || waitingForOwnerSession) return;
     idlePolls = 0;
     if (inFlight) {
       wakePending = true;
@@ -210,7 +238,23 @@ export function startOwnerActivityFeed(
       })
       .catch(() => undefined);
   }
-  schedule(0);
+  /*
+   * A visitor without a private workspace has no owner-scoped activity to
+   * fetch, so polling waits until this browser has started one. That keeps the
+   * public pages free of expected authorization failures.
+   */
+  const hasOwnerSession = options.hasOwnerSession ?? hasOwnerSessionMarker;
+  const subscribeOwnerSession = options.subscribeOwnerSession ?? subscribeOwnerSessionStarted;
+  if (hasOwnerSession()) {
+    schedule(0);
+  } else {
+    removeOwnerSessionListener = subscribeOwnerSession(() => {
+      if (stopped) return;
+      removeOwnerSessionListener?.();
+      removeOwnerSessionListener = undefined;
+      schedule(0);
+    });
+  }
 
   return {
     wake,
@@ -221,6 +265,7 @@ export function startOwnerActivityFeed(
       requestController?.abort();
       removeWakeup?.();
       removeVisibility();
+      removeOwnerSessionListener?.();
     },
   };
 }

@@ -22,6 +22,9 @@ describe("AgentTools", () => {
     expect(markup).toContain("Active tools");
     expect(markup).toContain("6 tools");
     expect(markup).toContain("Find");
+    expect(markup).toContain("Plan and search");
+    expect(markup).toContain("<details");
+    expect(markup).toContain("<summary>");
     expect(markup).toContain("plan_job_workflow");
     expect(markup).toContain("Get the safe steps for a Jobbbler goal.");
     expect(markup).toContain("get_search_state");
@@ -39,7 +42,10 @@ describe("AgentTools", () => {
     const markup = renderToStaticMarkup(<AgentTools tools={[]} webMcpAvailable={false} />);
 
     expect(markup).toContain("Capability catalog");
-    expect(markup).toContain("26 tools");
+    expect(markup).toContain("28 tools");
+    expect(markup).toContain("enable_workspace_recovery");
+    expect(markup).toContain("recover_jobbbler_workspace");
+    expect(markup).toContain("get_applications");
     expect(markup).toContain("decide_application_submission");
     expect(markup).toContain("Asks the person");
     expect(markup).toContain("Relays the decision");
@@ -68,10 +74,18 @@ describe("AgentGuide", () => {
     expect(markup).toContain("What the tools handle");
     expect(markup).toContain("What stays with you");
     expect(markup).toContain("Prepare truthful answers and a short motivation note");
+    expect(markup).toContain(
+      "Optionally add an email so applications and saved searches can be recovered",
+    );
+    expect(markup).toContain(
+      "Restore applications and saved searches with the email and code you provide",
+    );
     expect(markup).toContain("Consent to process your data");
     expect(markup).toContain("right to withdraw it");
     expect(markup).toContain("Activity shows what happened");
-    expect(markup).toContain("Tools shows all 26 capabilities");
+    expect(markup).toContain("Tools shows every capability");
+    expect(markup).toContain("Technical details");
+    expect(markup).toContain("no separate MCP server to");
     expect(markup).not.toContain("managed internal role");
     expect(markup).not.toContain("validated employer page");
   });

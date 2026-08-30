@@ -18,7 +18,7 @@
 
 - [ ] Verify WebMCP in a supported browser context using the real registered
       tools.
-- [ ] Verify the global Agent layer on more than one route: the same 26 focused
+- [ ] Verify the global Agent layer on more than one route: the same 28 focused
       imperative tools stay registered everywhere, and state-gated tools
       answer with a clear next step when they are not ready.
 - [ ] Record actual registration/readiness, tool activity, search, compare,
@@ -47,7 +47,7 @@
       schedule and a retry-stable receipt.
 - [ ] Show real latest-run and delivery state, including a truthful retry-safe
       state if used.
-- [ ] Use the clearly fictional internal-demo employer for application footage.
+- [ ] Use a clearly fictional Jobbbler demo employer for application footage.
 - [ ] Demonstrate `request_application_assistance`, the person's assistance
       decision relayed by `decide_application_assistance`, and only then
       `propose_application_updates`.
@@ -64,9 +64,9 @@
 - [ ] Present the exact request-bound submission review in the external agent
       client and stop with that decision pending; do not invoke submission or
       claim that data was shared.
-- [ ] Confirm an external role opens only an available validated HTTPS employer
-      page, stops when none is available, and creates no Jobbbler draft, receipt,
-      handoff record, or submitted claim.
+- [ ] Confirm every demo role uses Jobbbler-managed delivery and the server
+      independently rejects any unsupported application mode before creating
+      an application.
 - [ ] Describe the stored interaction as a record of what was approved in its
       exact context, never as cryptographic proof of the human, model, or
       vendor.

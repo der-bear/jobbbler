@@ -33,6 +33,7 @@ export const SNAPSHOT_TABLE_MODES = {
   application_drafts: "entity",
   application_review_records: "entity",
   application_confirmation_records: "entity",
+  managed_application_deliveries: "entity",
   application_submission_receipts: "entity",
   application_agent_sessions: "entity",
   application_delegation_records: "entity",

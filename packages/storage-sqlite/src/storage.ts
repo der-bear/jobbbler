@@ -24,6 +24,7 @@ import {
   type ApplicationConfirmationRecord,
   type ApplicationReceiptRecord,
   type ApplicationReviewRecord,
+  type ManagedApplicationDeliveryRecord,
   type ApproveRichDataGrantInput,
   type AuditEventRecord,
   type ClaimWorkItemsInput,
@@ -320,6 +321,7 @@ function applicationRecord<T>(row: Record<string, unknown>): T {
     "categories_json",
     "field_keys_json",
     "document_ids_json",
+    "submission_json",
   ] as const) {
     if (typeof parsed[key] === "string") parsed[key] = parseJson(parsed[key] as string);
   }
@@ -338,6 +340,9 @@ function applicationRecord<T>(row: Record<string, unknown>): T {
     consumed_at: "consumedAt",
     idempotency_key: "idempotencyKey",
     external_url: "externalUrl",
+    provider_reference_id: "providerReferenceId",
+    recipient_name: "recipientName",
+    acknowledged_at: "acknowledgedAt",
     agent_id: "agentSessionId",
     resource_type: "resourceType",
     resource_id: "resourceId",
@@ -363,6 +368,7 @@ function applicationRecord<T>(row: Record<string, unknown>): T {
     categories_json: "categories",
     field_keys_json: "fieldKeys",
     document_ids_json: "documentIds",
+    submission_json: "submission",
     notice_version: "noticeVersion",
     legal_basis: "legalBasis",
   };
@@ -1916,6 +1922,12 @@ function createRepositories(
           .get(draftId, ownerId) as Record<string, unknown> | undefined;
         return row === undefined ? null : applicationRecord<ApplicationReceiptRecord>(row);
       },
+      async getManagedDelivery(id, ownerId) {
+        const row = database
+          .prepare("SELECT * FROM managed_application_deliveries WHERE id=? AND owner_id=?")
+          .get(id, ownerId) as Record<string, unknown> | undefined;
+        return row === undefined ? null : applicationRecord<ManagedApplicationDeliveryRecord>(row);
+      },
       async applyMaterialEdit(input: MaterialApplicationEditInput) {
         const parsed = applicationDraftSchema.parse(input.draft);
         if (parsed.ownerId !== input.ownerId || parsed.version !== input.expectedVersion + 1)
@@ -2083,6 +2095,21 @@ function createRepositories(
         input: CompleteApplicationSubmissionInput,
       ): Promise<CompleteApplicationSubmissionResult> {
         const submit = database.transaction(() => {
+          const assertRoleOpen = () => {
+            const role = database
+              .prepare(
+                `SELECT job.status
+                 FROM application_drafts AS draft
+                 JOIN jobs AS job ON job.id = draft.job_id
+                 WHERE draft.id=? AND draft.owner_id=?`,
+              )
+              .get(input.draftId, input.ownerId) as { readonly status: Job["status"] } | undefined;
+            if (role?.status !== "open")
+              throw new DomainError({
+                code: "CONFLICT",
+                message: "Role closed — nothing submitted.",
+              });
+          };
           const existingRow = database
             .prepare(
               "SELECT * FROM application_submission_receipts WHERE owner_id=? AND draft_id=? AND idempotency_key=?",
@@ -2094,12 +2121,31 @@ function createRepositories(
             if (
               receipt.reviewId !== input.reviewId ||
               receipt.confirmationId !== input.confirmationId ||
-              receipt.status !== input.receipt.status ||
-              receipt.externalUrl !== input.receipt.externalUrl
+              receipt.status !== "submitted" ||
+              receipt.externalUrl !== null ||
+              receipt.submission == null
             )
               throw new DomainError({
                 code: "CONFLICT",
                 message: "Idempotency key is bound to another submission.",
+              });
+            const deliveryRow = database
+              .prepare("SELECT * FROM managed_application_deliveries WHERE id=? AND owner_id=?")
+              .get(receipt.submission.managedDeliveryId, input.ownerId) as
+              Record<string, unknown> | undefined;
+            if (deliveryRow === undefined)
+              throw new DomainError({
+                code: "CONFLICT",
+                message: "The persisted submission is missing its delivery acknowledgement.",
+              });
+            const delivery = applicationRecord<ManagedApplicationDeliveryRecord>(deliveryRow);
+            if (
+              delivery.status !== "acknowledged" ||
+              delivery.providerReferenceId !== receipt.submission.providerReferenceId
+            )
+              throw new DomainError({
+                code: "CONFLICT",
+                message: "The persisted delivery acknowledgement does not match its receipt.",
               });
             const draftRow = database
               .prepare("SELECT * FROM application_drafts WHERE id=? AND owner_id=?")
@@ -2109,7 +2155,7 @@ function createRepositories(
                 code: "CONFLICT",
                 message: "Application draft is unavailable for owner.",
               });
-            return { draft: applicationFromRow(draftRow), receipt, inserted: false };
+            return { draft: applicationFromRow(draftRow), receipt, delivery, inserted: false };
           }
           const draftRow = database
             .prepare(
@@ -2122,6 +2168,7 @@ function createRepositories(
               code: "CONFLICT",
               message: "A current reviewed draft is required.",
             });
+          assertRoleOpen();
           if (input.decisionChannel === "first_party_ui") {
             const delegations = database
               .prepare(
@@ -2209,17 +2256,97 @@ function createRepositories(
               code: "CONFLICT",
               message: "Data grant must bind the immutable review payload.",
             });
+          const demoJob = database
+            .prepare(
+              `SELECT job.organization_id AS recipientId, job.organization_name AS recipientName
+               FROM application_drafts AS draft
+               JOIN jobs AS job ON job.id = draft.job_id
+               WHERE draft.id=? AND draft.owner_id=?
+                 AND job.apply_mode='internal' AND job.source_key='jobbbler_demo'
+                 AND job.source_url IS NULL`,
+            )
+            .get(input.draftId, input.ownerId) as
+            { readonly recipientId: string; readonly recipientName: string } | undefined;
+          if (
+            demoJob === undefined ||
+            demoJob.recipientId !== input.delivery.recipientId ||
+            demoJob.recipientName !== input.delivery.recipientName
+          )
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "Managed submission delivery is limited to a first-party demo recipient.",
+            });
           if (
             input.receipt.ownerId !== input.ownerId ||
             input.receipt.draftId !== input.draftId ||
             input.receipt.reviewId !== input.reviewId ||
             input.receipt.confirmationId !== input.confirmationId ||
             input.receipt.status !== "submitted" ||
-            input.receipt.externalUrl !== null
+            input.receipt.externalUrl !== null ||
+            input.receipt.createdAt !== input.now
           )
             throw new DomainError({
               code: "VALIDATION",
               message: "Submission receipt must bind a safe exact submission.",
+            });
+          const submission = input.receipt.submission;
+          if (
+            input.delivery.ownerId !== input.ownerId ||
+            input.delivery.draftId !== input.draftId ||
+            input.delivery.reviewId !== input.reviewId ||
+            input.delivery.confirmationId !== input.confirmationId ||
+            input.delivery.idempotencyKey !== input.receipt.idempotencyKey ||
+            input.delivery.provider !== "jobbbler_demo" ||
+            input.delivery.providerReferenceId.trim().length === 0 ||
+            input.delivery.recipientId !== input.grant.recipientId ||
+            input.delivery.recipientName.trim().length === 0 ||
+            input.delivery.payloadHash !== input.reviewPayloadHash ||
+            input.delivery.status !== "acknowledged" ||
+            input.delivery.acknowledgedAt !== input.now ||
+            input.delivery.createdAt !== input.now ||
+            input.delivery.fields.length === 0 ||
+            !isDeepStrictEqual(
+              input.delivery.fields.map(({ fieldKey }) => fieldKey),
+              input.grant.fieldKeys,
+            ) ||
+            submission.managedDeliveryId !== input.delivery.id ||
+            submission.provider !== input.delivery.provider ||
+            submission.providerReferenceId !== input.delivery.providerReferenceId ||
+            submission.recipientId !== input.delivery.recipientId ||
+            submission.recipientName !== input.delivery.recipientName ||
+            submission.submittedAt !== input.delivery.acknowledgedAt ||
+            !isDeepStrictEqual(submission.fields, input.delivery.fields)
+          )
+            throw new DomainError({
+              code: "VALIDATION",
+              message: "Managed delivery must acknowledge the exact immutable submission.",
+            });
+          database
+            .prepare(
+              `INSERT INTO managed_application_deliveries(
+                 id,owner_id,draft_id,review_id,confirmation_id,idempotency_key,provider,
+                 provider_reference_id,recipient_id,recipient_name,payload_hash,fields_json,
+                 status,acknowledged_at,created_at
+               ) VALUES(
+                 @id,@ownerId,@draftId,@reviewId,@confirmationId,@idempotencyKey,@provider,
+                 @providerReferenceId,@recipientId,@recipientName,@payloadHash,@fieldsJson,
+                 @status,@acknowledgedAt,@createdAt
+               )`,
+            )
+            .run({ ...input.delivery, fieldsJson: json(input.delivery.fields) });
+          const acknowledgedRow = database
+            .prepare("SELECT * FROM managed_application_deliveries WHERE id=? AND owner_id=?")
+            .get(input.delivery.id, input.ownerId) as Record<string, unknown> | undefined;
+          if (acknowledgedRow === undefined)
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "Managed delivery was not acknowledged.",
+            });
+          const delivery = applicationRecord<ManagedApplicationDeliveryRecord>(acknowledgedRow);
+          if (delivery.status !== "acknowledged")
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "Managed delivery was not acknowledged.",
             });
           const consumed = database
             .prepare(
@@ -2249,13 +2376,21 @@ function createRepositories(
             });
           database
             .prepare(
-              "INSERT INTO application_submission_receipts(id,owner_id,draft_id,review_id,confirmation_id,idempotency_key,status,external_url,created_at) VALUES(@id,@ownerId,@draftId,@reviewId,@confirmationId,@idempotencyKey,@status,@externalUrl,@createdAt)",
+              "INSERT INTO application_submission_receipts(id,owner_id,draft_id,review_id,confirmation_id,idempotency_key,status,external_url,created_at,submission_json) VALUES(@id,@ownerId,@draftId,@reviewId,@confirmationId,@idempotencyKey,@status,@externalUrl,@createdAt,@submissionJson)",
             )
-            .run(input.receipt);
+            .run({ ...input.receipt, submissionJson: json(input.receipt.submission) });
           const updatedRow = database
             .prepare("SELECT * FROM application_drafts WHERE id=? AND owner_id=?")
             .get(input.draftId, input.ownerId) as ApplicationRow;
-          return { draft: applicationFromRow(updatedRow), receipt: input.receipt, inserted: true };
+          const receiptRow = database
+            .prepare("SELECT * FROM application_submission_receipts WHERE id=? AND owner_id=?")
+            .get(input.receipt.id, input.ownerId) as Record<string, unknown>;
+          return {
+            draft: applicationFromRow(updatedRow),
+            receipt: applicationRecord<ApplicationReceiptRecord>(receiptRow),
+            delivery,
+            inserted: true,
+          };
         });
         return submit.immediate();
       },
@@ -3040,6 +3175,10 @@ function createRepositories(
           });
         }
         return { sequence, ownerId: record.ownerId, event };
+      },
+      async clear(ownerId) {
+        return database.prepare("DELETE FROM owner_activity_events WHERE owner_id = ?").run(ownerId)
+          .changes;
       },
       async listWindow(input) {
         if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 100) {

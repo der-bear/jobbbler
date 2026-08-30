@@ -2,7 +2,7 @@
 
 The fixtures under `evals/webmcp/` test whether an external model selects the
 right Jobbbler tool, supplies valid arguments, preserves order, and stops for
-the person's decision. Every fixture exposes the same 26-tool list that the
+the person's decision. Every fixture exposes the same 28-tool list that the
 production page registers on every route. Route and workflow state live in the
 case context; they do not artificially hide competing tools from the model.
 
@@ -35,17 +35,17 @@ decision points.
 
 ## Coverage
 
-| Fixture            | Main outcomes tested                                                                                                                    |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `search.json`      | Exact and paraphrased search, active state, opening a role, monitoring plan, vague intent, premature comparison, invalid salary range   |
-| `detail.json`      | Source-backed role facts, application capability and mode-aware planning, explicit comparison, missing target, invalid ID               |
-| `compare.json`     | Current comparison, ordinal removal, addition, ambiguous ranking, unselected role                                                       |
-| `saved.json`       | Agent-native alert request and decision, missing or stale review refusal, alert reading, pause, reopen, latest delta, recovery planning |
-| `application.json` | Readiness, request-bound assistance approval and withdrawal, atomic answer batch, final review, and isolated submission decisions       |
+| Fixture            | Main outcomes tested                                                                                                                   |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `search.json`      | Exact and paraphrased search, active state, opening a role, monitoring plan, vague intent, premature comparison, invalid salary range  |
+| `detail.json`      | Source-backed role facts, direct managed-application preparation and planning, explicit comparison, missing target, invalid ID         |
+| `compare.json`     | Current comparison, ordinal removal, addition, ambiguous ranking, unselected role                                                      |
+| `saved.json`       | Alert request/decision, stale-review refusal, monitoring controls, optional recovery setup, and two-step workspace recovery            |
+| `application.json` | Private application listing, readiness, request-bound assistance approval, atomic answer batch, final review, and submission decisions |
 
 ## Evaluation method
 
-1. Load the complete 26 manifests and the case's route/state context.
+1. Load the complete 28 manifests and the case's route/state context.
 2. Run direct, paraphrased, ambiguous, wrong-order, and invalid-input prompts.
 3. Score tool selection, argument accuracy, safe sequencing, and refusal to
    invent a human decision.
@@ -54,76 +54,29 @@ decision points.
 5. Deterministic tests still own tool logic, atomicity, output size, and UI
    synchronization; probabilistic evals own model routing quality.
 
-## Current pre-release model pass — 30 August 2026
+## Current deterministic release inventory — 30 August 2026
 
-- Luna at low effort: 50/50 independent decisions against the current global
-  26-tool surface. The set contains 25 direct, 7 paraphrased, 5 ambiguous, 8
-  wrong-order, and 5 invalid-input cases. Every tool is the actual expected
-  outcome of at least one case; inventory lists alone do not count as coverage.
-  All 50 final responses selected the expected action kind and tool. Forty-five
-  also matched the canonical argument example byte for byte. The other five
-  were reviewed schema-valid equivalents: documented defaults, a structured
-  software-engineering category, the person's `UK` wording, or an explicit
-  `detail=summary` on the same read.
-- Terra at medium effort: 10/10 end-to-end workflows. These covered broad-search
-  clarification, comparison, managed application assistance, exact pending
-  submission review, external-employer stop, alert request plus mailbox
-  approval, decline, missing/wrong-code recovery, alert pause/resume/latest
-  update, and arbitrary-page recovery.
-- Both models kept consent and submission decisions with the person, used only
-  server-returned IDs and tokens, never invented a mailbox code, and did not
-  claim that an external employer received an application.
+The checked-in set contains 50 uniquely identified cases against the current
+28-tool surface: 28 direct, 7 paraphrased, 5 ambiguous, 5 wrong-order, and 5
+invalid-input prompts. Every public tool is the expected outcome of at least one
+case; inventory lists alone do not count as coverage. The public application
+cases now use one direct Jobbbler-managed path: `prepare_application` creates or
+reopens the private application, and the separate assistance and submission
+tools preserve the person's decisions. The fixtures also cover optional
+`enable_workspace_recovery`, a bounded private `get_applications` page, and both
+phases of `recover_jobbbler_workspace` without requiring the person to visit a
+form.
 
-The eval changed the product before the final rerun. One early Luna response
-copied salary, category, and exclusion filters that the alert request did not
-contain, so `request_search_alert` now explicitly accepts only criteria from the
-current request or `get_search_state(detail=exact)`. A planning fixture also
-sounded like permission to inspect the role immediately; its plan-only intent
-is now explicit. The final full Luna rerun passed both cases. Terra exercised
-the typed `invalid_code` recovery path without interpreting free-form error text
-or weakening the approval boundary.
-
-These are isolated model-judgment runs, not production telemetry. The checked-in
-deterministic suites separately verify schemas, execution, cancellation,
-bounded output, UI synchronization, storage atomicity, and builds.
-
-## Current handler-execution pass — 30 August 2026
-
-The release candidate was also exercised through the real WebMCP manifests and
-production handlers, separately from the judgment fixtures above:
-
-| Runner and effort | Executed checks | Result  | Main coverage                                                                                                                                                                                             |
-| ----------------- | --------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Luna, low         | 50              | 50 pass | Discovery and planning; search, filters, state, details, navigation, comparison, alerts, applications, strict-schema failures, cancellation, and cross-route inventory                                    |
-| Terra, medium     | 10              | 10 pass | Pagination, comparison recovery, cancellation propagation, assistance consent, answer preparation, exact submission review, withdrawal, alert activation, conflict recovery, and a browser route sequence |
-
-The Luna pass combined 48 direct manifest probes with two targeted production
-handler tests: direct consent withdrawal without private-page navigation, and
-stale authorization rejection before activation. The Terra browser scenario
-kept the same sorted 26-tool inventory across How it works, search results, and
-a role page while executing
-`plan_job_workflow → search_jobs → request_search_alert → decide_search_alert`
-(declined) `→ open_job_details`. No scenario received a fabricated owner ID,
-request ID, mailbox code, or approval.
-
-The same revision passed `pnpm verify` (127 test files and 721 tests; the
-zero-service run intentionally skipped 5 files and 83 environment-gated cases),
-the production build, and all 14 Chromium E2E checks. The E2E suite includes
-ordinary search, hydration, URL-backed filters, role provenance, theme
-persistence, WebMCP fallback, mobile layout, reduced motion, and the live agent
-journey. These are pre-release checks against controlled fixtures, not claims
-about production traffic or model behavior outside the tested prompts.
-
-### Earlier tuning pass
-
-An earlier 24-tool Luna pass initially scored 48/50 because two attempts tried
-to compare before two exact role IDs existed. Tightening the `compare_jobs`
-contract produced 50/50 on re-run. Those historical numbers are retained only
-as evidence that the descriptions were iterated; they are not substituted for
-the current 26-tool results above.
+Earlier model-tuning and handler-execution runs informed the descriptions,
+schemas, output bounds, and comparison sequencing, but they exercised prior
+tool inventories. They are not presented as results for this 28-tool release
+surface. Any published model score must come from a fresh run of these exact
+fixtures. Deterministic suites separately verify schemas, execution,
+cancellation, bounded output, UI synchronization, storage atomicity, and builds.
 
 The judge demo should show one natural-language search, one comparison, one
 saved-search delta, and the application sequence from assistance request through
 the exact final submission review. It ends with that decision pending; the judge
 does not approve or decline it. No fixture, model, or agent may self-approve
-consent or claim an external employer received an application.
+consent or claim an application was submitted without the exact approved
+request.

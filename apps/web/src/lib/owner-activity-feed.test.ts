@@ -57,6 +57,7 @@ describe("owner activity feed", () => {
       activities: { mergeCommitted },
       fetchPage,
       isVisible: () => true,
+      hasOwnerSession: () => true,
     });
 
     await vi.advanceTimersByTimeAsync(0);
@@ -76,6 +77,7 @@ describe("owner activity feed", () => {
       activities: { mergeCommitted: vi.fn() },
       fetchPage,
       isVisible: () => true,
+      hasOwnerSession: () => true,
       random: () => randomSamples.shift() ?? 1,
       subscribeWakeups: async () => () => undefined,
     });
@@ -105,6 +107,7 @@ describe("owner activity feed", () => {
       activities: { mergeCommitted: vi.fn() },
       fetchPage,
       isVisible: () => true,
+      hasOwnerSession: () => true,
       random: () => 0.5,
     });
 
@@ -121,6 +124,7 @@ describe("owner activity feed", () => {
       activities: { mergeCommitted: vi.fn() },
       fetchPage,
       isVisible: () => true,
+      hasOwnerSession: () => true,
       random: () => 0.5,
       subscribeWakeups: () => new Promise(() => undefined),
     });
@@ -139,6 +143,7 @@ describe("owner activity feed", () => {
       activities: { mergeCommitted: vi.fn() },
       fetchPage,
       isVisible: () => true,
+      hasOwnerSession: () => true,
       random: () => 0.5,
       subscribeWakeups: () =>
         new Promise((resolve) => {
@@ -160,6 +165,7 @@ describe("owner activity feed", () => {
       activities: { mergeCommitted: vi.fn() },
       fetchPage,
       isVisible: () => true,
+      hasOwnerSession: () => true,
       random: () => 0.5,
       subscribeWakeups: async () => {
         throw new Error("Realtime unavailable.");
@@ -179,6 +185,7 @@ describe("owner activity feed", () => {
       activities: { mergeCommitted: vi.fn() },
       fetchPage,
       isVisible: () => true,
+      hasOwnerSession: () => true,
       random: () => 0.5,
       subscribeWakeups: async () => null,
     });
@@ -202,6 +209,7 @@ describe("owner activity feed", () => {
       activities: { mergeCommitted: vi.fn() },
       fetchPage,
       isVisible: () => true,
+      hasOwnerSession: () => true,
       random: () => 0.5,
       subscribeWakeups: (wake) => {
         wakeup = wake;
@@ -229,6 +237,7 @@ describe("owner activity feed", () => {
       activities: { mergeCommitted: vi.fn() },
       fetchPage: lowerFetch,
       isVisible: () => true,
+      hasOwnerSession: () => true,
       random: () => 0,
       subscribeWakeups: async () => () => undefined,
     });
@@ -236,6 +245,7 @@ describe("owner activity feed", () => {
       activities: { mergeCommitted: vi.fn() },
       fetchPage: upperFetch,
       isVisible: () => true,
+      hasOwnerSession: () => true,
       random: () => 1,
       subscribeWakeups: async () => () => undefined,
     });
@@ -257,6 +267,7 @@ describe("owner activity feed", () => {
       activities: { mergeCommitted: vi.fn() },
       fetchPage: lowerFetch,
       isVisible: () => true,
+      hasOwnerSession: () => true,
       random: () => 0,
       subscribeWakeups: async () => () => undefined,
     });
@@ -264,6 +275,7 @@ describe("owner activity feed", () => {
       activities: { mergeCommitted: vi.fn() },
       fetchPage: upperFetch,
       isVisible: () => true,
+      hasOwnerSession: () => true,
       random: () => 1,
       subscribeWakeups: async () => () => undefined,
     });
@@ -300,6 +312,7 @@ describe("owner activity feed", () => {
       activities: { mergeCommitted: vi.fn() },
       fetchPage,
       isVisible: () => true,
+      hasOwnerSession: () => true,
     });
 
     await vi.advanceTimersByTimeAsync(0);
@@ -327,6 +340,7 @@ describe("owner activity feed", () => {
       activities: { mergeCommitted: vi.fn() },
       fetchPage,
       isVisible: () => true,
+      hasOwnerSession: () => true,
       subscribeWakeups: (wake) => {
         wakeup = wake;
         return Promise.resolve(removeWakeup);
@@ -361,6 +375,7 @@ describe("owner activity feed", () => {
       activities: { mergeCommitted: vi.fn() },
       fetchPage,
       isVisible: () => true,
+      hasOwnerSession: () => true,
       random: () => 0.5,
       subscribeWakeups: async (wake) => {
         wakeup = wake;
@@ -377,6 +392,63 @@ describe("owner activity feed", () => {
     expect(fetchPage).toHaveBeenCalledTimes(2);
     await vi.advanceTimersByTimeAsync(1);
     expect(fetchPage).toHaveBeenCalledTimes(3);
+    feed.stop();
+  });
+});
+
+describe("owner activity feed session gating", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("stays silent until this browser has a private workspace", async () => {
+    const fetchPage = vi.fn().mockResolvedValue(page({ events: [], nextCursor: null }));
+    let started: (() => void) | undefined;
+    const feed = startOwnerActivityFeed({
+      activities: { mergeCommitted: vi.fn() },
+      fetchPage,
+      isVisible: () => true,
+      hasOwnerSession: () => false,
+      subscribeOwnerSession: (listener) => {
+        started = listener;
+        return () => undefined;
+      },
+    });
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(fetchPage).not.toHaveBeenCalled();
+
+    started?.();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+    feed.stop();
+  });
+
+  it("suspends after an unauthorized activity response until a new session starts", async () => {
+    const fetchPage = vi
+      .fn()
+      .mockRejectedValue(
+        new ApiClientError({ code: "UNAUTHORIZED", message: "Session expired.", retryable: false }),
+      );
+    let started: (() => void) | undefined;
+    const feed = startOwnerActivityFeed({
+      activities: { mergeCommitted: vi.fn() },
+      fetchPage,
+      isVisible: () => true,
+      hasOwnerSession: () => true,
+      subscribeOwnerSession: (listener) => {
+        started = listener;
+        return () => undefined;
+      },
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+
+    started?.();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchPage).toHaveBeenCalledTimes(2);
     feed.stop();
   });
 });

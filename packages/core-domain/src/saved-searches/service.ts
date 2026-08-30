@@ -116,12 +116,13 @@ async function requireVerifiedEndpoint(
   ports: SavedSearchServicePorts,
   ownerId: string,
   endpointId: string,
+  message = "Choose a verified delivery destination.",
 ): Promise<VerificationEndpointRecord> {
   const endpoint = await ports.endpoints.getVerificationEndpoint(ownerId, endpointId);
   if (endpoint === null || endpoint.status !== "verified") {
     throw new DomainError({
       code: "FORBIDDEN",
-      message: "Choose a verified delivery destination.",
+      message,
     });
   }
   return endpoint;
@@ -263,6 +264,14 @@ export function createSavedSearchService(ports: SavedSearchServicePorts) {
         scheduleId,
         input.expectedVersion,
       );
+      if (input.enabled) {
+        await requireVerifiedEndpoint(
+          ports,
+          ownerId,
+          schedule.delivery.endpointId,
+          "This alert's delivery destination is no longer verified. Delete it and create a replacement alert with a verified address.",
+        );
+      }
       const next: JobAlertSchedule = {
         ...schedule,
         enabled: input.enabled,

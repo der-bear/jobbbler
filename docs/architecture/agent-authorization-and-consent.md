@@ -1,6 +1,6 @@
 # Agent Authorization and Data Consent
 
-**Status:** Implemented and covered by domain, route, storage, and browser journey tests.
+**Status:** Release behavior is implemented and covered by domain, route, storage, and browser journey tests. Future upgrade points are labeled explicitly.
 
 ## Decision
 
@@ -23,18 +23,22 @@ Authentication, authorization, and consent are deliberately not represented by o
 
 1. Public search and comparison require no identity.
 2. The first private action creates an ephemeral owner plus an opaque HttpOnly session. The same contract runs on SQLite locally and PostgreSQL in production; it does not depend on a third-party login provider.
-3. The session may own an ephemeral application draft. Losing the only session for an unverified owner ends recoverability; the UI states this plainly.
-4. Saving private work across devices, uploading documents, or submitting an application requires a verified channel. Email OTP upgrades the same owner instead of creating a second profile.
-5. Passkeys are an optional phishing-resistant account upgrade and step-up mechanism. A passkey never replaces action-specific review and confirmation.
-6. Anonymous-to-verified merge is transactional, idempotent, conflict-aware, audited, and revokes outstanding guest-management capabilities.
+3. The session may own an application and saved searches. Losing the only session for an unverified owner ends recoverability; it does not invalidate work while that session remains available.
+4. A verified email is optional durability, not an application-submission wall. Email OTP upgrades the same owner for passwordless recovery; a separately reviewed email alert also requires a verified destination. Searching, preparing, and submitting a Jobbbler-managed application do not require email verification.
+5. Email verification upgrades the same owner transactionally and revokes prior sessions during recovery. The release does not merge two owners or issue a separate guest-management bearer link.
+6. **Future option, not implemented:** passkeys may provide a phishing-resistant account upgrade or step-up mechanism. They would not replace action-specific review and confirmation.
 
-A verified owner can recover access from `/saved` without a password. Recovery start always returns the same accepted envelope whether or not an address exists. A separate short-lived, single-use recovery challenge is delivered only to a matching verified encrypted endpoint; only its keyed hash is stored. Successful consumption and rotation to one new opaque HttpOnly session happen atomically, with every prior session revoked. Recovery identifiers, codes, email addresses, and session tokens are never exposed through WebMCP or owner activity.
+A current owner may optionally enable recovery either from `/saved` or entirely through the external agent client. `enable_workspace_recovery` uses the existing owner-bound email start/complete endpoints and returns only the challenge ID, expiry, and next step; it drops the email, endpoint, masked destination, local development code, owner, and verification record. This setup is not consent, application approval, or an alert subscription.
+
+A verified owner can later recover access without a password either from `/saved` or entirely through the external agent client. `recover_jobbbler_workspace` uses a strict two-step input: start with the verified email explicitly supplied by the person, then complete with the exact opaque recovery ID and six-digit code. Recovery start returns the same accepted response shape and status whether or not an address exists, with a minimum response-time floor. This is application-level enumeration resistance, not a claim of cryptographically constant-time mail-provider delivery. A separate short-lived, single-use recovery challenge is delivered only to a matching verified encrypted endpoint; only its keyed hash is stored. Successful consumption and rotation to one new opaque HttpOnly session happen atomically, with every prior session revoked. The start result returns only the temporary recovery ID and expiry; neither phase echoes the email or code or returns owner identity, private data, or a session credential. `get_applications` and `get_saved_alerts` can then rediscover owner-scoped work; the application index excludes answers and candidate fields. Owner activity also omits private recovery values.
 
 Search-alert delivery reuses a verified email endpoint only when its protected
 address hash belongs to the same owner. The mailbox code proves control of a
 new destination; it is not the person's alert decision or data consent. Every
-new or materially changed alert still receives a separate immutable review and
-an explicit request-bound decision in the external agent client. A code is
+new alert still receives a separate immutable review and an explicit
+request-bound decision in the external agent client. The release does not
+silently edit an active alert: changing criteria, recurrence, or destination
+means pausing or deleting the old alert and approving a replacement. A code is
 requested only when that review names a new destination. Reuse is rejected if
 the endpoint was revoked or ceased to be verified before activation, and an
 ambiguous retry restores the originally persisted verification mode rather
@@ -165,11 +169,11 @@ An internal submission is allowed only when all statements are true in one trans
 - no withdrawal, assistance request, or material edit won the race before the
   adapter claim.
 
-Submission token consumption, state transition, audit record, outbox event, and idempotency response commit atomically for internal demo applications. External jobs open only an available validated HTTPS employer page; if none is available, the workflow stops. Jobbbler creates no draft, prepares or discloses no application data, records no receipt, and makes no submitted claim. Historical `handed_off` records are read-only legacy compatibility and cannot be created by current server or storage writers.
+Submission token consumption, state transition, audit record, outbox event, and idempotency response commit atomically for Jobbbler-managed demo applications. Every role in the current demo catalog uses that path. The command still rejects any unsupported future application mode before creating an application, preparing data, or recording a receipt. Historical `handed_off` records are read-only legacy compatibility and cannot be created by current server or storage writers.
 
 ## Token classes
 
-Verification challenge, owner session, guest-management capability, agent delegation reference, and application confirmation are separate classes with explicit audience, scope, storage, TTL, replay, revocation, and logging rules. Raw values are random, stored hashed when lookup permits, never placed in analytics, and immediately exchanged out of URLs where a one-time link is unavoidable.
+Verification challenge, owner session, recovery challenge, agent delegation reference, and application confirmation are separate classes with explicit audience, scope, storage, TTL, replay, revocation, and logging rules. Raw values are random, stored hashed when lookup permits, and never placed in analytics. The release does not expose reusable management credentials through URLs or WebMCP results.
 
 OAuth security guidance recommends sender-constrained and audience-restricted access tokens to limit stolen-token misuse: [OAuth 2.0 Security Best Current Practice](https://www.rfc-editor.org/rfc/rfc9700.html#section-4.10). DPoP is an application-layer proof-of-possession mechanism suitable for compatible public clients: [RFC 9449](https://www.rfc-editor.org/rfc/rfc9449.html). Those standards inform external-agent support; they are not retrofitted into WebMCP without client support.
 

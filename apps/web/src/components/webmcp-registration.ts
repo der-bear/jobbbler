@@ -6,7 +6,10 @@ export const stableWebMcpCoreNames = [
   "search_jobs",
   "open_job_details",
   "prepare_application",
+  "get_applications",
   "open_jobbbler_page",
+  "enable_workspace_recovery",
+  "recover_jobbbler_workspace",
 ] as const;
 
 export function mergeToolManifests(

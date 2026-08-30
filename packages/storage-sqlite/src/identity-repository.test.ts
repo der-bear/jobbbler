@@ -650,10 +650,10 @@ describe("SQLite identity persistence", () => {
         null,
         "[]",
         "[]",
-        "fixture",
-        "Fixture",
+        "jobbbler_demo",
+        "Jobbbler demo",
         null,
-        "external",
+        "internal",
         "open",
         now,
         now,
@@ -687,15 +687,62 @@ describe("SQLite identity persistence", () => {
         "review_private",
         "payload",
         "hash",
-        "consumed",
+        "active",
         later,
+        now,
+        null,
+      );
+    const submittedFields = JSON.stringify([
+      {
+        fieldKey: "full_name",
+        label: "Full name",
+        value: "Private candidate",
+        sensitive: true,
+      },
+    ]);
+    const submittedSnapshot = JSON.stringify({
+      managedDeliveryId: "managed_delivery_private",
+      provider: "jobbbler_demo",
+      providerReferenceId: "demo_submission_private",
+      recipientId: "org_public",
+      recipientName: "Public Org",
+      submittedAt: now,
+      fields: JSON.parse(submittedFields),
+    });
+    sql
+      .prepare(
+        `INSERT INTO managed_application_deliveries(
+          id,owner_id,draft_id,review_id,confirmation_id,idempotency_key,provider,
+          provider_reference_id,recipient_id,recipient_name,payload_hash,fields_json,status,
+          acknowledged_at,created_at
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      )
+      .run(
+        "managed_delivery_private",
+        owner.id,
+        "draft_private",
+        "review_private",
+        "confirmation_private",
+        "idempotency",
+        "jobbbler_demo",
+        "demo_submission_private",
+        "org_public",
+        "Public Org",
+        "payload",
+        submittedFields,
+        "acknowledged",
         now,
         now,
       );
     sql
       .prepare(
+        "UPDATE application_confirmation_records SET status='consumed', consumed_at=? WHERE id=?",
+      )
+      .run(now, "confirmation_private");
+    sql
+      .prepare(
         `INSERT INTO application_submission_receipts(id,owner_id,draft_id,review_id,confirmation_id,
-       idempotency_key,status,external_url,created_at) VALUES(?,?,?,?,?,?,?,?,?)`,
+       idempotency_key,status,external_url,created_at,submission_json) VALUES(?,?,?,?,?,?,?,?,?,?)`,
       )
       .run(
         "receipt_private",
@@ -707,6 +754,7 @@ describe("SQLite identity persistence", () => {
         "submitted",
         null,
         now,
+        submittedSnapshot,
       );
     sql
       .prepare(
@@ -740,6 +788,7 @@ describe("SQLite identity persistence", () => {
       "saved_searches",
       "application_drafts",
       "application_submission_receipts",
+      "managed_application_deliveries",
     ]) {
       expect(sql.prepare(`SELECT count(*) AS count FROM ${table}`).get()).toEqual({ count: 0 });
     }

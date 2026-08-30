@@ -13,6 +13,7 @@ const items: readonly ApplicationListItem[] = [
       id: "job_550e8400-e29b-41d4-a716-446655440000",
       title: "Senior Product Engineer",
       organizationName: "Northstar Labs",
+      status: "open",
     },
   },
 ];
@@ -36,5 +37,43 @@ describe("loadInitialApplications", () => {
     });
 
     expect(result).toEqual(items);
+  });
+
+  it("returns no initial list when the browser has no private workspace session", async () => {
+    const result = await loadInitialApplications({
+      request: new Request("https://jobbbler.example/applications"),
+      dependencies: {
+        identity: {
+          now: () => "2026-08-30T10:00:00.000Z",
+          environment: {},
+          identity: { resolveSession: vi.fn().mockResolvedValue(null) },
+        },
+        operations: { list: vi.fn() },
+      } as never,
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it("surfaces application dependency failures instead of rendering a false empty list", async () => {
+    const failure = new Error("Application storage is unavailable");
+
+    await expect(
+      loadInitialApplications({
+        request: new Request("https://jobbbler.example/applications"),
+        dependencies: {
+          identity: {
+            now: () => "2026-08-30T10:00:00.000Z",
+            environment: {},
+            identity: {
+              resolveSession: vi
+                .fn()
+                .mockResolvedValue({ owner: { id: "owner_550e8400-e29b-41d4-a716-446655440000" } }),
+            },
+          },
+          operations: { list: vi.fn().mockRejectedValue(failure) },
+        } as never,
+      }),
+    ).rejects.toBe(failure);
   });
 });

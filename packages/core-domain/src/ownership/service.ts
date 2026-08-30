@@ -96,7 +96,6 @@ export function ownerSummary(owner: OwnerIdentityRecord): OwnerSummary {
     id: owner.id,
     kind: owner.kind,
     verified: owner.verified,
-    recoverable: owner.verified && (owner.kind === "guest" || owner.kind === "user"),
   };
 }
 

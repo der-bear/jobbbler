@@ -1,7 +1,13 @@
+/*
+ * The rail plus the result column form one composition, so the pair is
+ * centred in the viewport. Left-aligning them left a wide dead margin on the
+ * right of large screens while the content sat off-centre.
+ */
 .workspace {
   display: grid;
-  grid-template-columns: minmax(250px, 290px) minmax(0, 1fr);
+  grid-template-columns: minmax(250px, 290px) minmax(0, 940px);
   grid-template-rows: auto 1fr;
+  justify-content: center;
   min-block-size: calc(100dvh - 69px);
 }
 
@@ -327,6 +333,10 @@
   padding: clamp(26px, 3vw, 40px) clamp(24px, 4vw, 64px) 56px;
 }
 
+/*
+ * The result list keeps a tighter measure than the landing grid so a role title
+ * and its salary stay visually related instead of sitting at opposite edges.
+ */
 .workspace[data-landing="true"] .results {
   grid-column: 1 / -1;
   grid-row: 2;
@@ -599,6 +609,9 @@
 }
 
 .landingFooter a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
   color: var(--color-signal-strong);
   font-size: 12px;
   font-weight: 650;

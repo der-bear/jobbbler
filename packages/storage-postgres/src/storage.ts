@@ -25,6 +25,7 @@ import type {
   ApplicationConfirmationRecord,
   ApplicationReceiptRecord,
   ApplicationReviewRecord,
+  ManagedApplicationDeliveryRecord,
   AuditEventRecord,
   ClaimWorkItemsInput,
   DataGrantRecord,
@@ -2130,6 +2131,14 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
             )[0] ?? null
         );
       },
+      async getManagedDelivery(id, ownerId) {
+        const record = await get<ManagedApplicationDeliveryRecord>(
+          sql,
+          "managed_application_delivery",
+          id,
+        );
+        return record?.ownerId === ownerId ? record : null;
+      },
       async applyMaterialEdit(input: MaterialApplicationEditInput) {
         if (
           input.draft.ownerId !== input.ownerId ||
@@ -2278,33 +2287,59 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
       ): Promise<CompleteApplicationSubmissionResult> {
         return sql.begin(async (transaction) => {
           const tx = transaction as PostgresExecutor;
-          const existing = (
-            await list<ApplicationReceiptRecord>(tx, "application_receipt", input.ownerId)
-          ).find(
-            (item) =>
-              item.draftId === input.draftId &&
-              item.idempotencyKey === input.receipt.idempotencyKey,
-          );
-          if (existing !== undefined) {
+          const findExisting = async () =>
+            (await list<ApplicationReceiptRecord>(tx, "application_receipt", input.ownerId)).find(
+              (item) =>
+                item.draftId === input.draftId &&
+                item.idempotencyKey === input.receipt.idempotencyKey,
+            );
+          const resolveExisting = async (
+            existing: ApplicationReceiptRecord,
+            draft: ApplicationDraft,
+          ): Promise<CompleteApplicationSubmissionResult> => {
             if (
               existing.reviewId !== input.reviewId ||
               existing.confirmationId !== input.confirmationId ||
-              existing.status !== input.receipt.status ||
-              existing.externalUrl !== input.receipt.externalUrl
+              existing.status !== "submitted" ||
+              existing.externalUrl !== null ||
+              existing.submission == null ||
+              input.receipt.status !== "submitted"
             )
               throw domain("CONFLICT", "Idempotency key is bound to another submission.");
+            const delivery = await getForUpdate<ManagedApplicationDeliveryRecord>(
+              tx,
+              "managed_application_delivery",
+              existing.submission.managedDeliveryId,
+            );
+            if (
+              delivery?.ownerId !== input.ownerId ||
+              delivery.status !== "acknowledged" ||
+              delivery.providerReferenceId !== existing.submission.providerReferenceId
+            )
+              throw domain(
+                "CONFLICT",
+                "The persisted submission is missing its delivery acknowledgement.",
+              );
+            return { draft, receipt: existing, delivery, inserted: false };
+          };
+          let existing = await findExisting();
+          if (existing !== undefined) {
             const draft = await getForUpdate<ApplicationDraft>(tx, "application", input.draftId);
             if (draft?.ownerId !== input.ownerId)
               throw domain("CONFLICT", "Application draft is unavailable for owner.");
-            return { draft, receipt: existing, inserted: false };
+            return resolveExisting(existing, draft);
           }
           const draft = await getForUpdate<ApplicationDraft>(tx, "application", input.draftId);
-          if (
-            draft?.ownerId !== input.ownerId ||
-            draft.version !== input.expectedDraftVersion ||
-            draft.state !== "reviewed"
-          )
+          if (draft?.ownerId !== input.ownerId)
+            throw domain("CONFLICT", "Application draft is unavailable for owner.");
+          existing = await findExisting();
+          if (existing !== undefined) {
+            return resolveExisting(existing, draft);
+          }
+          if (draft.version !== input.expectedDraftVersion || draft.state !== "reviewed")
             throw domain("CONFLICT", "A current reviewed draft is required.");
+          const job = await getForUpdate<Job>(tx, "job", draft.jobId);
+          if (job?.status !== "open") throw domain("CONFLICT", "Role closed — nothing submitted.");
           if (input.decisionChannel === "first_party_ui") {
             const delegations = await listByOwnerDraft<AgentDelegationRecord>(
               tx,
@@ -2371,14 +2406,74 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
           )
             throw domain("CONFLICT", "An exact active data grant is required.");
           if (
+            job.applyMode !== "internal" ||
+            job.source.key !== "jobbbler_demo" ||
+            job.source.url !== null ||
+            job.organizationId !== input.delivery.recipientId ||
+            job.organizationName !== input.delivery.recipientName
+          )
+            throw domain(
+              "CONFLICT",
+              "Managed submission delivery is limited to a first-party demo recipient.",
+            );
+          if (
             input.receipt.ownerId !== input.ownerId ||
             input.receipt.draftId !== input.draftId ||
             input.receipt.reviewId !== input.reviewId ||
             input.receipt.confirmationId !== input.confirmationId ||
             input.receipt.status !== "submitted" ||
-            input.receipt.externalUrl !== null
+            input.receipt.externalUrl !== null ||
+            input.receipt.createdAt !== input.now
           )
             throw domain("VALIDATION", "Submission receipt must bind a safe exact submission.");
+          const submission = input.receipt.submission;
+          if (
+            input.delivery.ownerId !== input.ownerId ||
+            input.delivery.draftId !== input.draftId ||
+            input.delivery.reviewId !== input.reviewId ||
+            input.delivery.confirmationId !== input.confirmationId ||
+            input.delivery.idempotencyKey !== input.receipt.idempotencyKey ||
+            input.delivery.provider !== "jobbbler_demo" ||
+            input.delivery.providerReferenceId.trim().length === 0 ||
+            input.delivery.recipientId !== input.grant.recipientId ||
+            input.delivery.recipientName.trim().length === 0 ||
+            input.delivery.payloadHash !== input.reviewPayloadHash ||
+            input.delivery.status !== "acknowledged" ||
+            input.delivery.acknowledgedAt !== input.now ||
+            input.delivery.createdAt !== input.now ||
+            input.delivery.fields.length === 0 ||
+            !isDeepStrictEqual(
+              input.delivery.fields.map(({ fieldKey }) => fieldKey),
+              input.grant.fieldKeys,
+            ) ||
+            submission.managedDeliveryId !== input.delivery.id ||
+            submission.provider !== input.delivery.provider ||
+            submission.providerReferenceId !== input.delivery.providerReferenceId ||
+            submission.recipientId !== input.delivery.recipientId ||
+            submission.recipientName !== input.delivery.recipientName ||
+            submission.submittedAt !== input.delivery.acknowledgedAt ||
+            !isDeepStrictEqual(submission.fields, input.delivery.fields)
+          )
+            throw domain(
+              "VALIDATION",
+              "Managed delivery must acknowledge the exact immutable submission.",
+            );
+          const acknowledged = await tx<EntityRow[]>`
+            INSERT INTO jobbbler.entity_records(
+              kind, id, owner_id, body, version, created_at, updated_at
+            ) VALUES (
+              'managed_application_delivery', ${input.delivery.id}, ${input.ownerId},
+              ${tx.json(input.delivery as unknown as postgres.JSONValue)}, 0,
+              ${timestamp(input.delivery.createdAt)},
+              ${timestamp(input.delivery.acknowledgedAt)}
+            )
+            ON CONFLICT DO NOTHING
+            RETURNING id, owner_id, body, version`;
+          if (acknowledged[0] === undefined)
+            throw domain("CONFLICT", "Managed delivery was not acknowledged.");
+          const delivery = body<ManagedApplicationDeliveryRecord>(acknowledged[0]);
+          if (delivery.status !== "acknowledged")
+            throw domain("CONFLICT", "Managed delivery was not acknowledged.");
           const consumed = { ...confirmation, status: "consumed" as const, consumedAt: input.now };
           const submitted = {
             ...draft,
@@ -2389,7 +2484,7 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
           await write(tx, "application_confirmation", consumed, input.ownerId);
           await write(tx, "application", submitted, input.ownerId, submitted.version);
           await insert(tx, "application_receipt", input.receipt, input.ownerId);
-          return { draft: submitted, receipt: input.receipt, inserted: true };
+          return { draft: submitted, receipt: input.receipt, delivery, inserted: true };
         });
       },
     },
@@ -2889,6 +2984,13 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
           throw domain("VALIDATION", "Stored activity cursor sequence is invalid.");
         }
         return { sequence, ownerId: record.ownerId, event };
+      },
+      async clear(ownerId) {
+        const rows = await sql<{ readonly sequence: string }[]>`
+          DELETE FROM jobbbler.owner_activity_events
+          WHERE owner_id = ${ownerId}
+          RETURNING sequence::text`;
+        return rows.length;
       },
       async listWindow(input) {
         if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 100) {

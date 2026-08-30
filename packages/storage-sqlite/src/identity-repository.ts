@@ -814,6 +814,9 @@ export function createSqliteIdentityStore(database: SqliteDatabase): IdentitySto
           .prepare(`DELETE FROM application_submission_receipts WHERE owner_id = ?`)
           .run(input.ownerId);
         database
+          .prepare(`DELETE FROM managed_application_deliveries WHERE owner_id = ?`)
+          .run(input.ownerId);
+        database
           .prepare(
             `DELETE FROM application_submissions
              WHERE draft_id IN (SELECT id FROM application_drafts WHERE owner_id = ?)`,

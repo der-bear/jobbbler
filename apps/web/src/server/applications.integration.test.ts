@@ -312,10 +312,77 @@ describe("application operations with SQLite", () => {
       confirmationHash,
       now,
     );
-    expect(receipt).toMatchObject({ status: "submitted", externalUrl: null });
+    expect(receipt).toEqual({
+      id: expect.stringMatching(/^receipt_/u),
+      status: "submitted",
+      externalUrl: null,
+      createdAt: now,
+      submission: {
+        provider: "jobbbler_demo",
+        providerReferenceId: expect.stringMatching(/^demo_submission_/u),
+        recipient: { id: organizationId, name: "Northstar Systems" },
+        submittedAt: now,
+        fields: [
+          { fieldKey: "full_name", label: "Full name", value: "Alex Morgan" },
+          { fieldKey: "email", label: "Email", value: "alex.morgan@example.com" },
+          { fieldKey: "location", label: "Current location", value: "Kyiv, Ukraine" },
+          {
+            fieldKey: "motivation",
+            label: "Why this role",
+            value: "I build calm, accessible product workflows.",
+          },
+          {
+            fieldKey: "work_authorization",
+            label: "Work authorization",
+            value: "Authorized to work in the European Union",
+          },
+        ],
+      },
+    });
+    if (receipt.status !== "submitted") {
+      throw new Error("Expected a managed submission receipt.");
+    }
+
+    const persistedReceipt = await storage.applications.getLatestReceipt(draft.id, ownerId);
+    if (persistedReceipt?.status !== "submitted") {
+      throw new Error("Missing persisted submission receipt fixture.");
+    }
+    await expect(
+      storage.applications.getManagedDelivery(
+        persistedReceipt.submission.managedDeliveryId,
+        ownerId,
+      ),
+    ).resolves.toMatchObject({
+      status: "acknowledged",
+      provider: "jobbbler_demo",
+      providerReferenceId: receipt.submission.providerReferenceId,
+      recipientId: organizationId,
+      recipientName: "Northstar Systems",
+      acknowledgedAt: now,
+      fields: expect.arrayContaining([
+        expect.objectContaining({ fieldKey: "full_name", value: "Alex Morgan" }),
+      ]),
+    });
+
+    const closedJob = { ...job, status: "closed" as const, updatedAt: future };
+    await storage.jobs.upsert(closedJob);
+
+    await expect(
+      operations.submit(
+        { kind: "human", ownerId },
+        draft.id,
+        {
+          reviewId: review.id,
+          confirmationId: confirmation.id,
+          idempotencyKey: "550e8400-e29b-41d4-a716-446655440000",
+        },
+        confirmationHash,
+        now,
+      ),
+    ).resolves.toEqual(receipt);
 
     const workspace = await operations.get(ownerId, draft.id, now);
-    expect(workspace.job).toEqual(job);
+    expect(workspace.job).toEqual(closedJob);
     expect(workspace.draft).toMatchObject({
       state: "submitted",
       version: reviewedDraft.version + 1,
@@ -375,15 +442,80 @@ describe("application operations with SQLite", () => {
     await expect(storage.applications.getByOwner(draft.id, ownerId)).resolves.toEqual(draft);
   });
 
-  it("reopens an existing internal draft after its listing closes", async () => {
+  it("never reopens an existing internal draft after its listing closes", async () => {
     const { storage, job, operations } = await fixture();
     const existing = (await operations.start(ownerId, { jobId }, now)).draft;
     await storage.jobs.upsert({ ...job, status: "closed", updatedAt: future });
 
-    await expect(operations.start(ownerId, { jobId }, future)).resolves.toEqual({
-      draft: existing,
-      disposition: "reopened",
+    await expect(operations.start(ownerId, { jobId }, future)).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "Role closed — nothing submitted.",
     });
+    await expect(operations.get(ownerId, existing.id, future)).resolves.toMatchObject({
+      draft: { id: existing.id, state: "draft" },
+      job: { status: "closed" },
+    });
+  });
+
+  it("fails every preparation and submission mutation closed once the role closes", async () => {
+    const { storage, job, operations } = await fixture();
+    const draft = (await operations.start(ownerId, { jobId }, now)).draft;
+    await storage.jobs.upsert({ ...job, status: "closed", updatedAt: future });
+    const expected = {
+      code: "CONFLICT",
+      message: "Role closed — nothing submitted.",
+    };
+
+    await expect(
+      operations.answer(
+        { kind: "human", ownerId },
+        draft.id,
+        {
+          expectedVersion: draft.version,
+          answer: {
+            fieldKey: "full_name",
+            value: "Alex Morgan",
+            provenance: "user_entered",
+            sensitive: true,
+            acceptedByHuman: true,
+          },
+        },
+        future,
+      ),
+    ).rejects.toMatchObject(expected);
+    await expect(
+      operations.validate({ kind: "human", ownerId }, draft.id, future),
+    ).rejects.toMatchObject(expected);
+    await expect(
+      operations.review(
+        { kind: "human", ownerId },
+        draft.id,
+        { expectedVersion: draft.version },
+        future,
+      ),
+    ).rejects.toMatchObject(expected);
+    await expect(
+      operations.requestConfirmation(
+        ownerId,
+        draft.id,
+        "review_81000000-0000-7000-8000-000000000088",
+        "c".repeat(64),
+        future,
+      ),
+    ).rejects.toMatchObject(expected);
+    await expect(
+      operations.submit(
+        { kind: "human", ownerId },
+        draft.id,
+        {
+          reviewId: "review_81000000-0000-7000-8000-000000000088",
+          confirmationId: "confirmation_81000000-0000-7000-8000-000000000088",
+          idempotencyKey: "550e8400-e29b-41d4-a716-446655440088",
+        },
+        "c".repeat(64),
+        future,
+      ),
+    ).rejects.toMatchObject(expected);
   });
 
   it("does not let an apply-mode flip race an application mutation", async () => {

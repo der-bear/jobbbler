@@ -7,10 +7,12 @@
     "search_jobs",
     "open_job_details",
     "prepare_application",
+    "get_applications",
     "open_jobbbler_page",
+    "enable_workspace_recovery",
+    "recover_jobbbler_workspace",
     "get_search_state",
     "get_job_details",
-    "get_job_application_capability",
     "compare_jobs",
     "get_comparison",
     "remove_job_from_comparison",
@@ -220,26 +222,24 @@
       }
     },
     {
-      "id": "search-external-role-no-private-draft",
-      "category": "wrong_order",
+      "id": "search-direct-prepare-application",
+      "category": "direct",
       "context": {
         "results": [
           {
             "id": "job_650e8400-e29b-41d4-a716-446655440000",
             "title": "Staff Platform Engineer",
-            "organization": "External Employer",
-            "applyMode": "external",
-            "employerSite": {
-              "available": true,
-              "url": "https://careers.example.com/jobs/staff-platform-engineer"
-            }
+            "organization": "Jobbbler Demo Systems"
           }
         ]
       },
-      "prompt": "Apply for the Staff Platform Engineer role now through Jobbbler.",
+      "prompt": "Create the private Jobbbler application for the Staff Platform Engineer role. Do not prepare answers or submit it yet.",
       "expected": {
-        "kind": "clarification",
-        "mustMention": ["employer site", "no Jobbbler draft", "no submission claim"]
+        "kind": "tool_call",
+        "tool": "prepare_application",
+        "arguments": {
+          "jobId": "job_650e8400-e29b-41d4-a716-446655440000"
+        }
       }
     }
   ]

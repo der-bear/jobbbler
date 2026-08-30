@@ -94,6 +94,11 @@ function dependencies(
     requestSearchAlert: vi.fn(async () => alertReview),
     decideSearchAlert: vi.fn(async () => approvedAlert),
     setScheduleEnabled: vi.fn(),
+    deleteSavedSearch: vi.fn(async () => ({
+      savedSearchId: savedSearch.id,
+      scheduleId: schedule.id,
+      deleted: true as const,
+    })),
     savedSearchHref: () => "/",
     getLatestRun: vi.fn(async () => ({
       savedSearchId: savedSearch.id,
@@ -102,6 +107,7 @@ function dependencies(
     })),
     onNavigate: () => undefined,
     onScheduleCommitted: vi.fn(),
+    onSavedSearchDeleted: vi.fn(),
     ...overrides,
   };
 }
@@ -470,7 +476,7 @@ describe("saved-route WebMCP tools", () => {
     });
   });
 
-  it("uses the authoritative schedule version and synchronizes the visible workspace", async () => {
+  it("pauses with the authoritative schedule version", async () => {
     const setScheduleEnabled = vi.fn(async () => ({ ...schedule, enabled: false, version: 3 }));
     const onScheduleCommitted = vi.fn();
     const manifests = createSavedToolManifests(
@@ -478,7 +484,7 @@ describe("saved-route WebMCP tools", () => {
     );
     const signal = new AbortController().signal;
     const result = await manifests[3]!.execute(
-      { scheduleId: schedule.id, enabled: false },
+      { action: "pause", scheduleId: schedule.id },
       { signal },
     );
 
@@ -491,19 +497,130 @@ describe("saved-route WebMCP tools", () => {
     expect(result).toMatchObject({ status: "completed", data: { enabled: false, version: 3 } });
   });
 
-  it("rejects unknown schedules and extra input before mutation", async () => {
-    const setScheduleEnabled = vi.fn();
-    const manifests = createSavedToolManifests(dependencies({ setScheduleEnabled }));
+  it("resumes a paused schedule with the explicit resume action", async () => {
+    const pausedSchedule = { ...schedule, enabled: false, version: 3 };
+    const resumedSchedule = { ...pausedSchedule, enabled: true, version: 4 };
+    const setScheduleEnabled = vi.fn(async () => resumedSchedule);
+    const manifests = createSavedToolManifests(
+      dependencies({
+        listSchedules: vi.fn(async () => [pausedSchedule]),
+        setScheduleEnabled,
+      }),
+    );
     const signal = new AbortController().signal;
+
+    const result = await manifests[3]!.execute(
+      { action: "resume", scheduleId: pausedSchedule.id },
+      { signal },
+    );
+
+    expect(setScheduleEnabled).toHaveBeenCalledWith(
+      pausedSchedule.id,
+      { expectedVersion: pausedSchedule.version, enabled: true },
+      { signal },
+    );
+    expect(result).toMatchObject({ status: "completed", data: { enabled: true, version: 4 } });
+  });
+
+  it("permanently deletes one exact saved search and bridges the bounded receipt", async () => {
+    const receipt = {
+      savedSearchId: savedSearch.id,
+      scheduleId: schedule.id,
+      deleted: true as const,
+    };
+    const deleteSavedSearch = vi.fn(async () => receipt);
+    const onSavedSearchDeleted = vi.fn();
+    const current = { ...dependencies(), deleteSavedSearch, onSavedSearchDeleted };
+    const manifests = createSavedToolManifests(current);
+    const signal = new AbortController().signal;
+
     const result = await manifests[3]!.execute(
       {
-        scheduleId: "schedule_00000002-0000-7000-8000-000000000002",
-        enabled: false,
-        secret: "no",
+        action: "delete",
+        savedSearchId: savedSearch.id,
+        confirmation: "DELETE_SAVED_SEARCH_AND_ALERT",
       },
       { signal },
     );
-    expect(result).toMatchObject({ status: "failed", error: { code: "VALIDATION" } });
+
+    expect(deleteSavedSearch).toHaveBeenCalledWith(
+      savedSearch.id,
+      { confirmation: "DELETE_SAVED_SEARCH_AND_ALERT" },
+      { signal },
+    );
+    expect(onSavedSearchDeleted).toHaveBeenCalledWith(receipt);
+    expect(result).toMatchObject({
+      status: "completed",
+      data: receipt,
+      facts: [{ key: "deleted", value: true }],
+    });
+    expect(JSON.stringify(result)).not.toMatch(/endpoint|email/iu);
+  });
+
+  it("deletes a saved search that has no schedule", async () => {
+    const unscheduled = { ...savedSearch, id: "saved_00000002-0000-7000-8000-000000000002" };
+    const receipt = { savedSearchId: unscheduled.id, scheduleId: null, deleted: true as const };
+    const deleteSavedSearch = vi.fn(async () => receipt);
+    const manifests = createSavedToolManifests({
+      ...dependencies({
+        listSavedSearches: vi.fn(async () => [unscheduled]),
+        listSchedules: vi.fn(async () => []),
+      }),
+      deleteSavedSearch,
+      onSavedSearchDeleted: vi.fn(),
+    });
+
+    const result = await manifests[3]!.execute(
+      {
+        action: "delete",
+        savedSearchId: unscheduled.id,
+        confirmation: "DELETE_SAVED_SEARCH_AND_ALERT",
+      },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toMatchObject({ status: "completed", data: receipt });
+    expect(deleteSavedSearch).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects unknown targets, legacy booleans, mixed branches, and missing confirmation", async () => {
+    const setScheduleEnabled = vi.fn();
+    const deleteSavedSearch = vi.fn();
+    const manifests = createSavedToolManifests({
+      ...dependencies({ setScheduleEnabled }),
+      deleteSavedSearch,
+      onSavedSearchDeleted: vi.fn(),
+    });
+    const signal = new AbortController().signal;
+    const unknown = await manifests[3]!.execute(
+      {
+        action: "pause",
+        scheduleId: "schedule_00000002-0000-7000-8000-000000000002",
+      },
+      { signal },
+    );
+    const legacy = await manifests[3]!.execute(
+      { scheduleId: schedule.id, enabled: false },
+      { signal },
+    );
+    const mixed = await manifests[3]!.execute(
+      {
+        action: "delete",
+        scheduleId: schedule.id,
+        savedSearchId: savedSearch.id,
+        confirmation: "DELETE_SAVED_SEARCH_AND_ALERT",
+      },
+      { signal },
+    );
+    const unconfirmed = await manifests[3]!.execute(
+      { action: "delete", savedSearchId: savedSearch.id },
+      { signal },
+    );
+
+    for (const result of [unknown, legacy, mixed, unconfirmed]) {
+      expect(result).toMatchObject({ status: "failed", error: { code: "VALIDATION" } });
+    }
     expect(setScheduleEnabled).not.toHaveBeenCalled();
+    expect(deleteSavedSearch).not.toHaveBeenCalled();
   });
 });

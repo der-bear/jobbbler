@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,6 +13,7 @@ import { openSqliteDatabase } from "./connection.js";
 import { seedDemoCatalog } from "./seed.js";
 
 const fixturePath = fileURLToPath(new URL("../../../fixtures/demo-catalog.json", import.meta.url));
+const migrationDirectory = fileURLToPath(new URL("../../../migrations/sqlite", import.meta.url));
 
 /*
  * The demo catalog grows with the product, so the recovery contract is checked
@@ -22,6 +23,12 @@ async function fixtureCounts(): Promise<{ organizations: number; jobs: number }>
   const catalog: unknown = JSON.parse(await readFile(fixturePath, "utf8"));
   const record = catalog as { organizations: unknown[]; jobs: unknown[] };
   return { organizations: record.organizations.length, jobs: record.jobs.length };
+}
+
+/* Same reasoning for the schema: every added migration must land in the seeded database. */
+async function migrationCount(): Promise<number> {
+  const entries = await readdir(migrationDirectory);
+  return entries.filter((entry) => /^\d{4}_[a-z0-9_]+\.sql$/.test(entry)).length;
 }
 
 describe("SQLite recovery", () => {
@@ -41,7 +48,7 @@ describe("SQLite recovery", () => {
     await expect(seedDemoCatalog(sourcePath, fixturePath)).resolves.toEqual(expected);
     const source = inspectSqliteDatabase(sourcePath);
     expect(source).toMatchObject({
-      migrations: 22,
+      migrations: await migrationCount(),
       organizations: expected.organizations,
       jobs: expected.jobs,
       searchableJobs: expected.jobs,

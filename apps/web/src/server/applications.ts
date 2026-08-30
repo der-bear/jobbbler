@@ -11,6 +11,7 @@ import {
   startApplicationInputSchema,
   submitApplicationInputSchema,
   type ApplicationDraft,
+  type ApplicationReceiptSummary,
   type ApplicationWorkspace,
   type Job,
 } from "@jobbbler/contracts";
@@ -25,6 +26,7 @@ import {
   type ApplicationDraftRecord,
 } from "@jobbbler/jobs-domain";
 import type {
+  ApplicationReceiptRecord,
   ApplicationReviewRecord,
   RichDataGrantMatchInput,
   RichDataGrantRecord,
@@ -47,6 +49,7 @@ import {
 } from "./application-route-handlers";
 import { getServerStorage } from "./context";
 import { getIdentityRouteDependencies } from "./identity";
+import { createManagedDemoApplicationSubmissionAdapter } from "./managed-application-submission";
 import { createOwnerActivityPublisher } from "./owner-activity-publisher";
 
 const answerBodySchema = setApplicationAnswerInputSchema
@@ -57,6 +60,7 @@ const submitBodySchema = submitApplicationInputSchema.omit({ draftId: true });
 const requiredFieldKeys = applicationPolicy.requirements
   .filter(({ required }) => required)
   .map(({ fieldKey }) => fieldKey);
+const managedApplicationSubmission = createManagedDemoApplicationSubmissionAdapter();
 
 function notFound(name: string): DomainError {
   return new DomainError({ code: "NOT_FOUND", message: `${name} was not found.` });
@@ -73,6 +77,40 @@ function persistableDraft(record: ApplicationDraftRecord): ApplicationDraft {
     answers: record.answers,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
+  });
+}
+
+function persistedReceiptSummary(
+  receipt: ApplicationReceiptRecord,
+): ApplicationReceiptSummary | null {
+  if (receipt.status === "handed_off") {
+    return applicationReceiptSummarySchema.parse({
+      id: receipt.id,
+      status: receipt.status,
+      externalUrl: receipt.externalUrl,
+      createdAt: receipt.createdAt,
+    });
+  }
+  if (receipt.submission == null) return null;
+  return applicationReceiptSummarySchema.parse({
+    id: receipt.id,
+    status: receipt.status,
+    externalUrl: receipt.externalUrl,
+    createdAt: receipt.createdAt,
+    submission: {
+      provider: receipt.submission.provider,
+      providerReferenceId: receipt.submission.providerReferenceId,
+      recipient: {
+        id: receipt.submission.recipientId,
+        name: receipt.submission.recipientName,
+      },
+      submittedAt: receipt.submission.submittedAt,
+      fields: receipt.submission.fields.map(({ fieldKey, label, value }) => ({
+        fieldKey,
+        label,
+        value,
+      })),
+    },
   });
 }
 
@@ -140,7 +178,16 @@ function assertInternalApplicationJob(job: Job): void {
   }
 }
 
-async function requireOwnedInternalDraft(
+function assertOpenApplicationJob(job: Job): void {
+  if (job.status !== "open") {
+    throw new DomainError({
+      code: "CONFLICT",
+      message: "Role closed — nothing submitted.",
+    });
+  }
+}
+
+async function requireOwnedInternalDraftAtAnyStatus(
   storage: Storage,
   ownerId: string,
   draftId: string,
@@ -148,6 +195,16 @@ async function requireOwnedInternalDraft(
   const draft = await requireOwnedDraft(storage, ownerId, draftId);
   const job = await requireJob(storage, draft.jobId);
   assertInternalApplicationJob(job);
+  return { draft, job };
+}
+
+async function requireOwnedInternalDraft(
+  storage: Storage,
+  ownerId: string,
+  draftId: string,
+): Promise<Readonly<{ draft: ApplicationDraft; job: Job }>> {
+  const { draft, job } = await requireOwnedInternalDraftAtAnyStatus(storage, ownerId, draftId);
+  assertOpenApplicationJob(job);
   return { draft, job };
 }
 
@@ -245,15 +302,7 @@ export async function buildApplicationWorkspace(
       expiresAt: delegation.expiresAt,
       approvedAt: delegation.approvedAt,
     })),
-    receipt:
-      receipt === null
-        ? null
-        : applicationReceiptSummarySchema.parse({
-            id: receipt.id,
-            status: receipt.status,
-            externalUrl: receipt.externalUrl,
-            createdAt: receipt.createdAt,
-          }),
+    receipt: receipt === null ? null : persistedReceiptSummary(receipt),
   });
 }
 
@@ -282,6 +331,7 @@ export function createApplicationRouteDependencies(
                 id: job.id,
                 title: job.title,
                 organizationName: job.organizationName,
+                status: job.status,
               },
             };
           }),
@@ -293,14 +343,9 @@ export function createApplicationRouteDependencies(
         const { jobId } = startApplicationInputSchema.parse(raw);
         const job = await requireJob(storage, jobId);
         assertInternalApplicationJob(job);
+        assertOpenApplicationJob(job);
         const existing = await storage.applications.getByOwnerAndJob(ownerId, jobId);
         if (existing !== null) return { draft: existing, disposition: "reopened" as const };
-        if (job.status !== "open") {
-          throw new DomainError({
-            code: "CONFLICT",
-            message: "This role is no longer open for applications.",
-          });
-        }
         const draft = createApplicationDraft({
           id: createEntityId("application"),
           ownerId,
@@ -404,7 +449,43 @@ export function createApplicationRouteDependencies(
 
       async submit(actor: ApplicationActor, draftId, raw, confirmationHash, now) {
         const input = submitBodySchema.parse(raw);
-        const { draft, job } = await requireOwnedInternalDraft(storage, actor.ownerId, draftId);
+        const { draft, job } = await requireOwnedInternalDraftAtAnyStatus(
+          storage,
+          actor.ownerId,
+          draftId,
+        );
+        if (draft.state === "submitted") {
+          const existing = await storage.applications.getLatestReceipt(draftId, actor.ownerId);
+          if (
+            existing?.status !== "submitted" ||
+            existing.reviewId !== input.reviewId ||
+            existing.confirmationId !== input.confirmationId ||
+            existing.idempotencyKey !== input.idempotencyKey ||
+            existing.submission == null
+          ) {
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "This application was already submitted by another request.",
+            });
+          }
+          const delivery = await storage.applications.getManagedDelivery(
+            existing.submission.managedDeliveryId,
+            actor.ownerId,
+          );
+          const summary = persistedReceiptSummary(existing);
+          if (
+            delivery?.status !== "acknowledged" ||
+            delivery.providerReferenceId !== existing.submission.providerReferenceId ||
+            summary === null
+          ) {
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "The persisted submission is missing its delivery acknowledgement.",
+            });
+          }
+          return summary;
+        }
+        assertOpenApplicationJob(job);
         const review = await storage.applications.getReview(input.reviewId, actor.ownerId);
         if (review === null) throw notFound("Application review");
         const grant = await requireExactActiveGrant(
@@ -415,6 +496,16 @@ export function createApplicationRouteDependencies(
           job,
           now,
         );
+        const delivery = managedApplicationSubmission.prepare({
+          ownerId: actor.ownerId,
+          draft,
+          job,
+          reviewId: review.id,
+          reviewPayloadHash: review.payloadHash,
+          confirmationId: input.confirmationId,
+          idempotencyKey: input.idempotencyKey,
+          now,
+        });
         const result = await storage.applications.completeSubmission({
           ownerId: actor.ownerId,
           draftId,
@@ -436,6 +527,7 @@ export function createApplicationRouteDependencies(
             noticeVersion: grant.noticeVersion,
             legalBasis: grant.legalBasis,
           },
+          delivery,
           receipt: {
             id: createEntityId("receipt"),
             ownerId: actor.ownerId,
@@ -445,16 +537,27 @@ export function createApplicationRouteDependencies(
             idempotencyKey: input.idempotencyKey,
             status: "submitted",
             externalUrl: null,
+            submission: {
+              managedDeliveryId: delivery.id,
+              provider: delivery.provider,
+              providerReferenceId: delivery.providerReferenceId,
+              recipientId: delivery.recipientId,
+              recipientName: delivery.recipientName,
+              submittedAt: delivery.acknowledgedAt,
+              fields: delivery.fields,
+            },
             createdAt: now,
           },
           now,
         });
-        return applicationReceiptSummarySchema.parse({
-          id: result.receipt.id,
-          status: result.receipt.status,
-          externalUrl: result.receipt.externalUrl,
-          createdAt: result.receipt.createdAt,
-        });
+        const summary = persistedReceiptSummary(result.receipt);
+        if (summary === null) {
+          throw new DomainError({
+            code: "CONFLICT",
+            message: "Submission completed without a persisted receipt snapshot.",
+          });
+        }
+        return summary;
       },
     },
   };

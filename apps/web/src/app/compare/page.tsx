@@ -1,4 +1,12 @@
+import type { Metadata } from "next";
+
 import { CompareWorkspace } from "@/features/compare/compare-workspace";
+
+export const metadata: Metadata = {
+  title: "Compare technology roles",
+  description:
+    "Compare up to three technology roles on facts, trade-offs, and missing information.",
+};
 
 function values(value: string | readonly string[] | undefined): readonly string[] {
   if (value === undefined) return [];

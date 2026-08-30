@@ -54,11 +54,9 @@ seconds, and moves on.
 
 When the journey reaches an application, speed stops being the point.
 
-- Before preparing a known role, an agent can call
-  `get_job_application_capability` to read the ground rules: what Jobbbler may
-  prepare, which decisions stay with the person, and whether the person must
-  continue on the employer's website.
-- Seven outcome-oriented application tools are discoverable from every page and
+- `prepare_application` directly creates or reopens one private Jobbbler
+  application for the chosen role without using personal data or submitting it.
+- Seven stage-specific application tools are discoverable from every page and
   state-gated at execution: each answers with the next safe step when its
   moment has not arrived. Agent-prepared answers keep their provenance. Once
   assistance is requested or an agent suggestion exists, the site renders the
@@ -78,9 +76,8 @@ When the journey reaches an application, speed stops being the point.
   historical submission receipt remains intact.
 - Submission needs a fresh, short-lived, single-use confirmation, and the
   sealed payload cannot change between the person's review and the submit.
-- External roles open an available validated HTTPS employer page; if none is
-  available, the workflow stops. Jobbbler creates no draft, receipt, handoff
-  record, or submitted claim for them.
+- Every role in the current demo catalog supports Jobbbler-managed delivery;
+  the server still fails closed for any unsupported future application mode.
 
 ## The technology — for judges
 
@@ -93,7 +90,7 @@ When the journey reaches an application, speed stops being the point.
 > safest useful path through them—without executing the plan or granting
 > authority.
 
-Jobbbler registers 26 focused WebMCP tools directly in the page. The same set
+Jobbbler registers 28 focused WebMCP tools directly in the page. The same set
 stays discoverable on every page, so an agent never loses a capability by
 navigating. Private and workflow-specific tools are state-gated at execution —
 when their required ID, ownership, or stage is not ready they return a clear
@@ -132,7 +129,7 @@ Jobbbler is a TypeScript monorepo with a Next.js web app, domain packages,
 portable SQLite/PostgreSQL storage adapters, connector workers, and an
 accessible shared UI system. Its catalog normalizes policy-controlled job
 records, retains source evidence, and ranks salaries currency-aware (EUR, USD,
-GBP, CAD at pinned rates) with human-readable evidence strings. All 26 focused
+GBP, CAD at pinned rates) with human-readable evidence strings. All 28 focused
 WebMCP tools are registered on every page and gate private or state-specific
 behavior at execution time.
 
@@ -142,7 +139,8 @@ Alerts evaluate saved-search changes deterministically, queue idempotent
 deliveries, and require a verified email endpoint. The request/decision pair
 binds the person's external-client decision to one exact alert policy and
 mailbox challenge. The first visit needs no account at all: a loginless private
-owner session with passwordless email recovery.
+owner session works immediately, while passwordless email recovery remains an
+optional durability upgrade for applications and saved searches.
 
 The application flow is agent-first with request-bound human decisions. The
 agent checks readiness, calls `request_application_assistance`, and waits while
@@ -168,7 +166,7 @@ field keys and a review hash, not the raw values. The same global tool surface
 lets the person withdraw that consent in one call; future consent-based
 processing stops while historical submission receipts remain honest.
 
-A purely manual internal draft can still finish in the first-party UI. Once
+A purely manual application can still finish in the first-party UI. Once
 assistance is requested or an agent-suggested answer exists, the site offers no
 local editing, approval, consent, or submission bypass; server routes require
 revisions and those decisions to be relayed through the external agent client.
@@ -190,7 +188,7 @@ request; an incompatible pending grant is withdrawn and replaced.
 
 ## Accomplishments we are proud of
 
-- A real WebMCP surface: 26 focused tools for job, comparison, saved-search,
+- A real WebMCP surface: 28 focused tools for job, comparison, saved-search,
   and application work — all discoverable from any page, each honest about
   when its prerequisites have not arrived.
 - A zero-configuration website encounter: the agent opens Jobbbler and
@@ -203,9 +201,16 @@ request; an incompatible pending grant is withdrawn and replaced.
   closes.
 - An agent-native alert activation pair that combines an exact consent review,
   mailbox verification, idempotent scheduling, and no required site touch.
-- Capability negotiation (`get_job_application_capability`) that states up
-  front what an agent may prepare and what stays human.
-- Search, comparison, saved alerts, and an internal demo application form
+- An optional two-step `enable_workspace_recovery` action that adds continuity
+  without granting consent, application approval, or an alert subscription.
+- A two-step `recover_jobbbler_workspace` action that restores applications and
+  saved searches from the external agent client without echoing the supplied
+  email or code or returning owner, private, or session data.
+- A paged `get_applications` index that lets a recovered agent rediscover
+  private work and receipt availability without returning candidate answers.
+- A direct `prepare_application` entry point that removes redundant preflight
+  while preserving the separate assistance and final-submission decisions.
+- Search, comparison, saved searches, and a managed fictional application
   connect into one coherent journey.
 - The global Agent layer — Activity, Tools, and Guide — makes tool work
   understandable without turning the portal into a developer console.
@@ -214,9 +219,8 @@ request; an incompatible pending grant is withdrawn and replaced.
 - Request-bound consent receipts connect the agent-client decision to an exact
   server record without overstating identity assurance.
 - Explicit delegation, immutable review, and one-time confirmation keep
-  internal application actions controlled. External roles continue on an
-  available validated HTTPS employer page without a Jobbbler draft or receipt;
-  if no validated page is available, the workflow stops.
+  Jobbbler-managed application actions controlled, while the command fails
+  closed for any unsupported delivery mode.
 - Source-aware job ingestion, safe normalized data, and focused
   domain/storage/worker tests create an auditable foundation.
 

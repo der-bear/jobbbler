@@ -212,6 +212,7 @@ const directKinds: Readonly<Record<string, string>> = {
   application_drafts: "application",
   application_review_records: "application_review",
   application_confirmation_records: "application_confirmation",
+  managed_application_deliveries: "managed_application_delivery",
   application_submission_receipts: "application_receipt",
   application_agent_sessions: "agent_session",
   application_delegation_records: "delegation",

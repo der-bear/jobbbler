@@ -4,10 +4,11 @@ import type {
   ApplicationAgentState,
   ApplicationWorkspace,
   DataCategory,
+  Job,
 } from "@jobbbler/contracts";
 
 export type ApplicationStage =
-  "profile" | "review" | "permission" | "confirmation" | "legacy_external" | "complete";
+  "profile" | "review" | "permission" | "confirmation" | "legacy_external" | "closed" | "complete";
 
 export type ApplicationNextAction =
   "prepare" | "review" | "submit" | "withdraw" | "read_only" | "complete";
@@ -235,6 +236,22 @@ export function applicationReadiness(workspace: ApplicationWorkspace): Readonly<
   };
 }
 
+export function applicationReadinessForValues(
+  workspace: ApplicationWorkspace,
+  values: Readonly<Record<string, string>>,
+): ReturnType<typeof applicationReadiness> {
+  const required = workspace.requirements.filter((field) => field.required);
+  const missingFieldKeys = required
+    .filter((field) => (values[field.fieldKey] ?? "").trim().length === 0)
+    .map(({ fieldKey }) => fieldKey);
+  return {
+    completed: required.length - missingFieldKeys.length,
+    required: required.length,
+    missingFieldKeys,
+    readyForReview: missingFieldKeys.length === 0,
+  };
+}
+
 export function visibleApplicationProgress(
   workspace: ApplicationWorkspace,
 ): Readonly<{ completed: number; required: number }> {
@@ -257,7 +274,25 @@ export function applicationDisclosure(workspace: ApplicationWorkspace): Readonly
   };
 }
 
-export function applicationStage(workspace: ApplicationWorkspace, now: string): ApplicationStage {
+export function applicationDisclosureForValues(
+  workspace: ApplicationWorkspace,
+  values: Readonly<Record<string, string>>,
+): ReturnType<typeof applicationDisclosure> {
+  const disclosed = workspace.requirements.filter(
+    (field) => (values[field.fieldKey] ?? "").trim().length > 0,
+  );
+  return {
+    fieldKeys: disclosed.map((field) => field.fieldKey),
+    categories: [...new Set(disclosed.map((field) => field.category))],
+    sensitiveFieldKeys: disclosed.filter((field) => field.sensitive).map((field) => field.fieldKey),
+  };
+}
+
+export function applicationStage(
+  workspace: ApplicationWorkspace,
+  now: string,
+  roleStatus: Job["status"] = "open",
+): ApplicationStage {
   if (
     workspace.receipt !== null ||
     workspace.draft.state === "submitted" ||
@@ -265,6 +300,7 @@ export function applicationStage(workspace: ApplicationWorkspace, now: string): 
   ) {
     return "complete";
   }
+  if (roleStatus !== "open") return "closed";
   if (workspace.applyMode === "external") return "legacy_external";
   if (workspace.draft.state === "valid") return "review";
   if (workspace.draft.state === "reviewed" || workspace.draft.state === "awaiting_confirmation") {
@@ -280,6 +316,7 @@ export function applicationAgentState(
   workspace: ApplicationWorkspace,
   finalConfirmationReady: boolean,
   now: string,
+  roleStatus: Job["status"] = "open",
 ): ApplicationAgentState {
   const progress = visibleApplicationProgress(workspace);
   const liveDelegation = workspace.delegationRequests.find((delegation) =>
@@ -293,7 +330,7 @@ export function applicationAgentState(
     jobId: workspace.draft.jobId,
     applyMode: workspace.applyMode,
     state: workspace.draft.state,
-    stage: applicationStage(workspace, now),
+    stage: applicationStage(workspace, now, roleStatus),
     version: workspace.draft.version,
     requiredFields: progress.required,
     completedRequiredFields: progress.completed,
@@ -311,6 +348,7 @@ export function applicationNextAction(
   workspace: ApplicationWorkspace,
   now: string,
   finalConfirmationReady = false,
+  roleStatus: Job["status"] = "open",
 ): ApplicationNextAction {
   if (
     workspace.receipt !== null ||
@@ -318,6 +356,12 @@ export function applicationNextAction(
     workspace.draft.state === "handed_off"
   ) {
     return "complete";
+  }
+  if (roleStatus !== "open") {
+    return isLiveApplicationDataGrant(workspace.dataGrant, now) &&
+      workspace.dataGrant.status === "active"
+      ? "withdraw"
+      : "read_only";
   }
   if (workspace.applyMode === "external") {
     return isLiveApplicationDataGrant(workspace.dataGrant, now) &&
