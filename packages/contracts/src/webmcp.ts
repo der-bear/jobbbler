@@ -10,6 +10,13 @@ export const toolNameSchema = z
 export const toolDescriptionSchema = z.string().trim().min(1).max(500);
 export const toolParameterDescriptionSchema = z.string().trim().min(1).max(150);
 
+export const webMcpSafeErrorReasonSchema = z.enum([
+  "invalid_code",
+  "expired_review",
+  "stale_review",
+  "already_decided",
+]);
+
 export const toolUserActionSchema = z.strictObject({
   kind: z.enum([
     "agent_authorization",
@@ -32,6 +39,7 @@ export const toolSafeErrorSchema = z.strictObject({
   message: z.string().trim().min(1).max(500),
   requestId: entityIdSchema,
   retryable: z.boolean(),
+  reason: webMcpSafeErrorReasonSchema.optional(),
 });
 
 export const toolResourceReferenceSchema = z.strictObject({
@@ -103,3 +111,4 @@ export const toolActivitySchema = z.strictObject({
 
 export type ToolExecutionResult = z.infer<typeof toolExecutionResultSchema>;
 export type ToolActivity = z.infer<typeof toolActivitySchema>;
+export type WebMcpSafeErrorReason = z.infer<typeof webMcpSafeErrorReasonSchema>;

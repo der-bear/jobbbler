@@ -50,4 +50,34 @@ describe("toolExecutionResultSchema", () => {
       }).success,
     ).toBe(false);
   });
+
+  it("accepts only the bounded safe reasons an agent can act on", () => {
+    expect(
+      toolExecutionResultSchema.parse({
+        status: "failed",
+        summary: "The mailbox code is incorrect.",
+        error: {
+          code: "VALIDATION",
+          message: "The mailbox code is incorrect.",
+          requestId: "req_550e8400-e29b-41d4-a716-446655440000",
+          retryable: true,
+          reason: "invalid_code",
+        },
+      }),
+    ).toMatchObject({ error: { reason: "invalid_code" } });
+
+    expect(
+      toolExecutionResultSchema.safeParse({
+        status: "failed",
+        summary: "The operation failed.",
+        error: {
+          code: "INTERNAL",
+          message: "The operation failed.",
+          requestId: "req_550e8400-e29b-41d4-a716-446655440000",
+          retryable: false,
+          reason: "database_connection_string",
+        },
+      }).success,
+    ).toBe(false);
+  });
 });

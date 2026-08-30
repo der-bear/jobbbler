@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { toolExecutionResultSchemaFor } from "@jobbbler/contracts";
 import { z } from "zod";
 
+import { ApiClientError } from "./query-client";
+
 import {
   MAX_WEBMCP_RESULT_BYTES,
   completedWebMcpResult,
@@ -51,5 +53,37 @@ describe("WebMCP tool results", () => {
     );
     expect(cancelled).toEqual({ status: "cancelled", summary: "The tool call was cancelled." });
     expect(JSON.stringify(validation)).not.toContain("private connector failure");
+  });
+
+  it("forwards only an allow-listed reason from API error details", () => {
+    const invalidCode = safeWebMcpErrorResult(
+      new ApiClientError({
+        code: "VALIDATION",
+        message: "The mailbox code is incorrect.",
+        retryable: true,
+        details: { reason: "invalid_code", attemptedCode: "123456" },
+      }),
+      new AbortController().signal,
+      "The decision is invalid.",
+    );
+    expect(invalidCode).toMatchObject({
+      status: "failed",
+      error: { reason: "invalid_code", retryable: true },
+    });
+    expect(JSON.stringify(invalidCode)).not.toContain("123456");
+
+    const privateReason = safeWebMcpErrorResult(
+      new ApiClientError({
+        code: "INTERNAL",
+        message: "The operation failed.",
+        retryable: false,
+        details: { reason: "database_connection_string", secret: "private" },
+      }),
+      new AbortController().signal,
+      "The decision is invalid.",
+    );
+    expect(privateReason).toMatchObject({ status: "failed", error: { code: "INTERNAL" } });
+    expect(JSON.stringify(privateReason)).not.toContain("reason");
+    expect(JSON.stringify(privateReason)).not.toContain("private");
   });
 });

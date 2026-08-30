@@ -1,6 +1,10 @@
 import { ZodError } from "zod";
 
-import type { ApiErrorCode } from "@jobbbler/contracts";
+import {
+  webMcpSafeErrorReasonSchema,
+  type ApiErrorCode,
+  type WebMcpSafeErrorReason,
+} from "@jobbbler/contracts";
 import type { JsonValue } from "@jobbbler/webmcp";
 import { ApiClientError } from "./query-client";
 
@@ -55,6 +59,7 @@ export interface FailedWebMcpResult {
     readonly message: string;
     readonly requestId: string;
     readonly retryable: boolean;
+    readonly reason?: WebMcpSafeErrorReason;
   };
 }
 
@@ -157,6 +162,7 @@ export function failedWebMcpResult(options: {
   readonly message: string;
   readonly requestId?: string | null;
   readonly retryable: boolean;
+  readonly reason?: WebMcpSafeErrorReason;
 }): FailedWebMcpResult {
   return assertBounded({
     status: "failed",
@@ -166,6 +172,7 @@ export function failedWebMcpResult(options: {
       message: options.message,
       requestId: options.requestId ?? requestId(),
       retryable: options.retryable,
+      ...(options.reason === undefined ? {} : { reason: options.reason }),
     },
   } satisfies FailedWebMcpResult);
 }
@@ -197,11 +204,13 @@ export function safeWebMcpErrorResult(
   }
 
   if (error instanceof ApiClientError) {
+    const reason = webMcpSafeErrorReasonSchema.safeParse(error.details?.["reason"]);
     return failedWebMcpResult({
       code: error.code,
       message: error.message.slice(0, 500),
       requestId: error.requestId,
       retryable: error.retryable,
+      ...(reason.success ? { reason: reason.data } : {}),
     });
   }
 
