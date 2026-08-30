@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import {
   applicationDraftSchema,
   jobSchema,
@@ -13,6 +11,10 @@ import {
 import { DomainError } from "@jobbbler/core-domain";
 import { rankJob } from "@jobbbler/jobs-domain";
 import {
+  compareJobSearchSortKeys,
+  decodeJobSearchCursor,
+  encodeJobSearchCursor,
+  jobSearchPublishedAtMs,
   requiresAgentClientSubmissionDecision,
   type ActiveDelegationMatchInput,
   type AgentDelegationRecord,
@@ -25,6 +27,7 @@ import {
   type ClaimWorkItemsInput,
   type IdempotencyRecord,
   type JobSearchPage,
+  type JobSearchSortKey,
   type OrganizationRecord,
   type OwnerActivityEventRecord,
   type OwnerRecord,
@@ -55,15 +58,6 @@ type SqlParameter = string | number | bigint | null | Uint8Array;
 interface RankedJob {
   readonly job: Job;
   readonly rank: ReturnType<typeof rankJob>;
-}
-
-interface SearchCursor {
-  readonly version: 1;
-  readonly sort: JobSearchCriteria["sort"];
-  readonly primary: number;
-  readonly publishedAt: string;
-  readonly id: string;
-  readonly fingerprint: string;
 }
 
 interface OwnerRow {
@@ -569,22 +563,6 @@ function validatedClaimKinds(kinds: ClaimWorkItemsInput["kinds"]): readonly stri
   return [...values];
 }
 
-function criteriaFingerprint(criteria: JobSearchCriteria): string {
-  const canonical = {
-    query: criteria.query,
-    categories: criteria.categories,
-    workModels: criteria.workModels,
-    seniorities: criteria.seniorities,
-    locations: criteria.locations,
-    skills: criteria.skills,
-    excludeKeywords: criteria.excludeKeywords,
-    salary: criteria.salary,
-    postedWithinDays: criteria.postedWithinDays,
-    sort: criteria.sort,
-  };
-  return createHash("sha256").update(JSON.stringify(canonical)).digest("base64url").slice(0, 16);
-}
-
 function primarySortValue(entry: RankedJob, sort: JobSearchCriteria["sort"]): number {
   if (sort === "relevance") return entry.rank.score;
   if (sort === "salary_desc") {
@@ -593,75 +571,36 @@ function primarySortValue(entry: RankedJob, sort: JobSearchCriteria["sort"]): nu
   return 0;
 }
 
+function rankedJobSortKey(entry: RankedJob, sort: JobSearchCriteria["sort"]): JobSearchSortKey {
+  return {
+    primary: primarySortValue(entry, sort),
+    publishedAtMs: jobSearchPublishedAtMs(entry.job.publishedAt),
+    id: entry.job.id,
+  };
+}
+
 function compareRankedJobs(
   left: RankedJob,
   right: RankedJob,
   sort: JobSearchCriteria["sort"],
 ): number {
-  if (sort !== "newest") {
-    const primaryDifference = primarySortValue(right, sort) - primarySortValue(left, sort);
-    if (primaryDifference !== 0) return primaryDifference;
-  }
-  const publishedDifference = right.job.publishedAt.localeCompare(left.job.publishedAt);
-  return publishedDifference === 0 ? left.job.id.localeCompare(right.job.id) : publishedDifference;
+  return compareJobSearchSortKeys(
+    rankedJobSortKey(left, sort),
+    rankedJobSortKey(right, sort),
+    sort,
+  );
 }
 
 function encodeSearchCursor(entry: RankedJob, criteria: JobSearchCriteria): string {
-  const cursor: SearchCursor = {
-    version: 1,
-    sort: criteria.sort,
-    primary: primarySortValue(entry, criteria.sort),
-    publishedAt: entry.job.publishedAt,
-    id: entry.job.id,
-    fingerprint: criteriaFingerprint(criteria),
-  };
-  return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
+  return encodeJobSearchCursor(rankedJobSortKey(entry, criteria.sort), criteria);
 }
 
-function invalidCursor(): DomainError {
-  return new DomainError({
-    code: "VALIDATION",
-    message: "Search cursor is invalid or does not match the current search.",
-  });
-}
-
-function decodeSearchCursor(value: string, criteria: JobSearchCriteria): SearchCursor {
-  try {
-    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as unknown;
-    if (
-      typeof parsed !== "object" ||
-      parsed === null ||
-      !("version" in parsed) ||
-      parsed.version !== 1 ||
-      !("sort" in parsed) ||
-      parsed.sort !== criteria.sort ||
-      !("primary" in parsed) ||
-      typeof parsed.primary !== "number" ||
-      !Number.isFinite(parsed.primary) ||
-      !("publishedAt" in parsed) ||
-      typeof parsed.publishedAt !== "string" ||
-      Number.isNaN(Date.parse(parsed.publishedAt)) ||
-      !("id" in parsed) ||
-      typeof parsed.id !== "string" ||
-      !("fingerprint" in parsed) ||
-      parsed.fingerprint !== criteriaFingerprint(criteria)
-    ) {
-      throw invalidCursor();
-    }
-    return parsed as SearchCursor;
-  } catch (error) {
-    if (error instanceof DomainError) throw error;
-    throw invalidCursor();
-  }
-}
-
-function compareRankedJobToCursor(entry: RankedJob, cursor: SearchCursor): number {
-  if (cursor.sort !== "newest") {
-    const primaryDifference = cursor.primary - primarySortValue(entry, cursor.sort);
-    if (primaryDifference !== 0) return primaryDifference;
-  }
-  const publishedDifference = cursor.publishedAt.localeCompare(entry.job.publishedAt);
-  return publishedDifference === 0 ? entry.job.id.localeCompare(cursor.id) : publishedDifference;
+function compareRankedJobToCursor(
+  entry: RankedJob,
+  cursor: JobSearchSortKey,
+  sort: JobSearchCriteria["sort"],
+): number {
+  return compareJobSearchSortKeys(rankedJobSortKey(entry, sort), cursor, sort);
 }
 
 function insertOwner(database: SqliteDatabase, record: OwnerRecord): OwnerRecord {
@@ -804,7 +743,7 @@ function searchJobs(
   if (criteria.locations.length > 0) {
     const locationClauses = criteria.locations.map(
       () =>
-        "lower(location.value) LIKE '%' || lower(?) || '%' OR lower(?) LIKE '%' || lower(location.value) || '%'",
+        "instr(jobbbler_normalize_search_text(location.value), jobbbler_normalize_search_text(?)) > 0 OR instr(jobbbler_normalize_search_text(?), jobbbler_normalize_search_text(location.value)) > 0",
     );
     where.push(
       `EXISTS (
@@ -816,12 +755,10 @@ function searchJobs(
   }
 
   if (criteria.postedWithinDays !== null) {
-    const nowDate = new Date(now);
-    const cutoff = new Date(
-      nowDate.getTime() - criteria.postedWithinDays * 24 * 60 * 60 * 1_000,
-    ).toISOString();
-    where.push("j.published_at BETWEEN ? AND ?");
-    parameters.push(cutoff, nowDate.toISOString());
+    const nowMs = jobSearchPublishedAtMs(now);
+    const cutoffMs = nowMs - criteria.postedWithinDays * 24 * 60 * 60 * 1_000;
+    where.push("jobbbler_iso_epoch_ms(j.published_at) BETWEEN ? AND ?");
+    parameters.push(cutoffMs, nowMs);
   }
 
   const rows = database
@@ -840,16 +777,15 @@ function searchJobs(
     })
     .filter(({ rank }) => rank.eligible);
   const total = ranked.length;
-  const catalogUpdatedAt = ranked.reduce<string | null>(
-    (latest, { job }) =>
-      latest === null || Date.parse(job.updatedAt) > Date.parse(latest) ? job.updatedAt : latest,
-    null,
-  );
+  const catalogUpdatedAtMs = ranked.reduce<number | null>((latest, { job }) => {
+    const updatedAtMs = jobSearchPublishedAtMs(job.updatedAt);
+    return latest === null || updatedAtMs > latest ? updatedAtMs : latest;
+  }, null);
 
   ranked.sort((left, right) => compareRankedJobs(left, right, criteria.sort));
   if (criteria.cursor !== null) {
-    const cursor = decodeSearchCursor(criteria.cursor, criteria);
-    ranked = ranked.filter((entry) => compareRankedJobToCursor(entry, cursor) > 0);
+    const cursor = decodeJobSearchCursor(criteria.cursor, criteria);
+    ranked = ranked.filter((entry) => compareRankedJobToCursor(entry, cursor, criteria.sort) > 0);
   }
 
   const effectiveLimit = Math.min(50, Math.max(1, Math.trunc(limit)), criteria.limit);
@@ -860,7 +796,8 @@ function searchJobs(
     jobs: page.map(({ job }) => job),
     total,
     nextCursor: hasNextPage && last !== undefined ? encodeSearchCursor(last, criteria) : null,
-    catalogUpdatedAt,
+    catalogUpdatedAt:
+      catalogUpdatedAtMs === null ? null : new Date(catalogUpdatedAtMs).toISOString(),
   };
 }
 

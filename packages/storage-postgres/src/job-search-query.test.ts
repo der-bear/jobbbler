@@ -59,7 +59,7 @@ describe("PostgreSQL job text search", () => {
   it("returns a page from one bounded projection query without hydrating every match", async () => {
     const older = job(
       `${"j".repeat(31)}_550e8400-e29b-41d4-a716-446655440001`,
-      "2026-08-27T09:00:00.000Z",
+      "2026-08-27T09:00:00.123456789012345678901234567890Z",
       "2026-08-29T09:00:00.000Z",
     );
     const newer = job(
@@ -76,29 +76,48 @@ describe("PostgreSQL job text search", () => {
     const query = Object.assign(
       vi.fn(async (strings: TemplateStringsArray, ...values: unknown[]) => {
         const statement = strings.join("?");
+        expect(statement).toContain("WITH input AS NOT MATERIALIZED");
         expect(statement).toContain("jobbbler.job_search_documents");
         expect(statement).toContain("LIMIT");
+        expect(statement).not.toContain("SELECT search.*");
         expect(statement).not.toMatch(/SELECT\s+job_id\s+FROM\s+jobbbler\.job_search_documents/iu);
+        expect(statement).not.toMatch(/(?:jsonb_|array_)agg/iu);
+        expect(statement).toContain("floor(0.5 +");
+        expect(statement).toContain("max(ranked.catalog_updated_at)");
+        expect(statement).toContain("JOIN jobbbler.job_search_documents AS hydrated");
         expect(values).toContain(3);
+        if (query.mock.calls.length === 2) expect(values).toContain(Date.parse(older.publishedAt));
         return query.mock.calls.length === 1
           ? [
               {
                 total: "3",
                 catalog_updated_at: newer.updatedAt,
-                page: [
-                  { body: newer, primary, published_at: newer.publishedAt, job_id: newer.id },
-                  { body: older, primary, published_at: older.publishedAt, job_id: older.id },
-                  { body: oldest, primary, published_at: oldest.publishedAt, job_id: oldest.id },
-                ],
+                body: newer,
+                primary,
+                job_id: newer.id,
+              },
+              {
+                total: "3",
+                catalog_updated_at: newer.updatedAt,
+                body: older,
+                primary,
+                job_id: older.id,
+              },
+              {
+                total: "3",
+                catalog_updated_at: newer.updatedAt,
+                body: oldest,
+                primary,
+                job_id: oldest.id,
               },
             ]
           : [
               {
                 total: "3",
                 catalog_updated_at: newer.updatedAt,
-                page: [
-                  { body: oldest, primary, published_at: oldest.publishedAt, job_id: oldest.id },
-                ],
+                body: oldest,
+                primary,
+                job_id: oldest.id,
               },
             ];
       }),

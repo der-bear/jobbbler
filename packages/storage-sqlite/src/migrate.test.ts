@@ -17,10 +17,13 @@ describe("migrateSqlite", () => {
     directory = await mkdtemp(join(tmpdir(), "jobbbler-migrations-"));
     const database = openSqliteDatabase(join(directory, "migrations.sqlite"));
 
-    expect(migrateSqlite(database)).toHaveLength(20);
+    const applied = migrateSqlite(database);
+    expect(applied).toContainEqual(
+      expect.objectContaining({ version: 21, name: "job_search_document" }),
+    );
     expect(migrateSqlite(database)).toEqual([]);
     expect(database.prepare("SELECT count(*) AS count FROM schema_migrations").get()).toEqual({
-      count: 20,
+      count: applied.length,
     });
 
     database.close();

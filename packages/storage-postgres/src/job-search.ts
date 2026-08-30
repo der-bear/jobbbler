@@ -1,33 +1,21 @@
-import { createHash } from "node:crypto";
-
-import { DomainError } from "@jobbbler/core-domain";
 import { parseJob } from "@jobbbler/jobs-domain";
-import type { Job, JobSearchPage, JobSearchQuery } from "@jobbbler/storage";
+import {
+  decodeJobSearchCursor,
+  encodeJobSearchCursor,
+  jobSearchPublishedAtMs,
+  type Job,
+  type JobSearchPage,
+  type JobSearchQuery,
+} from "@jobbbler/storage";
 
 import type { PostgresSql } from "./connection.js";
-
-type JobSearchCriteria = JobSearchQuery["criteria"];
-
-interface SearchCursor {
-  readonly v: 1;
-  readonly s: JobSearchCriteria["sort"];
-  readonly p: number;
-  readonly t: string;
-  readonly i: string;
-  readonly f: string;
-}
-
-interface SearchPageEntry {
-  readonly body: unknown;
-  readonly primary: number | string;
-  readonly published_at: string;
-  readonly job_id: string;
-}
 
 interface SearchRow {
   readonly total: string;
   readonly catalog_updated_at: string | null;
-  readonly page: readonly SearchPageEntry[];
+  readonly body: unknown | null;
+  readonly primary: number | string | null;
+  readonly job_id: string | null;
 }
 
 interface ParsedPageEntry {
@@ -35,76 +23,15 @@ interface ParsedPageEntry {
   readonly primary: number;
 }
 
-function criteriaFingerprint(criteria: JobSearchCriteria): string {
-  const canonical = {
-    query: criteria.query,
-    categories: criteria.categories,
-    workModels: criteria.workModels,
-    seniorities: criteria.seniorities,
-    locations: criteria.locations,
-    skills: criteria.skills,
-    excludeKeywords: criteria.excludeKeywords,
-    salary: criteria.salary,
-    postedWithinDays: criteria.postedWithinDays,
-    sort: criteria.sort,
-  };
-  return createHash("sha256").update(JSON.stringify(canonical)).digest("base64url").slice(0, 16);
-}
-
-function invalidCursor(): DomainError {
-  return new DomainError({
-    code: "VALIDATION",
-    message: "Search cursor is invalid or does not match the current search.",
-  });
-}
-
-function decodeCursor(value: string, criteria: JobSearchCriteria): SearchCursor {
-  try {
-    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as unknown;
-    if (
-      typeof parsed !== "object" ||
-      parsed === null ||
-      !("v" in parsed) ||
-      parsed.v !== 1 ||
-      !("s" in parsed) ||
-      parsed.s !== criteria.sort ||
-      !("p" in parsed) ||
-      typeof parsed.p !== "number" ||
-      !Number.isFinite(parsed.p) ||
-      !("t" in parsed) ||
-      typeof parsed.t !== "string" ||
-      Number.isNaN(Date.parse(parsed.t)) ||
-      !("i" in parsed) ||
-      typeof parsed.i !== "string" ||
-      !("f" in parsed) ||
-      parsed.f !== criteriaFingerprint(criteria)
-    ) {
-      throw invalidCursor();
-    }
-    return parsed as SearchCursor;
-  } catch (error) {
-    if (error instanceof DomainError) throw error;
-    throw invalidCursor();
+function parsePageEntry(row: SearchRow): ParsedPageEntry | null {
+  if (row.body === null && row.primary === null && row.job_id === null) return null;
+  if (row.body === null || row.primary === null || row.job_id === null) {
+    throw new TypeError("PostgreSQL search returned an incomplete projection row.");
   }
-}
-
-function encodeCursor(entry: ParsedPageEntry, criteria: JobSearchCriteria): string {
-  const cursor: SearchCursor = {
-    v: 1,
-    s: criteria.sort,
-    p: entry.primary,
-    t: entry.job.publishedAt,
-    i: entry.job.id,
-    f: criteriaFingerprint(criteria),
-  };
-  return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
-}
-
-function parsePageEntry(entry: SearchPageEntry): ParsedPageEntry {
-  const primary = Number(entry.primary);
+  const primary = Number(row.primary);
   if (!Number.isFinite(primary)) throw new TypeError("PostgreSQL search returned an invalid rank.");
-  const job = parseJob(entry.body);
-  if (entry.job_id !== job.id || Number.isNaN(Date.parse(entry.published_at))) {
+  const job = parseJob(row.body);
+  if (row.job_id !== job.id) {
     throw new TypeError("PostgreSQL search returned an invalid projection row.");
   }
   return { job, primary };
@@ -116,49 +43,56 @@ export async function searchPostgresJobs(
 ): Promise<JobSearchPage> {
   const effectiveLimit = Math.min(50, Math.max(1, Math.trunc(query.limit)), query.criteria.limit);
   const cursor =
-    query.criteria.cursor === null ? null : decodeCursor(query.criteria.cursor, query.criteria);
+    query.criteria.cursor === null
+      ? null
+      : decodeJobSearchCursor(query.criteria.cursor, query.criteria);
   const rows = await sql<SearchRow[]>`
-    WITH input AS (
+    WITH input AS NOT MATERIALIZED (
       SELECT
         ${sql.json(query.criteria)}::jsonb AS criteria,
-        ${query.now}::timestamptz AS now_at,
+        ${jobSearchPublishedAtMs(query.now)}::bigint AS now_ms,
         ${effectiveLimit + 1}::integer AS page_limit,
-        ${cursor?.p ?? null}::double precision AS cursor_primary,
-        ${cursor?.t ?? null}::timestamptz AS cursor_published_at,
-        ${cursor?.i ?? null}::text AS cursor_id
+        ${cursor?.primary ?? null}::double precision AS cursor_primary,
+        ${cursor?.publishedAtMs ?? null}::bigint AS cursor_published_at_ms,
+        ${cursor?.id ?? null}::text AS cursor_id
     ),
-    candidates AS (
-      SELECT search.*, input.criteria, input.now_at
+    candidates AS NOT MATERIALIZED (
+      SELECT
+        search.job_id,
+        search.catalog_updated_at,
+        search.published_at_ms,
+        search.salary_sort,
+        search.categories,
+        search.work_model,
+        search.seniority,
+        search.location_terms,
+        search.skill_terms,
+        NULLIF(search.body->'salary', 'null'::jsonb) AS job_salary,
+        input.criteria
       FROM jobbbler.job_search_documents AS search
       CROSS JOIN input
       WHERE search.status = 'open'
         AND (
-          input.criteria->>'query' IS NULL
-          OR search.document @@ plainto_tsquery('simple', input.criteria->>'query')
+          ${query.criteria.query === null}::boolean
+          OR search.document @@ plainto_tsquery('simple', ${query.criteria.query ?? ""})
         )
         AND (
-          jsonb_array_length(input.criteria->'categories') = 0
-          OR search.categories && ARRAY(
-            SELECT value FROM jsonb_array_elements_text(input.criteria->'categories') AS requested(value)
-          )
+          ${query.criteria.categories.length === 0}::boolean
+          OR search.categories && ${sql.array(query.criteria.categories)}::text[]
         )
         AND (
-          jsonb_array_length(input.criteria->'workModels') = 0
-          OR search.work_model IN (
-            SELECT value FROM jsonb_array_elements_text(input.criteria->'workModels') AS requested(value)
-          )
+          ${query.criteria.workModels.length === 0}::boolean
+          OR search.work_model = ANY(${sql.array(query.criteria.workModels)}::text[])
         )
         AND (
-          jsonb_array_length(input.criteria->'seniorities') = 0
-          OR search.seniority IN (
-            SELECT value FROM jsonb_array_elements_text(input.criteria->'seniorities') AS requested(value)
-          )
+          ${query.criteria.seniorities.length === 0}::boolean
+          OR search.seniority = ANY(${sql.array(query.criteria.seniorities)}::text[])
         )
         AND (
-          jsonb_array_length(input.criteria->'locations') = 0
+          ${query.criteria.locations.length === 0}::boolean
           OR EXISTS (
             SELECT 1
-            FROM jsonb_array_elements_text(input.criteria->'locations') AS requested(value)
+            FROM unnest(${sql.array(query.criteria.locations)}::text[]) AS requested(value)
             CROSS JOIN LATERAL (
               SELECT jobbbler.normalize_search_text(requested.value) AS term
             ) AS normalized
@@ -175,30 +109,29 @@ export async function searchPostgresJobs(
           )
         )
         AND (
-          input.criteria->>'postedWithinDays' IS NULL
-          OR search.published_at BETWEEN
-            input.now_at - (input.criteria->>'postedWithinDays')::integer * interval '1 day'
-            AND input.now_at
+          ${query.criteria.postedWithinDays === null}::boolean
+          OR search.published_at_ms BETWEEN
+            input.now_ms - ${query.criteria.postedWithinDays ?? 0}::bigint * 86400000
+            AND input.now_ms
         )
         AND NOT EXISTS (
           SELECT 1
-          FROM jsonb_array_elements_text(input.criteria->'excludeKeywords') AS requested(value)
+          FROM unnest(${sql.array(query.criteria.excludeKeywords)}::text[]) AS requested(value)
           CROSS JOIN LATERAL (
             SELECT jobbbler.normalize_search_text(requested.value) AS term
           ) AS normalized
           WHERE normalized.term <> '' AND strpos(search.normalized_text, normalized.term) > 0
         )
     ),
-    salary_amounts AS (
+    salary_inputs AS NOT MATERIALIZED (
       SELECT
         candidates.*,
-        NULLIF(candidates.criteria->'salary', 'null'::jsonb) AS requested_salary,
-        NULLIF(candidates.body->'salary', 'null'::jsonb) AS job_salary
+        NULLIF(candidates.criteria->'salary', 'null'::jsonb) AS requested_salary
       FROM candidates
     ),
-    converted_salary AS (
+    converted_salary AS NOT MATERIALIZED (
       SELECT
-        salary_amounts.*,
+        salary_inputs.*,
         CASE
           WHEN job_salary->>'currency' = requested_salary->>'currency'
             THEN (job_salary->>'minimum')::numeric
@@ -233,9 +166,9 @@ export async function searchPostgresJobs(
             )
           ELSE NULL
         END AS converted_maximum
-      FROM salary_amounts
+      FROM salary_inputs
     ),
-    salary_scored AS (
+    salary_scored AS NOT MATERIALIZED (
       SELECT converted_salary.*, salary.score AS salary_score
       FROM converted_salary
       CROSS JOIN LATERAL (
@@ -267,7 +200,7 @@ export async function searchPostgresJobs(
       ) AS salary
       WHERE salary.score IS NOT NULL
     ),
-    dimensions AS (
+    dimensions AS NOT MATERIALIZED (
       SELECT
         salary_scored.*,
         (
@@ -309,9 +242,11 @@ export async function searchPostgresJobs(
         ) AS skill_matches
       FROM salary_scored
     ),
-    ranked AS MATERIALIZED (
+    ranked AS NOT MATERIALIZED (
       SELECT
-        dimensions.*,
+        job_id,
+        published_at_ms,
+        catalog_updated_at,
         CASE criteria->>'sort'
           WHEN 'relevance' THEN
             CASE
@@ -325,7 +260,7 @@ export async function searchPostgresJobs(
                 + CASE WHEN requested_salary IS NULL THEN 0 ELSE 10 END
                 + CASE WHEN criteria->>'postedWithinDays' IS NULL THEN 0 ELSE 5 END
               ) = 0 THEN 50
-              ELSE round(100 * (
+              ELSE floor(0.5 + 100 * (
                 CASE WHEN criteria->>'query' IS NULL THEN 0 ELSE 30 END
                 + CASE WHEN jsonb_array_length(criteria->'categories') = 0 THEN 0
                     ELSE 15 * category_matches / jsonb_array_length(criteria->'categories') END
@@ -358,8 +293,10 @@ export async function searchPostgresJobs(
     stats AS (
       SELECT
         count(*)::text AS total,
-        (array_agg(body->>'updatedAt' ORDER BY catalog_updated_at DESC, job_id))[1]
-          AS catalog_updated_at
+        to_char(
+          max(ranked.catalog_updated_at) AT TIME ZONE 'UTC',
+          'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+        ) AS catalog_updated_at
       FROM ranked
     ),
     limited AS (
@@ -367,54 +304,74 @@ export async function searchPostgresJobs(
       FROM ranked
       CROSS JOIN input
       WHERE input.cursor_id IS NULL
-        OR (ranked.criteria->>'sort' <> 'newest' AND primary_sort < input.cursor_primary)
         OR (
-          (ranked.criteria->>'sort' = 'newest' OR primary_sort = input.cursor_primary)
-          AND published_at < input.cursor_published_at
+          input.criteria->>'sort' <> 'newest'
+          AND ranked.primary_sort < input.cursor_primary
         )
         OR (
-          (ranked.criteria->>'sort' = 'newest' OR primary_sort = input.cursor_primary)
-          AND published_at = input.cursor_published_at
-          AND job_id > input.cursor_id
+          (
+            input.criteria->>'sort' = 'newest'
+            OR ranked.primary_sort = input.cursor_primary
+          )
+          AND ranked.published_at_ms < input.cursor_published_at_ms
+        )
+        OR (
+          (
+            input.criteria->>'sort' = 'newest'
+            OR ranked.primary_sort = input.cursor_primary
+          )
+          AND ranked.published_at_ms = input.cursor_published_at_ms
+          AND ranked.job_id > input.cursor_id
         )
       ORDER BY
-        CASE WHEN ranked.criteria->>'sort' <> 'newest' THEN primary_sort END DESC,
-        published_at DESC,
-        job_id
+        CASE
+          WHEN input.criteria->>'sort' <> 'newest' THEN ranked.primary_sort
+        END DESC,
+        ranked.published_at_ms DESC,
+        ranked.job_id
       LIMIT (SELECT page_limit FROM input)
-    ),
-    page AS (
-      SELECT coalesce(
-        jsonb_agg(
-          jsonb_build_object(
-            'body', body,
-            'primary', primary_sort,
-            'published_at', body->>'publishedAt',
-            'job_id', job_id
-          )
-          ORDER BY
-            CASE WHEN criteria->>'sort' <> 'newest' THEN primary_sort END DESC,
-            published_at DESC,
-            job_id
-        ),
-        '[]'::jsonb
-      ) AS entries
-      FROM limited
     )
-    SELECT stats.total, stats.catalog_updated_at, page.entries AS page
+    SELECT
+      stats.total,
+      stats.catalog_updated_at,
+      hydrated.body,
+      limited.primary_sort AS primary,
+      limited.job_id
     FROM stats
-    CROSS JOIN page`;
+    CROSS JOIN input
+    LEFT JOIN limited ON true
+    LEFT JOIN jobbbler.job_search_documents AS hydrated
+      ON hydrated.job_id = limited.job_id
+    ORDER BY
+      CASE
+        WHEN input.criteria->>'sort' <> 'newest' THEN limited.primary_sort
+      END DESC,
+      limited.published_at_ms DESC,
+      limited.job_id`;
 
   const result = rows[0];
   if (result === undefined) throw new TypeError("PostgreSQL search returned no result row.");
-  const entries = result.page.map(parsePageEntry);
+  const entries = rows.flatMap((row) => {
+    const entry = parsePageEntry(row);
+    return entry === null ? [] : [entry];
+  });
   const hasNextPage = entries.length > effectiveLimit;
   const page = entries.slice(0, effectiveLimit);
   const last = page.at(-1);
   return {
     jobs: page.map(({ job }) => job),
     total: Number(result.total),
-    nextCursor: hasNextPage && last !== undefined ? encodeCursor(last, query.criteria) : null,
+    nextCursor:
+      hasNextPage && last !== undefined
+        ? encodeJobSearchCursor(
+            {
+              primary: last.primary,
+              publishedAtMs: jobSearchPublishedAtMs(last.job.publishedAt),
+              id: last.job.id,
+            },
+            query.criteria,
+          )
+        : null,
     catalogUpdatedAt: result.catalog_updated_at,
   };
 }

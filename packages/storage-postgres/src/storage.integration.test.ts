@@ -3,17 +3,48 @@ import { afterEach, describe, expect, it } from "vitest";
 import type {
   ApplicationDraft,
   Job,
+  JobSearchQuery,
   PersistSourceObservationInput,
   SourceRunRecord,
   WorkItemRecord,
 } from "@jobbbler/storage";
 import { storageContractSuite } from "@jobbbler/storage/contract-tests";
 
-import { createPostgresStorage, migratePostgres, resetPostgresSchema } from "./index.js";
+import { searchPostgresJobs } from "./job-search.js";
+import {
+  createPostgresStorage,
+  migratePostgres,
+  resetPostgresSchema,
+  type PostgresSql,
+} from "./index.js";
 
 const databaseUrl = process.env["POSTGRES_TEST_DATABASE_URL"];
 const ingestionNow = "2026-08-29T10:00:00.000Z";
 const ingestionLater = "2026-08-29T11:00:00.000Z";
+
+interface ExplainPlanNode {
+  readonly Alias?: string;
+  readonly "Actual Loops"?: number;
+  readonly "Actual Rows"?: number;
+  readonly "Index Name"?: string;
+  readonly Plans?: readonly ExplainPlanNode[];
+}
+
+function findExplainPlanNode(node: ExplainPlanNode, alias: string): ExplainPlanNode | undefined {
+  if (node.Alias === alias) return node;
+  for (const child of node.Plans ?? []) {
+    const match = findExplainPlanNode(child, alias);
+    if (match !== undefined) return match;
+  }
+  return undefined;
+}
+
+function explainIndexNames(node: ExplainPlanNode): readonly string[] {
+  return [
+    ...(node["Index Name"] === undefined ? [] : [node["Index Name"]]),
+    ...(node.Plans ?? []).flatMap(explainIndexNames),
+  ];
+}
 
 function ingestionRun(id: string, startedAt: string): SourceRunRecord {
   return {
@@ -170,6 +201,18 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
     await storage.close();
   });
 
+  it("normalizes decomposed diacritics without introducing token boundaries", async () => {
+    const storage = createPostgresStorage(databaseUrl!);
+    close = async () => storage.close();
+    await resetPostgresSchema(storage.sql);
+    await migratePostgres(storage.sql);
+
+    await expect(
+      storage.sql<{ readonly normalized: string }[]>`
+        SELECT jobbbler.normalize_search_text('Málaga') AS normalized`,
+    ).resolves.toEqual([{ normalized: "malaga" }]);
+  });
+
   it("maintains the bounded open-job projection and paginates more than one page", async () => {
     const storage = createPostgresStorage(databaseUrl!);
     close = async () => storage.close();
@@ -240,10 +283,20 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
     expect(ids).toHaveLength(55);
     expect(new Set(ids).size).toBe(55);
     const projection = await storage.sql<
-      { readonly job_id: string; readonly status: string; readonly body: Job }[]
-    >`SELECT job_id, status, body FROM jobbbler.job_search_documents ORDER BY job_id`;
+      {
+        readonly job_id: string;
+        readonly status: string;
+        readonly published_at_ms: string;
+        readonly body: Job;
+      }[]
+    >`SELECT job_id, status, published_at_ms::text, body
+      FROM jobbbler.job_search_documents ORDER BY job_id`;
     expect(projection).toHaveLength(55);
-    expect(projection[0]).toMatchObject({ status: "open", body: { title: "Platform Engineer 0" } });
+    expect(projection[0]).toMatchObject({
+      status: "open",
+      published_at_ms: String(Date.parse(jobs[0]!.publishedAt)),
+      body: { title: "Platform Engineer 0" },
+    });
     const indexes = await storage.sql<{ readonly indexname: string }[]>`
       SELECT indexname
       FROM pg_indexes
@@ -258,6 +311,107 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
         "job_search_documents_open_categories_idx",
       ]),
     );
+    const plans = await storage.sql.begin(async (transaction) => {
+      await transaction.unsafe("SAVEPOINT explain_fixture");
+      await transaction`
+        INSERT INTO jobbbler.job_search_documents(
+          job_id, document, body, status, published_at, published_at_ms,
+          catalog_updated_at, work_model, seniority, salary_sort,
+          normalized_text, categories, location_terms, skill_terms
+        )
+        SELECT
+          'explain_fixture_' || value,
+          to_tsvector('simple', 'TypeScript'),
+          '{}'::jsonb,
+          'open',
+          to_timestamp(1700000000 + value),
+          1700000000000 + value * 1000,
+          to_timestamp(1700000000 + value),
+          'hybrid',
+          'junior',
+          -1,
+          'typescript',
+          ARRAY[]::text[],
+          ARRAY[]::text[],
+          ARRAY['typescript']::text[]
+        FROM generate_series(1, 2000) AS fixture(value)`;
+      await transaction.unsafe("ANALYZE jobbbler.job_search_documents");
+      const explainSearch = async (
+        criteria: JobSearchQuery["criteria"],
+      ): Promise<ExplainPlanNode> => {
+        let plan: ExplainPlanNode | undefined;
+        const explainSql = Object.assign(
+          async (strings: TemplateStringsArray, ...parameters: readonly unknown[]) => {
+            const statement = strings.reduce(
+              (current, part, index) =>
+                `${current}${part}${index < parameters.length ? `$${String(index + 1)}` : ""}`,
+              "",
+            );
+            const rows = await transaction.unsafe<
+              { readonly "QUERY PLAN": readonly [{ readonly Plan: ExplainPlanNode }] }[]
+            >(`EXPLAIN (ANALYZE, COSTS OFF, TIMING OFF, SUMMARY OFF, FORMAT JSON) ${statement}`, [
+              ...parameters,
+            ] as never[]);
+            plan = rows[0]?.["QUERY PLAN"][0].Plan;
+            return [
+              {
+                total: "0",
+                catalog_updated_at: null,
+                body: null,
+                primary: null,
+                job_id: null,
+              },
+            ];
+          },
+          {
+            array: (items: readonly unknown[]) => items,
+            json: (value: unknown) => JSON.stringify(value),
+          },
+        ) as unknown as PostgresSql;
+        await searchPostgresJobs(explainSql, { criteria, now: ingestionLater, limit: 7 });
+        if (plan === undefined) throw new TypeError("EXPLAIN did not return a search plan.");
+        return plan;
+      };
+      const baseCriteria: JobSearchQuery["criteria"] = {
+        query: "Rust",
+        categories: [],
+        workModels: [],
+        seniorities: [],
+        locations: [],
+        skills: [],
+        excludeKeywords: [],
+        salary: null,
+        postedWithinDays: null,
+        sort: "newest",
+        cursor: null,
+        limit: 7,
+        unresolvedAssumptions: [],
+      };
+      const fullText = await explainSearch(baseCriteria);
+      const workModel = await explainSearch({
+        ...baseCriteria,
+        query: null,
+        workModels: ["remote"],
+      });
+      const hydratedNode = findExplainPlanNode(workModel, "hydrated");
+      if (
+        hydratedNode?.["Actual Rows"] === undefined ||
+        hydratedNode["Actual Loops"] === undefined
+      ) {
+        throw new TypeError("EXPLAIN did not report the bounded hydration node.");
+      }
+      const result = {
+        fullTextIndexes: explainIndexNames(fullText),
+        workModelIndexes: explainIndexNames(workModel),
+        hydratedRows: hydratedNode["Actual Rows"] * hydratedNode["Actual Loops"],
+      };
+      await transaction.unsafe("ROLLBACK TO SAVEPOINT explain_fixture");
+      return result;
+    });
+    expect(plans.fullTextIndexes.join("\n")).toContain("job_search_documents_gin_idx");
+    expect(plans.workModelIndexes.join("\n")).toContain("job_search_documents_open_work_model_idx");
+    expect(plans.hydratedRows).toBeGreaterThan(0);
+    expect(plans.hydratedRows).toBeLessThanOrEqual(8);
 
     await storage.jobs.upsert({ ...jobs[0]!, status: "closed", updatedAt: ingestionLater });
     await expect(

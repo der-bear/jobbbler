@@ -42,7 +42,7 @@ const emptyDimension: RankDimension = {
   missing: [],
 };
 
-function normalize(value: string): string {
+export function normalizeSearchText(value: string): string {
   return value
     .normalize("NFKD")
     .replace(/\p{Diacritic}/gu, "")
@@ -54,8 +54,8 @@ function normalize(value: string): string {
 }
 
 function matchesText(haystack: string, needle: string): boolean {
-  const normalizedNeedle = normalize(needle);
-  return normalizedNeedle.length > 0 && normalize(haystack).includes(normalizedNeedle);
+  const normalizedNeedle = normalizeSearchText(needle);
+  return normalizedNeedle.length > 0 && normalizeSearchText(haystack).includes(normalizedNeedle);
 }
 
 function makeDimension(
@@ -216,8 +216,8 @@ function rankFreshness(
 
 export function rankJob(job: Job, criteria: JobSearchCriteria, context: RankJobContext): JobRank {
   const document = getJobSearchDocument(job);
-  const normalizedDocument = normalize(document);
-  const queryTokens = criteria.query === null ? [] : normalize(criteria.query).split(" ");
+  const normalizedDocument = normalizeSearchText(document);
+  const queryTokens = criteria.query === null ? [] : normalizeSearchText(criteria.query).split(" ");
   const matchedQueryTokens = queryTokens.filter((token) => normalizedDocument.includes(token));
   const text = makeDimension(queryTokens, matchedQueryTokens, { hard: true });
 
@@ -245,7 +245,7 @@ export function rankJob(job: Job, criteria: JobSearchCriteria, context: RankJobC
   const locations = makeDimension(criteria.locations, matchedLocations, { hard: true });
 
   const matchedSkills = criteria.skills.filter((requested) =>
-    job.skills.some((actual) => normalize(actual) === normalize(requested)),
+    job.skills.some((actual) => normalizeSearchText(actual) === normalizeSearchText(requested)),
   );
   const skills = makeDimension(criteria.skills, matchedSkills);
   const salary = rankSalary(job, criteria);
@@ -253,7 +253,7 @@ export function rankJob(job: Job, criteria: JobSearchCriteria, context: RankJobC
 
   const exclusions = criteria.excludeKeywords
     .filter((keyword) => matchesText(document, keyword))
-    .map((keyword) => normalize(keyword));
+    .map((keyword) => normalizeSearchText(keyword));
 
   const requestedDimensions = [
     { dimension: text, weight: 30 },

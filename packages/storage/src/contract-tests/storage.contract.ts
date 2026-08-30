@@ -307,6 +307,95 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
       ).toEqual({ jobs: [], total: 0, nextCursor: null, catalogUpdatedAt: null });
     });
 
+    it("searches category text from the canonical job document", async () => {
+      const current = await create();
+      await current.organizations.upsert(organization);
+      const categorized = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440016",
+        title: "Research Specialist",
+        summary: "Build explainable workflows for technical teams.",
+        categories: ["data_ai" as const],
+        skills: ["Python"],
+      };
+      await current.jobs.upsert(categorized);
+
+      await expect(
+        current.jobs.search({
+          criteria: { ...emptyCriteria, query: "data" },
+          now,
+          limit: 10,
+        }),
+      ).resolves.toEqual({
+        jobs: [categorized],
+        total: 1,
+        nextCursor: null,
+        catalogUpdatedAt: now,
+      });
+    });
+
+    it("matches location filters after removing diacritics", async () => {
+      const current = await create();
+      await current.organizations.upsert(organization);
+      const malaga = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440017",
+        locations: ["Málaga, Spain"],
+      };
+      await current.jobs.upsert(malaga);
+
+      await expect(
+        current.jobs.search({
+          criteria: { ...emptyCriteria, locations: ["Malaga"] },
+          now,
+          limit: 10,
+        }),
+      ).resolves.toEqual({
+        jobs: [malaga],
+        total: 1,
+        nextCursor: null,
+        catalogUpdatedAt: now,
+      });
+    });
+
+    it("uses diacritic-normalized skills as soft relevance evidence", async () => {
+      const current = await create();
+      await current.organizations.upsert(organization);
+      const malaga = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440018",
+        skills: ["Málaga"],
+      };
+      await current.jobs.upsert(job);
+      await current.jobs.upsert(malaga);
+
+      const result = await current.jobs.search({
+        criteria: { ...emptyCriteria, skills: ["Malaga"], sort: "relevance" },
+        now,
+        limit: 10,
+      });
+      expect(result.jobs.map(({ id }) => id)).toEqual([malaga.id, job.id]);
+      expect(result.total).toBe(2);
+    });
+
+    it("applies exclusions after removing diacritics", async () => {
+      const current = await create();
+      await current.organizations.upsert(organization);
+      await current.jobs.upsert({
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440019",
+        summary: "Build a platform with the Málaga engineering group.",
+      });
+
+      await expect(
+        current.jobs.search({
+          criteria: { ...emptyCriteria, excludeKeywords: ["Malaga"] },
+          now,
+          limit: 10,
+        }),
+      ).resolves.toEqual({ jobs: [], total: 0, nextCursor: null, catalogUpdatedAt: null });
+    });
+
     it("keeps requested skills as a soft relevance dimension across adapters", async () => {
       const current = await create();
       await current.organizations.upsert(organization);
@@ -345,6 +434,40 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
         nextCursor: null,
         catalogUpdatedAt: now,
       });
+    });
+
+    it("rounds exact half-point relevance scores like Math.round", async () => {
+      const current = await create();
+      await current.organizations.upsert(organization);
+      const requestedSkills = Array.from({ length: 16 }, (_, index) => `skill-${index + 1}`);
+      const halfPoint = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440024",
+        locations: ["Europe", "Germany", "Berlin"],
+        skills: requestedSkills.slice(0, 6),
+        publishedAt: "2026-08-27T09:00:00.000Z",
+      };
+      const belowHalf = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440025",
+        locations: ["Europe"],
+        skills: requestedSkills.slice(0, 13),
+        publishedAt: "2026-08-28T09:00:00.000Z",
+      };
+      await current.jobs.upsert(halfPoint);
+      await current.jobs.upsert(belowHalf);
+
+      const result = await current.jobs.search({
+        criteria: {
+          ...emptyCriteria,
+          locations: ["Europe", "Germany", "Berlin"],
+          skills: requestedSkills,
+          sort: "relevance",
+        },
+        now,
+        limit: 10,
+      });
+      expect(result.jobs.map(({ id }) => id)).toEqual([halfPoint.id, belowHalf.id]);
     });
 
     it("keeps salary ordering and unknown-salary policies aligned across adapters", async () => {
@@ -474,6 +597,85 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
         nextCursor: null,
         catalogUpdatedAt: now,
       });
+    });
+
+    it("orders equivalent instants by id across a newest cursor", async () => {
+      const current = await create();
+      await current.organizations.upsert(organization);
+      const first = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440020",
+        publishedAt: "2026-08-29T00:00:00.123456789Z",
+      };
+      const second = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440021",
+        publishedAt: "2026-08-29T10:00:00.123456789+10:00",
+      };
+      await current.jobs.upsert(first);
+      await current.jobs.upsert(second);
+
+      const firstPage = await current.jobs.search({
+        criteria: { ...emptyCriteria, sort: "newest", limit: 1 },
+        now,
+        limit: 1,
+      });
+      expect(firstPage.jobs).toEqual([first]);
+      expect(firstPage.nextCursor).toEqual(expect.any(String));
+      await expect(
+        current.jobs.search({
+          criteria: {
+            ...emptyCriteria,
+            sort: "newest",
+            cursor: firstPage.nextCursor,
+            limit: 1,
+          },
+          now,
+          limit: 1,
+        }),
+      ).resolves.toEqual({
+        jobs: [second],
+        total: 2,
+        nextCursor: null,
+        catalogUpdatedAt: now,
+      });
+    });
+
+    it("keeps a long-timestamp cursor inside the public bound", async () => {
+      const current = await create();
+      await current.organizations.upsert(organization);
+      const first = {
+        ...job,
+        id: `${"j".repeat(31)}_550e8400-e29b-41d4-a716-446655440022`,
+        publishedAt: "2026-08-29T11:00:00.123456789012345678901234567890Z",
+      };
+      const second = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440023",
+        publishedAt: "2026-08-29T10:00:00.000Z",
+      };
+      await current.jobs.upsert(first);
+      await current.jobs.upsert(second);
+
+      const firstPage = await current.jobs.search({
+        criteria: { ...emptyCriteria, sort: "salary_desc", limit: 1 },
+        now,
+        limit: 1,
+      });
+      expect(firstPage.jobs).toEqual([first]);
+      expect(firstPage.nextCursor?.length).toBeLessThanOrEqual(256);
+      await expect(
+        current.jobs.search({
+          criteria: {
+            ...emptyCriteria,
+            sort: "salary_desc",
+            cursor: firstPage.nextCursor,
+            limit: 1,
+          },
+          now,
+          limit: 1,
+        }),
+      ).resolves.toMatchObject({ jobs: [second], total: 2, nextCursor: null });
     });
 
     it("rejects a malformed or mismatched search cursor", async () => {

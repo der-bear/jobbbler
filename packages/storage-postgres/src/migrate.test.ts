@@ -5,10 +5,11 @@ import { postgresMigrationManifest } from "./index.js";
 describe("PostgreSQL migration manifest", () => {
   it("contains sequential checksummed migrations including authorization bindings", () => {
     const migrations = postgresMigrationManifest();
-    expect(migrations.map((migration) => migration.version)).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-    ]);
-    expect(migrations.at(-1)?.name).toBe("job_search_projection");
+    const versions = migrations.map((migration) => migration.version);
+    expect(versions).toEqual(Array.from({ length: versions.at(-1) ?? 0 }, (_, index) => index + 1));
+    expect(migrations.find((migration) => migration.version === 14)?.name).toBe(
+      "job_search_parity",
+    );
     expect(migrations.every((migration) => /^[a-f0-9]{64}$/.test(migration.checksum))).toBe(true);
   });
 
@@ -33,6 +34,15 @@ describe("PostgreSQL migration manifest", () => {
     expect(sql).toContain("job_search_documents_open_work_model_idx");
     expect(sql).toContain("job_search_documents_open_seniority_idx");
     expect(sql).toContain("job_search_documents_open_categories_idx");
+    expect(sql).toContain("published_at_ms");
+  });
+
+  it("gates the transactional search-index replacement to an empty catalog", () => {
+    const parity = postgresMigrationManifest().find((migration) => migration.version === 14);
+
+    expect(parity?.sql).toContain("requires an empty job catalog");
+    expect(parity?.sql).toContain("ERRCODE = '55000'");
+    expect(parity?.sql).not.toContain("UPDATE jobbbler.job_search_documents");
   });
 
   it("indexes agent-session tokens and authorization lookups without storing bearer tokens", () => {
