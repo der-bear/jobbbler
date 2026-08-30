@@ -17,6 +17,7 @@ import { comparableCurrencies, normalizeJobSearchCriteria } from "@jobbbler/jobs
 import type { JsonSchema, JsonValue, ToolManifest } from "@jobbbler/webmcp";
 
 import { searchInputToSearchParams } from "@/lib/search-url";
+import type { WebMcpNavigate } from "@/lib/webmcp-navigation";
 import {
   MAX_EXACT_REVIEW_RESULT_BYTES,
   completedWebMcpResult,
@@ -139,6 +140,12 @@ export const jobSearchToolInputJsonSchema = {
       description: "Result ordering.",
       enum: ["relevance", "newest", "salary_desc"],
     },
+    cursor: {
+      type: "string",
+      description:
+        "Opaque nextCursor from search_jobs; keep every other search criterion unchanged.",
+      maxLength: 256,
+    },
     limit: {
       type: "integer",
       description: "Number of visible results to request.",
@@ -152,7 +159,7 @@ const emptyInput = z.strictObject({});
 const searchStateInput = z.strictObject({
   detail: z.enum(["summary", "exact"]).default("summary"),
 });
-export const jobSearchToolInput = jobSearchInputSchema.omit({ cursor: true });
+export const jobSearchToolInput = jobSearchInputSchema;
 
 export interface SearchWebMcpState {
   readonly criteria: JobSearchCriteria;
@@ -181,7 +188,7 @@ export interface SearchToolDependencies {
   ): Promise<SearchJobsResult>;
   getSearchState(): JobSearchInput | SearchWebMcpState | null;
   onSearchCommitted(input: JobSearchInput, result: SearchJobsResult): Promise<void> | void;
-  onNavigate(href: string): Promise<void> | void;
+  onNavigate: WebMcpNavigate;
   getCriteriaSearch?(): string;
 }
 
@@ -266,17 +273,18 @@ function reusableCriteria(criteria: JobSearchCriteria): JsonValue {
 function compactSearchResult(result: SearchJobsResult): JsonValue {
   return {
     total: result.total,
-    jobs: result.jobs.slice(0, 2).map((job) => ({
+    jobs: result.jobs.slice(0, 3).map((job) => ({
       id: job.id,
-      title: short(job.title, 55),
-      organization: short(job.organizationName, 40),
-      location: short(job.locations[0] ?? "Location not stated", 32),
+      title: short(job.title, 45),
+      organization: short(job.organizationName, 32),
+      location: short(job.locations[0] ?? "Location not stated", 24),
       workModel: job.workModel,
       salaryMinimum: job.salary?.minimum ?? null,
       salaryCurrency: job.salary?.currency ?? null,
       matchScore: job.matchScore ?? null,
     })),
-    hasMore: result.nextCursor !== null || result.total > 2,
+    nextCursor: result.nextCursor,
+    hasMore: result.nextCursor !== null || result.total > result.jobs.length,
   };
 }
 
@@ -296,16 +304,11 @@ export function createSearchToolManifests(
         const result = await dependencies.searchJobs(parsed, { signal });
         const parameters = searchInputToSearchParams(parsed);
         const href = parameters.size === 0 ? "/jobs" : `/jobs?${parameters.toString()}`;
-        await dependencies.onNavigate(href);
+        await dependencies.onNavigate(href, { signal });
         await dependencies.onSearchCommitted(parsed, result);
         return completedWebMcpResult({
           summary: `Found ${String(result.total)} matching technology role${result.total === 1 ? "" : "s"}.`,
           data: compactSearchResult(result),
-          resources: result.jobs.slice(0, 2).map((job) => ({
-            type: "job",
-            id: job.id,
-            label: short(`${job.title} at ${job.organizationName}`, 70),
-          })),
           facts: [
             { key: "total", value: result.total },
             { key: "catalog_updated_at", value: result.catalogUpdatedAt },
@@ -413,6 +416,7 @@ export function createSearchToolManifests(
         const criteriaSearch = dependencies.getCriteriaSearch?.() ?? "";
         await dependencies.onNavigate(
           `/jobs/${encodeURIComponent(parsed.jobId)}${criteriaSearch.length === 0 ? "" : `?${criteriaSearch}`}`,
+          { signal },
         );
         return completedWebMcpResult({
           summary: "Opened the role page and kept the global Jobbbler toolset available.",

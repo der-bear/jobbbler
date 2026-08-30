@@ -28,6 +28,7 @@ import {
   type RequiresUserActionWebMcpResult,
   type SafeWebMcpErrorResult,
 } from "@/lib/webmcp-tool-result";
+import type { WebMcpNavigate } from "@/lib/webmcp-navigation";
 
 const emptyInputSchema = {
   type: "object",
@@ -244,7 +245,7 @@ export interface SavedToolDependencies {
   ): Promise<JobAlertSchedule>;
   onScheduleCommitted(schedule: JobAlertSchedule): Promise<void> | void;
   savedSearchHref(savedSearch: SavedSearch): string;
-  onNavigate(href: string): Promise<void> | void;
+  onNavigate: WebMcpNavigate;
   getLatestRun(
     savedSearchId: string,
     options: Readonly<{ signal: AbortSignal }>,
@@ -542,7 +543,7 @@ export function createSavedToolManifests(
             },
           ]);
         }
-        await dependencies.onNavigate(dependencies.savedSearchHref(savedSearch));
+        await dependencies.onNavigate(dependencies.savedSearchHref(savedSearch), { signal });
         return completedWebMcpResult({
           summary: "Opened the saved search on the results page with its stored criteria.",
           data: { savedSearchId: savedSearch.id, route: "/" },

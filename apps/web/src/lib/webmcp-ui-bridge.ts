@@ -35,6 +35,7 @@ export function readSearchSurfaceState(): SearchSurfaceState | null {
 }
 
 export function commitWebMcpSearch(input: JobSearchInput, result: SearchJobsResult): void {
+  publishSearchSurfaceState({ criteria: result.criteria, total: result.total });
   window.dispatchEvent(
     new CustomEvent<SearchCommit>(searchCommitEvent, { detail: { input, result } }),
   );

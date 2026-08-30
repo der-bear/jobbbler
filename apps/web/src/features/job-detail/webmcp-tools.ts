@@ -15,6 +15,7 @@ import {
   type CompletedWebMcpResult,
   type SafeWebMcpErrorResult,
 } from "@/lib/webmcp-tool-result";
+import type { WebMcpNavigate } from "@/lib/webmcp-navigation";
 
 import { applicationCapabilityData, applicationCapabilitySummary } from "./application-capability";
 
@@ -58,7 +59,7 @@ export interface JobDetailToolDependencies {
     options: Readonly<{ signal: AbortSignal }>,
   ): Promise<CompareJobsResult>;
   onDetailCommitted(result: JobDetailResult): Promise<void> | void;
-  onNavigate(href: string): Promise<void> | void;
+  onNavigate: WebMcpNavigate;
   getCriteriaSearch?(): string;
 }
 
@@ -182,6 +183,7 @@ export function createJobDetailToolManifests(
         const result = await dependencies.compareJobs(parsed, { signal });
         await dependencies.onNavigate(
           comparisonHref(parsed.jobIds, dependencies.getCriteriaSearch?.() ?? ""),
+          { signal },
         );
         return completedWebMcpResult({
           summary: `Compared ${String(result.jobs.length)} technology roles and opened the comparison.`,

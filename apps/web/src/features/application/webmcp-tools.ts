@@ -21,6 +21,7 @@ import {
   type RequiresUserActionWebMcpResult,
   type SafeWebMcpErrorResult,
 } from "@/lib/webmcp-tool-result";
+import type { WebMcpNavigate } from "@/lib/webmcp-navigation";
 
 const emptyInputSchema = {
   type: "object",
@@ -695,7 +696,7 @@ export interface StableApplicationToolDependencies {
     draftId: string,
     options: Readonly<{ signal: AbortSignal }>,
   ): Promise<ApplicationConsentWithdrawal>;
-  onNavigate(href: string): Promise<void> | void;
+  onNavigate: WebMcpNavigate;
   waitForSurface?(
     draftId: string,
     signal: AbortSignal,
@@ -767,7 +768,7 @@ export function createStableApplicationToolManifests(
 
         let surface = dependencies.currentSurface();
         if (surfaceDraftId(surface) !== parsed.draftId) {
-          await dependencies.onNavigate(`/apply/${encodeURIComponent(parsed.draftId)}`);
+          await dependencies.onNavigate(`/apply/${encodeURIComponent(parsed.draftId)}`, { signal });
           surface =
             (await dependencies.waitForSurface?.(parsed.draftId, signal)) ??
             dependencies.currentSurface();

@@ -41,13 +41,14 @@ describe("site-wide WebMCP tools", () => {
   ])("opens the requested workspace from any page", async (input, expectedHref) => {
     const onNavigate = vi.fn();
     const manifests = createSiteWideToolManifests({ onNavigate, startApplication: vi.fn() });
+    const controller = new AbortController();
 
     const result = await findTool(manifests, "open_jobbbler_page").execute(input, {
-      signal: new AbortController().signal,
+      signal: controller.signal,
     });
 
     expect(result).toMatchObject({ status: "completed" });
-    expect(onNavigate).toHaveBeenCalledWith(expectedHref);
+    expect(onNavigate).toHaveBeenCalledWith(expectedHref, { signal: controller.signal });
     expect(webMcpResultSize(result)).toBeLessThanOrEqual(MAX_WEBMCP_RESULT_BYTES);
   });
 

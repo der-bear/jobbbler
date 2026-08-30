@@ -17,6 +17,13 @@ import type {
   SearchJobsResult,
 } from "@jobbbler/contracts";
 
+import { createWebMcpNavigator } from "@/lib/webmcp-navigation";
+import {
+  commitWebMcpSearch,
+  publishSearchSurfaceState,
+  readSearchSurfaceState,
+} from "@/lib/webmcp-ui-bridge";
+
 import { createCompareToolManifests } from "./compare/webmcp-tools";
 import { createJobDetailToolManifests } from "./job-detail/webmcp-tools";
 import { createSearchToolManifests } from "./search/webmcp-tools";
@@ -66,6 +73,13 @@ const secondJob: Job = {
   id: secondJobId,
   organizationId: "org_00000004-0000-7000-8000-000000000004",
   title: "Principal Platform Engineer",
+};
+
+const thirdJob: Job = {
+  ...firstJob,
+  id: thirdJobId,
+  organizationId: "org_00000005-0000-7000-8000-000000000005",
+  title: "Staff Reliability Engineer",
 };
 
 const fit: JobFit = {
@@ -201,7 +215,9 @@ describe("route-scoped WebMCP tool manifests", () => {
     expect(receivedSignal).toBe(controller.signal);
     expect(searchJobs).toHaveBeenCalledOnce();
     expect(onSearchCommitted).toHaveBeenCalledOnce();
-    expect(onNavigate).toHaveBeenCalledWith(expect.stringContaining("q=platform"));
+    expect(onNavigate).toHaveBeenCalledWith(expect.stringContaining("q=platform"), {
+      signal: controller.signal,
+    });
     expect(success.status).toBe("completed");
     expectBoundedJson(success);
 
@@ -214,12 +230,107 @@ describe("route-scoped WebMCP tool manifests", () => {
         { signal: controller.signal },
       ),
     );
-    await expectSafeRejection(
-      tool(manifests, "search_jobs").execute(
-        { query: "platform", cursor: "undocumented-pagination-cursor" },
-        { signal: controller.signal },
-      ),
+    await tool(manifests, "search_jobs").execute(
+      { query: "platform", cursor: "opaque-next-page" },
+      { signal: controller.signal },
     );
+    expect(searchJobs).toHaveBeenLastCalledWith(
+      expect.objectContaining({ cursor: "opaque-next-page" }),
+      expect.objectContaining({ signal: controller.signal }),
+    );
+  });
+
+  it("returns three exact job IDs and an opaque continuation cursor within the agent budget", async () => {
+    const nextCursor = "cursor_" + "x".repeat(249);
+    const pagedSearch: SearchJobsResult = {
+      ...searchResult,
+      jobs: [
+        { ...firstJob, matchScore: 88, matchEvidence: fit.evidence },
+        { ...secondJob, matchScore: 84, matchEvidence: fit.evidence },
+        { ...thirdJob, matchScore: 80, matchEvidence: fit.evidence },
+      ],
+      total: 50,
+      nextCursor,
+    };
+    const manifests = createSearchToolManifests({
+      searchJobs: async () => pagedSearch,
+      getSearchState: () => null,
+      onSearchCommitted: () => undefined,
+      onNavigate: () => undefined,
+    }) as readonly ToolManifest[];
+
+    const result = await tool(manifests, "search_jobs").execute(
+      { query: "platform", limit: 20 },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toMatchObject({
+      status: "completed",
+      data: {
+        jobs: [{ id: firstJobId }, { id: secondJobId }, { id: thirdJobId }],
+        nextCursor,
+      },
+    });
+    expectBoundedJson(result);
+  });
+
+  it("commits navigation and search state before an immediate follow-up reads it", async () => {
+    const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: new EventTarget(),
+    });
+    publishSearchSurfaceState(null);
+    let currentUrl = "https://jobbbler.test/about/webmcp";
+    let destinationUrl = currentUrl;
+    const navigate = createWebMcpNavigator({
+      currentUrl: () => currentUrl,
+      navigate(href) {
+        destinationUrl = new URL(href, currentUrl).href;
+      },
+      pollIntervalMilliseconds: 1,
+      timeoutMilliseconds: 1_000,
+    });
+    const manifests = createSearchToolManifests({
+      searchJobs: async () => searchResult,
+      getSearchState: readSearchSurfaceState,
+      onSearchCommitted: commitWebMcpSearch,
+      onNavigate: navigate,
+    }) as readonly ToolManifest[];
+
+    try {
+      let settled = false;
+      const execution = tool(manifests, "search_jobs")
+        .execute(
+          { query: "platform", workModels: ["remote"] },
+          { signal: new AbortController().signal },
+        )
+        .then((result) => {
+          settled = true;
+          return result;
+        });
+
+      await Promise.resolve();
+      expect(settled).toBe(false);
+      expect(readSearchSurfaceState()).toBeNull();
+      currentUrl = destinationUrl;
+      const search = await execution;
+      expect(search).toMatchObject({ status: "completed" });
+      expect(readSearchSurfaceState()).not.toBeNull();
+
+      const immediateState = await tool(manifests, "get_search_state").execute(
+        { detail: "exact" },
+        { signal: new AbortController().signal },
+      );
+      expect(immediateState).toMatchObject({
+        status: "completed",
+        data: { ready: true, criteria: { query: "platform", workModels: ["remote"] } },
+      });
+    } finally {
+      publishSearchSurfaceState(null);
+      if (originalWindow === undefined) delete (globalThis as { window?: unknown }).window;
+      else Object.defineProperty(globalThis, "window", originalWindow);
+    }
   });
 
   it("reports every compacted search-state field instead of silently dropping criteria", async () => {
@@ -363,7 +474,9 @@ describe("route-scoped WebMCP tool manifests", () => {
       { signal: controller.signal },
     );
     expect(compareSignal).toBe(controller.signal);
-    expect(onNavigate).toHaveBeenCalledWith(expect.stringContaining("/compare"));
+    expect(onNavigate).toHaveBeenCalledWith(expect.stringContaining("/compare"), {
+      signal: controller.signal,
+    });
     expect(comparison.status).toBe("completed");
     expectBoundedJson(comparison);
 
@@ -434,7 +547,9 @@ describe("route-scoped WebMCP tool manifests", () => {
     );
     expect(removeSignal).toBe(controller.signal);
     expect(onComparisonCommitted).toHaveBeenCalledOnce();
-    expect(onNavigate).toHaveBeenCalledWith(expect.stringContaining("/compare"));
+    expect(onNavigate).toHaveBeenCalledWith(expect.stringContaining("/compare"), {
+      signal: controller.signal,
+    });
     expect(removed.status).toBe("completed");
     expectBoundedJson(removed);
 
@@ -503,8 +618,10 @@ describe("route-scoped WebMCP tool manifests", () => {
       jobs: [
         { ...longestJob, matchScore: 88 },
         { ...longestJob, id: secondJobId, matchScore: 84 },
+        { ...longestJob, id: thirdJobId, matchScore: 80 },
       ],
       total: 50,
+      nextCursor: "cursor_" + "x".repeat(249),
     };
     const maximalDetail: JobDetailResult = { job: longestJob, fit: longestFit };
     const maximalComparison: CompareJobsResult = {

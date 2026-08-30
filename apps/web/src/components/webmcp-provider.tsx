@@ -49,6 +49,7 @@ import { createSavedToolManifests } from "@/features/saved/webmcp-tools";
 import { createSiteWideToolManifests } from "@/features/site-wide-webmcp-tools";
 import { ApiClientError, queryApi } from "@/lib/query-client";
 import { startOwnerActivityFeed } from "@/lib/owner-activity-feed";
+import { createWebMcpNavigator, type WebMcpNavigate } from "@/lib/webmcp-navigation";
 import {
   searchHrefFromCriteria,
   searchInputToSearchParams,
@@ -133,9 +134,7 @@ function detailUrl(jobId: string): string {
   }`;
 }
 
-function searchManifests(
-  navigate: (href: string) => void,
-): readonly ToolManifest<unknown, unknown>[] {
+function searchManifests(navigate: WebMcpNavigate): readonly ToolManifest<unknown, unknown>[] {
   return createSearchToolManifests({
     searchJobs: (input, { signal }) =>
       queryApi(searchUrl(input), searchJobsResultSchema, { signal }),
@@ -148,7 +147,7 @@ function searchManifests(
 
 function detailManifests(
   currentJobId: string | undefined,
-  navigate: (href: string) => void,
+  navigate: WebMcpNavigate,
 ): readonly ToolManifest<unknown, unknown>[] {
   return createJobDetailToolManifests({
     ...(currentJobId === undefined ? {} : { currentJobId }),
@@ -164,9 +163,7 @@ function detailManifests(
   });
 }
 
-function comparisonManifests(
-  navigate: (href: string) => void,
-): readonly ToolManifest<unknown, unknown>[] {
+function comparisonManifests(navigate: WebMcpNavigate): readonly ToolManifest<unknown, unknown>[] {
   return createCompareToolManifests({
     selectedJobIds: selectedComparisonIds,
     getComparison: ({ signal }) =>
@@ -187,9 +184,7 @@ function comparisonManifests(
   });
 }
 
-function savedManifests(
-  navigate: (href: string) => void,
-): readonly ToolManifest<unknown, unknown>[] {
+function savedManifests(navigate: WebMcpNavigate): readonly ToolManifest<unknown, unknown>[] {
   return createSavedToolManifests({
     listSavedSearches: ({ signal }) =>
       queryApi("/api/v1/saved-searches", savedSearchSchema.array(), { signal }),
@@ -252,7 +247,9 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
       return;
     }
 
-    const navigate = (href: string) => router.push(href, { scroll: false });
+    const navigate = createWebMcpNavigator({
+      navigate: (href) => router.push(href, { scroll: false }),
+    });
     const publicSearchTools = searchManifests(navigate);
     const publicDetailTools = detailManifests(undefined, navigate);
     const publicComparisonTools = comparisonManifests(navigate);
@@ -309,7 +306,11 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
     const siteWideManifests = createSiteWideToolManifests({
       onNavigate: navigate,
       startApplication: async (jobId, { signal }) => {
-        const result = await startApplication(jobId, { request: queryApi, navigate }, { signal });
+        const result = await startApplication(
+          jobId,
+          { request: queryApi, navigate: (href) => navigate(href, { signal }) },
+          { signal },
+        );
         return {
           draftId: result.draft.id,
           href: `/apply/${encodeURIComponent(result.draft.id)}`,

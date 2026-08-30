@@ -9,6 +9,7 @@ import {
   type CompletedWebMcpResult,
   type SafeWebMcpErrorResult,
 } from "@/lib/webmcp-tool-result";
+import type { WebMcpNavigate } from "@/lib/webmcp-navigation";
 
 const openPageInputSchema = {
   oneOf: [
@@ -70,7 +71,7 @@ const openPageInput = z.discriminatedUnion("page", [
 ]);
 
 export interface SiteWideToolDependencies {
-  onNavigate(href: string): Promise<void> | void;
+  onNavigate: WebMcpNavigate;
   startApplication(
     jobId: string,
     options: Readonly<{ signal: AbortSignal }>,
@@ -111,7 +112,7 @@ export function createSiteWideToolManifests(
       try {
         const parsed = openPageInput.parse(input);
         const href = destinationHref(parsed);
-        await dependencies.onNavigate(href);
+        await dependencies.onNavigate(href, { signal });
         return completedWebMcpResult({
           summary: `Opened the ${parsed.page.replaceAll("_", " ")} workspace.`,
           data: { page: parsed.page, href },

@@ -9,6 +9,7 @@ import {
   type CompletedWebMcpResult,
   type SafeWebMcpErrorResult,
 } from "@/lib/webmcp-tool-result";
+import type { WebMcpNavigate } from "@/lib/webmcp-navigation";
 
 const emptyInputSchema = {
   type: "object",
@@ -39,7 +40,7 @@ export interface CompareToolDependencies {
     options: Readonly<{ signal: AbortSignal }>,
   ): Promise<Readonly<{ jobIds: readonly string[] }>>;
   onComparisonCommitted(selection: Readonly<{ jobIds: readonly string[] }>): Promise<void> | void;
-  onNavigate(href: string): Promise<void> | void;
+  onNavigate: WebMcpNavigate;
   getCriteriaSearch?(): string;
 }
 
@@ -139,6 +140,7 @@ export function createCompareToolManifests(
         await dependencies.onComparisonCommitted(next);
         await dependencies.onNavigate(
           selectionHref(next.jobIds, dependencies.getCriteriaSearch?.() ?? ""),
+          { signal },
         );
         return completedWebMcpResult({
           summary: `Removed one role; ${String(next.jobIds.length)} remain in the visible comparison.`,
@@ -200,7 +202,7 @@ export function createCompareToolManifests(
         const parameters = new URLSearchParams(criteriaSearch);
         parameters.delete("id");
         for (const id of jobIds) parameters.append("id", id);
-        await dependencies.onNavigate(`/compare?${parameters.toString()}`);
+        await dependencies.onNavigate(`/compare?${parameters.toString()}`, { signal });
         await dependencies.onComparisonCommitted({ jobIds });
         return completedWebMcpResult({
           summary: `Added the role. The comparison now holds ${String(jobIds.length)} of 3.`,
