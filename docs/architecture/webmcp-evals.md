@@ -63,8 +63,8 @@ These are isolated model-judgment runs, not production telemetry. The checked-in
 deterministic suites separately verify schemas, execution, cancellation,
 bounded output, UI synchronization, storage atomicity, and builds.
 The mode-aware application-plan and recovery-first cases were added after that
-recorded model pass and must be included in the next weak-model score rather
-than being counted as historical successes.
+recorded model pass. The next fresh model pass must include all 50 current cases
+rather than count any later additions as historical successes.
 
 The judge demo should show one natural-language search, one comparison, one
 saved-search delta, and the application sequence from assistance request through

@@ -23,6 +23,18 @@ function evalToolNames(): ReadonlySet<string> {
   return names;
 }
 
+function evalCaseIds(): readonly string[] {
+  const ids: string[] = [];
+  for (const file of readdirSync(evalsDirectory)) {
+    if (!file.endsWith(".json")) continue;
+    const fixture = JSON.parse(readFileSync(join(evalsDirectory, file), "utf8")) as {
+      cases?: readonly { id: string }[];
+    };
+    for (const testCase of fixture.cases ?? []) ids.push(testCase.id);
+  }
+  return ids;
+}
+
 describe("webMcpCatalog", () => {
   it("stays in sync with the eval fixtures' tool inventory", () => {
     const catalogNames = new Set(
@@ -44,5 +56,12 @@ describe("webMcpCatalog", () => {
         expect(tool.purpose.length).toBeLessThanOrEqual(120);
       }
     }
+  });
+
+  it("keeps exactly 50 uniquely identified routing cases", () => {
+    const caseIds = evalCaseIds();
+
+    expect(caseIds).toHaveLength(50);
+    expect(new Set(caseIds).size).toBe(caseIds.length);
   });
 });

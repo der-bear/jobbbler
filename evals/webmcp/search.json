@@ -221,6 +221,29 @@
         "tool": "get_search_filters",
         "arguments": {}
       }
+    },
+    {
+      "id": "search-external-role-no-private-draft",
+      "category": "wrong_order",
+      "context": {
+        "results": [
+          {
+            "id": "job_650e8400-e29b-41d4-a716-446655440000",
+            "title": "Staff Platform Engineer",
+            "organization": "External Employer",
+            "applyMode": "external",
+            "employerSite": {
+              "available": true,
+              "url": "https://careers.example.com/jobs/staff-platform-engineer"
+            }
+          }
+        ]
+      },
+      "prompt": "Apply for the Staff Platform Engineer role now through Jobbbler.",
+      "expected": {
+        "kind": "clarification",
+        "mustMention": ["employer site", "no Jobbbler draft", "no submission claim"]
+      }
     }
   ]
 }

@@ -244,6 +244,21 @@
           "goal": "recover_workspace"
         }
       }
+    },
+    {
+      "id": "saved-global-direct-job-lookup",
+      "category": "direct",
+      "context": {
+        "knownJobIds": ["job_00000004-0000-7000-8000-000000000004"]
+      },
+      "prompt": "From this Saved page, show me the source-backed facts for job_00000004-0000-7000-8000-000000000004. I already know the exact role, so do not plan or navigate first.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "get_job_details",
+        "arguments": {
+          "jobId": "job_00000004-0000-7000-8000-000000000004"
+        }
+      }
     }
   ]
 }
