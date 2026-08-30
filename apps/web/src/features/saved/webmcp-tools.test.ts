@@ -123,6 +123,7 @@ describe("saved-route WebMCP tools", () => {
       true,
     ]);
     expect(manifests[1]!.description).toContain("explicit decision");
+    expect(manifests[1]!.description).toContain("Never add filters");
     expect(manifests[2]!.description).toContain("6-digit code");
     expect(manifests[3]!.description).toContain("exact schedule ID");
     const result = await manifests[0]!.execute({}, { signal: new AbortController().signal });

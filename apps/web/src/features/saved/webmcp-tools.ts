@@ -364,7 +364,7 @@ export function createSavedToolManifests(
     name: "request_search_alert",
     purpose: "Prepare one email job alert for an explicit decision in the external agent client.",
     description:
-      "Prepare an exact review for one saved search, schedule, and email destination. Use preferences the person supplied. This sends a 6-digit mailbox code, creates no active alert, and requires the person's explicit decision through decide_search_alert.",
+      "Prepare an exact review for one saved search, schedule, and email destination. Copy only criteria explicitly supplied in this request or returned by get_search_state(detail=exact). Never add filters such as salary, category, or exclusions by inference or from another task. This sends a 6-digit mailbox code, creates no active alert, and requires the person's explicit decision through decide_search_alert.",
     inputSchema: requestAlertInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
