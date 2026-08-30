@@ -163,6 +163,18 @@ async function list<T>(sql: PostgresExecutor, kind: string, ownerId?: string): P
   return rows.map(body<T>);
 }
 
+async function listByIds<T>(
+  sql: PostgresExecutor,
+  kind: string,
+  ids: readonly string[],
+): Promise<T[]> {
+  if (ids.length === 0) return [];
+  const rows = await sql<EntityRow[]>`
+    SELECT id, owner_id, body, version FROM jobbbler.entity_records
+    WHERE kind = ${kind} AND id = ANY(${sql.array([...ids])})`;
+  return rows.map(body<T>);
+}
+
 export async function findOwnerSessionByTokenHash(
   sql: PostgresExecutor,
   tokenHash: string,
@@ -873,8 +885,10 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
           const ids = await sql<
             { readonly job_id: string }[]
           >`SELECT job_id FROM jobbbler.job_search_documents WHERE document @@ plainto_tsquery('simple', ${query.criteria.query})`;
-          jobs = (await Promise.all(ids.map(({ job_id }) => get<Job>(sql, "job", job_id)))).filter(
-            (job): job is Job => job !== null,
+          jobs = await listByIds<Job>(
+            sql,
+            "job",
+            ids.map(({ job_id }) => job_id),
           );
         } else jobs = await list<Job>(sql, "job");
         let ranked = filterJobs(jobs, query.criteria, query.now).sort((left, right) =>

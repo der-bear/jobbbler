@@ -1,5 +1,3 @@
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-
 import { entityIdSchema } from "@jobbbler/contracts";
 
 export interface ActivityRealtimeChannel {
@@ -62,8 +60,9 @@ function validConfig(
   }
 }
 
-function defaultClient(url: string, anonKey: string): ActivityRealtimeClient {
-  return createSupabaseClient(url, anonKey, {
+async function defaultClient(url: string, anonKey: string): Promise<ActivityRealtimeClient> {
+  const { createClient } = await import("@supabase/supabase-js");
+  return createClient(url, anonKey, {
     auth: {
       autoRefreshToken: true,
       detectSessionInUrl: false,
@@ -77,11 +76,11 @@ export async function subscribeToSupabaseActivityWakeups(
   options: SupabaseActivityWakeupOptions,
 ): Promise<() => void> {
   if (!validConfig(options.config)) return noSubscription();
-  const client = (options.createClient ?? defaultClient)(
-    options.config.url,
-    options.config.anonKey,
-  );
   try {
+    const client =
+      options.createClient === undefined
+        ? await defaultClient(options.config.url, options.config.anonKey)
+        : options.createClient(options.config.url, options.config.anonKey);
     const { data } = await client.auth.getSession();
     const session = data.session;
     if (
