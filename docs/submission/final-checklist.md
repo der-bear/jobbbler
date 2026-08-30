@@ -81,10 +81,9 @@
       groups Find / Inspect and compare / Alerts / Apply — not an older rail.
 - [ ] Re-run `pnpm verify`, the focused E2E suite, and the local PostgreSQL
       contract suite on the final build and record the fresh numbers.
-- [ ] Validate gallery image crops, captions, alt text, dimensions, and
+- [x] Validate gallery image crops, captions, alt text, dimensions, and
       file-size limits on Devpost.
-- [ ] Recapture all four gallery crops on the final interface — the checked-in
-      images predate the agent-first application flow — then revalidate
+- [x] Recapture all four gallery crops on the final interface, then revalidate
       captions, alt text, 3:2 dimensions, and file-size limits.
 - [ ] Check spelling, team/attribution fields, rules acknowledgement, and URLs
       immediately before submission.
