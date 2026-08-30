@@ -15,6 +15,7 @@ import {
   locationSuggestionsResultSchema,
   type LocationSuggestionsResult,
 } from "@jobbbler/contracts";
+import { canonicalizeLocation } from "@jobbbler/jobs-domain";
 
 import { queryApi } from "@/lib/query-client";
 
@@ -43,11 +44,15 @@ function locationMatchPriority(option: string, normalizedQuery: string): number 
 }
 
 export function locationSuggestions(options: readonly string[], query: string): readonly string[] {
-  const normalizedQuery = query.trim().toLocaleLowerCase("en");
+  const trimmedQuery = query.trim();
+  const canonicalQuery = canonicalizeLocation(trimmedQuery);
+  const normalizedQuery = canonicalQuery.toLocaleLowerCase("en");
+  const aliasChoice = canonicalQuery === trimmedQuery ? [] : [canonicalQuery];
+  const canonicalOptions = options.map(canonicalizeLocation);
   const ordered =
     normalizedQuery.length === 0
-      ? uniqueLocations([...featuredLocations, ...options])
-      : uniqueLocations([...options, ...featuredLocations])
+      ? uniqueLocations([...featuredLocations, ...canonicalOptions])
+      : uniqueLocations([...aliasChoice, ...canonicalOptions, ...featuredLocations])
           .map((option, index) => ({ option, index }))
           .filter(({ option }) => option.toLocaleLowerCase("en").includes(normalizedQuery))
           .sort(
@@ -71,7 +76,7 @@ export async function fetchLocationSuggestions(
   signal: AbortSignal,
   request: LocationSuggestionRequest = queryApi,
 ): Promise<readonly string[]> {
-  const normalizedQuery = query.trim();
+  const normalizedQuery = canonicalizeLocation(query);
   if (normalizedQuery.length === 0) return [];
   const parameters = new URLSearchParams({ q: normalizedQuery, limit: "8" });
   const result = await request(

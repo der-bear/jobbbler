@@ -29,6 +29,11 @@ describe("locationSuggestions", () => {
     ]);
   });
 
+  it("offers a friendly canonical country for a common exact alias", () => {
+    expect(locationSuggestions([], "uk")).toEqual(["United Kingdom"]);
+    expect(locationSuggestions([], "USA")).toEqual(["United States"]);
+  });
+
   it("puts the exact canonical location first without collapsing distinct stored values", () => {
     expect(
       locationSuggestions(
@@ -53,6 +58,20 @@ describe("locationSuggestions", () => {
     ]);
     expect(request).toHaveBeenCalledWith(
       "/api/v1/jobs/locations?q=Kyiv+%26+remote&limit=8",
+      expect.anything(),
+      { signal },
+    );
+  });
+
+  it("loads catalog suggestions with a canonical country query for a common alias", async () => {
+    const signal = new AbortController().signal;
+    const request = vi.fn(async () => ({ locations: ["United Kingdom"] }));
+
+    await expect(fetchLocationSuggestions("UK", signal, request)).resolves.toEqual([
+      "United Kingdom",
+    ]);
+    expect(request).toHaveBeenCalledWith(
+      "/api/v1/jobs/locations?q=United+Kingdom&limit=8",
       expect.anything(),
       { signal },
     );

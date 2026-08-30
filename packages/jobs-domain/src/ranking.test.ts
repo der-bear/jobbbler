@@ -198,6 +198,19 @@ describe("rankJob", () => {
     expect(rankJob(baseJob, freshnessCriteria, evaluation).eligible).toBe(true);
   });
 
+  it("matches a canonical country when the search used its common alias", () => {
+    const criteria = normalizeJobSearchCriteria({ locations: ["UK"] });
+
+    const ranked = rankJob(job({ locations: ["London, United Kingdom"] }), criteria, evaluation);
+
+    expect(ranked.eligible).toBe(true);
+    expect(ranked.dimensions.locations).toMatchObject({
+      status: "match",
+      matched: ["United Kingdom"],
+      missing: [],
+    });
+  });
+
   it("returns deterministic dimension evidence for an eligible match", () => {
     const criteria = normalizeJobSearchCriteria({
       query: "TypeScript product engineer",

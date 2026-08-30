@@ -42,4 +42,12 @@ describe("normalizeJobSearchCriteria", () => {
     expect(criteria.salary).toBeNull();
     expect(criteria.unresolvedAssumptions).toEqual([]);
   });
+
+  it("canonicalizes exact common country aliases without rewriting arbitrary locations", () => {
+    const criteria = normalizeJobSearchCriteria({
+      locations: ["UK", "gb", "U.K.", "US", "usa", "U.S.A.", "Tallinn, Estonia"],
+    });
+
+    expect(criteria.locations).toEqual(["Tallinn, Estonia", "United Kingdom", "United States"]);
+  });
 });

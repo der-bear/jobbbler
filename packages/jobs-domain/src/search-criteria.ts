@@ -7,8 +7,21 @@ import {
 
 const collator = new Intl.Collator("en", { sensitivity: "base" });
 
+const canonicalCountryByAlias = new Map<string, string>([
+  ["gb", "United Kingdom"],
+  ["uk", "United Kingdom"],
+  ["us", "United States"],
+  ["usa", "United States"],
+]);
+
 function collapseWhitespace(value: string): string {
   return value.trim().replace(/\s+/g, " ");
+}
+
+export function canonicalizeLocation(value: string): string {
+  const collapsed = collapseWhitespace(value);
+  const alias = collapsed.normalize("NFKC").toLocaleLowerCase("en").replace(/[.\s]/g, "");
+  return canonicalCountryByAlias.get(alias) ?? collapsed;
 }
 
 function uniqueEnumValues<TValue extends string>(values: readonly TValue[] | undefined): TValue[] {
@@ -35,7 +48,7 @@ export function normalizeJobSearchCriteria(input: JobSearchInput): JobSearchCrit
     categories: uniqueEnumValues(parsed.categories),
     workModels: uniqueEnumValues(parsed.workModels),
     seniorities: uniqueEnumValues(parsed.seniorities),
-    locations: uniqueDisplayValues(parsed.locations),
+    locations: uniqueDisplayValues(parsed.locations?.map(canonicalizeLocation)),
     skills: uniqueDisplayValues(parsed.skills),
     excludeKeywords: uniqueDisplayValues(parsed.excludeKeywords),
     salary:
