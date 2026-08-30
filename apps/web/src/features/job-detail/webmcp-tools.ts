@@ -173,7 +173,7 @@ export function createJobDetailToolManifests(
     name: "compare_jobs",
     purpose: "Compare two or three explicitly identified technology roles.",
     description:
-      "Compare source-backed roles only after two or three exact job IDs are known, then open the visible comparison. If the person has not chosen targets yet, search or ask which roles to compare first.",
+      "Compare source-backed roles only after two or three exact job IDs are known, then open the visible comparison. Never call it with one role; if a target is missing, search or ask which other role to compare first.",
     inputSchema: comparisonInputJsonSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {

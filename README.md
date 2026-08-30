@@ -193,7 +193,7 @@ production builds. Browser QA evidence is recorded in
 [design-qa.md](design-qa.md).
 
 The current release candidate passes `pnpm verify`: 104 test files passed and
-1 skipped, 475 tests passed and 29 skipped, and both production builds
+1 skipped, 476 tests passed and 29 skipped, and both production builds
 completed. The PostgreSQL 16 contract passes 35/35, including concurrent
 authorization and indexed location-discovery cases. The final published build
 is smoke-tested again before submission.

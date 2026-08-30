@@ -31,6 +31,7 @@ describe("site-wide WebMCP tools", () => {
   it.each([
     [{ page: "search" }, "/jobs"],
     [{ page: "saved" }, "/saved"],
+    [{ page: "applications" }, "/applications"],
     [{ page: "webmcp_guide" }, "/about/webmcp"],
     [
       { page: "comparison", jobIds: [firstJobId, secondJobId] },
@@ -85,6 +86,9 @@ describe("site-wide WebMCP tools", () => {
     });
     expect(findTool(manifests, "prepare_application").description).toContain(
       "asks to start an application",
+    );
+    expect(findTool(manifests, "prepare_application").description).toContain(
+      "does not grant preparation authority",
     );
     const signal = new AbortController().signal;
 

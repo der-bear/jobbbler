@@ -15,7 +15,9 @@ const openPageInputSchema = {
     {
       type: "object",
       additionalProperties: false,
-      properties: { page: { type: "string", enum: ["search", "saved", "webmcp_guide"] } },
+      properties: {
+        page: { type: "string", enum: ["search", "saved", "applications", "webmcp_guide"] },
+      },
       required: ["page"],
     },
     {
@@ -52,6 +54,7 @@ const applicationIdSchema = entityIdSchema.refine((value) => value.startsWith("a
 const openPageInput = z.discriminatedUnion("page", [
   z.strictObject({ page: z.literal("search") }),
   z.strictObject({ page: z.literal("saved") }),
+  z.strictObject({ page: z.literal("applications") }),
   z.strictObject({ page: z.literal("webmcp_guide") }),
   z.strictObject({
     page: z.literal("comparison"),
@@ -86,6 +89,7 @@ type SiteWideToolOutput = CompletedWebMcpResult<JsonValue> | SafeWebMcpErrorResu
 function destinationHref(input: z.infer<typeof openPageInput>): string {
   if (input.page === "search") return "/jobs";
   if (input.page === "saved") return "/saved";
+  if (input.page === "applications") return "/applications";
   if (input.page === "webmcp_guide") return "/about/webmcp";
   if (input.page === "application") return `/apply/${encodeURIComponent(input.draftId)}`;
   const parameters = new URLSearchParams();
@@ -100,7 +104,7 @@ export function createSiteWideToolManifests(
     name: "open_jobbbler_page",
     purpose: "Open a Jobbbler workspace from any page using explicit validated identifiers.",
     description:
-      "Navigate to Search, Saved alerts, the WebMCP guide, a two- or three-role Comparison, or an existing private Application. Comparison and Application destinations require exact IDs; this tool creates no authority.",
+      "Navigate to Search, Saved alerts, Applications, the WebMCP guide, a two- or three-role Comparison, or one existing private Application. Comparison and private-application destinations require exact IDs; this tool creates no authority.",
     inputSchema: openPageInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: false },
     async execute(input, { signal }) {
@@ -126,7 +130,7 @@ export function createSiteWideToolManifests(
     name: "prepare_application",
     purpose: "Create or reopen one private application draft for an explicitly chosen role.",
     description:
-      "Use this when the person asks to start an application. Prepare it by exact Jobbbler job ID and open its private review surface. Repeated calls reopen the same owner-bound draft; this shares no candidate data and submits nothing.",
+      "Use this when the person asks to start an application. Create or reopen it by exact Jobbbler job ID and open its private review surface. This does not grant preparation authority, share candidate data, or submit; use the readiness and assistance tools for the returned draft.",
     inputSchema: {
       type: "object",
       additionalProperties: false,

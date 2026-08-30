@@ -309,6 +309,7 @@ describe("route-scoped WebMCP tool manifests", () => {
     expect(tool(manifests, "compare_jobs").description).toContain(
       "after two or three exact job IDs are known",
     );
+    expect(tool(manifests, "compare_jobs").description).toContain("Never call it with one role");
 
     const controller = new AbortController();
     const detail = await tool(manifests, "get_job_details").execute(

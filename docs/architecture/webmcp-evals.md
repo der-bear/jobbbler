@@ -46,6 +46,23 @@ decision points.
 5. Deterministic tests still own tool logic, atomicity, output size, and UI
    synchronization; probabilistic evals own model routing quality.
 
+## Pre-release model pass — 30 August 2026
+
+- Luna at low effort: 50 isolated routing decisions. The first pass scored
+  48/50; both misses tried to compare before two exact role IDs existed. After
+  the `compare_jobs` description was tightened to forbid one-role calls, the
+  two cases were re-run and the final result was 50/50.
+- Terra at medium effort: 10/10 end-to-end routing decisions, including alert
+  disambiguation, assistance authorization, batched application preparation,
+  and the exact final submission decision.
+- A follow-up pass confirmed that `prepare_application` creates or reopens a
+  draft but grants no preparation authority, while `open_jobbbler_page` clearly
+  separates the Applications list from an exact private application.
+
+These are isolated model-judgment runs, not production telemetry. The checked-in
+deterministic suites separately verify schemas, execution, cancellation,
+bounded output, UI synchronization, storage atomicity, and builds.
+
 The judge demo should show one natural-language search, one comparison, one
 saved-search delta, and the application sequence from assistance request to an
 exact final decision. No fixture, model, or agent may self-approve consent or
