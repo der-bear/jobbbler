@@ -124,6 +124,10 @@ const searchAlertReviewSchema = z.strictObject({
   savedSearchId: entityIdSchema,
   savedSearchVersion: z.number().int().nonnegative(),
   maskedDestination: z.string().trim().min(3).max(320),
+  deliveryVerification: z.discriminatedUnion("required", [
+    z.strictObject({ required: z.literal(true), method: z.literal("email_code") }),
+    z.strictObject({ required: z.literal(false), method: z.null() }),
+  ]),
   criteria: jobSearchCriteriaSchema,
   recurrence: scheduleRecurrenceSchema,
   firstRunAt: isoInstantSchema,
@@ -152,7 +156,10 @@ export const decideSearchAlertInputSchema = z.discriminatedUnion("decision", [
   z.strictObject({
     ...searchAlertDecisionInputBase,
     decision: z.literal("approved"),
-    code: z.string().regex(/^\d{6}$/),
+    code: z
+      .string()
+      .regex(/^\d{6}$/)
+      .optional(),
   }),
   z.strictObject({
     ...searchAlertDecisionInputBase,

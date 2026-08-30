@@ -162,7 +162,7 @@ describe("agent-native search alert contracts", () => {
     ).toThrow();
   });
 
-  it("requires a six-digit code only for approval and an exact agent-client decision", () => {
+  it("accepts a six-digit code only when an approved review requires mailbox verification", () => {
     const approval = {
       requestId: "req_550e8400-e29b-41d4-a716-446655440000",
       reviewToken: "signed.review",
@@ -178,6 +178,13 @@ describe("agent-native search alert contracts", () => {
     } as const;
 
     expect(decideSearchAlertInputSchema.parse(approval)).toEqual(approval);
+    expect(decideSearchAlertInputSchema.parse({ ...approval, code: undefined })).toEqual({
+      requestId: approval.requestId,
+      reviewToken: approval.reviewToken,
+      decision: "approved",
+      channel: "agent_client",
+      code: undefined,
+    });
     expect(decideSearchAlertInputSchema.parse(decline)).toEqual(decline);
     expect(() => decideSearchAlertInputSchema.parse({ ...decline, code: approval.code })).toThrow();
     expect(() => decideSearchAlertInputSchema.parse({ ...approval, code: "42197" })).toThrow();
@@ -198,6 +205,7 @@ describe("agent-native search alert contracts", () => {
         savedSearchId: "saved_550e8400-e29b-41d4-a716-446655440001",
         savedSearchVersion: 0,
         maskedDestination: "p•••••@example.com",
+        deliveryVerification: { required: true, method: "email_code" },
         criteria,
         recurrence: { frequency: "daily", time: "09:00", timeZone: "Europe/Kyiv" },
         firstRunAt: "2026-08-31T06:00:48.000Z",

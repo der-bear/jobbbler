@@ -31,12 +31,15 @@ function toolPurpose(tool: RegisteredToolSummary): string {
   return compactPurposes[tool.name] ?? tool.purpose;
 }
 
-const approvalTools = new Set([
+const requestTools = new Set([
   "request_search_alert",
-  "decide_search_alert",
   "request_application_assistance",
-  "decide_application_assistance",
   "request_submission_review",
+]);
+
+const decisionTools = new Set([
+  "decide_search_alert",
+  "decide_application_assistance",
   "decide_application_submission",
 ]);
 
@@ -56,8 +59,10 @@ function ToolRow({
     <li>
       <div className={styles["toolHeading"]}>
         <code>{tool.name}</code>
-        {approvalTools.has(tool.name) ? (
-          <span className={styles["humanDecision"]}>Decision required</span>
+        {requestTools.has(tool.name) ? (
+          <span className={styles["humanDecision"]}>Asks the person</span>
+        ) : decisionTools.has(tool.name) ? (
+          <span className={styles["humanDecision"]}>Relays the decision</span>
         ) : null}
       </div>
       <p>{toolPurpose(tool)}</p>
@@ -80,8 +85,8 @@ export function AgentTools({ tools, webMcpAvailable }: AgentToolsProps) {
         </div>
         <p className={styles["note"]}>
           {webMcpAvailable
-            ? "These tools completed browser registration for this page. Private actions still require an owned draft and the correct stage."
-            : "This is the capability catalog. A compatible agent browser registers and discovers the active set automatically."}
+            ? `${String(visibleToolCount)} Jobbbler tools are active here and stay available as the agent moves through the site. Private actions still check ownership and the current step.`
+            : "Preview the same 26 tools a compatible browser agent discovers automatically."}
         </p>
         <div className={styles["capabilityGroups"]}>
           {capabilityGroups.map((group) => {
@@ -115,59 +120,60 @@ export function AgentGuide() {
     <div className={styles["guide"]}>
       <section aria-labelledby="guide-try">
         <p className={styles["promise"]}>No separate MCP server to install.</p>
-        <h3 id="guide-try">Use Jobbbler from your agent chat</h3>
+        <h3 id="guide-try">Start in your agent chat</h3>
         <p className={styles["guideText"]}>
-          The example includes this site&apos;s address. Once the agent opens Jobbbler, it discovers
-          the available actions automatically.
+          Share Jobbbler&apos;s link and describe what you need. When the agent opens the site, it
+          discovers all 26 available actions automatically.
         </p>
         <ol className={styles["guideSteps"]}>
           <li>
             <span>1</span>
-            <p>Copy the complete request</p>
+            <p>Share the link and say what you need</p>
           </li>
           <li>
             <span>2</span>
-            <p>Paste it into your agent client</p>
+            <p>Let the agent search, compare, or keep checking</p>
           </li>
           <li>
             <span>3</span>
-            <p>Review requested consent or a final action in your agent client</p>
+            <p>Review only when it asks to use your data or submit</p>
           </li>
         </ol>
         <AgentExamplePrompt className={styles["prompt"]} promptClassName={styles["promptText"]} />
+        <p className={styles["planner"]}>
+          Not sure where to begin? Your agent can ask Jobbbler for a safe step-by-step plan. The
+          planner only advises; it never takes action.
+        </p>
       </section>
 
       <div className={styles["guideColumns"]}>
         <section aria-labelledby="guide-tools">
           <h3 id="guide-tools">What the tools handle</h3>
           <ul>
-            <li>Search, inspect, and compare roles</li>
-            <li>Monitor saved searches for changes</li>
-            <li>Prepare answers and a short motivation note for a managed internal role</li>
-            <li>
-              For external roles, use the validated employer page only when available; otherwise
-              stop
-            </li>
+            <li>Search and compare matching roles</li>
+            <li>Save a search and report only what changed</li>
+            <li>Prepare truthful answers and a short motivation note from facts you provide</li>
+            <li>Open the employer&apos;s application page when Jobbbler cannot submit directly</li>
           </ul>
         </section>
         <section aria-labelledby="guide-control">
           <h3 id="guide-control">What stays with you</h3>
           <ul>
-            <li>Missing facts the agent asks for</li>
-            <li>Approve, decline, or withdraw assistance in your external agent client</li>
+            <li>Facts only you can provide</li>
+            <li>Permission for the agent to prepare this application</li>
             <li>Consent to process your data — and the right to withdraw it</li>
-            <li>The exact final submission decision in your external agent client</li>
+            <li>The exact final submission decision</li>
           </ul>
         </section>
       </div>
 
       <p className={styles["panelNote"]}>
-        Activity shows bounded call summaries. Tools shows the active set when WebMCP is connected;
-        otherwise it shows the capability catalog.
+        Activity shows what happened. Tools shows all 26 capabilities and the actions that need a
+        decision.
       </p>
 
       <Link className={styles["moreLink"]} href="/about/webmcp">
-        See how it works <ArrowRightIcon aria-hidden="true" size={14} />
+        Read how Jobbbler works <ArrowRightIcon aria-hidden="true" size={14} />
       </Link>
     </div>
   );

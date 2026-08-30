@@ -122,7 +122,7 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
         humanAction: false,
       },
       {
-        intent: "Prepare the exact alert review and send its mailbox code",
+        intent: "Prepare the exact alert review and verify a new email only when needed",
         tool: "request_search_alert",
         requiredInputs: [
           "name",
@@ -135,7 +135,12 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
       {
         intent: "Record the exact decision and activate only if approved",
         tool: "decide_search_alert",
-        requiredInputs: ["requestId", "reviewToken", "decision", "6-digit code only for approval"],
+        requiredInputs: [
+          "requestId",
+          "reviewToken",
+          "decision",
+          "6-digit code only when verificationMode=email_code",
+        ],
         humanAction: false,
       },
       { intent: "Review saved alerts later", tool: "get_saved_alerts", humanAction: false },

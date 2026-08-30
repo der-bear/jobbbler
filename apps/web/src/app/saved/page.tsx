@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Suspense } from "react";
 
 import { SavedWorkspace } from "@/features/saved/saved-workspace";
-import styles from "@/features/saved/saved-workspace.module.css";
+import { loadInitialSavedWorkspace } from "@/server/initial-saved-workspace";
 
 export const metadata: Metadata = {
   title: "Saved searches",
@@ -10,19 +11,13 @@ export const metadata: Metadata = {
     "Save a search once and let Jobbbler keep checking — you hear only about real changes.",
 };
 
-export default function SavedPage() {
+export default async function SavedPage() {
+  const initialData = await loadInitialSavedWorkspace({
+    request: new Request("http://jobbbler.local/saved", { headers: await headers() }),
+  });
   return (
-    <Suspense
-      fallback={
-        <div aria-busy="true" className={styles["workspace"]}>
-          <div className={styles["loading"]} role="status">
-            <span />
-            Preparing your private workspace…
-          </div>
-        </div>
-      }
-    >
-      <SavedWorkspace />
+    <Suspense fallback={null}>
+      <SavedWorkspace initialData={initialData} />
     </Suspense>
   );
 }

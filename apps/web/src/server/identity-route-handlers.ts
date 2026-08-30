@@ -1,5 +1,6 @@
 import type {
   CreatedOwnerSession,
+  PreparedSearchAlertEmailVerification,
   ResolvedOwnerSession,
   StartedEmailVerification,
 } from "@jobbbler/core-domain";
@@ -38,7 +39,7 @@ export interface IdentityOperations {
       readonly endpointId: string;
       readonly challengeId: string;
     },
-  ): Promise<StartedEmailVerification>;
+  ): Promise<PreparedSearchAlertEmailVerification>;
   completeEmailVerification(
     ownerId: string,
     rawInput: unknown,

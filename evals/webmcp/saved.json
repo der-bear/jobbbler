@@ -44,35 +44,6 @@
       }
     },
     {
-      "id": "saved-direct-request-alert",
-      "category": "direct",
-      "context": {
-        "alerts": []
-      },
-      "prompt": "Create a daily email alert called Senior platform roles for senior remote platform jobs in Europe. Check at 09:00 Europe/Kyiv and send it to ada@example.com.",
-      "expected": {
-        "kind": "tool_call",
-        "tool": "request_search_alert",
-        "arguments": {
-          "name": "Senior platform roles",
-          "criteria": {
-            "query": "platform",
-            "workModels": ["remote"],
-            "seniorities": ["senior"],
-            "locations": ["Europe"],
-            "sort": "relevance",
-            "limit": 20
-          },
-          "recurrence": {
-            "frequency": "daily",
-            "time": "09:00",
-            "timeZone": "Europe/Kyiv"
-          },
-          "email": "ada@example.com"
-        }
-      }
-    },
-    {
       "id": "saved-direct-pause-alert",
       "category": "direct",
       "context": {
@@ -230,6 +201,7 @@
           "requestId": "req_3f2d76e8-95a1-4e34-8c61-7b8a9d0e1f22",
           "reviewToken": "signed-review-token",
           "maskedDestination": "a•••@example.com",
+          "verificationMode": "email_code",
           "decision": "approved",
           "verificationCode": null
         }
@@ -374,6 +346,7 @@
           "requestId": "req_3f2d76e8-95a1-4e34-8c61-7b8a9d0e1f22",
           "reviewToken": "signed-review-token",
           "maskedDestination": "a•••@example.com",
+          "verificationMode": "email_code",
           "decision": "approved",
           "verificationCode": "421973"
         }
@@ -387,6 +360,29 @@
           "reviewToken": "signed-review-token",
           "decision": "approved",
           "code": "421973"
+        }
+      }
+    },
+    {
+      "id": "saved-approve-alert-with-existing-verified-email",
+      "category": "direct",
+      "context": {
+        "pendingAlertReview": {
+          "requestId": "req_8c4a7f31-1d26-48b9-a6e7-4cf0a8d9b123",
+          "reviewToken": "signed-verified-review-token",
+          "maskedDestination": "a•••@example.com",
+          "verificationMode": "existing_verified_email",
+          "decision": "approved"
+        }
+      },
+      "prompt": "I reviewed that exact alert and approve it. Turn it on.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "decide_search_alert",
+        "arguments": {
+          "requestId": "req_8c4a7f31-1d26-48b9-a6e7-4cf0a8d9b123",
+          "reviewToken": "signed-verified-review-token",
+          "decision": "approved"
         }
       }
     },

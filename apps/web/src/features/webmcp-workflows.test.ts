@@ -108,7 +108,11 @@ describe("plan_job_workflow", () => {
           }),
           expect.objectContaining({
             tool: "decide_search_alert",
-            needs: expect.arrayContaining(["requestId", "reviewToken"]),
+            needs: expect.arrayContaining([
+              "requestId",
+              "reviewToken",
+              "6-digit code only when verificationMode=email_code",
+            ]),
           }),
           expect.objectContaining({ tool: "get_saved_alerts" }),
           expect.objectContaining({ tool: "get_latest_search_update" }),

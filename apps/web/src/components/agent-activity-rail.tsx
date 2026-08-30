@@ -35,7 +35,7 @@ const activityPresentation: Readonly<Record<ToolActivity["status"], ActivityPres
   },
   requires_user_action: {
     icon: <WarningCircleIcon aria-hidden="true" size={15} weight="fill" />,
-    label: "Approval needed",
+    label: "Your decision needed",
   },
   failed: {
     icon: <WarningCircleIcon aria-hidden="true" size={15} weight="fill" />,

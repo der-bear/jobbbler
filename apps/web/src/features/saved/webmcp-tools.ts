@@ -155,11 +155,12 @@ const decisionInputSchema = {
         decision: { type: "string", enum: ["approved"] },
         code: {
           type: "string",
-          description: "6-digit code the person received at the reviewed email address.",
+          description:
+            "6-digit code the person received when request_search_alert says email verification is required. Omit it when the destination is already verified.",
           pattern: "^\\d{6}$",
         },
       },
-      required: ["requestId", "reviewToken", "decision", "code"],
+      required: ["requestId", "reviewToken", "decision"],
     },
     {
       type: "object",
@@ -193,7 +194,10 @@ const decisionInput = z.discriminatedUnion("decision", [
     requestId: entityIdSchema,
     reviewToken: z.string().min(1).max(4_096),
     decision: z.literal("approved"),
-    code: z.string().regex(/^\d{6}$/u),
+    code: z
+      .string()
+      .regex(/^\d{6}$/u)
+      .optional(),
   }),
   z.strictObject({
     requestId: entityIdSchema,
@@ -323,21 +327,30 @@ function searchAlertReviewResult(
   result: RequestSearchAlertResult,
   maximumBytes = MAX_WEBMCP_RESULT_BYTES,
 ): RequiresUserActionWebMcpResult {
+  const verificationRequired = result.review.deliveryVerification.required;
   return requiresUserActionWebMcpResult({
     summary: "Review this exact job alert in the agent client.",
     kind: "data_consent",
     surface: "search_alert_consent",
     requestId: result.requestId,
     nextTool: "decide_search_alert",
-    decisionContext: { reviewToken: result.reviewToken },
+    decisionContext: {
+      reviewToken: result.reviewToken,
+      verificationMode: verificationRequired ? "email_code" : "existing_verified_email",
+    },
     presentation: {
       title: "Review this job alert",
-      prompt:
-        "Confirm the exact search, schedule, masked destination, data use, retention, and withdrawal.",
-      confirmLabel: "Verify and turn on",
+      prompt: verificationRequired
+        ? "Confirm the exact alert and enter the 6-digit code sent to the reviewed email."
+        : "Confirm the exact search, schedule, masked destination, data use, retention, and withdrawal.",
+      confirmLabel: verificationRequired ? "Verify and turn on" : "Turn on alert",
       facts: [
         { key: "Search", value: describeSearchCriteria(result.review.criteria) },
         { key: "Delivery", value: result.review.maskedDestination },
+        {
+          key: "Email check",
+          value: verificationRequired ? "6-digit code required" : "Already verified — no new code",
+        },
         { key: "Schedule", value: describeRecurrence(result.review.recurrence) },
         { key: "Purpose", value: result.review.purpose },
         {
@@ -372,6 +385,7 @@ function assertPresentableSearchAlertReview(
         savedSearchId: maximumEntityId,
         savedSearchVersion: Number.MAX_SAFE_INTEGER,
         maskedDestination: maskEmailAddress(email),
+        deliveryVerification: { required: true, method: "email_code" },
         criteria,
         recurrence,
         firstRunAt: "2026-08-31T09:15:00.000+00:00",
@@ -444,7 +458,7 @@ export function createSavedToolManifests(
     name: "request_search_alert",
     purpose: "Prepare one email job alert for an explicit decision in the external agent client.",
     description:
-      "Prepare an exact review for one saved search, schedule, and email destination. Copy only criteria explicitly supplied in this request or returned by get_search_state(detail=exact). Never add filters such as salary, category, or exclusions by inference or from another task. This sends a 6-digit mailbox code, creates no active alert, and requires the person's explicit decision through decide_search_alert.",
+      "Prepare an exact review for one saved search, schedule, and email destination. Copy only criteria explicitly supplied in this request or returned by get_search_state(detail=exact). Never add filters such as salary, category, or exclusions by inference or from another task. A new destination receives a 6-digit mailbox code; an already verified destination does not. No alert becomes active until the person's explicit decision through decide_search_alert.",
     inputSchema: requestAlertInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -476,7 +490,7 @@ export function createSavedToolManifests(
     name: "decide_search_alert",
     purpose: "Record the person's exact alert decision from the external agent client.",
     description:
-      "Continue the exact request from request_search_alert. Approval requires the person's explicit decision and the 6-digit code sent to the reviewed email; decline requires no code. Never infer approval or invent a code. This activates only the unchanged reviewed alert.",
+      "Continue the exact request from request_search_alert. Approval always requires the person's explicit decision. Include the 6-digit code only when that review says email verification is required; omit it for an already verified destination. Decline requires no code. Never infer approval or invent a code. This activates only the unchanged reviewed alert.",
     inputSchema: decisionInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -506,7 +520,7 @@ export function createSavedToolManifests(
         return safeWebMcpErrorResult(
           error,
           signal,
-          "Provide the exact review request and the person's approval with code or decline.",
+          "Provide the exact review request and the person's approval, adding a code only when requested, or decline.",
         );
       }
     },

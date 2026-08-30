@@ -1,6 +1,6 @@
 /**
  * Human-readable catalog of every WebMCP tool Jobbbler can register, grouped by
- * the page that owns it. This is judge- and developer-facing reference copy;
+ * product outcome. This is judge- and developer-facing reference copy;
  * the authoritative registrations live in each feature's webmcp-tools module,
  * and a unit test keeps the two in sync.
  */

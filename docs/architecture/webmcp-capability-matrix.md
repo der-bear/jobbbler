@@ -43,14 +43,16 @@ application authority.
 
 1. `search_jobs` finds the roles worth monitoring and updates the visible portal.
 2. `get_search_state` confirms the exact active criteria.
-3. `request_search_alert` saves the canonical criteria, sends a mailbox code,
-   and returns one expiring review with masked delivery, recurrence, purpose,
-   retention, and withdrawal facts.
+3. `request_search_alert` saves the canonical criteria and returns one expiring
+   review with masked delivery, recurrence, purpose, retention, and withdrawal
+   facts. It sends a mailbox code only for a new or changed destination; a
+   verified destination belonging to the same owner is reused.
 4. The external agent client presents that review and asks the person for an
-   explicit decision and, on approval, the six-digit code.
+   explicit decision and, only when the review requests it, the six-digit code.
 5. `decide_search_alert` accepts only the same owner-bound request and unchanged
-   policy. Approval verifies the mailbox and activates the schedule; decline
-   creates no schedule.
+   policy. Approval either verifies the new mailbox or rechecks the existing
+   verified destination before activating the schedule; decline creates no
+   schedule.
 6. `get_saved_alerts` and `get_latest_search_update` expose the resulting durable
    state after the browser closes.
 

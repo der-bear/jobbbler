@@ -42,15 +42,18 @@ import { useToast } from "@jobbbler/ui";
 import { ApiClientError, queryApi } from "@/lib/query-client";
 import { searchInputToSearchParams } from "@/lib/search-url";
 import { subscribeWebMcpScheduleCommit } from "@/lib/webmcp-ui-bridge";
-
-import { latestSearchRunSchema, type LatestSearchRun } from "@/lib/latest-run";
+import type { LatestSearchRun } from "@/lib/latest-run";
 
 import { OwnerPrivacyControls } from "./owner-privacy-controls";
+import {
+  loadLatestSearchRuns,
+  loadPrivateWorkspaceResources,
+  loadSavedWorkspaceData,
+  type SavedWorkspaceInitialData,
+  type SavedWorkspaceResources,
+} from "./saved-workspace-loader";
 import styles from "./saved-workspace.module.css";
 
-const savedSearchListSchema = z.array(savedSearchSchema);
-const scheduleListSchema = z.array(jobAlertScheduleSchema);
-const endpointListSchema = z.array(verificationEndpointSummarySchema);
 const previewSchema = z.strictObject({
   recurrence: z.unknown(),
   nextRunAt: z.iso.datetime({ offset: true }),
@@ -72,6 +75,35 @@ const weekdayOptions: readonly { readonly value: Weekday; readonly label: string
 ];
 
 type Status = "loading" | "ready" | "working" | "error";
+
+export function privateAccessCopy(owner: OwnerSummary | null): Readonly<{
+  eyebrow: string;
+  title: string;
+  description: string;
+}> {
+  if (owner === null) {
+    return {
+      eyebrow: "No account required",
+      title: "Save an alert without signing up",
+      description:
+        "Turning on an alert saves it privately in this browser. Verify an email to receive updates and restore your alerts elsewhere.",
+    };
+  }
+  if (!owner.recoverable) {
+    return {
+      eyebrow: "Saved in this browser",
+      title: "Verify an email for delivery",
+      description:
+        "This browser is the only way back to your saved work. Verification lets Jobbbler email updates and restore access elsewhere.",
+    };
+  }
+  return {
+    eyebrow: "Verified email",
+    title: "Alerts can be recovered",
+    description:
+      "Your verified address receives updates and can restore your alerts on another device. It is never exposed to agents.",
+  };
+}
 
 function message(error: unknown): string {
   if (error instanceof ApiClientError) return error.message;
@@ -162,18 +194,26 @@ function defaultName(criteria: JobSearchCriteria): string {
   return (parts.length === 0 ? "My technology roles" : parts.join(" · ")).slice(0, 100);
 }
 
-export function SavedWorkspace() {
+export function SavedWorkspace({
+  initialData,
+}: Readonly<{ initialData?: SavedWorkspaceInitialData | null }>) {
   const searchParams = useSearchParams();
   const searchParamsKey = searchParams.toString();
   const router = useRouter();
   const toast = useToast();
   const createRequested = searchParams.get("create") === "1";
-  const [status, setStatus] = useState<Status>("loading");
+  const [status, setStatus] = useState<Status>(initialData === undefined ? "loading" : "ready");
   const [error, setError] = useState<string | null>(null);
-  const [owner, setOwner] = useState<OwnerSummary | null>(null);
-  const [endpoints, setEndpoints] = useState<readonly VerificationEndpointSummary[]>([]);
-  const [savedSearches, setSavedSearches] = useState<readonly SavedSearch[]>([]);
-  const [schedules, setSchedules] = useState<readonly JobAlertSchedule[]>([]);
+  const [owner, setOwner] = useState<OwnerSummary | null>(initialData?.owner ?? null);
+  const [endpoints, setEndpoints] = useState<readonly VerificationEndpointSummary[]>(
+    initialData?.endpoints ?? [],
+  );
+  const [savedSearches, setSavedSearches] = useState<readonly SavedSearch[]>(
+    initialData?.savedSearches ?? [],
+  );
+  const [schedules, setSchedules] = useState<readonly JobAlertSchedule[]>(
+    initialData?.schedules ?? [],
+  );
   const [latestRuns, setLatestRuns] = useState<ReadonlyMap<string, LatestSearchRun>>(new Map());
   const [criteria, setCriteria] = useState<JobSearchCriteria | null>(null);
   const [email, setEmail] = useState("");
@@ -190,40 +230,20 @@ export function SavedWorkspace() {
   const [pendingSaved, setPendingSaved] = useState<SavedSearch | null>(null);
   const [preview, setPreview] = useState<z.infer<typeof previewSchema> | null>(null);
 
-  const loadPrivateResources = useCallback(async () => {
-    const [nextEndpoints, nextSaved, nextSchedules] = await Promise.all([
-      queryApi("/api/v1/owners/email", endpointListSchema),
-      queryApi("/api/v1/saved-searches", savedSearchListSchema),
-      queryApi("/api/v1/schedules", scheduleListSchema),
-    ]);
-    setEndpoints(nextEndpoints);
-    setSavedSearches(nextSaved);
-    setSchedules(nextSchedules);
-    void Promise.all(
-      nextSaved.map(async (saved) => {
-        try {
-          return await queryApi(
-            `/api/v1/saved-searches/${encodeURIComponent(saved.id)}/latest-run`,
-            latestSearchRunSchema,
-          );
-        } catch {
-          return null;
-        }
-      }),
-    ).then((runs) =>
-      setLatestRuns(
-        new Map(
-          runs
-            .filter((run): run is LatestSearchRun => run !== null)
-            .map((run) => [run.savedSearchId, run]),
-        ),
-      ),
-    );
-    const verified = nextEndpoints.find(
+  const applyPrivateResources = useCallback((resources: SavedWorkspaceResources) => {
+    setEndpoints(resources.endpoints);
+    setSavedSearches(resources.savedSearches);
+    setSchedules(resources.schedules);
+    void resources.latestRuns.then(setLatestRuns);
+    const verified = resources.endpoints.find(
       ({ status: endpointStatus }) => endpointStatus === "verified",
     );
     if (verified !== undefined) setEndpointId(verified.id);
   }, []);
+
+  const loadPrivateResources = useCallback(async () => {
+    applyPrivateResources(await loadPrivateWorkspaceResources());
+  }, [applyPrivateResources]);
 
   const startPrivateWorkspace = useCallback(async () => {
     const current = await queryApi("/api/v1/owners/session", ownerSessionResultSchema, {
@@ -235,6 +255,7 @@ export function SavedWorkspace() {
   }, [loadPrivateResources]);
 
   useEffect(() => {
+    if (initialData !== undefined && !createRequested) return undefined;
     let cancelled = false;
     async function initialize() {
       setStatus("loading");
@@ -254,10 +275,10 @@ export function SavedWorkspace() {
         }
 
         try {
-          const current = await queryApi("/api/v1/owners/session", ownerSessionResultSchema);
+          const current = await loadSavedWorkspaceData();
           if (cancelled) return;
-          await loadPrivateResources();
-          if (!cancelled) setOwner(current.owner);
+          applyPrivateResources(current);
+          setOwner(current.owner);
         } catch (identityError) {
           if (!(identityError instanceof ApiClientError) || identityError.code !== "UNAUTHORIZED") {
             throw identityError;
@@ -276,7 +297,20 @@ export function SavedWorkspace() {
     return () => {
       cancelled = true;
     };
-  }, [createRequested, loadPrivateResources, searchParamsKey, startPrivateWorkspace]);
+  }, [applyPrivateResources, createRequested, initialData, searchParamsKey, startPrivateWorkspace]);
+
+  useEffect(() => {
+    if (initialData === undefined || initialData === null || createRequested) return undefined;
+    let cancelled = false;
+    void loadLatestSearchRuns(initialData.savedSearches)
+      .then((runs) => {
+        if (!cancelled) setLatestRuns(runs);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [createRequested, initialData]);
 
   useEffect(
     () =>
@@ -473,6 +507,7 @@ export function SavedWorkspace() {
   }
 
   const composing = createRequested && criteria !== null;
+  const accessCopy = privateAccessCopy(owner);
 
   return (
     <div className={styles["workspace"]}>
@@ -487,20 +522,11 @@ export function SavedWorkspace() {
           <div className={styles["identityHeading"]}>
             <ShieldCheckIcon aria-hidden="true" size={22} weight="fill" />
             <div>
-              <span>Your private space</span>
-              <strong>
-                {owner === null
-                  ? "Starts when you save something"
-                  : owner.recoverable
-                    ? "Backed up to your email"
-                    : "Private to this browser"}
-              </strong>
+              <span>{accessCopy.eyebrow}</span>
+              <strong>{accessCopy.title}</strong>
             </div>
           </div>
-          <p>
-            No account needed. Saving creates a private space automatically, and your email is
-            stored encrypted. You approve anything important yourself.
-          </p>
+          <p>{accessCopy.description}</p>
           {owner?.recoverable === true && verifiedEndpoints.length > 0 ? (
             <div className={styles["endpointList"]} aria-label="Verified delivery destinations">
               {verifiedEndpoints.map((endpoint) => (

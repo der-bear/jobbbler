@@ -4,64 +4,73 @@ import {
   EyeIcon,
   ShieldCheckIcon,
 } from "@phosphor-icons/react/dist/ssr";
+import type { Metadata } from "next";
 
 import styles from "./page.module.css";
 
 import { AgentExamplePrompt } from "@/components/agent-example-prompt";
 
+export const metadata: Metadata = {
+  title: "How Jobbbler works with your agent",
+  description:
+    "Search, compare, monitor, and prepare applications with a browser agent while you keep control of personal data and submission.",
+};
+
 const outcomeSteps = [
   {
     title: "Search",
-    copy: "The agent turns the request into visible, editable filters and source-backed results.",
+    copy: "The agent turns what you ask for into filters you can see and change.",
   },
   {
     title: "Compare",
-    copy: "It reads the facts and places the strongest roles side by side without losing evidence.",
+    copy: "It checks the facts and explains which roles fit best.",
   },
   {
     title: "Monitor",
-    copy: "You save the exact search so Jobbbler can report only what changes later.",
+    copy: "Save the search once. Jobbbler keeps checking and reports only what changed.",
   },
   {
     title: "Apply",
-    copy: "After a capability check, it prepares one managed internal role. External roles continue on the validated employer page only when available. If no validated page is available, it stops.",
+    copy: "For supported roles, it prepares the application. For others, it opens the employer's application page when one is available.",
   },
 ] as const;
 
 const agentCan = [
-  "Search, filter, inspect, and compare roles",
-  "Return new or changed results from a saved search",
-  "Prepare one application for a managed internal role",
-  "Continue to an available validated employer page for an external role; otherwise stop",
+  "Find and compare matching roles",
+  "Check saved searches for changes",
+  "Prepare application answers from facts you provide",
+  "Open the employer's application page when Jobbbler cannot submit directly",
 ] as const;
 
 const decisionsForYou = [
-  "Approve, decline, or withdraw draft-bound assistance in your external agent client",
-  "Choose what candidate data is shared and why",
-  "Confirm the exact final application in your external agent client",
-  "Withdraw candidate-data consent at any time",
+  "Facts only you can provide",
+  "Whether the agent may prepare this application",
+  "Consent to process your personal data for this application",
+  "The exact final decision to submit",
+  "The right to withdraw consent at any time",
 ] as const;
 
 export default function WebMcpAboutPage() {
   return (
     <article className={styles["page"]}>
       <header className={styles["hero"]}>
-        <p className={styles["eyebrow"]}>How Jobbbler works with agents</p>
-        <h1>Tell your agent the outcome. It handles the steps.</h1>
+        <p className={styles["eyebrow"]}>How Jobbbler works</p>
+        <h1>Search once. Let your agent handle the repetition.</h1>
         <p>
-          The conversation stays in your agent client. Jobbbler is the familiar job portal
-          underneath, with structured actions a browser agent can discover automatically. No
-          separate MCP server to install or configure.
+          Job search repeats itself. Tell a compatible browser agent what kind of technology role
+          you want. It can search, compare, keep checking, and prepare an application—while you
+          decide when your personal data may be used and whether anything is submitted. The
+          conversation stays in your agent app. No separate MCP server is needed.
         </p>
       </header>
 
       <section aria-labelledby="one-request" className={styles["section"]}>
         <div className={styles["sectionHeading"]}>
           <p>01</p>
-          <h2 id="one-request">One request, a complete workflow</h2>
+          <h2 id="one-request">One conversation, from search to application</h2>
         </div>
         <div>
-          <p className={styles["promptLabel"]}>Full demo prompt</p>
+          <p className={styles["promptLabel"]}>Example request</p>
           <AgentExamplePrompt
             className={styles["promptBlock"]}
             promptClassName={styles["prompt"]}
@@ -80,44 +89,14 @@ export default function WebMcpAboutPage() {
         </div>
       </section>
 
-      <section aria-labelledby="built-in" className={styles["section"]}>
-        <div className={styles["sectionHeading"]}>
-          <p>02</p>
-          <h2 id="built-in">Built into the site</h2>
-        </div>
-        <div className={styles["builtIn"]}>
-          <p className={styles["lead"]}>
-            WebMCP gives the visited website a direct agent interface. The same search, ownership,
-            validation, and safety rules serve both the visible UI and its tools.
-          </p>
-          <div className={styles["proof"]}>
-            <EyeIcon aria-hidden="true" size={21} />
-            <div>
-              <strong>See the agent at work.</strong>
-              <p>
-                Open Agent view to see active browser-registered tools and a bounded summary of each
-                call. It keeps the technical proof visible without changing the job portal.
-              </p>
-            </div>
-          </div>
-          <div className={styles["statement"]}>
-            <ClockCountdownIcon aria-hidden="true" size={21} />
-            <p>
-              Jobbbler keeps checking after the tab closes. The agent can return to new, updated,
-              closed, or no-longer-matching roles without repeating the whole search.
-            </p>
-          </div>
-        </div>
-      </section>
-
       <section aria-labelledby="control" className={styles["section"]}>
         <div className={styles["sectionHeading"]}>
-          <p>03</p>
-          <h2 id="control">You approve the important parts</h2>
+          <p>02</p>
+          <h2 id="control">You stay in control</h2>
         </div>
         <div className={styles["controlGrid"]}>
           <div>
-            <h3>Agent can</h3>
+            <h3>The agent handles</h3>
             <ul>
               {agentCan.map((item) => (
                 <li key={item}>{item}</li>
@@ -125,7 +104,7 @@ export default function WebMcpAboutPage() {
             </ul>
           </div>
           <div>
-            <h3>Needs your decision</h3>
+            <h3>Stays with you</h3>
             <ul>
               {decisionsForYou.map((item) => (
                 <li key={item}>{item}</li>
@@ -134,16 +113,50 @@ export default function WebMcpAboutPage() {
           </div>
           <p className={styles["controlNote"]}>
             <ShieldCheckIcon aria-hidden="true" size={18} />
-            Tool discovery is not identity or permission. Jobbbler verifies the exact request, not
-            who clicked in another app.
+            Opening the site gives an agent no access to your private data. Decisions are made in
+            your agent app and tied to the exact request.
+          </p>
+        </div>
+      </section>
+
+      <section aria-labelledby="built-in" className={styles["section"]}>
+        <div className={styles["sectionHeading"]}>
+          <p>03</p>
+          <h2 id="built-in">Built into the site</h2>
+        </div>
+        <div className={styles["builtIn"]}>
+          <p className={styles["lead"]}>
+            When a compatible browser agent opens Jobbbler, it automatically finds the actions it
+            can use. The same searches and safety rules power the agent and the job portal you see.
+          </p>
+          <div className={styles["proof"]}>
+            <EyeIcon aria-hidden="true" size={21} />
+            <div>
+              <strong>See what happened.</strong>
+              <p>
+                Open Agent view to see the action, its status, and the result. The rest of Jobbbler
+                stays a familiar job portal.
+              </p>
+            </div>
+          </div>
+          <div className={styles["statement"]}>
+            <ClockCountdownIcon aria-hidden="true" size={21} />
+            <p>
+              Jobbbler keeps checking after the tab closes. Your agent can return with new, changed,
+              closed, or no-longer-matching roles without repeating the whole search.
+            </p>
+          </div>
+          <p className={styles["accountNote"]}>
+            No account is needed to search. Email is verified only when you ask Jobbbler to keep
+            checking for you.
           </p>
         </div>
       </section>
 
       <footer className={styles["footer"]}>
         <p>
-          Jobs are the proof case. The same pattern can make any data-rich website directly useful
-          to agents while keeping its human interface familiar.
+          Start with a search. If you use a compatible browser agent, it can take on the repetitive
+          steps whenever you ask.
         </p>
       </footer>
     </article>

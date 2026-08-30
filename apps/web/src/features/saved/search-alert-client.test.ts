@@ -40,6 +40,7 @@ const review: RequestSearchAlertResult = {
     savedSearchId: "saved_search_00000001-0000-7000-8000-000000000001",
     savedSearchVersion: 0,
     maskedDestination: "a***@example.com",
+    deliveryVerification: { required: true, method: "email_code" },
     criteria: requestInput.criteria,
     recurrence: requestInput.recurrence,
     firstRunAt: "2026-08-31T06:00:00.000Z",

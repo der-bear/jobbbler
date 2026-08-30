@@ -4,6 +4,7 @@ import type { IdempotencyRecord } from "@jobbbler/storage";
 
 import type { IdentityRouteDependencies } from "./identity-route-handlers";
 import {
+  handleAgentSetScheduleEnabledRequest,
   handleCreateSavedSearchRequest,
   handleCreateScheduleRequest,
   handleDeleteSavedSearchRequest,
@@ -125,6 +126,7 @@ function idempotencyStore() {
 function dependencies(): SavedSearchRouteDependencies {
   return {
     identity: identity(),
+    activity: { publish: vi.fn(async () => true) },
     idempotency: idempotencyStore(),
     service: {
       ensureSavedSearch: vi.fn(async () => saved),
@@ -232,6 +234,36 @@ describe("saved-search and schedule route handlers", () => {
       "schedule_1",
       { expectedVersion: 0, enabled: false },
       now,
+    );
+  });
+
+  it("attributes the dedicated WebMCP schedule mutation to the agent channel", async () => {
+    const human = dependencies();
+    await handleSetScheduleEnabledRequest(
+      request("/api/v1/schedules/schedule_1", "PATCH", {
+        expectedVersion: 0,
+        enabled: false,
+      }),
+      { params: Promise.resolve({ scheduleId: "schedule_1" }) },
+      human,
+    );
+
+    expect(human.activity?.publish).toHaveBeenCalledWith(
+      expect.objectContaining({ key: "set_job_alert_state", actorKind: "human" }),
+    );
+
+    const agent = dependencies();
+    await handleAgentSetScheduleEnabledRequest(
+      request("/api/v1/agent/schedules/schedule_1/state", "PATCH", {
+        expectedVersion: 0,
+        enabled: false,
+      }),
+      { params: Promise.resolve({ scheduleId: "schedule_1" }) },
+      agent,
+    );
+
+    expect(agent.activity?.publish).toHaveBeenCalledWith(
+      expect.objectContaining({ key: "set_job_alert_state", actorKind: "agent" }),
     );
   });
 

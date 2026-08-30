@@ -1,3 +1,3 @@
 export function agentExamplePrompt(site = "this Jobbbler site"): string {
-  return `Open ${site}. Help me find a technology role that fits my experience and priorities. Ask only what you need to know, then search and compare the strongest options and explain your recommendation. If I choose one, first check how it accepts applications. For a managed internal role, prepare the application, ask for any missing facts, and show me exactly what will be submitted before asking for my final decision. For an external role, open the validated employer page only when the capability says it is available; otherwise stop. Do not claim Jobbbler submitted it.`;
+  return `Open ${site}. Help me find a technology role that fits my experience and priorities. Ask what matters, compare the best matches, and explain your recommendation. If I choose one, help me apply—but ask before using my personal data or submitting anything.`;
 }

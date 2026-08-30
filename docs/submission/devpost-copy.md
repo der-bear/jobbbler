@@ -37,12 +37,13 @@ alive.
 
 That setup is agent-native too. `request_search_alert` prepares the exact
 criteria, recurrence, masked email destination, purpose, retention, and right
-to withdraw, then sends a six-digit mailbox code. A compatible external agent
-client presents that review through its own interaction UI and collects an
-explicit decision. Only
-`decide_search_alert` with the same expiring server request — and the code on
-approval — activates the unchanged schedule. No Jobbbler page interaction or
-account form is required; tool access alone is not approval.
+to withdraw. A new destination receives a six-digit mailbox code; a destination
+already verified for the same private owner does not. A compatible external
+agent client presents that review through its own interaction UI and collects
+an explicit decision. Only `decide_search_alert` with the same expiring server
+request — plus the code when the review requires it — activates the unchanged
+schedule. No Jobbbler page interaction or account form is required; tool access
+alone is not approval.
 
 The next time the agent asks, `get_latest_search_update` answers with only
 what changed, not the full result list again: "Since the last check: three new

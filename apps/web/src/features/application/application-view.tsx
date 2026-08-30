@@ -131,16 +131,31 @@ function AgentAssistanceRequest({
     (delegation) =>
       delegation.status === "requested" && isLiveApplicationAssistance(delegation, now),
   );
-  if (requested === undefined) return null;
+  const latest = workspace.delegationRequests.at(-1);
+  const ended =
+    requested === undefined &&
+    latest !== undefined &&
+    (latest.status === "requested" || latest.status === "active") &&
+    !isLiveApplicationAssistance(latest, now);
+  if (requested === undefined && !ended) return null;
   return (
     <section aria-labelledby="agent-assistance-heading" className={styles["assistance"]}>
       <div>
-        <p className={styles["eyebrow"]}>Agent assistance</p>
-        <h2 id="agent-assistance-heading">Your agent requested preparation access</h2>
-        <p>
-          Complete this decision in your external agent client. Jobbbler will accept only the
-          decision bound to this exact request; this page cannot approve it.
-        </p>
+        <p className={styles["eyebrow"]}>Agent preparation</p>
+        {ended ? (
+          <>
+            <h2 id="agent-assistance-heading">Agent access ended</h2>
+            <p>You can continue here, or ask the agent to request access again.</p>
+          </>
+        ) : (
+          <>
+            <h2 id="agent-assistance-heading">Your decision is needed</h2>
+            <p>
+              Decide in your agent app whether the agent may prepare this application. This request
+              applies only to this draft.
+            </p>
+          </>
+        )}
       </div>
     </section>
   );
@@ -192,8 +207,8 @@ function ReviewDocument({
         <p className={styles["sectionIntro"]}>
           {agentAssisted
             ? readiness.readyForReview
-              ? "This page is read-only for this agent-assisted draft. Ask the agent to revise anything before the exact decision in your external client."
-              : "This page is read-only for this agent-assisted draft. Ask the agent to prepare the missing facts in your external client."
+              ? "Review the draft here. This page stays read-only while agent assistance is active; ask your agent to change anything before the final decision."
+              : "Your agent still needs information. Answer in your agent app; this page stays read-only while assistance is active."
             : readiness.readyForReview
               ? "Everything required is ready. Edit anything that does not sound like you."
               : "Ask your agent or fill it in here. You only need to resolve the items that are missing."}
@@ -223,8 +238,8 @@ function ReviewDocument({
           <div className={styles["sharingTitle"]}>
             <ShieldCheckIcon aria-hidden="true" weight="fill" />
             <div>
-              <p className={styles["eyebrow"]}>Before you submit</p>
-              <h3 id="sharing-heading">One approval, for this application only</h3>
+              <p className={styles["eyebrow"]}>Before submission</p>
+              <h3 id="sharing-heading">Your data, this application only</h3>
             </div>
           </div>
           <dl className={styles["permissionGrid"]}>
@@ -240,7 +255,7 @@ function ReviewDocument({
             </div>
             <div>
               <dt>Your control</dt>
-              <dd>Any edit cancels the approval. Your agent cannot reuse or submit it again.</dd>
+              <dd>Any change requires a new decision. Your agent cannot reuse it.</dd>
             </div>
           </dl>
           <details className={styles["technicalDetails"]}>
@@ -265,9 +280,10 @@ function ReviewDocument({
         {agentAssisted ? (
           <div className={styles["actions"]}>
             <p>
-              <strong>Complete this decision in your external agent client.</strong> Ask the agent
-              to revise any answer first. This page cannot approve assistance, consent, or
-              submission for an agent-assisted draft.
+              <strong>Continue in your agent chat.</strong>{" "}
+              {readiness.readyForReview
+                ? "Ask for any changes there, then decide whether to submit the exact application shown here."
+                : "Answer the missing questions there so the agent can finish the draft."}
             </p>
           </div>
         ) : (
@@ -323,7 +339,7 @@ function CompletePanel({ workspace }: Readonly<{ workspace: ApplicationWorkspace
           <dl className={styles["permissionGrid"]}>
             <div>
               <dt>Status</dt>
-              <dd>{receipt.status === "submitted" ? "Submitted" : "External handoff"}</dd>
+              <dd>{receipt.status === "submitted" ? "Submitted" : "Employer website"}</dd>
             </div>
             <div>
               <dt>Receipt reference</dt>
@@ -405,7 +421,7 @@ export function ApplicationView({
             ? `${job.title} · ${job.organizationName}`
             : legacyExternalDraft
               ? `${job.title} · ${job.organizationName}`
-              : "Your agent can prepare the work. Check the details once, then submit."}
+              : "Your agent prepares the draft. You review it once and decide whether to submit."}
         </p>
       </header>
       {error === null ? null : (

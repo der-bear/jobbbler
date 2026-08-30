@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { ApplicationHistory } from "./application-list";
+import { ApplicationHistory, ApplicationsWorkspace } from "./application-list";
 
 const submitted = {
   draftId: "application_550e8400-e29b-41d4-a716-446655440000",
@@ -15,6 +15,13 @@ const submitted = {
 };
 
 describe("ApplicationHistory", () => {
+  it("renders server-loaded applications without the client loading state", () => {
+    const markup = renderToStaticMarkup(<ApplicationsWorkspace initialItems={[submitted]} />);
+
+    expect(markup).toContain("Senior Product Engineer");
+    expect(markup).not.toContain("Loading your applications");
+  });
+
   it("presents applications as a simple, human-readable history", () => {
     const markup = renderToStaticMarkup(
       <ApplicationHistory
@@ -26,16 +33,31 @@ describe("ApplicationHistory", () => {
             state: "draft",
             job: { ...submitted.job, title: "Platform Engineer" },
           },
+          {
+            ...submitted,
+            draftId: "application_8f568400-e29b-41d4-a716-446655440000",
+            state: "valid",
+            job: { ...submitted.job, title: "Design Engineer" },
+          },
+          {
+            ...submitted,
+            draftId: "application_9f568400-e29b-41d4-a716-446655440000",
+            state: "reviewed",
+            job: { ...submitted.job, title: "Staff Engineer" },
+          },
         ]}
       />,
     );
 
     expect(markup).toContain("Applications");
-    expect(markup).toContain("Track applications prepared for you");
+    expect(markup).toContain("Track drafts prepared for you and see what needs your decision");
     expect(markup).toContain("Senior Product Engineer");
     expect(markup).toContain("Northstar Labs");
     expect(markup).toContain("Submitted");
-    expect(markup).toContain("Continue");
+    expect(markup).toContain("Open draft");
+    expect(markup).toContain("Ready to review");
+    expect(markup).toContain("Your decision needed");
+    expect(markup).toContain("Review application");
     expect(markup).toContain("View receipt");
     expect(markup).toContain(`/apply/${submitted.draftId}`);
     expect(markup).not.toContain("handed_off");
@@ -46,7 +68,7 @@ describe("ApplicationHistory", () => {
     const markup = renderToStaticMarkup(<ApplicationHistory items={[]} />);
 
     expect(markup).toContain("No applications yet");
-    expect(markup).toContain("When an agent prepares one for you");
+    expect(markup).toContain("When your agent prepares an application, it will appear here");
     expect(markup).toContain("Browse jobs");
     expect(markup).toContain('href="/jobs"');
   });

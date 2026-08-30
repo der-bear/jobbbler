@@ -34,6 +34,7 @@ const payload: SearchAlertReviewPayload = {
   },
   endpointId: "endpoint_550e8400-e29b-41d4-a716-446655440003",
   challengeId: "challenge_550e8400-e29b-41d4-a716-446655440004",
+  deliveryVerificationRequired: true,
   scheduleId: "schedule_550e8400-e29b-41d4-a716-446655440005",
   recurrence: { frequency: "daily", time: "09:00", timeZone: "Europe/Kyiv" },
   firstRunAt: "2026-08-31T06:00:48.000Z",

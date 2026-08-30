@@ -122,6 +122,26 @@ test.describe("public job search workspace", () => {
     await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
   });
 
+  test("uses one clear focus treatment for the location combobox", async ({ page }) => {
+    await page.goto("/jobs?sort=newest");
+
+    const location = page.getByRole("combobox", { name: "Location" });
+    await location.focus();
+
+    const outlinedAncestors = await location.evaluate((input) => {
+      const elements = [input, input.parentElement, input.parentElement?.parentElement].filter(
+        (element): element is HTMLElement => element instanceof HTMLElement,
+      );
+      return elements.filter((element) => {
+        const style = getComputedStyle(element);
+        return style.outlineStyle !== "none" && Number.parseFloat(style.outlineWidth) > 0;
+      }).length;
+    });
+
+    expect(outlinedAncestors).toBe(1);
+    await expect(page.getByRole("listbox")).toBeVisible();
+  });
+
   test("opens a detail page that retains ranking evidence and provenance", async ({ page }) => {
     await page.goto(seededSearch);
 

@@ -61,6 +61,7 @@ const alertReview: RequestSearchAlertResult = {
     savedSearchId: savedSearch.id,
     savedSearchVersion: savedSearch.version,
     maskedDestination: "a***@example.com",
+    deliveryVerification: { required: true, method: "email_code" },
     criteria: savedSearch.criteria,
     recurrence: schedule.recurrence,
     firstRunAt: schedule.nextRunAt,
@@ -197,6 +198,7 @@ describe("saved-route WebMCP tools", () => {
       userAction: { kind: "data_consent", surface: "search_alert_consent" },
       decisionContext: {
         reviewToken: alertReview.reviewToken,
+        verificationMode: "email_code",
       },
       presentation: {
         title: "Review this job alert",
@@ -210,6 +212,7 @@ describe("saved-route WebMCP tools", () => {
     });
     expect("decisionContext" in result ? result.decisionContext : undefined).toEqual({
       reviewToken: alertReview.reviewToken,
+      verificationMode: "email_code",
     });
     expect(JSON.stringify(result)).not.toContain("ada@example.com");
     expect(JSON.stringify(result)).not.toContain('"review"');
@@ -230,6 +233,7 @@ describe("saved-route WebMCP tools", () => {
       criteria: savedSearch.criteria,
       endpointId: schedule.delivery.endpointId,
       challengeId: "challenge_00000001-0000-7000-8000-000000000001",
+      deliveryVerificationRequired: true,
       scheduleId: schedule.id,
       recurrence: schedule.recurrence,
       firstRunAt: schedule.nextRunAt,
@@ -328,7 +332,41 @@ describe("saved-route WebMCP tools", () => {
     expect(new TextEncoder().encode(JSON.stringify(result)).byteLength).toBeLessThanOrEqual(1_500);
   });
 
-  it("requires the person's exact approval and mailbox code before activation", async () => {
+  it("tells the agent client when the reviewed destination is already verified", async () => {
+    const verifiedReview: RequestSearchAlertResult = {
+      ...alertReview,
+      review: {
+        ...alertReview.review,
+        deliveryVerification: { required: false, method: null },
+      },
+    };
+    const manifests = createSavedToolManifests(
+      dependencies({ requestSearchAlert: vi.fn(async () => verifiedReview) }),
+    );
+
+    const result = await manifests[1]!.execute(
+      {
+        name: "Senior platform roles",
+        criteria: { query: "platform", workModels: ["remote"] },
+        recurrence: schedule.recurrence,
+        email: "ada@example.com",
+      },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toMatchObject({
+      status: "requires_user_action",
+      presentation: {
+        confirmLabel: "Turn on alert",
+        facts: expect.arrayContaining([
+          { key: "Email check", value: "Already verified — no new code" },
+        ]),
+      },
+      decisionContext: { verificationMode: "existing_verified_email" },
+    });
+  });
+
+  it("passes the person's exact approval with a code only when the review requires one", async () => {
     const decideSearchAlert = vi.fn(async () => approvedAlert);
     const manifests = createSavedToolManifests(dependencies({ decideSearchAlert }));
     const signal = new AbortController().signal;
@@ -352,9 +390,19 @@ describe("saved-route WebMCP tools", () => {
       { signal },
     );
 
-    expect(missingCode).toMatchObject({ status: "failed", error: { code: "VALIDATION" } });
+    expect(missingCode).toMatchObject({ status: "completed" });
     expect(inventedChannel).toMatchObject({ status: "failed", error: { code: "VALIDATION" } });
-    expect(decideSearchAlert).not.toHaveBeenCalled();
+    expect(decideSearchAlert).toHaveBeenCalledWith(
+      {
+        requestId: alertReview.requestId,
+        reviewToken: alertReview.reviewToken,
+        decision: "approved",
+        channel: "agent_client",
+      },
+      { signal },
+    );
+
+    decideSearchAlert.mockClear();
 
     const result = await manifests[2]!.execute(
       {

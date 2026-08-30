@@ -204,6 +204,7 @@ export async function buildApplicationWorkspace(
     serverNow: now,
     applyMode: job.applyMode,
     draft,
+    job,
     requirements: applicationPolicy.requirements,
     recipient: { id: job.organizationId, name: job.organizationName },
     purpose: applicationPurpose(job),

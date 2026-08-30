@@ -51,6 +51,20 @@ export interface StartedEmailVerification {
   readonly encryptedAddress: string;
 }
 
+export type PreparedSearchAlertEmailVerification =
+  | (StartedEmailVerification & {
+      readonly verificationRequired: true;
+    })
+  | {
+      readonly verificationRequired: false;
+      readonly challengeId: string;
+      readonly endpointId: string;
+      readonly rawCode: null;
+      readonly expiresAt: string;
+      readonly maskedAddress: string;
+      readonly encryptedAddress: null;
+    };
+
 export interface StableSearchAlertVerificationContext {
   readonly endpointId: string;
   readonly challengeId: string;
@@ -269,8 +283,41 @@ export function createIdentityService(options: IdentityServiceOptions) {
       rawInput: unknown,
       now: string,
       stableContext?: StableSearchAlertVerificationContext,
-    ): Promise<StartedEmailVerification> {
-      return startEmailVerification(ownerId, rawInput, now, "search_alert_review", stableContext);
+    ): Promise<PreparedSearchAlertEmailVerification> {
+      const input = startEmailVerificationInputSchema.parse(rawInput);
+      const protectedEmail = options.email.protect(input.email);
+      const existing = (await options.store.listVerificationEndpoints(ownerId)).find(
+        (endpoint) =>
+          endpoint.kind === "email" && endpoint.addressHash === protectedEmail.addressHash,
+      );
+      if (existing?.status === "verified") {
+        return {
+          verificationRequired: false,
+          challengeId: stableContext?.challengeId ?? options.ids.challenge(),
+          endpointId: existing.id,
+          rawCode: null,
+          expiresAt: after(now, challengeTtlSeconds),
+          maskedAddress: existing.maskedAddress,
+          encryptedAddress: null,
+        };
+      }
+      if (existing?.status === "revoked") {
+        throw new DomainError({
+          code: "CONFLICT",
+          message: "This delivery address is revoked and cannot be used for search alerts.",
+          details: { reason: "revoked_destination" },
+        });
+      }
+      return {
+        ...(await startEmailVerification(
+          ownerId,
+          input,
+          now,
+          "search_alert_review",
+          stableContext,
+        )),
+        verificationRequired: true,
+      };
     },
 
     async completeEmailVerification(ownerId: string, rawInput: unknown, now: string) {

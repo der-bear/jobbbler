@@ -28,6 +28,7 @@ export const searchAlertReviewPayloadSchema = z.strictObject({
   criteria: jobSearchCriteriaSchema,
   endpointId: entityIdSchema,
   challengeId: entityIdSchema,
+  deliveryVerificationRequired: z.boolean(),
   scheduleId: entityIdSchema,
   recurrence: scheduleRecurrenceSchema,
   firstRunAt: isoInstantSchema,

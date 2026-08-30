@@ -329,6 +329,7 @@ async function respondWithScheduleEnabled(
   scheduleId: string,
   dependencies: SavedSearchRouteDependencies,
   requestId: string,
+  actorKind: "agent" | "human",
 ): Promise<Response> {
   const now = dependencies.identity.now();
   const schedule = await dependencies.service.setScheduleEnabled(
@@ -344,7 +345,7 @@ async function respondWithScheduleEnabled(
     key: "set_job_alert_state",
     status: "completed",
     safeSummary: schedule.enabled ? "Job alert resumed." : "Job alert paused.",
-    actorKind: "human",
+    actorKind,
     aggregate: { type: "schedule", version: schedule.version },
     occurredAt: now,
     effects: [
@@ -395,7 +396,22 @@ export async function handleSetScheduleEnabledRequest(
   try {
     const command = await privateMutation(request, dependencies);
     const { scheduleId } = await routeContext.params;
-    return await respondWithScheduleEnabled(command, scheduleId, dependencies, requestId);
+    return await respondWithScheduleEnabled(command, scheduleId, dependencies, requestId, "human");
+  } catch (error) {
+    return apiErrorResponse(error, { requestId });
+  }
+}
+
+export async function handleAgentSetScheduleEnabledRequest(
+  request: Request,
+  routeContext: ScheduleRouteContext,
+  dependencies: SavedSearchRouteDependencies,
+): Promise<Response> {
+  const requestId = createRequestId();
+  try {
+    const command = await privateMutation(request, dependencies);
+    const { scheduleId } = await routeContext.params;
+    return await respondWithScheduleEnabled(command, scheduleId, dependencies, requestId, "agent");
   } catch (error) {
     return apiErrorResponse(error, { requestId });
   }
@@ -413,7 +429,7 @@ export async function handleUpdateScheduleRequest(
     const togglesEnabled =
       typeof command.body === "object" && command.body !== null && "enabled" in command.body;
     return await (togglesEnabled
-      ? respondWithScheduleEnabled(command, scheduleId, dependencies, requestId)
+      ? respondWithScheduleEnabled(command, scheduleId, dependencies, requestId, "human")
       : respondWithScheduleUpdate(command, scheduleId, dependencies, requestId));
   } catch (error) {
     return apiErrorResponse(error, { requestId });

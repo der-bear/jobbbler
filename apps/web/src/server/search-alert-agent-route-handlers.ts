@@ -9,7 +9,11 @@ import {
   type SavedSearch,
   type ScheduleRecurrence,
 } from "@jobbbler/contracts";
-import { DomainError, isDomainError } from "@jobbbler/core-domain";
+import {
+  DomainError,
+  isDomainError,
+  type PreparedSearchAlertEmailVerification,
+} from "@jobbbler/core-domain";
 import type {
   IdempotencyRecord,
   IdempotencyRecordIdentity,
@@ -245,6 +249,60 @@ function validateStoredRequest(
     throw new DomainError({
       code: "UNAUTHORIZED",
       message: "The search alert review does not match its server request.",
+      details: { reason: "stale_review" },
+    });
+  }
+}
+
+function requestResultFromPayload(
+  payload: SearchAlertReviewPayload,
+  maskedDestination: string,
+  dependencies: SearchAlertAgentRouteDependencies,
+) {
+  return requestSearchAlertResultSchema.parse({
+    status: "requires_user_action",
+    requestId: payload.requestId,
+    reviewToken: dependencies.reviewCodec.sign(payload),
+    expiresAt: payload.expiresAt,
+    review: {
+      savedSearchId: payload.savedSearchId,
+      savedSearchVersion: payload.savedSearchVersion,
+      maskedDestination,
+      deliveryVerification: payload.deliveryVerificationRequired
+        ? { required: true, method: "email_code" }
+        : { required: false, method: null },
+      criteria: payload.criteria,
+      recurrence: payload.recurrence,
+      firstRunAt: payload.firstRunAt,
+      ...reviewCopy,
+      privacyNoticeVersion: payload.privacyNoticeVersion,
+    },
+  });
+}
+
+function assertRestorableRequest(
+  payload: SearchAlertReviewPayload,
+  saga: SearchAlertRequestSaga,
+  savedSearch: SavedSearch,
+  recurrence: ScheduleRecurrence,
+  now: string,
+): void {
+  if (
+    hasExpired(payload.expiresAt, now) ||
+    payload.ownerId !== saga.ownerId ||
+    payload.requestId !== saga.requestId ||
+    payload.savedSearchId !== saga.savedSearchId ||
+    payload.challengeId !== saga.challengeId ||
+    payload.scheduleId !== saga.scheduleId ||
+    payload.issuedAt !== saga.issuedAt ||
+    payload.savedSearchVersion !== savedSearch.version ||
+    !isDeepStrictEqual(payload.criteria, savedSearch.criteria) ||
+    !isDeepStrictEqual(payload.recurrence, recurrence) ||
+    payload.privacyNoticeVersion !== searchAlertReviewPolicy.privacyNoticeVersion
+  ) {
+    throw new DomainError({
+      code: "CONFLICT",
+      message: "The persisted search alert review no longer matches this exact request.",
       details: { reason: "stale_review" },
     });
   }
@@ -723,14 +781,7 @@ export async function handleRequestSearchAlert(
       dependencies,
     );
     let savedSearch: SavedSearch | null = null;
-    let verification: {
-      readonly challengeId: string;
-      readonly endpointId: string;
-      readonly rawCode: string;
-      readonly expiresAt: string;
-      readonly maskedAddress: string;
-      readonly encryptedAddress: string;
-    } | null = null;
+    let verification: PreparedSearchAlertEmailVerification | null = null;
     let requestEvidence: DecisionClaim | null = null;
     let resultStored = false;
     let preservePreparation = false;
@@ -753,6 +804,74 @@ export async function handleRequestSearchAlert(
         { name: input.name, criteria: input.criteria },
         durableSaga.saga.issuedAt,
       );
+      const persistedEvidence = await dependencies.idempotency.get(
+        requestScope(current.owner.id),
+        durableSaga.saga.requestId,
+      );
+      if (persistedEvidence !== null) {
+        const persistedPayload = storedRequestPayload(
+          persistedEvidence,
+          current.owner.id,
+          durableSaga.saga.requestId,
+          dependencies,
+        );
+        assertRestorableRequest(
+          persistedPayload,
+          durableSaga.saga,
+          savedSearch,
+          input.recurrence,
+          now,
+        );
+        const persistedEndpoint = (
+          await dependencies.identity.identity.listVerificationEndpoints(current.owner.id)
+        ).find((candidate) => candidate.id === persistedPayload.endpointId);
+        if (
+          persistedEndpoint === undefined ||
+          persistedEndpoint.status === "revoked" ||
+          (!persistedPayload.deliveryVerificationRequired &&
+            persistedEndpoint.status !== "verified")
+        ) {
+          throw new DomainError({
+            code: "CONFLICT",
+            message: "The reviewed delivery destination is no longer available.",
+            details: { reason: "stale_review" },
+          });
+        }
+        const restored = requestResultFromPayload(
+          persistedPayload,
+          persistedEndpoint.maskedAddress,
+          dependencies,
+        );
+        const restoredPut = await dependencies.idempotency.putIfAbsent({
+          scope: requestResultScope(current.owner.id),
+          key: idempotencyKey,
+          requestHash,
+          responseStatus: 202,
+          responseBody: restored,
+          createdAt: now,
+          expiresAt: persistedPayload.expiresAt,
+        });
+        const result = requestSearchAlertResultSchema.parse(restoredPut.record.responseBody);
+        resultStored = true;
+        if (restoredPut.inserted) {
+          await dependencies.activity?.publish({
+            ownerId: current.owner.id,
+            correlationId: persistedPayload.requestId,
+            kind: "schedule",
+            key: "request_search_alert",
+            status: "requires_user_action",
+            safeSummary: "Job alert review restored for an agent-client decision.",
+            actorKind: "agent",
+            aggregate: { type: "saved_search", version: savedSearch.version },
+            occurredAt: now,
+            effects: [
+              { target: "saved_searches", kind: "refresh" },
+              { target: "agent_activity", kind: "announce" },
+            ],
+          });
+        }
+        return apiSuccessResponse(result, { requestId: apiRequestId, status: 202 });
+      }
       verification = await searchAlertIdentity(dependencies).start(
         current.owner.id,
         { email: input.delivery.email },
@@ -779,6 +898,7 @@ export async function handleRequestSearchAlert(
         criteria: savedSearch.criteria,
         endpointId: verification.endpointId,
         challengeId: verification.challengeId,
+        deliveryVerificationRequired: verification.verificationRequired,
         scheduleId: durableSaga.saga.scheduleId,
         recurrence: input.recurrence,
         firstRunAt,
@@ -786,18 +906,19 @@ export async function handleRequestSearchAlert(
         issuedAt: durableSaga.saga.issuedAt,
         expiresAt,
       });
-      const reviewToken = dependencies.reviewCodec.sign(tokenPayload);
-      try {
-        preservePreparation = true;
-        await dependencies.identity.delivery.deliverVerification({
-          encryptedAddress: verification.encryptedAddress,
-          code: verification.rawCode,
-          expiresAt: verification.expiresAt,
-          challengeId: verification.challengeId,
-        });
-      } catch (error) {
-        if (isDomainError(error) && !error.retryable) preservePreparation = false;
-        throw error;
+      if (verification.verificationRequired) {
+        try {
+          preservePreparation = true;
+          await dependencies.identity.delivery.deliverVerification({
+            encryptedAddress: verification.encryptedAddress,
+            code: verification.rawCode,
+            expiresAt: verification.expiresAt,
+            challengeId: verification.challengeId,
+          });
+        } catch (error) {
+          if (isDomainError(error) && !error.retryable) preservePreparation = false;
+          throw error;
+        }
       }
       requestEvidence = {
         scope: requestScope(current.owner.id),
@@ -819,22 +940,11 @@ export async function handleRequestSearchAlert(
       if (!stored.inserted) {
         validateStoredRequest(stored.record, tokenPayload, dependencies);
       }
-      const result = requestSearchAlertResultSchema.parse({
-        status: "requires_user_action",
-        requestId,
-        reviewToken,
-        expiresAt,
-        review: {
-          savedSearchId: savedSearch.id,
-          savedSearchVersion: savedSearch.version,
-          maskedDestination: verification.maskedAddress,
-          criteria: savedSearch.criteria,
-          recurrence: input.recurrence,
-          firstRunAt,
-          ...reviewCopy,
-          privacyNoticeVersion: searchAlertReviewPolicy.privacyNoticeVersion,
-        },
-      });
+      const result = requestResultFromPayload(
+        tokenPayload,
+        verification.maskedAddress,
+        dependencies,
+      );
       const resultPut = await dependencies.idempotency.putIfAbsent({
         scope: requestResultScope(current.owner.id),
         key: idempotencyKey,
@@ -1085,7 +1195,11 @@ export async function handleDecideSearchAlert(
         const reviewedEndpoint = (
           await dependencies.identity.identity.listVerificationEndpoints(current.owner.id)
         ).find((candidate) => candidate.id === payload.endpointId);
-        if (reviewedEndpoint === undefined || reviewedEndpoint.status === "revoked") {
+        if (
+          reviewedEndpoint === undefined ||
+          reviewedEndpoint.status === "revoked" ||
+          (!payload.deliveryVerificationRequired && reviewedEndpoint.status !== "verified")
+        ) {
           throw new DomainError({
             code: "CONFLICT",
             message: "The reviewed delivery destination is no longer available.",
@@ -1206,28 +1320,45 @@ export async function handleDecideSearchAlert(
         return apiSuccessResponse(decisionAfterClaim, { requestId: apiRequestId });
       }
 
-      let verified;
-      try {
-        verified = await searchAlertIdentity(dependencies).confirm(
-          current.owner.id,
-          { challengeId: payload.challengeId, code: input.code },
-          now,
-        );
-      } catch (error) {
-        if (isDomainError(error) && error.code === "UNAUTHORIZED") {
+      let verifiedEndpointId = payload.endpointId;
+      if (payload.deliveryVerificationRequired) {
+        if (input.code === undefined) {
           throw new DomainError({
-            code: "UNAUTHORIZED",
-            message: "The mailbox verification code is invalid.",
-            details: { reason: "invalid_code" },
+            code: "VALIDATION",
+            message: "Enter the 6-digit code sent to the reviewed email address.",
+            details: { reason: "verification_code_required" },
           });
         }
-        throw error;
-      }
-      if (verified.endpointId !== payload.endpointId) {
+        let verified;
+        try {
+          verified = await searchAlertIdentity(dependencies).confirm(
+            current.owner.id,
+            { challengeId: payload.challengeId, code: input.code },
+            now,
+          );
+        } catch (error) {
+          if (isDomainError(error) && error.code === "UNAUTHORIZED") {
+            throw new DomainError({
+              code: "UNAUTHORIZED",
+              message: "The mailbox verification code is invalid.",
+              details: { reason: "invalid_code" },
+            });
+          }
+          throw error;
+        }
+        if (verified.endpointId !== payload.endpointId) {
+          throw new DomainError({
+            code: "CONFLICT",
+            message: "Mailbox verification did not match the reviewed delivery destination.",
+            details: { reason: "stale_review" },
+          });
+        }
+        verifiedEndpointId = verified.endpointId;
+      } else if (input.code !== undefined) {
         throw new DomainError({
-          code: "CONFLICT",
-          message: "Mailbox verification did not match the reviewed delivery destination.",
-          details: { reason: "stale_review" },
+          code: "VALIDATION",
+          message: "This destination is already verified; no mailbox code is needed.",
+          details: { reason: "verification_code_not_required" },
         });
       }
 
@@ -1265,7 +1396,7 @@ export async function handleDecideSearchAlert(
           now,
           schedule,
           expectedSavedSearchVersion: payload.savedSearchVersion,
-          verifiedEndpointId: payload.endpointId,
+          verifiedEndpointId,
           decision: createDecisionRecord(
             current.owner.id,
             payload,

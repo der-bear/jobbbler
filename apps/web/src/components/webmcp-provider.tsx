@@ -193,11 +193,15 @@ function savedManifests(navigate: WebMcpNavigate): readonly ToolManifest<unknown
     requestSearchAlert,
     decideSearchAlert,
     setScheduleEnabled: (scheduleId, input, { signal }) =>
-      queryApi(`/api/v1/schedules/${encodeURIComponent(scheduleId)}`, jobAlertScheduleSchema, {
-        method: "PATCH",
-        body: input,
-        signal,
-      }),
+      queryApi(
+        `/api/v1/agent/schedules/${encodeURIComponent(scheduleId)}/state`,
+        jobAlertScheduleSchema,
+        {
+          method: "PATCH",
+          body: input,
+          signal,
+        },
+      ),
     onScheduleCommitted: commitWebMcpSchedule,
     savedSearchHref: (savedSearch) => searchHrefFromCriteria(savedSearch.criteria),
     onNavigate: navigate,

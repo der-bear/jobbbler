@@ -315,6 +315,7 @@ describe("application operations with SQLite", () => {
     expect(receipt).toMatchObject({ status: "submitted", externalUrl: null });
 
     const workspace = await operations.get(ownerId, draft.id, now);
+    expect(workspace.job).toEqual(job);
     expect(workspace.draft).toMatchObject({
       state: "submitted",
       version: reviewedDraft.version + 1,

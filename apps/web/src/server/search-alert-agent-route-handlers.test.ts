@@ -8,6 +8,7 @@ import type {
 } from "@jobbbler/contracts";
 import { DomainError, type ResolvedOwnerSession } from "@jobbbler/core-domain";
 import type {
+  IdempotencyPutResult,
   IdempotencyRecord,
   SearchAlertPreparationRepository,
   SearchAlertPreparationSagaRecord,
@@ -159,6 +160,7 @@ function createDependencies() {
     verifiedAt: endpointStatus === "verified" ? now : null,
   });
   const startedVerification = {
+    verificationRequired: true as const,
     challengeId,
     endpointId,
     rawCode: code,
@@ -189,8 +191,19 @@ function createDependencies() {
     })),
     startEmailVerification: vi.fn(async () => startedVerification),
     startSearchAlertEmailVerification: vi.fn(async () => {
+      if (endpointStatus === "verified") {
+        return {
+          verificationRequired: false as const,
+          challengeId,
+          endpointId,
+          rawCode: null,
+          expiresAt: startedVerification.expiresAt,
+          maskedAddress: maskedDestination,
+          encryptedAddress: null,
+        };
+      }
       verificationStarted = true;
-      if (endpointStatus !== "verified") endpointStatus = "pending";
+      endpointStatus = "pending";
       return startedVerification;
     }),
     completeEmailVerification: vi.fn(async (_ownerId, input: unknown) => {
@@ -558,6 +571,142 @@ describe("agent-native search alert route handlers", () => {
     expect(serialized).not.toContain(email);
     expect(serialized).not.toContain(code);
     expect(serialized).not.toContain("protected-email-envelope");
+  });
+
+  it("reuses a verified destination without another code while preserving exact agent-client approval", async () => {
+    const current = createDependencies();
+    current.setEndpointStatus("verified");
+
+    const review = await prepare(current);
+
+    expect(review.review).toMatchObject({
+      maskedDestination,
+      deliveryVerification: { required: false },
+    });
+    expect(current.dependencies.identity.delivery.deliverVerification).not.toHaveBeenCalled();
+
+    const response = await handleDecideSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/decision", {
+        requestId: review.requestId,
+        reviewToken: review.reviewToken,
+        decision: "approved",
+        channel: "agent_client",
+      }),
+      current.dependencies,
+    );
+
+    expect(response.status).toBe(201);
+    expect(current.identityOperations.confirmSearchAlertEmailVerification).not.toHaveBeenCalled();
+    expect(current.service.scheduleAlert).not.toHaveBeenCalled();
+    await expect(responseData(response)).resolves.toMatchObject({
+      decision: "approved",
+      scheduleId,
+    });
+  });
+
+  it("requires a mailbox code when the exact review says the destination is new", async () => {
+    const current = createDependencies();
+    const review = await prepare(current);
+
+    const response = await handleDecideSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/decision", {
+        requestId: review.requestId,
+        reviewToken: review.reviewToken,
+        decision: "approved",
+        channel: "agent_client",
+      }),
+      current.dependencies,
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: { details: { reason: "verification_code_required" } },
+    });
+    expect(current.identityOperations.confirmSearchAlertEmailVerification).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unnecessary code for an already verified destination", async () => {
+    const current = createDependencies();
+    current.setEndpointStatus("verified");
+    const review = await prepare(current);
+
+    const response = await handleDecideSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/decision", decisionBody(review)),
+      current.dependencies,
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: { details: { reason: "verification_code_not_required" } },
+    });
+    expect(current.identityOperations.confirmSearchAlertEmailVerification).not.toHaveBeenCalled();
+  });
+
+  it("rejects a reused destination that is revoked after review", async () => {
+    const current = createDependencies();
+    current.setEndpointStatus("verified");
+    const review = await prepare(current);
+    current.setEndpointStatus("revoked");
+
+    const response = await handleDecideSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/decision", {
+        requestId: review.requestId,
+        reviewToken: review.reviewToken,
+        decision: "approved",
+        channel: "agent_client",
+      }),
+      current.dependencies,
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: { details: { reason: "stale_review" } },
+    });
+    expect(current.preparation.commitApproved).not.toHaveBeenCalled();
+  });
+
+  it("replays persisted review evidence without changing verification mode after a result-write timeout", async () => {
+    const current = createDependencies();
+    const originalPut = vi.mocked(current.idempotency.putIfAbsent).getMockImplementation() as (
+      record: IdempotencyRecord,
+    ) => Promise<IdempotencyPutResult>;
+    let failResultWrite = true;
+    vi.mocked(current.idempotency.putIfAbsent).mockImplementation(async (record) => {
+      if (failResultWrite && record.scope === `search_alert.request_result:${ownerId}`) {
+        failResultWrite = false;
+        throw new DomainError({
+          code: "DEPENDENCY",
+          message: "The request result may have been stored after the response was lost.",
+          retryable: true,
+        });
+      }
+      return originalPut(record);
+    });
+
+    const first = await handleRequestSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/request", requestInput),
+      current.dependencies,
+    );
+    expect(first.status).toBe(502);
+    expect(current.dependencies.identity.delivery.deliverVerification).toHaveBeenCalledOnce();
+
+    current.setEndpointStatus("verified");
+    const retry = await handleRequestSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/request", requestInput),
+      current.dependencies,
+    );
+    const review = await responseData<RequestSearchAlertResult>(retry);
+
+    expect(retry.status).toBe(202);
+    expect(review.review.deliveryVerification).toEqual({
+      required: true,
+      method: "email_code",
+    });
+    expect(current.identityOperations.startSearchAlertEmailVerification).toHaveBeenCalledOnce();
+    expect(current.dependencies.identity.delivery.deliverVerification).toHaveBeenCalledOnce();
   });
 
   it("requires a valid client Idempotency-Key before request preparation", async () => {

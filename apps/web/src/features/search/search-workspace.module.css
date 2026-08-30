@@ -194,7 +194,7 @@
 .railLocation:focus-within {
   border-color: var(--jb-signal);
   outline: 2px solid var(--jb-focus);
-  outline-offset: 2px;
+  outline-offset: 0;
 }
 
 .railSearch > svg {
@@ -291,6 +291,12 @@
   border-color: var(--jb-signal);
   outline: 2px solid var(--jb-focus);
   outline-offset: 2px;
+}
+
+.filterRow .railSearch input:focus-visible,
+.filterRow .railLocation input:focus-visible {
+  border-color: transparent;
+  outline: 0;
 }
 
 .salaryLabel {

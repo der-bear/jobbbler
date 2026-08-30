@@ -25,7 +25,7 @@
       saved alert, and application boundaries.
 - [ ] Demonstrate the agent-native alert pair from the external client:
       `request_search_alert` returns the exact review with a masked destination,
-      the person decides and supplies the mailbox code there, and
+      the person decides and supplies a mailbox code only when requested, and
       `decide_search_alert` activates only the unchanged request.
 - [ ] Confirm the video matches the storyboard's 0–160s beats and narration
       lines, including the delta beat (“Since the last check…”) and the
@@ -42,8 +42,9 @@
 - [ ] Use a synthetic/owned verified endpoint; do not display its full address
       or OTP.
 - [ ] Verify a declined alert review creates no schedule, a missing or wrong
-      mailbox code activates nothing, and an approved exact review produces one
-      non-null schedule and a retry-stable receipt.
+      required mailbox code activates nothing, a reused verified destination
+      asks for no new code, and an approved exact review produces one non-null
+      schedule and a retry-stable receipt.
 - [ ] Show real latest-run and delivery state, including a truthful retry-safe
       state if used.
 - [ ] Use the clearly fictional internal-demo employer for application footage.

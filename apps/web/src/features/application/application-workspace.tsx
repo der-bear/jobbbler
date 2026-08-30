@@ -174,12 +174,16 @@ function DraftApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>) {
         applicationWorkspaceSchema,
         signal === undefined ? {} : { signal },
       );
-      const detail = await queryApi(
-        `/api/v1/jobs/${encodeURIComponent(workspace.draft.jobId)}`,
-        jobDetailResultSchema,
-        signal === undefined ? {} : { signal },
-      );
-      setState({ kind: "ready", workspace, job: detail.job });
+      const job =
+        workspace.job ??
+        (
+          await queryApi(
+            `/api/v1/jobs/${encodeURIComponent(workspace.draft.jobId)}`,
+            jobDetailResultSchema,
+            signal === undefined ? {} : { signal },
+          )
+        ).job;
+      setState({ kind: "ready", workspace, job });
       setValues(fieldValues(workspace));
       return workspace;
     },

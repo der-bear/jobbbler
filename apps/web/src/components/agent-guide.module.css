@@ -15,7 +15,7 @@
 }
 
 .guide h3 {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 680;
   letter-spacing: -0.015em;
 }
@@ -31,16 +31,17 @@
 .promise {
   margin: 0;
   color: var(--color-signal-strong);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
 }
 
 .guideText,
 .panelNote,
-.note {
+.note,
+.planner {
   margin: 0;
   color: var(--color-ink-muted);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.55;
 }
 
@@ -74,7 +75,7 @@
 .guideSteps p {
   margin: 0;
   color: var(--color-ink);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .prompt {
@@ -88,7 +89,7 @@
 .promptText {
   margin: 0;
   color: var(--color-ink);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 560;
   line-height: 1.55;
 }
@@ -115,8 +116,8 @@
   margin: 0;
   padding-inline-start: 15px;
   color: var(--color-ink-muted);
-  font-size: 11px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .guideColumns li::marker {
@@ -125,6 +126,11 @@
 
 .panelNote {
   margin-block-start: -10px;
+}
+
+.planner {
+  border-block-start: 1px solid var(--color-line);
+  padding-block-start: 12px;
 }
 
 .sectionHeading,
@@ -200,7 +206,7 @@
 .toolList p {
   margin: 1px 0 0;
   color: var(--color-ink-muted);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.5;
 }
 

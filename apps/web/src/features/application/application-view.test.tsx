@@ -188,8 +188,8 @@ describe("ApplicationView", () => {
       />,
     );
 
-    expect(markup).toContain("Complete this decision in your external agent client");
-    expect(markup).toContain("read-only for this agent-assisted draft");
+    expect(markup).toContain("Continue in your agent chat");
+    expect(markup).toContain("stays read-only");
     expect(markup.match(/readOnly=""/gu)).toHaveLength(2);
     expect(markup).not.toContain("Edit anything that does not sound like you");
     expect(markup).not.toContain("fill it in here");
@@ -228,6 +228,8 @@ describe("ApplicationView", () => {
       );
 
       expect(markup).toContain("Review and submit to Northstar Systems");
+      expect(markup).toContain("Agent access ended");
+      expect(markup).toContain("ask the agent to request access again");
       expect(markup).not.toContain("read-only for this agent-assisted draft");
       expect(markup).not.toContain("Your agent requested preparation access");
       expect(markup).not.toContain('readOnly=""');
@@ -330,6 +332,7 @@ describe("ApplicationView", () => {
     expect(markup).toContain(`href="${externalUrl}"`);
     expect(markup).toContain("Back to applications");
     expect(markup).toContain('href="/applications"');
+    expect(markup).not.toContain("External handoff");
   });
 
   it("renders a legacy external draft as read-only without preparation or submission controls", () => {

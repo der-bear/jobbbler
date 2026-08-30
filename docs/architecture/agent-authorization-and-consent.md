@@ -30,6 +30,16 @@ Authentication, authorization, and consent are deliberately not represented by o
 
 A verified owner can recover access from `/saved` without a password. Recovery start always returns the same accepted envelope whether or not an address exists. A separate short-lived, single-use recovery challenge is delivered only to a matching verified encrypted endpoint; only its keyed hash is stored. Successful consumption and rotation to one new opaque HttpOnly session happen atomically, with every prior session revoked. Recovery identifiers, codes, email addresses, and session tokens are never exposed through WebMCP or owner activity.
 
+Search-alert delivery reuses a verified email endpoint only when its protected
+address hash belongs to the same owner. The mailbox code proves control of a
+new destination; it is not the person's alert decision or data consent. Every
+new or materially changed alert still receives a separate immutable review and
+an explicit request-bound decision in the external agent client. A code is
+requested only when that review names a new destination. Reuse is rejected if
+the endpoint was revoked or ceased to be verified before activation, and an
+ambiguous retry restores the originally persisted verification mode rather
+than silently changing the review.
+
 Private-data deletion is also human-only. The current owner session must first create a five-minute deletion intent by typing `DELETE MY PRIVATE DATA`, then consume it with a second exact `DELETE` confirmation. The storage adapter fences the live session and intent in one transaction, removes all owner-owned private rows, clears the browser session cookie, and retains only non-identifying redacted audit tombstones needed for integrity. Neither step is registered as a WebMCP tool.
 
 The current implementation keeps identity portable across both storage adapters. Supabase anonymous Auth remains a compatible future adapter, not a hidden production dependency; Supabase warns that anonymous users cannot recover an account after sign-out or cleared browser data and must be distinguished in RLS policies: [Supabase anonymous sign-ins](https://supabase.com/docs/guides/auth/auth-anonymous).

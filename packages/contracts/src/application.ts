@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { entityIdSchema, isoInstantSchema } from "./common.js";
+import { jobSchema } from "./job.js";
 
 export const applicationStateSchema = z.enum([
   "draft",
@@ -224,6 +225,8 @@ export const applicationWorkspaceSchema = z.strictObject({
   serverNow: isoInstantSchema,
   applyMode: z.enum(["internal", "external"]),
   draft: applicationDraftSchema,
+  /** Present on current workspace responses so the client does not need a second job request. */
+  job: jobSchema.optional(),
   requirements: z.array(applicationFieldDefinitionSchema).min(1).max(24),
   recipient: z.strictObject({
     id: entityIdSchema,

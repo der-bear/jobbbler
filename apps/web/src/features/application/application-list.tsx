@@ -26,13 +26,36 @@ function stateLabel(state: ApplicationState): string {
       return "Needs attention";
     case "submitting":
       return "Submitting";
+    case "valid":
+      return "Ready to review";
+    case "reviewed":
+    case "awaiting_confirmation":
+      return "Your decision needed";
+    case "draft":
+      return "Draft";
     default:
       return "In progress";
   }
 }
 
 function actionLabel(state: ApplicationState): string {
-  return state === "submitted" || state === "handed_off" ? "View receipt" : "Continue";
+  switch (state) {
+    case "submitted":
+      return "View receipt";
+    case "handed_off":
+      return "View details";
+    case "valid":
+    case "reviewed":
+    case "awaiting_confirmation":
+    case "failed":
+      return "Review application";
+    case "submitting":
+      return "View status";
+    case "draft":
+      return "Open draft";
+    default:
+      return "View application";
+  }
 }
 
 function updatedLabel(value: string): string {
@@ -44,13 +67,13 @@ export function ApplicationHistory({ items }: Readonly<{ items: readonly Applica
     <section aria-labelledby="applications-title" className={styles["page"]}>
       <header className={styles["header"]}>
         <h1 id="applications-title">Applications</h1>
-        <p>Track applications prepared for you, from draft to submission.</p>
+        <p>Track drafts prepared for you and see what needs your decision.</p>
       </header>
 
       {items.length === 0 ? (
         <div className={styles["empty"]}>
           <h2>No applications yet</h2>
-          <p>When an agent prepares one for you, it will appear here.</p>
+          <p>When your agent prepares an application, it will appear here.</p>
           <Link className={styles["primaryLink"]} href="/jobs">
             Browse jobs <ArrowRightIcon aria-hidden="true" />
           </Link>
@@ -78,14 +101,17 @@ export function ApplicationHistory({ items }: Readonly<{ items: readonly Applica
   );
 }
 
-export function ApplicationsWorkspace() {
-  const [items, setItems] = useState<readonly ApplicationListItem[] | null>(null);
+export function ApplicationsWorkspace({
+  initialItems = null,
+}: Readonly<{ initialItems?: readonly ApplicationListItem[] | null }>) {
+  const [items, setItems] = useState<readonly ApplicationListItem[] | null>(initialItems);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
 
   useEffect(() => {
+    if (initialItems !== null && attempt === 0) return;
     const controller = new AbortController();
     setError(null);
     void queryApi("/api/v1/applications", applicationListSchema, { signal: controller.signal })
@@ -99,7 +125,11 @@ export function ApplicationsWorkspace() {
         );
       });
     return () => controller.abort();
-  }, [attempt]);
+  }, [attempt, initialItems]);
+
+  useEffect(() => {
+    if (initialItems !== null) setItems(initialItems);
+  }, [initialItems]);
 
   if (error !== null) {
     return (

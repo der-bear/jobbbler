@@ -86,6 +86,9 @@ function fakeStore() {
   return {
     store,
     records: () => ({ owner, session, endpoint, challenge }),
+    setEndpoint: (value: VerificationEndpointRecord) => {
+      endpoint = value;
+    },
     setConsumeResult: (value: ConsumeVerificationResult) => {
       consumeResult = value;
     },
@@ -256,6 +259,41 @@ describe("progressive owner identity", () => {
         now,
       ),
     ).resolves.toMatchObject({ endpointId: ids.endpoint() });
+  });
+
+  it("reuses the same owner's verified email without creating another mailbox challenge", async () => {
+    const current = fakeStore();
+    current.setEndpoint({
+      id: ids.endpoint(),
+      ownerId: ids.owner(),
+      kind: "email",
+      addressHash: "email-hash:person@example.com",
+      addressCiphertext: "sealed:person@example.com",
+      maskedAddress: "p•••••@example.com",
+      status: "verified",
+      verifiedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const started = await service(current.store).startSearchAlertEmailVerification(
+      ids.owner(),
+      { email: "person@example.com" },
+      now,
+      {
+        endpointId: "endpoint_650e8400-e29b-41d4-a716-446655440002",
+        challengeId: "challenge_650e8400-e29b-41d4-a716-446655440003",
+      },
+    );
+
+    expect(started).toMatchObject({
+      verificationRequired: false,
+      endpointId: ids.endpoint(),
+      challengeId: "challenge_650e8400-e29b-41d4-a716-446655440003",
+      rawCode: null,
+      maskedAddress: "p•••••@example.com",
+    });
+    expect(current.records().challenge).toBeNull();
   });
 
   it("resumes a saga-bound alert challenge with the same identifiers and derived code", async () => {
