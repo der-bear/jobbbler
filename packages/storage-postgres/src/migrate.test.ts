@@ -6,9 +6,9 @@ describe("PostgreSQL migration manifest", () => {
   it("contains sequential checksummed migrations including authorization bindings", () => {
     const migrations = postgresMigrationManifest();
     expect(migrations.map((migration) => migration.version)).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
     ]);
-    expect(migrations.at(-1)?.name).toBe("job_location_suggestions");
+    expect(migrations.at(-1)?.name).toBe("job_search_projection");
     expect(migrations.every((migration) => /^[a-f0-9]{64}$/.test(migration.checksum))).toBe(true);
   });
 
@@ -20,6 +20,19 @@ describe("PostgreSQL migration manifest", () => {
     expect(sql).toContain("tsvector");
     expect(sql).toContain("ENABLE ROW LEVEL SECURITY");
     expect(sql).toContain("REVOKE ALL ON ALL TABLES");
+  });
+
+  it("maintains a typed open-job projection with bounded-sort indexes", () => {
+    const sql = postgresMigrationManifest()
+      .map((migration) => migration.sql)
+      .join("\n");
+
+    expect(sql).toContain("ADD COLUMN body jsonb");
+    expect(sql).toContain("job_search_documents_open_newest_idx");
+    expect(sql).toContain("job_search_documents_open_salary_idx");
+    expect(sql).toContain("job_search_documents_open_work_model_idx");
+    expect(sql).toContain("job_search_documents_open_seniority_idx");
+    expect(sql).toContain("job_search_documents_open_categories_idx");
   });
 
   it("indexes agent-session tokens and authorization lookups without storing bearer tokens", () => {

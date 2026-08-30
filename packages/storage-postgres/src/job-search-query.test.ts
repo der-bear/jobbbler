@@ -56,9 +56,9 @@ function job(
 }
 
 describe("PostgreSQL job text search", () => {
-  it("returns the existing filtered order with at most two queries regardless of match count", async () => {
+  it("returns a page from one bounded projection query without hydrating every match", async () => {
     const older = job(
-      "job_550e8400-e29b-41d4-a716-446655440001",
+      `${"j".repeat(31)}_550e8400-e29b-41d4-a716-446655440001`,
       "2026-08-27T09:00:00.000Z",
       "2026-08-29T09:00:00.000Z",
     );
@@ -67,52 +67,71 @@ describe("PostgreSQL job text search", () => {
       "2026-08-28T09:00:00.000Z",
       "2026-08-29T10:00:00.000Z",
     );
-    const closed = job(
+    const oldest = job(
       "job_550e8400-e29b-41d4-a716-446655440003",
-      "2026-08-29T09:00:00.000Z",
-      "2026-08-29T11:00:00.000Z",
-      "closed",
+      "2026-08-26T09:00:00.000Z",
+      "2026-08-29T08:00:00.000Z",
     );
-    const missingId = "job_550e8400-e29b-41d4-a716-446655440004";
-    const records = new Map([older, newer, closed].map((record) => [record.id, record]));
-    const array = vi.fn((ids: readonly string[]) => ({ batchedIds: [...ids] }));
+    const primary = Number.MAX_VALUE;
     const query = Object.assign(
       vi.fn(async (strings: TemplateStringsArray, ...values: unknown[]) => {
         const statement = strings.join("?");
-        if (statement.includes("job_search_documents")) {
-          return [newer.id, older.id, closed.id, missingId].map((jobId) => ({ job_id: jobId }));
-        }
-        if (!statement.includes("jobbbler.entity_records")) {
-          throw new Error(`Unexpected query: ${statement}`);
-        }
-        const batch = values.find(
-          (value): value is { readonly batchedIds: readonly string[] } =>
-            typeof value === "object" && value !== null && "batchedIds" in value,
-        );
-        const ids =
-          batch?.batchedIds ??
-          values.filter(
-            (value): value is string => typeof value === "string" && records.has(value),
-          );
-        return ids.flatMap((id) => {
-          const record = records.get(id);
-          return record === undefined ? [] : [{ id, owner_id: null, body: record, version: 0 }];
-        });
+        expect(statement).toContain("jobbbler.job_search_documents");
+        expect(statement).toContain("LIMIT");
+        expect(statement).not.toMatch(/SELECT\s+job_id\s+FROM\s+jobbbler\.job_search_documents/iu);
+        expect(values).toContain(3);
+        return query.mock.calls.length === 1
+          ? [
+              {
+                total: "3",
+                catalog_updated_at: newer.updatedAt,
+                page: [
+                  { body: newer, primary, published_at: newer.publishedAt, job_id: newer.id },
+                  { body: older, primary, published_at: older.publishedAt, job_id: older.id },
+                  { body: oldest, primary, published_at: oldest.publishedAt, job_id: oldest.id },
+                ],
+              },
+            ]
+          : [
+              {
+                total: "3",
+                catalog_updated_at: newer.updatedAt,
+                page: [
+                  { body: oldest, primary, published_at: oldest.publishedAt, job_id: oldest.id },
+                ],
+              },
+            ];
       }),
-      { array },
+      {
+        array: vi.fn((items: readonly unknown[]) => items),
+        json: vi.fn((value: unknown) => value),
+      },
     );
     postgres.sql = query as unknown as PostgresSql;
     const storage = createPostgresStorage("postgresql://unused.test/jobbbler");
 
+    const first = await storage.jobs.search({
+      criteria: { ...criteria, sort: "salary_desc", limit: 2 },
+      now: "2026-08-30T09:00:00.000Z",
+      limit: 2,
+    });
+    expect(first).toEqual({
+      jobs: [newer, older],
+      total: 3,
+      nextCursor: expect.any(String),
+      catalogUpdatedAt: newer.updatedAt,
+    });
+    expect(first.nextCursor?.length).toBeLessThanOrEqual(256);
+
     await expect(
       storage.jobs.search({
-        criteria,
+        criteria: { ...criteria, sort: "salary_desc", cursor: first.nextCursor, limit: 2 },
         now: "2026-08-30T09:00:00.000Z",
-        limit: 20,
+        limit: 2,
       }),
     ).resolves.toEqual({
-      jobs: [newer, older],
-      total: 2,
+      jobs: [oldest],
+      total: 3,
       nextCursor: null,
       catalogUpdatedAt: newer.updatedAt,
     });

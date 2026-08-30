@@ -13,7 +13,6 @@ import {
   type VerificationChallengeRecord,
   type VerificationEndpointRecord,
 } from "@jobbbler/core-domain";
-import { rankJob } from "@jobbbler/jobs-domain";
 import { ownerActivityEventSchema, requiresAgentClientSubmissionDecision } from "@jobbbler/storage";
 import type {
   AlertChangeRecord,
@@ -27,8 +26,6 @@ import type {
   ClaimWorkItemsInput,
   DataGrantRecord,
   IdempotencyRecord,
-  JobSearchPage,
-  JobSearchQuery,
   JobSourceLinkRecord,
   JobVersionRecord,
   OrganizationRecord,
@@ -63,6 +60,7 @@ import type {
 } from "@jobbbler/storage";
 
 import { openPostgresDatabase, type PostgresExecutor, type PostgresSql } from "./connection.js";
+import { searchPostgresJobs } from "./job-search.js";
 
 interface EntityRow {
   readonly id: string;
@@ -163,18 +161,6 @@ async function list<T>(sql: PostgresExecutor, kind: string, ownerId?: string): P
       : await sql<
           EntityRow[]
         >`SELECT id, owner_id, body, version FROM jobbbler.entity_records WHERE kind = ${kind} AND owner_id = ${ownerId} ORDER BY updated_at DESC, id`;
-  return rows.map(body<T>);
-}
-
-async function listByIds<T>(
-  sql: PostgresExecutor,
-  kind: string,
-  ids: readonly string[],
-): Promise<T[]> {
-  if (ids.length === 0) return [];
-  const rows = await sql<EntityRow[]>`
-    SELECT id, owner_id, body, version FROM jobbbler.entity_records
-    WHERE kind = ${kind} AND id = ANY(${sql.array([...ids])})`;
   return rows.map(body<T>);
 }
 
@@ -359,99 +345,6 @@ function validateKinds(kinds: ClaimWorkItemsInput["kinds"]): readonly string[] {
     unique.add(kind);
   }
   return [...unique];
-}
-
-type JobSearchCriteria = JobSearchQuery["criteria"];
-
-function compareJobs(left: Job, right: Job, criteria: JobSearchCriteria): number {
-  const leftRank = rankJob(left, criteria, { now: new Date() });
-  const rightRank = rankJob(right, criteria, { now: new Date() });
-  if (criteria.sort === "relevance")
-    return (
-      rightRank.score - leftRank.score ||
-      right.publishedAt.localeCompare(left.publishedAt) ||
-      left.id.localeCompare(right.id)
-    );
-  if (criteria.sort === "salary_desc")
-    return (
-      (right.salary?.maximum ?? right.salary?.minimum ?? -1) -
-        (left.salary?.maximum ?? left.salary?.minimum ?? -1) ||
-      right.publishedAt.localeCompare(left.publishedAt) ||
-      left.id.localeCompare(right.id)
-    );
-  return right.publishedAt.localeCompare(left.publishedAt) || left.id.localeCompare(right.id);
-}
-
-function cursorFor(job: Job, criteria: JobSearchCriteria): string {
-  return Buffer.from(
-    JSON.stringify({
-      id: job.id,
-      sort: criteria.sort,
-      fingerprint: stableHash({ ...criteria, cursor: null }),
-    }),
-    "utf8",
-  ).toString("base64url");
-}
-
-function decodeCursor(cursor: string, criteria: JobSearchCriteria): string {
-  try {
-    const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as {
-      id?: unknown;
-      sort?: unknown;
-      fingerprint?: unknown;
-    };
-    if (
-      typeof parsed.id !== "string" ||
-      parsed.sort !== criteria.sort ||
-      parsed.fingerprint !== stableHash({ ...criteria, cursor: null })
-    )
-      throw new Error("invalid");
-    return parsed.id;
-  } catch {
-    throw domain("VALIDATION", "Search cursor is invalid or does not match the current search.");
-  }
-}
-
-function filterJobs(jobs: readonly Job[], criteria: JobSearchCriteria, now: string): Job[] {
-  const cutoff =
-    criteria.postedWithinDays === null
-      ? null
-      : Date.parse(now) - criteria.postedWithinDays * 86_400_000;
-  return jobs.filter((job) => {
-    if (job.status !== "open") return false;
-    if (
-      criteria.categories.length > 0 &&
-      !criteria.categories.some((item) => job.categories.includes(item))
-    )
-      return false;
-    if (criteria.workModels.length > 0 && !criteria.workModels.includes(job.workModel))
-      return false;
-    if (
-      criteria.seniorities.length > 0 &&
-      (job.seniority === null || !criteria.seniorities.includes(job.seniority))
-    )
-      return false;
-    if (
-      criteria.skills.length > 0 &&
-      !criteria.skills.every((skill) =>
-        job.skills.some((item) => item.toLowerCase() === skill.toLowerCase()),
-      )
-    )
-      return false;
-    if (
-      criteria.locations.length > 0 &&
-      !criteria.locations.some((location) =>
-        job.locations.some(
-          (item) =>
-            item.toLowerCase().includes(location.toLowerCase()) ||
-            location.toLowerCase().includes(item.toLowerCase()),
-        ),
-      )
-    )
-      return false;
-    if (cutoff !== null && Date.parse(job.publishedAt) < cutoff) return false;
-    return rankJob(job, criteria, { now: new Date(now) }).eligible;
-  });
 }
 
 function createIdentityStore(sql: PostgresSql): IdentityStore {
@@ -897,47 +790,8 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
       async listAll() {
         return (await list<Job>(sql, "job")).sort((left, right) => left.id.localeCompare(right.id));
       },
-      async search(query: JobSearchQuery): Promise<JobSearchPage> {
-        let jobs: Job[];
-        if (query.criteria.query !== null) {
-          const ids = await sql<
-            { readonly job_id: string }[]
-          >`SELECT job_id FROM jobbbler.job_search_documents WHERE document @@ plainto_tsquery('simple', ${query.criteria.query})`;
-          jobs = await listByIds<Job>(
-            sql,
-            "job",
-            ids.map(({ job_id }) => job_id),
-          );
-        } else jobs = await list<Job>(sql, "job");
-        let ranked = filterJobs(jobs, query.criteria, query.now).sort((left, right) =>
-          compareJobs(left, right, query.criteria),
-        );
-        const total = ranked.length;
-        if (query.criteria.cursor !== null) {
-          const cursorId = decodeCursor(query.criteria.cursor, query.criteria);
-          const index = ranked.findIndex((job) => job.id === cursorId);
-          if (index < 0)
-            throw domain(
-              "VALIDATION",
-              "Search cursor is invalid or does not match the current search.",
-            );
-          ranked = ranked.slice(index + 1);
-        }
-        const limit = Math.min(50, Math.max(1, Math.trunc(query.limit)), query.criteria.limit);
-        const page = ranked.slice(0, limit);
-        const latest = ranked.reduce<string | null>(
-          (current, job) => (current === null || job.updatedAt > current ? job.updatedAt : current),
-          null,
-        );
-        return {
-          jobs: page,
-          total,
-          nextCursor:
-            ranked.length > limit && page.at(-1) !== undefined
-              ? cursorFor(page.at(-1)!, query.criteria)
-              : null,
-          catalogUpdatedAt: latest,
-        };
+      async search(query) {
+        return searchPostgresJobs(sql, query);
       },
       async suggestLocations(query, limit) {
         const normalizedQuery = query.trim().slice(0, 120).toLocaleLowerCase("en");

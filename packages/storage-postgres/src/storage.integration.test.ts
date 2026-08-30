@@ -170,6 +170,119 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
     await storage.close();
   });
 
+  it("maintains the bounded open-job projection and paginates more than one page", async () => {
+    const storage = createPostgresStorage(databaseUrl!);
+    close = async () => storage.close();
+    await resetPostgresSchema(storage.sql);
+    await migratePostgres(storage.sql);
+    const organizationId = "org_550e8400-e29b-41d4-a716-446655440099";
+    await storage.organizations.upsert({
+      id: organizationId,
+      name: "PostgreSQL Search Projection",
+      slug: "postgres-search-projection",
+      website: null,
+      description: "Test fixture.",
+      createdAt: ingestionNow,
+      updatedAt: ingestionNow,
+    });
+    const jobs = Array.from({ length: 55 }, (_, index): Job => {
+      const publishedAt = new Date(Date.parse(ingestionNow) - index * 60_000).toISOString();
+      return {
+        id: `job_550e8400-e29b-41d4-a716-${index.toString(16).padStart(12, "0")}`,
+        organizationId,
+        organizationName: "PostgreSQL Search Projection",
+        title: `Platform Engineer ${index}`,
+        summary: "Build bounded TypeScript search services.",
+        categories: ["software_engineering"],
+        workModel: index % 2 === 0 ? "remote" : "hybrid",
+        employmentType: "full_time",
+        seniority: "senior",
+        locations: ["Europe"],
+        skills: index === 54 ? ["Rust"] : ["TypeScript"],
+        salary: null,
+        source: { key: "test", label: "Test", url: null },
+        applyMode: "external",
+        status: "open",
+        publishedAt,
+        updatedAt: publishedAt,
+      };
+    });
+    for (const job of jobs) await storage.jobs.upsert(job);
+
+    const ids: string[] = [];
+    let cursor: string | null = null;
+    do {
+      const page = await storage.jobs.search({
+        criteria: {
+          query: "TypeScript",
+          categories: [],
+          workModels: [],
+          seniorities: [],
+          locations: [],
+          skills: ["Rust"],
+          excludeKeywords: [],
+          salary: null,
+          postedWithinDays: null,
+          sort: "newest",
+          cursor,
+          limit: 7,
+          unresolvedAssumptions: [],
+        },
+        now: ingestionLater,
+        limit: 7,
+      });
+      expect(page.jobs.length).toBeLessThanOrEqual(7);
+      expect(page.total).toBe(55);
+      ids.push(...page.jobs.map(({ id }) => id));
+      cursor = page.nextCursor;
+    } while (cursor !== null);
+
+    expect(ids).toHaveLength(55);
+    expect(new Set(ids).size).toBe(55);
+    const projection = await storage.sql<
+      { readonly job_id: string; readonly status: string; readonly body: Job }[]
+    >`SELECT job_id, status, body FROM jobbbler.job_search_documents ORDER BY job_id`;
+    expect(projection).toHaveLength(55);
+    expect(projection[0]).toMatchObject({ status: "open", body: { title: "Platform Engineer 0" } });
+    const indexes = await storage.sql<{ readonly indexname: string }[]>`
+      SELECT indexname
+      FROM pg_indexes
+      WHERE schemaname = 'jobbbler' AND tablename = 'job_search_documents'`;
+    expect(indexes.map(({ indexname }) => indexname)).toEqual(
+      expect.arrayContaining([
+        "job_search_documents_gin_idx",
+        "job_search_documents_open_newest_idx",
+        "job_search_documents_open_salary_idx",
+        "job_search_documents_open_work_model_idx",
+        "job_search_documents_open_seniority_idx",
+        "job_search_documents_open_categories_idx",
+      ]),
+    );
+
+    await storage.jobs.upsert({ ...jobs[0]!, status: "closed", updatedAt: ingestionLater });
+    await expect(
+      storage.jobs.search({
+        criteria: {
+          query: null,
+          categories: [],
+          workModels: [],
+          seniorities: [],
+          locations: [],
+          skills: [],
+          excludeKeywords: [],
+          salary: null,
+          postedWithinDays: null,
+          sort: "newest",
+          cursor: null,
+          limit: 50,
+          unresolvedAssumptions: [],
+        },
+        now: ingestionLater,
+        limit: 50,
+      }),
+    ).resolves.toMatchObject({ total: 54 });
+  });
+
   it("rolls back every observation write when an ingestion projection changes apply mode", async () => {
     const storage = createPostgresStorage(databaseUrl!);
     close = async () => storage.close();

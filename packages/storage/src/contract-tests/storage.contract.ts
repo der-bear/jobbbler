@@ -175,6 +175,11 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
       const current = await create();
       await current.organizations.upsert(organization);
       await current.jobs.upsert(job);
+      await current.jobs.upsert({
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440010",
+        summary: "Build reliable engineering systems without the second search term.",
+      });
 
       expect(await current.jobs.getById(job.id)).toEqual(job);
       expect(
@@ -302,6 +307,115 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
       ).toEqual({ jobs: [], total: 0, nextCursor: null, catalogUpdatedAt: null });
     });
 
+    it("keeps requested skills as a soft relevance dimension across adapters", async () => {
+      const current = await create();
+      await current.organizations.upsert(organization);
+      const rust = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440013",
+        skills: ["Rust"],
+      };
+      await current.jobs.upsert(job);
+      await current.jobs.upsert(rust);
+
+      const first = await current.jobs.search({
+        criteria: { ...emptyCriteria, skills: ["Rust"], sort: "relevance", limit: 1 },
+        now,
+        limit: 1,
+      });
+
+      expect(first.jobs.map(({ id }) => id)).toEqual([rust.id]);
+      expect(first.total).toBe(2);
+      expect(first.nextCursor).toEqual(expect.any(String));
+      await expect(
+        current.jobs.search({
+          criteria: {
+            ...emptyCriteria,
+            skills: ["Rust"],
+            sort: "relevance",
+            cursor: first.nextCursor,
+            limit: 1,
+          },
+          now,
+          limit: 1,
+        }),
+      ).resolves.toEqual({
+        jobs: [job],
+        total: 2,
+        nextCursor: null,
+        catalogUpdatedAt: now,
+      });
+    });
+
+    it("keeps salary ordering and unknown-salary policies aligned across adapters", async () => {
+      const current = await create();
+      await current.organizations.upsert(organization);
+      const lowerSalary = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440014",
+        salary: { minimum: 80_000, maximum: 90_000, currency: "EUR", period: "year" } as const,
+      };
+      const unknownSalary = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440015",
+        salary: null,
+      };
+      await current.jobs.upsert(job);
+      await current.jobs.upsert(lowerSalary);
+      await current.jobs.upsert(unknownSalary);
+
+      await expect(
+        current.jobs.search({
+          criteria: { ...emptyCriteria, sort: "salary_desc" },
+          now,
+          limit: 10,
+        }),
+      ).resolves.toMatchObject({ jobs: [job, lowerSalary, unknownSalary], total: 3 });
+
+      const salary = {
+        minimum: 120_000,
+        maximum: null,
+        currency: "EUR",
+        period: "year" as const,
+        unknownPolicy: "include" as const,
+      };
+      await expect(
+        current.jobs.search({
+          criteria: { ...emptyCriteria, salary, sort: "relevance" },
+          now,
+          limit: 10,
+        }),
+      ).resolves.toMatchObject({ jobs: [job, unknownSalary], total: 2 });
+      await expect(
+        current.jobs.search({
+          criteria: {
+            ...emptyCriteria,
+            salary: { ...salary, unknownPolicy: "exclude" },
+            sort: "relevance",
+          },
+          now,
+          limit: 10,
+        }),
+      ).resolves.toMatchObject({ jobs: [job], total: 1 });
+      await expect(
+        current.jobs.search({
+          criteria: {
+            ...emptyCriteria,
+            salary: {
+              minimum: null,
+              maximum: null,
+              currency: null,
+              period: "year",
+              unknownPolicy: "only",
+            },
+            sort: "relevance",
+          },
+          now,
+          limit: 10,
+        }),
+      ).resolves.toMatchObject({ jobs: [unknownSalary], total: 1 });
+    });
+
     it("treats untrusted lexical syntax as text instead of executable FTS syntax", async () => {
       const current = await create();
       await current.organizations.upsert(organization);
@@ -342,6 +456,7 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
       expect(firstPage.total).toBe(3);
       expect(firstPage.catalogUpdatedAt).toBe(now);
       expect(firstPage.nextCursor).toEqual(expect.any(String));
+      expect(firstPage.nextCursor?.length).toBeLessThanOrEqual(256);
 
       const secondPage = await current.jobs.search({
         criteria: {
