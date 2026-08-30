@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { SalaryRange } from "@jobbbler/contracts";
 
-import { salaryLabel } from "@/lib/job-format";
+import { salaryCardPresentation, salaryLabel } from "@/lib/job-format";
 
 import { fetchLocationSuggestions, locationSuggestions } from "./location-combobox";
 
@@ -120,6 +120,70 @@ describe("salaryLabel", () => {
         "USD",
       ),
     ).toBe("$95k–$125k / yr");
+  });
+
+  it("shows hourly compensation as a comparable annual estimate on result cards", () => {
+    expect(
+      salaryLabel(
+        {
+          minimum: 55,
+          maximum: 75,
+          currency: "EUR",
+          period: "hour",
+        },
+        "EUR",
+      ),
+    ).toBe("≈€114k–€156k / yr");
+
+    expect(
+      salaryLabel(
+        {
+          minimum: 70,
+          maximum: 90,
+          currency: "USD",
+          period: "hour",
+        },
+        "EUR",
+      ),
+    ).toBe("≈€125k–€160k / yr");
+  });
+
+  it("keeps the source currency and period when no card display currency is requested", () => {
+    expect(salaryLabel({ minimum: 70, maximum: 90, currency: "USD", period: "hour" })).toBe(
+      "$70–$90 / hr",
+    );
+  });
+
+  it("preserves the original salary facts in an accessible card explanation", () => {
+    expect(
+      salaryCardPresentation({ minimum: 70, maximum: 90, currency: "USD", period: "hour" }, "EUR"),
+    ).toEqual({
+      label: "≈€125k–€160k / yr",
+      explanation:
+        "Estimated annual compensation in EUR. Originally listed as $70–$90 per hour; converted using Jobbbler's fixed demo rates and annualized at 2,080 hours per year.",
+    });
+  });
+
+  it("falls back to unsupported source compensation without implying conversion", () => {
+    expect(
+      salaryCardPresentation(
+        { minimum: 100_000, maximum: 120_000, currency: "CHF", period: "year" },
+        "EUR",
+      ),
+    ).toEqual({
+      label: "CHF\u00a0100k–CHF\u00a0120k / yr",
+      explanation:
+        "Shown as listed because CHF is not available in Jobbbler's fixed demo conversion table.",
+    });
+  });
+
+  it("does not invent a conversion problem when a salary has no disclosed amount", () => {
+    expect(
+      salaryCardPresentation(
+        { minimum: null, maximum: null, currency: "EUR", period: "year" },
+        "EUR",
+      ),
+    ).toEqual({ label: "Salary not listed", explanation: null });
   });
 
   it("uses plain language when compensation is missing", () => {

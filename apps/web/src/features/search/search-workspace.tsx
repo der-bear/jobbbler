@@ -34,7 +34,7 @@ import { useWebMcp } from "@/components/webmcp-provider";
 import {
   categoryLabel,
   relativeFreshness,
-  salaryLabel,
+  salaryCardPresentation,
   seniorityLabel,
   workModelLabel,
 } from "@/lib/job-format";
@@ -405,7 +405,9 @@ function JobResult({
   job: JobSummary;
   detailSearch: string;
 }>) {
-  const convertedSalary = job.salary !== null && job.salary.currency !== displayCurrency;
+  const salary = salaryCardPresentation(job.salary, displayCurrency);
+  const salaryExplanationId =
+    salary.explanation === null ? undefined : `salary-explanation-${job.id}`;
   return (
     <article aria-label={`${job.title} at ${job.organizationName}`} className={styles["jobResult"]}>
       <div className={styles["jobSummary"]}>
@@ -422,15 +424,14 @@ function JobResult({
           </span>
         </Link>
         <div className={styles["jobSalary"]}>
-          <strong
-            title={
-              convertedSalary
-                ? `Converted from ${job.salary?.currency ?? "the listed currency"} using Jobbbler's fixed demo rates.`
-                : undefined
-            }
-          >
-            {salaryLabel(job.salary, displayCurrency)}
+          <strong aria-describedby={salaryExplanationId} title={salary.explanation ?? undefined}>
+            {salary.label}
           </strong>
+          {salary.explanation === null ? null : (
+            <span className="sr-only" id={salaryExplanationId}>
+              {salary.explanation}
+            </span>
+          )}
           <small>{relativeFreshness(job.updatedAt)}</small>
         </div>
       </div>

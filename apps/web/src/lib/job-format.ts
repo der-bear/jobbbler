@@ -5,7 +5,7 @@ import type {
   Seniority,
   WorkModel,
 } from "@jobbbler/contracts";
-import { convertSalaryAmount } from "@jobbbler/jobs-domain";
+import { annualizeSalaryAmount, convertSalaryAmount } from "@jobbbler/jobs-domain";
 
 const categoryLabels: Readonly<Record<JobCategory, string>> = {
   software_engineering: "Software engineering",
@@ -74,9 +74,71 @@ function amount(value: number, currency: string, compact: boolean): string {
   return compact ? formatted.replace(/K$/u, "k") : formatted;
 }
 
-export function salaryLabel(salary: SalaryRange | null, displayCurrency?: string): string {
-  if (salary === null) return "Salary not listed";
-  const targetCurrency = displayCurrency?.toUpperCase() ?? salary.currency;
+function salaryPeriodLabel(period: SalaryRange["period"], abbreviated: boolean): string {
+  if (period === "year") return abbreviated ? "yr" : "year";
+  if (period === "month") return abbreviated ? "mo" : "month";
+  return abbreviated ? "hr" : "hour";
+}
+
+function formatSalaryRange(
+  minimum: number | null,
+  maximum: number | null,
+  currency: string,
+  period: SalaryRange["period"],
+  approximate: boolean,
+  compact: boolean,
+): string {
+  const prefix = approximate ? "≈" : "";
+  const periodLabel = salaryPeriodLabel(period, true);
+  if (minimum !== null && maximum !== null) {
+    return `${prefix}${amount(minimum, currency, compact)}–${amount(maximum, currency, compact)} / ${periodLabel}`;
+  }
+  if (minimum !== null)
+    return `${prefix}From ${amount(minimum, currency, compact)} / ${periodLabel}`;
+  if (maximum !== null)
+    return `${prefix}Up to ${amount(maximum, currency, compact)} / ${periodLabel}`;
+  return "Salary not listed";
+}
+
+function sourceSalaryLabel(salary: SalaryRange, compact: boolean): string {
+  return formatSalaryRange(
+    salary.minimum,
+    salary.maximum,
+    salary.currency,
+    salary.period,
+    false,
+    compact,
+  );
+}
+
+function sourceSalaryDescription(salary: SalaryRange): string {
+  const period = salaryPeriodLabel(salary.period, false);
+  if (salary.minimum !== null && salary.maximum !== null) {
+    return `${amount(salary.minimum, salary.currency, false)}–${amount(salary.maximum, salary.currency, false)} per ${period}`;
+  }
+  if (salary.minimum !== null) {
+    return `from ${amount(salary.minimum, salary.currency, false)} per ${period}`;
+  }
+  if (salary.maximum !== null) {
+    return `up to ${amount(salary.maximum, salary.currency, false)} per ${period}`;
+  }
+  return "compensation without a disclosed amount";
+}
+
+export interface SalaryCardPresentation {
+  readonly label: string;
+  readonly explanation: string | null;
+}
+
+export function salaryCardPresentation(
+  salary: SalaryRange | null,
+  displayCurrency: string,
+): SalaryCardPresentation {
+  if (salary === null) return { label: "Salary not listed", explanation: null };
+  if (salary.minimum === null && salary.maximum === null) {
+    return { label: "Salary not listed", explanation: null };
+  }
+  const targetCurrency = displayCurrency.toUpperCase();
   const convertedMinimum =
     salary.minimum === null
       ? null
@@ -85,20 +147,55 @@ export function salaryLabel(salary: SalaryRange | null, displayCurrency?: string
     salary.maximum === null
       ? null
       : convertSalaryAmount(salary.maximum, salary.currency, targetCurrency);
-  const conversionAvailable = convertedMinimum !== null || convertedMaximum !== null;
-  const changedCurrency = targetCurrency !== salary.currency && conversionAvailable;
-  const currency = changedCurrency ? targetCurrency : salary.currency;
-  const minimum = changedCurrency ? convertedMinimum : salary.minimum;
-  const maximum = changedCurrency ? convertedMaximum : salary.maximum;
-  const period = salary.period === "year" ? "yr" : salary.period === "month" ? "mo" : "hr";
-  const prefix = changedCurrency ? "≈" : "";
-  const compact = salary.period === "year" && Math.max(minimum ?? 0, maximum ?? 0) >= 10_000;
-  if (minimum !== null && maximum !== null) {
-    return `${prefix}${amount(minimum, currency, compact)}–${amount(maximum, currency, compact)} / ${period}`;
+  const conversionAvailable =
+    (salary.minimum === null || convertedMinimum !== null) &&
+    (salary.maximum === null || convertedMaximum !== null) &&
+    (salary.minimum !== null || salary.maximum !== null);
+  if (!conversionAvailable) {
+    const compact =
+      salary.period === "year" && Math.max(salary.minimum ?? 0, salary.maximum ?? 0) >= 10_000;
+    return {
+      label: sourceSalaryLabel(salary, compact),
+      explanation: `Shown as listed because ${salary.currency} is not available in Jobbbler's fixed demo conversion table.`,
+    };
   }
-  if (minimum !== null) return `${prefix}From ${amount(minimum, currency, compact)} / ${period}`;
-  if (maximum !== null) return `${prefix}Up to ${amount(maximum, currency, compact)} / ${period}`;
-  return "Salary not listed";
+
+  const annualMinimum =
+    convertedMinimum === null ? null : annualizeSalaryAmount(convertedMinimum, salary.period);
+  const annualMaximum =
+    convertedMaximum === null ? null : annualizeSalaryAmount(convertedMaximum, salary.period);
+  const transformed = salary.currency !== targetCurrency || salary.period !== "year";
+  const actions = [
+    salary.currency === targetCurrency ? null : "converted using Jobbbler's fixed demo rates",
+    salary.period === "hour"
+      ? "annualized at 2,080 hours per year"
+      : salary.period === "month"
+        ? "annualized at 12 months per year"
+        : null,
+  ].filter((action): action is string => action !== null);
+
+  return {
+    label: formatSalaryRange(
+      annualMinimum,
+      annualMaximum,
+      targetCurrency,
+      "year",
+      transformed,
+      Math.max(annualMinimum ?? 0, annualMaximum ?? 0) >= 10_000,
+    ),
+    explanation:
+      actions.length === 0
+        ? null
+        : `Estimated annual compensation in ${targetCurrency}. Originally listed as ${sourceSalaryDescription(salary)}; ${actions.join(" and ")}.`,
+  };
+}
+
+export function salaryLabel(salary: SalaryRange | null, displayCurrency?: string): string {
+  if (salary === null) return "Salary not listed";
+  if (displayCurrency !== undefined) return salaryCardPresentation(salary, displayCurrency).label;
+  const compact =
+    salary.period === "year" && Math.max(salary.minimum ?? 0, salary.maximum ?? 0) >= 10_000;
+  return sourceSalaryLabel(salary, compact);
 }
 
 export function compactDate(value: string): string {

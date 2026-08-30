@@ -1,4 +1,4 @@
-import type { SalaryRange } from "@jobbbler/contracts";
+import type { SalaryPeriod, SalaryRange } from "@jobbbler/contracts";
 
 /**
  * Approximate mid-market rates, pinned so that cross-currency salary
@@ -27,6 +27,11 @@ export function convertSalaryAmount(
   return Math.round((amount * fromRate) / toRate);
 }
 
+/** Annualizes one pay amount using 2,080 full-time hours or 12 months per year. */
+export function annualizeSalaryAmount(amount: number, period: SalaryPeriod): number {
+  return amount * (period === "hour" ? 2_080 : period === "month" ? 12 : 1);
+}
+
 /**
  * Produces one deterministic annual EUR value for cross-currency salary ordering.
  * A full-time hourly amount uses 2,080 hours per year; unavailable or unsupported
@@ -38,6 +43,5 @@ export function annualizedSalarySortValue(salary: SalaryRange | null): number {
   if (amount === null) return -1;
   const eurAmount = convertSalaryAmount(amount, salary.currency, "EUR");
   if (eurAmount === null) return -1;
-  const annualMultiplier = salary.period === "hour" ? 2_080 : salary.period === "month" ? 12 : 1;
-  return eurAmount * annualMultiplier;
+  return annualizeSalaryAmount(eurAmount, salary.period);
 }
