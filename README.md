@@ -32,7 +32,7 @@ Built for the OpenAI WebMCP Challenge.
 ## Why it is different
 
 - **Explainable discovery.** Structured criteria, source provenance, freshness,
-  salary semantics, what to verify, and fit evidence stay visible in the
+  salary semantics, known limits, and search-fit evidence stay visible in the
   interface. Salary ranking is currency-aware (EUR, USD, GBP, and CAD at pinned
   rates) and explains itself with evidence strings.
 - **Global agent layer.** Twenty-six focused tools for search, roles,
