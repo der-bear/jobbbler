@@ -134,7 +134,7 @@
         "currentJobId": "job_00000001-0000-7000-8000-000000000001",
         "applicationCapabilityKnown": false
       },
-      "prompt": "Plan the safe application path for this role. Check whether Jobbbler manages it internally or whether I must continue on the employer site before creating anything.",
+      "prompt": "Give me a plan only for the safe application path for this role. Do not inspect the role or create anything yet; explain how we will first distinguish a managed Jobbbler application from an employer-site application.",
       "expected": {
         "kind": "tool_call",
         "tool": "plan_job_workflow",
