@@ -12,6 +12,7 @@ const MIN_DELAY_MS = 1_000;
 const MAX_DELAY_MS = 30_000;
 const HIDDEN_DELAY_MS = 30_000;
 const DEFAULT_MAX_CATCH_UP_PAGES = 5;
+const IDLE_JITTER_RATIO = 0.1;
 
 export interface OwnerActivityFeedOptions {
   readonly activities: Pick<AgentActivityStore, "mergeCommitted">;
@@ -20,6 +21,7 @@ export interface OwnerActivityFeedOptions {
   readonly isVisible?: () => boolean;
   readonly subscribeVisibility?: (listener: () => void) => () => void;
   readonly maxCatchUpPages?: number;
+  readonly random?: () => number;
 }
 
 export interface OwnerActivityFeedController {
@@ -63,6 +65,14 @@ function failureDelay(error: unknown, failures: number): number {
   return boundedDelay(1_000 * 2 ** Math.min(5, Math.max(0, failures - 1)));
 }
 
+function idleDelay(serverDelayMs: number, idlePolls: number, random: () => number): number {
+  const multiplier = Math.min(6, 2 ** Math.min(3, idlePolls));
+  const sample = random();
+  const normalizedSample = Number.isFinite(sample) ? Math.min(1, Math.max(0, sample)) : 0.5;
+  const jitter = 1 - IDLE_JITTER_RATIO + normalizedSample * IDLE_JITTER_RATIO * 2;
+  return boundedDelay(serverDelayMs * multiplier * jitter);
+}
+
 function browserVisible(): boolean {
   return typeof document === "undefined" || document.visibilityState !== "hidden";
 }
@@ -78,6 +88,7 @@ export function startOwnerActivityFeed(
 ): OwnerActivityFeedController {
   const fetchPage = options.fetchPage ?? fetchOwnerActivityPage;
   const isVisible = options.isVisible ?? browserVisible;
+  const random = options.random ?? Math.random;
   const maxCatchUpPages = options.maxCatchUpPages ?? DEFAULT_MAX_CATCH_UP_PAGES;
   if (!Number.isSafeInteger(maxCatchUpPages) || maxCatchUpPages < 1 || maxCatchUpPages > 10) {
     throw new Error("Activity catch-up pages must be an integer between 1 and 10.");
@@ -92,6 +103,7 @@ export function startOwnerActivityFeed(
   let cursor: string | null = null;
   let failures = 0;
   let catchUpPages = 0;
+  let idlePolls = 0;
 
   const clearTimer = () => {
     if (timer === undefined) return;
@@ -132,10 +144,17 @@ export function startOwnerActivityFeed(
       failures = 0;
       if (page.hasMore && catchUpPages < maxCatchUpPages) {
         catchUpPages += 1;
+        idlePolls = 0;
         delay = 0;
       } else {
         catchUpPages = 0;
-        delay = boundedDelay(page.pollAfterMs);
+        if (page.events.length > 0) {
+          idlePolls = 0;
+          delay = boundedDelay(page.pollAfterMs);
+        } else {
+          idlePolls += 1;
+          delay = idleDelay(page.pollAfterMs, idlePolls, random);
+        }
       }
     } catch (error) {
       if (stopped || requestController.signal.aborted) return;
@@ -158,6 +177,7 @@ export function startOwnerActivityFeed(
 
   const wake = () => {
     if (stopped) return;
+    idlePolls = 0;
     if (inFlight) {
       wakePending = true;
       return;

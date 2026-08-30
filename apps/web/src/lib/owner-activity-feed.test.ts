@@ -69,6 +69,92 @@ describe("owner activity feed", () => {
     feed.stop();
   });
 
+  it("backs off idle visible polling and caps it at thirty seconds", async () => {
+    const fetchPage = vi.fn().mockResolvedValue(page({ events: [] }));
+    const feed = startOwnerActivityFeed({
+      activities: { mergeCommitted: vi.fn() },
+      fetchPage,
+      isVisible: () => true,
+      random: () => 0.5,
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(9_999);
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(19_999);
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchPage).toHaveBeenCalledTimes(3);
+    await vi.advanceTimersByTimeAsync(29_999);
+    expect(fetchPage).toHaveBeenCalledTimes(3);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchPage).toHaveBeenCalledTimes(4);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(fetchPage).toHaveBeenCalledTimes(5);
+    feed.stop();
+  });
+
+  it("resets idle backoff after committed activity and an explicit wakeup", async () => {
+    let wakeup: (() => void) | undefined;
+    const fetchPage = vi
+      .fn()
+      .mockResolvedValueOnce(page({ events: [] }))
+      .mockResolvedValueOnce(page({ events: [] }))
+      .mockResolvedValueOnce(page())
+      .mockResolvedValue(page({ events: [] }));
+    const feed = startOwnerActivityFeed({
+      activities: { mergeCommitted: vi.fn() },
+      fetchPage,
+      isVisible: () => true,
+      random: () => 0.5,
+      subscribeWakeups: (wake) => {
+        wakeup = wake;
+        return Promise.resolve(() => undefined);
+      },
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(fetchPage).toHaveBeenCalledTimes(2);
+    wakeup?.();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchPage).toHaveBeenCalledTimes(3);
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(fetchPage).toHaveBeenCalledTimes(3);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchPage).toHaveBeenCalledTimes(4);
+    feed.stop();
+  });
+
+  it("jitters idle retries so browser sessions do not poll in lockstep", async () => {
+    const lowerFetch = vi.fn().mockResolvedValue(page({ events: [] }));
+    const upperFetch = vi.fn().mockResolvedValue(page({ events: [] }));
+    const lower = startOwnerActivityFeed({
+      activities: { mergeCommitted: vi.fn() },
+      fetchPage: lowerFetch,
+      isVisible: () => true,
+      random: () => 0,
+    });
+    const upper = startOwnerActivityFeed({
+      activities: { mergeCommitted: vi.fn() },
+      fetchPage: upperFetch,
+      isVisible: () => true,
+      random: () => 1,
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(9_000);
+    expect(lowerFetch).toHaveBeenCalledTimes(2);
+    expect(upperFetch).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(upperFetch).toHaveBeenCalledTimes(2);
+    lower.stop();
+    upper.stop();
+  });
+
   it("bounds catch-up bursts and honors durable retry-after backoff", async () => {
     const fetchPage = vi
       .fn()
