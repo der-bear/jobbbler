@@ -203,7 +203,7 @@ export function createJobDetailToolManifests(
     name: "get_job_application_capability",
     purpose: "Learn how one explicitly identified role accepts applications before starting one.",
     description:
-      "Read one role's application capability by Jobbbler ID: whether Jobbbler can prepare it, which decisions stay with the person, and whether the person must continue on the employer site.",
+      "Read one role's application capability by Jobbbler ID: whether Jobbbler can prepare it, which decisions stay with the person, and whether a validated employer page is available. For an unavailable external page, stop without creating a draft or submission claim.",
     inputSchema: detailInputJsonSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     async execute(input, { signal }) {

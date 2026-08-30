@@ -85,16 +85,32 @@ describe("application authorization contracts", () => {
 
   it("binds an agent-client submission decision to a server interaction request", () => {
     const requestId = "interaction_550e8400-e29b-41d4-a716-446655440000";
-    const request = applicationSubmissionReviewRequestSchema.parse({
+    const parsedRequest = applicationSubmissionReviewRequestSchema.safeParse({
       id: requestId,
       draftId,
       draftVersion: 4,
       recipient: "Northstar Systems",
       purpose: "Submit this reviewed application to Northstar Systems.",
-      fieldLabels: ["Full name", "Why this role"],
+      fields: [
+        {
+          fieldKey: "full_name",
+          label: "Full name",
+          value: "Ada Lovelace",
+          sensitive: true,
+        },
+        {
+          fieldKey: "motivation",
+          label: "Why this role",
+          value: "I build reliable data platforms.",
+          sensitive: false,
+        },
+      ],
       noticeVersion: "privacy-2026-08-29",
       expiresAt: "2026-08-29T10:05:00.000Z",
     });
+    expect(parsedRequest.success).toBe(true);
+    if (!parsedRequest.success) return;
+    const request = parsedRequest.data;
     const receipt = applicationSubmissionDecisionReceiptSchema.parse({
       requestId,
       draftId,
@@ -106,6 +122,20 @@ describe("application authorization contracts", () => {
     });
 
     expect(request.id).toBe(receipt.requestId);
+    expect(request.fields).toEqual([
+      {
+        fieldKey: "full_name",
+        label: "Full name",
+        value: "Ada Lovelace",
+        sensitive: true,
+      },
+      {
+        fieldKey: "motivation",
+        label: "Why this role",
+        value: "I build reliable data platforms.",
+        sensitive: false,
+      },
+    ]);
     expect(receipt.channel).toBe("agent_client");
   });
 

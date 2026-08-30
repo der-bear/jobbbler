@@ -21,7 +21,10 @@ The following tools are the six clearest entry points across navigation:
 - `get_search_filters`: returns the accepted filter vocabulary.
 - `search_jobs`: performs a public search and opens the canonical results URL.
 - `open_job_details`: opens a known Jobbbler role from any page.
-- `prepare_application`: creates or reopens one owner-bound private draft for a chosen role.
+- `prepare_application`: after a capability check, creates or reopens one
+  owner-bound private draft for a managed internal role. External roles continue
+  on an available validated HTTPS employer page and create no Jobbbler draft;
+  if no validated page is available, the workflow stops.
 - `open_jobbbler_page`: opens Search, Saved, Comparison, or an existing Application workspace with validated identifiers.
 
 The registration provider deduplicates tools by name and keeps all search,
@@ -38,7 +41,11 @@ same stable list on every route.
 - Assistance authorization and the exact submission decision remain separate
   `requires_user_action` transitions in the external agent client, bound to
   exact server requests.
-- Tool results stay within the existing 1.5 KB budget and never include raw source HTML, reusable credentials, full email addresses, or private payloads.
+- Ordinary tool results stay within 1.5 KB, while the intent-rich application
+  plan is capped at 2 KB and the exact final-review presentation at 64 KB. Only
+  that pending review may include exact candidate field values, each marked as
+  sensitive or non-sensitive; no result includes raw source HTML or reusable
+  credentials.
 
 ## Agent panel
 

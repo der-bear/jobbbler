@@ -27,6 +27,7 @@ describe("AgentTools", () => {
     expect(markup).toContain("Apply");
     expect(markup).toContain("plan_job_workflow");
     expect(markup).toContain("Get the safe steps for a Jobbbler goal.");
+    expect(markup).toContain("managed internal role");
     expect(markup).toContain("Human decision");
     expect(markup).toContain("get_search_state");
     expect(markup).toContain("decide_application_submission");
@@ -47,7 +48,10 @@ describe("AgentGuide", () => {
     expect(markup).toContain("Copy prompt");
     expect(markup).toContain("Open this Jobbbler site");
     expect(markup).toContain("compare the strongest options");
-    expect(markup).toContain("prepare the application");
+    expect(markup).toContain("check how it accepts applications");
+    expect(markup).toContain("managed internal role");
+    expect(markup).toContain("validated employer page");
+    expect(markup).toContain("otherwise stop");
     expect(markup).toContain("show me exactly what will be submitted");
     expect(markup).toContain("1");
     expect(markup).toContain("Copy the complete request");

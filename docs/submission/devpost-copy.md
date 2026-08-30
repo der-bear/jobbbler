@@ -64,8 +64,9 @@ When the journey reaches an application, speed stops being the point.
   historical submission receipt remains intact.
 - Submission needs a fresh, short-lived, single-use confirmation, and the
   sealed payload cannot change between the person's review and the submit.
-- External roles open a validated HTTPS employer page. Jobbbler creates no
-  draft, receipt, handoff record, or submitted claim for them.
+- External roles open an available validated HTTPS employer page; if none is
+  available, the workflow stops. Jobbbler creates no draft, receipt, handoff
+  record, or submitted claim for them.
 
 ## The technology — for judges
 
@@ -128,16 +129,22 @@ the external agent client presents the request. Only
 `decide_application_assistance` with the person's decision and the exact live
 request ID can enable short-lived, draft-bound assistance. The agent can then
 propose truthful answers in bounded batches and request one exact submission
-review — recipient, purpose, fields, and privacy notice. The external agent
-client presents that review and relays the person's decision. The server
+review — recipient, purpose, exact field values with sensitivity markers, and
+privacy notice. The external agent client presents that review and relays the person's decision. The server
 accepts a submission decision only when it is bound to the exact
 request ID and draft version, seals the reviewed payload, and consumes a
 short-lived single-use confirmation for the idempotent submit. The stored
 consent receipt records the decision channel as evidence and deliberately does
-not claim cryptographic human identity. Sensitive values and raw chat stay out
-of tool results and stored consent evidence. The same global tool surface lets
+not claim cryptographic human identity. Exact field values appear only in the
+bounded pending-review result; raw chat, reusable credentials, and those raw
+values stay out of stored consent evidence. The same global tool surface lets
 the person withdraw that consent in one call; future consent-based processing
 stops while historical submission receipts remain honest.
+
+A purely manual internal draft can still finish in the first-party UI. Once
+assistance is requested or an agent-suggested answer exists, the site offers no
+approval, consent, or submission bypass; server routes require those decisions
+to be relayed through the external agent client.
 
 ## Challenges we ran into
 
@@ -176,8 +183,9 @@ stops while historical submission receipts remain honest.
 - Request-bound consent receipts connect the agent-client decision to an exact
   server record without overstating identity assurance.
 - Explicit delegation, immutable review, and one-time confirmation keep
-  internal application actions controlled. External roles continue on a
-  validated HTTPS employer page without a Jobbbler draft or receipt.
+  internal application actions controlled. External roles continue on an
+  available validated HTTPS employer page without a Jobbbler draft or receipt;
+  if no validated page is available, the workflow stops.
 - Source-aware job ingestion, safe normalized data, and focused
   domain/storage/worker tests create an auditable foundation.
 
@@ -227,7 +235,8 @@ session, agent session, reviewed payload, recipient, purpose, fields, notice,
 request ID, channel, and affirmative action; no raw chat is retained. An
 application still needs review plus a short-lived single-use confirmation.
 Tool activity and safe errors avoid raw PII, secrets, reusable tokens, and raw
-source HTML.
+source HTML. Only the pending exact-review result carries the synthetic
+application values, with sensitive fields marked explicitly.
 
 ## Open source and local run
 

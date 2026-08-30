@@ -18,6 +18,9 @@ describe("WebMCP explanation", () => {
     expect(markup).toContain("Compare");
     expect(markup).toContain("Monitor");
     expect(markup).toContain("Apply");
+    expect(markup).toContain("managed internal role");
+    expect(markup).toContain("validated employer page");
+    expect(markup).toContain("If no validated page is available, it stops");
     expect(markup).toContain("Proof you can see");
     expect(markup).toContain("The conversation stays in your agent client");
     expect(markup).toContain("Jobbbler keeps checking after the tab closes");

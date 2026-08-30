@@ -85,11 +85,13 @@ describe("site-wide WebMCP tools", () => {
       startApplication,
     });
     expect(findTool(manifests, "prepare_application").description).toContain(
-      "asks to start an application",
+      "managed internal role",
     );
     expect(findTool(manifests, "prepare_application").description).toContain(
-      "does not grant preparation authority",
+      "get_job_application_capability",
     );
+    expect(findTool(manifests, "prepare_application").description).toContain("employer site");
+    expect(findTool(manifests, "prepare_application").description).toContain("otherwise stop");
     const signal = new AbortController().signal;
 
     const result = await findTool(manifests, "prepare_application").execute(

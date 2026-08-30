@@ -144,13 +144,49 @@ export const applicationConsentWithdrawalSchema = z.strictObject({
   pastSubmissionUnaffected: z.boolean(),
 });
 
+export const MAX_APPLICATION_SUBMISSION_REVIEW_FIELDS_BYTES = 60 * 1_024;
+
+export const applicationSubmissionReviewFieldSchema = z.strictObject({
+  fieldKey: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/),
+  label: z.string().trim().min(1).max(80),
+  value: applicationAnswerValueSchema,
+  sensitive: z.boolean(),
+});
+
+const applicationSubmissionReviewFieldsSchema = z
+  .array(applicationSubmissionReviewFieldSchema)
+  .min(1)
+  .max(24)
+  .superRefine((fields, context) => {
+    const seen = new Set<string>();
+    fields.forEach((field, index) => {
+      if (seen.has(field.fieldKey)) {
+        context.addIssue({
+          code: "custom",
+          path: [index, "fieldKey"],
+          message: "Each reviewed application field may appear only once.",
+        });
+      }
+      seen.add(field.fieldKey);
+    });
+    if (
+      new TextEncoder().encode(JSON.stringify(fields)).byteLength >
+      MAX_APPLICATION_SUBMISSION_REVIEW_FIELDS_BYTES
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "The exact application review exceeds the bounded presentation size.",
+      });
+    }
+  });
+
 export const applicationSubmissionReviewRequestSchema = z.strictObject({
   id: entityIdSchema.refine((value) => value.startsWith("interaction_")),
   draftId: entityIdSchema,
   draftVersion: z.number().int().nonnegative(),
   recipient: z.string().trim().min(1).max(160),
   purpose: z.string().trim().min(1).max(240),
-  fieldLabels: z.array(z.string().trim().min(1).max(80)).min(1).max(24),
+  fields: applicationSubmissionReviewFieldsSchema,
   noticeVersion: z.string().trim().min(1).max(40),
   expiresAt: isoInstantSchema,
 });
@@ -297,6 +333,9 @@ export type ApplicationFieldDefinition = z.infer<typeof applicationFieldDefiniti
 export type ApplicationReviewSummary = z.infer<typeof applicationReviewSummarySchema>;
 export type ApplicationDataGrantSummary = z.infer<typeof applicationDataGrantSummarySchema>;
 export type ApplicationConsentWithdrawal = z.infer<typeof applicationConsentWithdrawalSchema>;
+export type ApplicationSubmissionReviewField = z.infer<
+  typeof applicationSubmissionReviewFieldSchema
+>;
 export type ApplicationSubmissionReviewRequest = z.infer<
   typeof applicationSubmissionReviewRequestSchema
 >;

@@ -12,11 +12,14 @@ import type { ApplicationWorkspace, Job } from "@jobbbler/contracts";
 
 import { externalApplicationUrl } from "@/features/job-detail/application-capability";
 
-import { applicationDisclosure, applicationReadiness } from "./application-model";
+import {
+  applicationDisclosure,
+  applicationReadiness,
+  isAgentAssistedApplication,
+} from "./application-model";
 import styles from "./application-view.module.css";
 
-export type ApplicationAction =
-  "use_demo_profile" | "review_and_submit" | "approve_delegation" | "revoke_delegation";
+export type ApplicationAction = "use_demo_profile" | "review_and_submit";
 
 export interface ApplicationConfirmationView {
   readonly confirmationId: string;
@@ -114,26 +117,19 @@ function ApplicationField({
   );
 }
 
-function AgentAssistanceRequest({
-  workspace,
-  busy,
-  onAction,
-}: Pick<ApplicationViewProps, "workspace" | "busy" | "onAction">) {
+function AgentAssistanceRequest({ workspace }: Pick<ApplicationViewProps, "workspace">) {
   const requested = workspace.delegationRequests.find(({ status }) => status === "requested");
   if (requested === undefined) return null;
   return (
     <section aria-labelledby="agent-assistance-heading" className={styles["assistance"]}>
       <div>
         <p className={styles["eyebrow"]}>Agent assistance</p>
-        <h2 id="agent-assistance-heading">Let your agent prepare this draft?</h2>
+        <h2 id="agent-assistance-heading">Your agent requested preparation access</h2>
         <p>
-          It can suggest answers for this application for a short time. Sharing and submission
-          happen only after your explicit decision for this exact application.
+          Complete this decision in your external agent client. Jobbbler will accept only the
+          decision bound to this exact request; this page cannot approve it.
         </p>
       </div>
-      <button disabled={busy} onClick={() => onAction("approve_delegation")} type="button">
-        Allow preparation
-      </button>
     </section>
   );
 }
@@ -150,6 +146,7 @@ function ReviewDocument({
 >) {
   const readiness = applicationReadiness(workspace);
   const disclosure = applicationDisclosure(workspace);
+  const agentAssisted = isAgentAssistedApplication(workspace);
   const missingFields = readiness.missingFieldKeys
     .map((fieldKey) => workspace.requirements.find((field) => field.fieldKey === fieldKey))
     .filter((field) => field !== undefined);
@@ -166,7 +163,7 @@ function ReviewDocument({
 
   return (
     <>
-      <AgentAssistanceRequest busy={busy} onAction={onAction} workspace={workspace} />
+      <AgentAssistanceRequest workspace={workspace} />
       <section aria-labelledby="review-heading" className={styles["stagePanel"]}>
         <div className={styles["sectionHeading"]}>
           <div>
@@ -247,18 +244,28 @@ function ReviewDocument({
           </details>
         </section>
 
-        <div className={styles["actions"]}>
-          <button
-            className={styles["primaryAction"]}
-            disabled={busy || !readiness.readyForReview}
-            onClick={() => onAction("review_and_submit")}
-            type="button"
-          >
-            <PaperPlaneTiltIcon aria-hidden="true" /> Review and submit to{" "}
-            {workspace.recipient.name}
-          </button>
-          <p>Nothing is sent until this final action succeeds.</p>
-        </div>
+        {agentAssisted ? (
+          <div className={styles["actions"]}>
+            <p>
+              <strong>Complete this decision in your external agent client.</strong> Ask the agent
+              to revise any answer first. This page cannot approve assistance, consent, or
+              submission for an agent-assisted draft.
+            </p>
+          </div>
+        ) : (
+          <div className={styles["actions"]}>
+            <button
+              className={styles["primaryAction"]}
+              disabled={busy || !readiness.readyForReview}
+              onClick={() => onAction("review_and_submit")}
+              type="button"
+            >
+              <PaperPlaneTiltIcon aria-hidden="true" /> Review and submit to{" "}
+              {workspace.recipient.name}
+            </button>
+            <p>Nothing is sent until this final action succeeds.</p>
+          </div>
+        )}
       </section>
     </>
   );

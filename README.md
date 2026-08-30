@@ -56,14 +56,16 @@ Built for the OpenAI WebMCP Challenge.
   wall.
 - **Independent authority layers.** Agent delegation, payload-bound data
   permission, immutable review, and single-use confirmation are separate
-  server-enforced decisions. The agent presents each decision to the person in
-  their external agent client, and the server accepts
-  it only when it is bound to the exact server-issued request and draft
-  version, recording the decision channel as evidence.
+  server-enforced decisions. A purely manual internal draft can finish in the
+  first-party UI. Once assistance is requested or an agent suggestion exists,
+  the agent presents assistance, consent, and submission decisions in the
+  external agent client; the server rejects a first-party bypass and accepts
+  only decisions bound to the exact server-issued request and draft version.
 - **Truthful actions.** Internal fictional-demo applications can produce an
   immutable receipt after the exact request-bound decision. External roles open
-  a validated HTTPS employer page; Jobbbler creates no draft, receipt, handoff
-  record, or submitted claim for them.
+  an available validated HTTPS employer page; if none is available, the workflow
+  stops. Jobbbler creates no draft, receipt, handoff record, or submitted claim
+  for them.
 - **Durable automation.** Saved searches keep being checked after you close the
   page: a worker with leases, deterministic change detection, delivery
   idempotency, bounded retries, and verified encrypted email endpoints.
@@ -115,10 +117,14 @@ validate explicit IDs, ownership, and workflow state at execution time:
   `withdraw_application_consent` — each answering with the next safe step when
   its stage has not arrived
 
-Application tool results never expose an owner ID, candidate answer or contact
-detail, reusable agent token, confirmation secret, email destination, or
-ciphertext. Agent-supplied draft patches are accepted as bounded tool input,
-then remain visible and editable in the private review.
+Readiness, activity, and safe-error results never expose an owner ID, candidate
+answer, contact detail, reusable agent token, confirmation secret, email
+destination, or ciphertext. The one deliberate exception is
+`request_submission_review`: after preparation authority exists, its bounded
+pending-decision result returns the exact reviewed field values with every
+sensitive field marked explicitly so the external agent client can show what
+would be submitted. It still returns no reusable credential and submits
+nothing.
 
 See the [actual `registerTool` implementation](packages/webmcp/src/register.ts),
 the [WebMCP capability matrix](docs/architecture/webmcp-capability-matrix.md),

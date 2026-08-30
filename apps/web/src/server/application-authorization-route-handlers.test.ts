@@ -242,6 +242,20 @@ function dependencies(): ApplicationAuthorizationRouteDependencies {
         categories: grant.categories,
         fieldKeys: grant.fieldKeys,
         fieldLabels: ["Full name", "Work authorization"],
+        fields: [
+          {
+            fieldKey: "full_name",
+            label: "Full name",
+            value: "Ada Lovelace",
+            sensitive: true,
+          },
+          {
+            fieldKey: "work_authorization",
+            label: "Work authorization",
+            value: "Authorized to work in the European Union",
+            sensitive: true,
+          },
+        ],
         documentIds: grant.documentIds,
         noticeVersion: grant.noticeVersion,
         legalBasis: grant.legalBasis,
@@ -301,9 +315,30 @@ async function approveSubmissionConsent(
       draftId,
       draftVersion: 0,
       recipient: "Northstar Systems",
-      fieldLabels: ["Full name", "Work authorization"],
+      fields: [
+        {
+          fieldKey: "full_name",
+          label: "Full name",
+          value: "Ada Lovelace",
+          sensitive: true,
+        },
+        {
+          fieldKey: "work_authorization",
+          label: "Work authorization",
+          value: "Authorized to work in the European Union",
+          sensitive: true,
+        },
+      ],
     },
   });
+  const storedRequest = await current.idempotency.get(
+    "application.consent_request",
+    consentRequestId,
+  );
+  expect(JSON.stringify(storedRequest?.responseBody)).not.toContain("Ada Lovelace");
+  expect(JSON.stringify(storedRequest?.responseBody)).not.toContain(
+    "Authorized to work in the European Union",
+  );
   const decision = await handleDecideSubmissionReviewRequest(
     request(
       `/api/v1/applications/${draftId}/consent/${consentRequestId}`,
@@ -570,6 +605,8 @@ describe("application authorization route handlers", () => {
       expiresAt: grant.expiresAt,
     });
     expect(JSON.stringify(createdPayload)).not.toContain(rawAgentToken);
+    const consentBoundGrant = { ...grant, approvalRequestId: consentRequestId };
+    current.richDataGrants.getById = vi.fn(async () => consentBoundGrant);
 
     const approved = await handleApproveDataGrantRequest(
       request(
@@ -577,8 +614,8 @@ describe("application authorization route handlers", () => {
         "POST",
         {
           interaction: {
-            channel: "first_party_ui",
-            requestId: grantId,
+            channel: "agent_client",
+            requestId: consentRequestId,
             affirmation: "confirmed",
             evidenceVersion: "agent-interaction-v1",
           },
@@ -589,15 +626,17 @@ describe("application authorization route handlers", () => {
       current,
     );
     expect(approved.status).toBe(200);
-    expect(current.dataGrantPolicy.assertStoredDataGrantCurrent).toHaveBeenCalledWith(grant);
+    expect(current.dataGrantPolicy.assertStoredDataGrantCurrent).toHaveBeenCalledWith(
+      consentBoundGrant,
+    );
     expect(current.richDataGrants.approveCurrent).toHaveBeenCalledWith({
       id: grantId,
       ownerId,
       draftId,
       at: now,
       approvalEvidence: {
-        channel: "first_party_ui",
-        requestId: grantId,
+        channel: "agent_client",
+        requestId: consentRequestId,
         affirmativeAction: "confirmed",
         evidenceVersion: "agent-interaction-v1",
       },
@@ -996,6 +1035,130 @@ describe("application authorization route handlers", () => {
         evidenceVersion: "agent-interaction-v1",
       },
     );
+  });
+
+  it("rejects first-party approval or decline of an assistance request", async () => {
+    const approvalDependencies = dependencies();
+    const approved = await handleApproveDelegationRequest(
+      request(
+        `/api/v1/applications/${draftId}/delegations/${delegationId}/approve`,
+        "POST",
+        {
+          interaction: {
+            channel: "first_party_ui",
+            requestId: delegationId,
+            affirmation: "approved",
+            evidenceVersion: "agent-interaction-v1",
+          },
+        },
+        { human: true },
+      ),
+      { params: Promise.resolve({ draftId, delegationId }) },
+      approvalDependencies,
+    );
+    expect(approved.status).toBe(403);
+    expect(approvalDependencies.delegations.approve).not.toHaveBeenCalled();
+
+    const declineDependencies = dependencies();
+    const declined = await handleRevokeDelegationRequest(
+      request(
+        `/api/v1/applications/${draftId}/delegations/${delegationId}`,
+        "DELETE",
+        {
+          interaction: {
+            channel: "first_party_ui",
+            requestId: delegationId,
+            affirmation: "declined",
+            evidenceVersion: "agent-interaction-v1",
+          },
+        },
+        { human: true },
+      ),
+      { params: Promise.resolve({ draftId, delegationId }) },
+      declineDependencies,
+    );
+    expect(declined.status).toBe(403);
+    expect(declineDependencies.delegations.revoke).not.toHaveBeenCalled();
+  });
+
+  it("keeps first-party data approval for a purely manual draft", async () => {
+    const current = dependencies();
+    current.delegations.listByResource = vi.fn(async () => []);
+
+    const response = await handleApproveDataGrantRequest(
+      request(
+        `/api/v1/applications/${draftId}/data-grants/${grantId}/approve`,
+        "POST",
+        {
+          interaction: {
+            channel: "first_party_ui",
+            requestId: grantId,
+            affirmation: "confirmed",
+            evidenceVersion: "agent-interaction-v1",
+          },
+        },
+        { human: true },
+      ),
+      { params: Promise.resolve({ draftId, grantId }) },
+      current,
+    );
+
+    expect(response.status).toBe(200);
+    expect(current.richDataGrants.approveCurrent).toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      state: "requested assistance",
+      assistedDraft: draft,
+      delegations: [delegation],
+    },
+    {
+      state: "active assistance",
+      assistedDraft: draft,
+      delegations: [{ ...delegation, status: "active" as const, approvedAt: now }],
+    },
+    {
+      state: "an agent-suggested answer",
+      assistedDraft: {
+        ...draft,
+        answers: [
+          {
+            fieldKey: "motivation",
+            value: "Agent-prepared note",
+            provenance: "agent_suggestion" as const,
+            sensitive: false,
+            acceptedByHuman: false,
+          },
+        ],
+      },
+      delegations: [],
+    },
+  ])("rejects first-party data approval after $state", async ({ assistedDraft, delegations }) => {
+    const current = dependencies();
+    current.applications.getByOwner = vi.fn(async () => assistedDraft);
+    current.delegations.listByResource = vi.fn(async () => delegations);
+
+    const response = await handleApproveDataGrantRequest(
+      request(
+        `/api/v1/applications/${draftId}/data-grants/${grantId}/approve`,
+        "POST",
+        {
+          interaction: {
+            channel: "first_party_ui",
+            requestId: grantId,
+            affirmation: "confirmed",
+            evidenceVersion: "agent-interaction-v1",
+          },
+        },
+        { human: true },
+      ),
+      { params: Promise.resolve({ draftId, grantId }) },
+      current,
+    );
+
+    expect(response.status).toBe(403);
+    expect(current.richDataGrants.approveCurrent).not.toHaveBeenCalled();
   });
 
   it("rejects assistance decisions that are not bound to the exact request", async () => {

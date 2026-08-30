@@ -157,6 +157,22 @@
           "jobId": "job_00000001-0000-7000-8000-000000000001"
         }
       }
+    },
+    {
+      "id": "detail-plan-managed-or-external-application",
+      "category": "wrong_order",
+      "context": {
+        "currentJobId": "job_00000001-0000-7000-8000-000000000001",
+        "applicationCapabilityKnown": false
+      },
+      "prompt": "Plan the safe application path for this role. Check whether Jobbbler manages it internally or whether I must continue on the employer site before creating anything.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "plan_job_workflow",
+        "arguments": {
+          "goal": "prepare_application"
+        }
+      }
     }
   ]
 }

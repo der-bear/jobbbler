@@ -22,7 +22,8 @@ const compactPurposes: Readonly<Record<string, string>> = {
   get_search_filters: "Learn the exact search filters Jobbbler accepts.",
   search_jobs: "Search the public technology-job catalog.",
   open_job_details: "Open a known role and its source-backed facts.",
-  prepare_application: "Prepare one private application without sharing or submitting data.",
+  prepare_application:
+    "Prepare one application for a managed internal role without sharing or submitting data.",
   open_jobbbler_page: "Open another Jobbbler workspace.",
 };
 
@@ -133,7 +134,11 @@ export function AgentGuide() {
           <ul>
             <li>Search, inspect, and compare roles</li>
             <li>Monitor saved searches for changes</li>
-            <li>Prepare answers and a short motivation note</li>
+            <li>Prepare answers and a short motivation note for a managed internal role</li>
+            <li>
+              For external roles, use the validated employer page only when available; otherwise
+              stop
+            </li>
           </ul>
         </section>
         <section aria-labelledby="guide-control">

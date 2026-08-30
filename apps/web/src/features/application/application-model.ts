@@ -11,6 +11,14 @@ export type ApplicationStage =
 export type ApplicationNextAction =
   "prepare" | "review" | "submit" | "withdraw" | "read_only" | "complete";
 
+export function isAgentAssistedApplication(workspace: ApplicationWorkspace): boolean {
+  return (
+    workspace.delegationRequests.some(
+      ({ status }) => status === "requested" || status === "active",
+    ) || workspace.draft.answers.some(({ provenance }) => provenance === "agent_suggestion")
+  );
+}
+
 function isCompletedAnswer(answer: ApplicationAnswer | undefined): boolean {
   if (answer === undefined || answer.value === null) return false;
   if (typeof answer.value === "string") return answer.value.trim().length > 0;

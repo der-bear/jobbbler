@@ -128,9 +128,10 @@ export function createSiteWideToolManifests(
 
   const startApplication: ToolManifest<unknown, SiteWideToolOutput> = {
     name: "prepare_application",
-    purpose: "Create or reopen one private application draft for an explicitly chosen role.",
+    purpose:
+      "Create or reopen one private application draft for an explicitly chosen managed internal role.",
     description:
-      "Use this when the person asks to start an application. Create or reopen it by exact Jobbbler job ID and open its private review surface. This does not grant preparation authority, share candidate data, or submit; use the readiness and assistance tools for the returned draft.",
+      "Call get_job_application_capability first. Use this only for a managed internal role when the person asks to start an application. For an external role, open the validated HTTPS employer site only when employerSite.available is true; otherwise stop. External roles create no Jobbbler draft. This tool grants no preparation authority, shares no candidate data, and submits nothing.",
     inputSchema: {
       type: "object",
       additionalProperties: false,

@@ -31,6 +31,7 @@ import {
   applicationAgentState,
   applicationNextAction,
   applicationReadiness,
+  isAgentAssistedApplication,
 } from "./application-model";
 import type { ApplicationSubmissionReviewRequest, ApplicationToolReadiness } from "./webmcp-tools";
 import { publishApplicationWebMcpSurface } from "./webmcp-surface";
@@ -375,6 +376,12 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
   async function perform(action: ApplicationAction) {
     if (state.kind !== "ready" || busy) return;
     const current = state.workspace;
+    if (action === "review_and_submit" && isAgentAssistedApplication(current)) {
+      setActionError(
+        "Complete the exact submission decision in your external agent client for this agent-assisted draft.",
+      );
+      return;
+    }
     if (action === "use_demo_profile") {
       setValues((existing) => ({
         ...existing,
@@ -409,42 +416,6 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
           description: `The exact reviewed application was sent to ${current.recipient.name}.`,
           tone: "success",
         });
-      } else if (action === "approve_delegation") {
-        const requested = current.delegationRequests.find(({ status }) => status === "requested");
-        if (requested === undefined) throw new Error("Your agent has not asked for access yet.");
-        await queryApi(
-          `/api/v1/applications/${encodeURIComponent(draftId)}/delegations/${encodeURIComponent(requested.id)}/approve`,
-          applicationDelegationSummarySchema,
-          {
-            method: "POST",
-            body: {
-              interaction: {
-                channel: "first_party_ui",
-                requestId: requested.id,
-                affirmation: "approved",
-                evidenceVersion: "agent-interaction-v1",
-              },
-            },
-          },
-        );
-      } else if (action === "revoke_delegation") {
-        const active = current.delegationRequests.find(({ status }) => status === "active");
-        if (active === undefined) throw new Error("Approve your agent's access first.");
-        await queryApi(
-          `/api/v1/applications/${encodeURIComponent(draftId)}/delegations/${encodeURIComponent(active.id)}`,
-          applicationDelegationSummarySchema,
-          {
-            method: "DELETE",
-            body: {
-              interaction: {
-                channel: "first_party_ui",
-                requestId: active.id,
-                affirmation: "revoked",
-                evidenceVersion: "agent-interaction-v1",
-              },
-            },
-          },
-        );
       }
       await load();
     } catch (error) {

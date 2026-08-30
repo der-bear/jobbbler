@@ -14,8 +14,8 @@ target captures.
    - Caption: “A familiar website can expose structured actions directly to a compatible browser agent—without a separate MCP server.”
    - Alt text: “Jobbbler About WebMCP page explaining how a user describes an outcome in an agent client, opens Jobbbler, sees the same result, and keeps consequential choices explicit.”
 3. **`media/03-application-permission.png` — The person's decision**
-   - Caption: “One exact review — recipient, purpose, and disclosed fields — before one explicit decision shares or submits anything.”
-   - Alt text: “Dark-mode application review for a synthetic Product Design Lead role, showing agent-prepared answers with visible provenance, the missing-details summary, and the exact disclosure awaiting the person's decision.”
+   - Caption: “One exact review — recipient, purpose, synthetic values, and sensitivity markers — before one explicit decision shares or submits anything.”
+   - Alt text: “External agent client showing the exact pending review for a synthetic internal-role application, including the recipient, purpose, fictional field values, sensitivity markers, and untouched approve and decline controls.”
 4. **`media/02-saved-alert.png` — Verified alert**
    - Caption: “A verified private workspace turns a saved search into a durable, truthfully reported alert.”
    - Alt text: “Dark-mode Saved page showing a verified private workspace, one platform-role search checked daily, and confirmations that email verification and alert activation succeeded.”

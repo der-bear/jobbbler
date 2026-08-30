@@ -27,13 +27,13 @@ decision points.
 
 ## Coverage
 
-| Fixture            | Main outcomes tested                                                                                                                    |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `search.json`      | Exact and paraphrased search, active state, opening a role, monitoring plan, vague intent, premature comparison, invalid salary range   |
-| `detail.json`      | Source-backed role facts, application capability, explicit comparison, missing target, invalid ID                                       |
-| `compare.json`     | Current comparison, ordinal removal, addition, ambiguous ranking, unselected role                                                       |
-| `saved.json`       | Alert reading, pause or resume by exact schedule ID, reopen criteria, latest delta, ambiguous alert, unknown schedule                   |
-| `application.json` | Readiness, assistance request and exact decision, atomic answer batch, final review, and isolated approved or declined submission cases |
+| Fixture            | Main outcomes tested                                                                                                                     |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `search.json`      | Exact and paraphrased search, active state, opening a role, monitoring plan, vague intent, premature comparison, invalid salary range    |
+| `detail.json`      | Source-backed role facts, application capability and mode-aware planning, explicit comparison, missing target, invalid ID                |
+| `compare.json`     | Current comparison, ordinal removal, addition, ambiguous ranking, unselected role                                                        |
+| `saved.json`       | Alert reading, pause or resume by exact schedule ID, reopen criteria, latest delta, recovery-first planning, ambiguity, unknown schedule |
+| `application.json` | Readiness, assistance request and exact decision, atomic answer batch, final review, and isolated approved or declined submission cases  |
 
 ## Evaluation method
 
@@ -62,6 +62,9 @@ decision points.
 These are isolated model-judgment runs, not production telemetry. The checked-in
 deterministic suites separately verify schemas, execution, cancellation,
 bounded output, UI synchronization, storage atomicity, and builds.
+The mode-aware application-plan and recovery-first cases were added after that
+recorded model pass and must be included in the next weak-model score rather
+than being counted as historical successes.
 
 The judge demo should show one natural-language search, one comparison, one
 saved-search delta, and the application sequence from assistance request through

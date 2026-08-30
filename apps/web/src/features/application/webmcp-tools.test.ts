@@ -80,7 +80,32 @@ function dependencies(
         draftId: state.draftId,
         recipient: "Northstar Systems",
         purpose: "Submit this reviewed application to Northstar Systems.",
-        fieldLabels: ["Full name", "Email", "Why this role", "Work authorization"],
+        fields: [
+          {
+            fieldKey: "full_name",
+            label: "Full name",
+            value: "Ada Lovelace",
+            sensitive: true,
+          },
+          {
+            fieldKey: "email",
+            label: "Email",
+            value: "ada@example.com",
+            sensitive: true,
+          },
+          {
+            fieldKey: "motivation",
+            label: "Why this role",
+            value: "I build reliable data platforms.",
+            sensitive: false,
+          },
+          {
+            fieldKey: "work_authorization",
+            label: "Work authorization",
+            value: "Authorized to work in the European Union",
+            sensitive: true,
+          },
+        ],
         noticeVersion: "privacy-2026-08",
         draftVersion: state.version,
         expiresAt: "2026-08-29T10:05:00.000Z",
@@ -251,11 +276,26 @@ describe("application WebMCP outcomes", () => {
       presentation: {
         title: "Review and submit this application?",
         confirmLabel: "Submit this application",
-        facts: expect.arrayContaining([
-          { key: "Recipient", value: "Northstar Systems" },
-          { key: "Privacy notice", value: "privacy-2026-08" },
-          { key: "Draft version", value: ready.version },
-        ]),
+        application: {
+          recipient: "Northstar Systems",
+          purpose: "Submit this reviewed application to Northstar Systems.",
+          fields: expect.arrayContaining([
+            {
+              fieldKey: "full_name",
+              label: "Full name",
+              value: "Ada Lovelace",
+              sensitive: true,
+            },
+            {
+              fieldKey: "work_authorization",
+              label: "Work authorization",
+              value: "Authorized to work in the European Union",
+              sensitive: true,
+            },
+          ]),
+          privacyNotice: "privacy-2026-08",
+          draftVersion: ready.version,
+        },
       },
     });
     expect(names(createApplicationToolManifests(deps))).toEqual([
@@ -263,6 +303,50 @@ describe("application WebMCP outcomes", () => {
       "propose_application_updates",
       "decide_application_submission",
     ]);
+  });
+
+  it("returns a bounded exact review without truncating a long application answer", async () => {
+    const ready = { ...base, completedRequiredFields: 5 };
+    const deps = dependencies(ready, [
+      "read_application",
+      "edit_application",
+      "submit_application",
+    ]);
+    const exactValue = "x".repeat(10_000);
+    deps.requestSubmissionReview = vi.fn(() => ({
+      id: reviewRequestId,
+      draftId: ready.draftId,
+      recipient: "Northstar Systems",
+      purpose: "Submit this reviewed application to Northstar Systems.",
+      fields: [
+        {
+          fieldKey: "motivation",
+          label: "Why this role",
+          value: exactValue,
+          sensitive: false,
+        },
+      ],
+      noticeVersion: "privacy-2026-08",
+      draftVersion: ready.version,
+      expiresAt: "2026-08-29T10:05:00.000Z",
+      href: `/apply/${ready.draftId}`,
+    }));
+
+    const result = await createApplicationToolManifests(deps)[2]!.execute(
+      {},
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toMatchObject({
+      status: "requires_user_action",
+      presentation: {
+        application: {
+          fields: [{ value: exactValue, sensitive: false }],
+        },
+      },
+    });
+    expect(JSON.stringify(result)).toContain(exactValue);
+    expect(new TextEncoder().encode(JSON.stringify(result)).byteLength).toBeLessThanOrEqual(65_536);
   });
 
   it("records the exact submission decision in one outcome tool", async () => {

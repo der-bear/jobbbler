@@ -4,16 +4,33 @@ Status: approved direction, 2026-08-29
 
 ## Outcome
 
-Jobbbler should remove the repetitive work from applying, not turn it into a four-step approval form. A browser agent finds the role, opens or resumes one owner-bound draft, reuses approved profile facts, drafts role-specific answers, and asks only for missing or sensitive facts. The person receives one concise final review and makes one deliberate submission decision.
+Jobbbler should remove the repetitive work from applying, not turn it into a
+four-step approval form. For a managed internal role, a browser agent opens or
+resumes one owner-bound draft, drafts role-specific answers from supplied facts,
+and asks only for missing or sensitive facts. The person receives one concise
+final review in the external agent client and makes one deliberate submission
+decision. External roles continue only on an available validated HTTPS employer
+page; if none is available, the workflow stops. Jobbbler creates no draft or
+submitted claim for them.
 
 The design preserves the kickoff invariant: every submitted application is bound to an immutable payload, an exact recipient and purpose, a current privacy notice, and a fresh single-use human confirmation.
 
 ## Human journey
 
-1. **Preparing** — the agent fills the draft and reports progress. The page lists only unresolved questions or blockers. A manual fallback remains available.
+1. **Preparing** — the agent fills the internal-role draft and reports progress.
+   The page lists only unresolved questions or blockers. A purely manual draft
+   may use the first-party flow; once assistance is requested or an agent
+   suggestion exists, assistance, disclosure, and submission decisions remain
+   in the external agent client.
 2. **Ready for review** — one document-like screen shows the role, employer, answers, documents, declarations, and the exact information that will be shared.
-3. **Review and submit** — one affirmative action accepts the visible answers, authorizes that exact disclosure, creates a short-lived confirmation, and submits the sealed payload. A material edit invalidates every downstream record.
-4. **Receipt** — show the truthful provider result, timestamp, and private receipt. External roles are handed off and never described as submitted by Jobbbler.
+3. **Review and submit** — one request-bound decision accepts the exact reviewed
+   answers, authorizes that disclosure, creates a short-lived confirmation, and
+   submits the sealed payload. The external agent client owns this decision for
+   an agent-assisted draft; the first-party UI owns it only for a purely manual
+   draft. A material edit invalidates every downstream record.
+4. **Receipt** — show the truthful internal-demo provider result, timestamp, and
+   private receipt. External roles create no Jobbbler draft, receipt, handoff
+   record, or submitted claim.
 
 The UI does not expose delegation records, data-grant records, payload hashes, or confirmation tokens as separate workflow steps. Those records remain server-side safeguards.
 
@@ -29,18 +46,37 @@ The agent may propose narrative answers. Sensitive or legally meaningful facts s
 
 Use outcome-oriented tools with stable schemas and explicit next actions:
 
-- `prepare_application(jobId)` creates or reopens one draft, navigates to it, and returns `created` or `reopened`, readiness, and the next action.
+- `get_job_application_capability(jobId)` determines whether the role is managed
+  internally, has an available validated employer page, or must stop because no
+  safe destination is available.
+- `prepare_application(jobId)` creates or reopens one managed internal draft,
+  navigates to it, and returns `created` or `reopened`, readiness, and the next
+  action.
 - `get_application_readiness(draftId)` returns safe progress, missing items, and the next valid action without private answers.
+- `request_application_assistance(draftId)` returns one request-bound assistance
+  presentation for the external agent client.
+- `decide_application_assistance(draftId, requestId, decision)` records only the
+  person's explicit decision for that exact request.
 - `propose_application_updates(draftId, patches[])` applies bounded agent suggestions in one call.
-- `prepare_application_review(draftId)` validates completeness and seals the immutable review.
-- `request_submission_confirmation(draftId)` returns one human-interaction presentation for the exact review and disclosure.
-- `submit_application(draftId)` submits only when the server can match active preparation authority, disclosure, review, and single-use confirmation.
+- `request_submission_review(draftId)` returns the exact reviewed values,
+  sensitivity markers, recipient, purpose, notice, request ID, and draft version
+  for presentation in the external agent client. It submits nothing.
+- `decide_application_submission(draftId, requestId, draftVersion, decision)`
+  records only the person's explicit decision and submits the unchanged internal
+  application once if approved.
+- `withdraw_application_consent(draftId)` stops future consent-based processing
+  without rewriting a truthful historical receipt.
 
 The complete functionality is discoverable from every page, but agents should not choose among a long list of low-level lifecycle verbs. State-gated execution returns structured `NOT_FOUND`, `CONFLICT`, or `REQUIRES_USER_ACTION` results and never reports navigation or submission that did not occur.
 
 ## Activity model
 
-Activity is a judge-facing receipt, not a raw debug log. Repeated idempotent calls collapse into one row with a count. Creating and reopening are distinct summaries. Zero-duration noise is omitted. No raw candidate data, credentials, confirmation tokens, or private identifiers appear.
+Activity is a judge-facing receipt, not a raw debug log. Repeated idempotent
+calls collapse into one row with a count. Creating and reopening are distinct
+summaries. Zero-duration noise is omitted. No raw candidate data, credentials,
+confirmation tokens, or private identifiers appear in activity; exact candidate
+values appear only in the bounded pending-review result with sensitivity
+markers.
 
 ## Server invariants
 
@@ -53,7 +89,12 @@ Activity is a judge-facing receipt, not a raw debug log. Repeated idempotent cal
 
 ## Verification
 
-- Domain and route tests cover idempotent start, agent suggestions, missing sensitive facts, review invalidation, confirmation expiry, duplicate submission, and truthful external handoff.
+- Domain and route tests cover idempotent start, agent suggestions, missing
+  sensitive facts, review invalidation, confirmation expiry, duplicate
+  submission, and external roles that either open a validated page or stop
+  without creating a draft.
 - Tool tests cover every allowed and disallowed state with structured, recoverable results.
 - Browser tests cover agent preparation, the single final review action, receipt history, retry/error states, keyboard navigation, reduced motion, and mobile layout.
-- Weak and strong model evals verify that the outcome-oriented tool set is selected without route or lifecycle confusion.
+- Weak and strong model evals verify capability-first internal versus external
+  branching, recovery before private reads, and outcome-oriented tool selection
+  without route or lifecycle confusion.

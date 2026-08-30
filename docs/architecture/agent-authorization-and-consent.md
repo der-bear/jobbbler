@@ -76,30 +76,32 @@ The browser agent session ID is a scoping handle, not a claim that Jobbbler has 
 
 ## Data authorization and consent
 
-The agent may request a data operation. Jobbbler returns the exact disclosure
-as a structured presentation for the external agent client. The matching
-decision tool accepts only the exact live request ID, current draft version,
-and normalized decision; the server then stores the request-bound
-`agent_client` action as evidence. Jobbbler does not claim that this evidence
-cryptographically verifies the human or agent identity.
+The agent may request a data operation. For the final application review,
+Jobbbler returns every exact field value with an explicit sensitivity marker as
+a bounded structured presentation for the external agent client. The matching
+decision tool accepts only the exact live request ID, current draft version, and
+normalized decision; the server then stores the request-bound `agent_client`
+action and a hash of the reviewed values as evidence, not the raw values.
+Jobbbler does not claim that this evidence cryptographically verifies the human
+or agent identity.
 
 Before optional AI processing or disclosure to an employer, the presentation shows:
 
 - controller or recipient identity;
 - specific purpose;
-- exact field and document categories;
+- exact field values with sensitivity and document-category markers;
 - processing operations, including whether an AI provider is involved;
 - retention and withdrawal or deletion consequences;
 - privacy-notice and consent-copy versions;
 - whether refusing is compatible with the core service;
 - a clear affirmative action that is never preselected or inferred from silence.
 
-The grant stores owner, recipient, purpose, fields, documents, payload boundary,
-policy versions, legal-basis classification, approval channel, server request
-ID, normalized affirmative action, evidence-contract version, timestamps,
-expiry, and withdrawal evidence. It does not retain raw chat text. A new
-recipient, purpose, field category, document, or materially changed payload
-requires a new grant.
+The grant stores owner, recipient, purpose, field keys, documents, a payload
+hash, policy versions, legal-basis classification, approval channel, server
+request ID, normalized affirmative action, evidence-contract version,
+timestamps, expiry, and withdrawal evidence. It does not retain the raw review
+values or raw chat text. A new recipient, purpose, field category, document, or
+materially changed payload requires a new grant.
 
 For the Jobbbler demo application, disclosure to the hiring organization uses
 explicit consent. The review presentation states the right to withdraw before
@@ -134,7 +136,7 @@ An internal submission is allowed only when all statements are true in one trans
 - the idempotency key is valid and either new or mapped to the same response;
 - no revoke or material edit won the race before the adapter claim.
 
-Submission token consumption, state transition, audit record, outbox event, and idempotency response commit atomically for internal demo applications. External jobs open only a validated HTTPS employer page: Jobbbler creates no draft, prepares or discloses no application data, records no receipt, and makes no submitted claim. Historical `handed_off` records are read-only legacy compatibility and cannot be created by current server or storage writers.
+Submission token consumption, state transition, audit record, outbox event, and idempotency response commit atomically for internal demo applications. External jobs open only an available validated HTTPS employer page; if none is available, the workflow stops. Jobbbler creates no draft, prepares or discloses no application data, records no receipt, and makes no submitted claim. Historical `handed_off` records are read-only legacy compatibility and cannot be created by current server or storage writers.
 
 ## Token classes
 

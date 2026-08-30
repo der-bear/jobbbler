@@ -23,6 +23,7 @@ import type { IdentityRouteDependencies } from "./identity-route-handlers";
 import { requireOwnerSession } from "./identity-route-handlers";
 import { assertTrustedMutationOrigin } from "./identity-security";
 import type { OwnerActivityPublisher } from "./owner-activity-publisher";
+import { requiresAgentClientApplicationDecision } from "./application-policy";
 
 type RuntimeEnvironment = Readonly<Record<string, string | undefined>>;
 
@@ -153,6 +154,26 @@ async function requireApplicationActor(
   return requireHumanActor(request, dependencies);
 }
 
+async function requireFirstPartyApplicationDecisionAllowed(
+  actor: ApplicationActor,
+  draftId: string,
+  dependencies: ApplicationRouteDependencies,
+): Promise<ApplicationWorkspace | null> {
+  if (actor.kind !== "human") return null;
+  const [workspace, delegations] = await Promise.all([
+    dependencies.operations.get(actor.ownerId, draftId, dependencies.identity.now()),
+    dependencies.authorization.delegations.listByResource(actor.ownerId, draftId),
+  ]);
+  if (requiresAgentClientApplicationDecision(workspace.draft, delegations)) {
+    throw new DomainError({
+      code: "FORBIDDEN",
+      message:
+        "Complete consent and submission decisions for this agent-assisted draft in the external agent client.",
+    });
+  }
+  return workspace;
+}
+
 export async function handleRequestConfirmation(
   request: Request,
   context: ApplicationRouteContext,
@@ -170,6 +191,11 @@ export async function handleRequestConfirmation(
       "request_confirmation",
       dependencies,
     );
+    const decisionWorkspace = await requireFirstPartyApplicationDecisionAllowed(
+      actor,
+      draftId,
+      dependencies,
+    );
     const raw = dependencies.confirmation.create();
     const now = dependencies.identity.now();
     const result = await dependencies.operations.requestConfirmation(
@@ -180,7 +206,8 @@ export async function handleRequestConfirmation(
       now,
     );
     if (dependencies.activity !== undefined) {
-      const workspace = await dependencies.operations.get(actor.ownerId, draftId, now);
+      const workspace =
+        decisionWorkspace ?? (await dependencies.operations.get(actor.ownerId, draftId, now));
       await dependencies.activity.publish({
         ownerId: actor.ownerId,
         correlationId: requestId,
@@ -304,6 +331,7 @@ export async function handleSubmitApplication(
       "submit_application",
       dependencies,
     );
+    await requireFirstPartyApplicationDecisionAllowed(actor, draftId, dependencies);
     const now = dependencies.identity.now();
     const result = await dependencies.operations.submit(
       actor,

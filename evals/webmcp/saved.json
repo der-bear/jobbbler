@@ -228,6 +228,22 @@
           "savedSearchId": "saved_search_1c9a2b7e-63f0-4a5d-8f21-9adf5f4b2c10"
         }
       }
+    },
+    {
+      "id": "saved-plan-recovery-before-private-read",
+      "category": "wrong_order",
+      "context": {
+        "ownerSessionAvailable": false,
+        "alerts": []
+      },
+      "prompt": "I cleared this browser and need to recover my saved job alerts. What is the safe workflow before trying to read private alerts?",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "plan_job_workflow",
+        "arguments": {
+          "goal": "recover_workspace"
+        }
+      }
     }
   ]
 }

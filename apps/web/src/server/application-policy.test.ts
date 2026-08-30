@@ -114,7 +114,51 @@ describe("application disclosure policy", () => {
     const before = applicationConsentPresentation({ ...completeDraft, consentRevision: 0 }, job);
     const after = applicationConsentPresentation({ ...completeDraft, consentRevision: 1 }, job);
 
+    expect(before.fields).toEqual([
+      { fieldKey: "full_name", label: "Full name", value: "Ada Lovelace", sensitive: true },
+      {
+        fieldKey: "email",
+        label: "Email",
+        value: "ada@example.com",
+        sensitive: true,
+      },
+      {
+        fieldKey: "location",
+        label: "Current location",
+        value: "London, UK",
+        sensitive: true,
+      },
+      {
+        fieldKey: "motivation",
+        label: "Why this role",
+        value: "An agent suggestion",
+        sensitive: false,
+      },
+      {
+        fieldKey: "work_authorization",
+        label: "Work authorization",
+        value: "Yes",
+        sensitive: true,
+      },
+    ]);
     expect(after.valuesHash).not.toBe(before.valuesHash);
+  });
+
+  it("rejects an exact agent-client review that cannot fit its bounded result", () => {
+    const oversized = {
+      ...draft,
+      answers: applicationPolicy.requirements.map(({ fieldKey, sensitive }) => ({
+        fieldKey,
+        value: "😀".repeat(10_000),
+        provenance: "user_entered" as const,
+        sensitive,
+        acceptedByHuman: true,
+      })),
+    };
+
+    expect(() => applicationConsentPresentation(oversized, job)).toThrow(
+      /too large for the external agent client.*shorten/i,
+    );
   });
 
   it("rejects recipient, payload, or field drift from the current immutable review", () => {

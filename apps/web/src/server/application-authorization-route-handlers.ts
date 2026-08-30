@@ -46,6 +46,7 @@ import type { IdentityRouteDependencies } from "./identity-route-handlers";
 import { readSmallJsonBody, requireOwnerSession } from "./identity-route-handlers";
 import { assertTrustedMutationOrigin, sensitiveRateLimitKey } from "./identity-security";
 import type { OwnerActivityPublisher } from "./owner-activity-publisher";
+import { requiresAgentClientApplicationDecision } from "./application-policy";
 
 const DEFAULT_CAPABILITY_TTL_SECONDS = 15 * 60;
 const AUTHORIZATION_WINDOW_MS = 15 * 60 * 1_000;
@@ -105,19 +106,21 @@ const submissionDecisionBodySchema = z.strictObject({
     evidenceVersion: z.literal("agent-interaction-v1"),
   }),
 });
-const pendingConsentRecordSchema = applicationSubmissionReviewRequestSchema.extend({
-  ownerId: entityIdSchema,
-  recipientId: entityIdSchema,
-  categories: z.array(dataCategorySchema).min(1).max(10),
-  fieldKeys: z
-    .array(z.string().regex(/^[a-z][a-z0-9_]{0,63}$/))
-    .min(1)
-    .max(24),
-  documentIds: z.array(entityIdSchema).max(10),
-  legalBasis: legalBasisSchema,
-  valuesHash: z.string().regex(/^[a-f0-9]{64}$/),
-  createdAt: z.iso.datetime({ offset: true }),
-});
+const pendingConsentRecordSchema = applicationSubmissionReviewRequestSchema
+  .omit({ fields: true })
+  .extend({
+    ownerId: entityIdSchema,
+    recipientId: entityIdSchema,
+    categories: z.array(dataCategorySchema).min(1).max(10),
+    fieldKeys: z
+      .array(z.string().regex(/^[a-z][a-z0-9_]{0,63}$/))
+      .min(1)
+      .max(24),
+    documentIds: z.array(entityIdSchema).max(10),
+    legalBasis: legalBasisSchema,
+    valuesHash: z.string().regex(/^[a-f0-9]{64}$/),
+    createdAt: z.iso.datetime({ offset: true }),
+  });
 const consentDecisionRecordSchema = applicationSubmissionDecisionReceiptSchema.extend({
   ownerId: entityIdSchema,
   recipientId: entityIdSchema,
@@ -135,6 +138,15 @@ const consentDecisionRecordSchema = applicationSubmissionDecisionReceiptSchema.e
 
 const CONSENT_REQUEST_SCOPE = "application.consent_request";
 const CONSENT_DECISION_SCOPE = "application.consent_decision";
+
+function requireAgentClientDecisionChannel(channel: "first_party_ui" | "agent_client"): void {
+  if (channel !== "agent_client") {
+    throw new DomainError({
+      code: "FORBIDDEN",
+      message: "Complete this application decision in the external agent client.",
+    });
+  }
+}
 
 export interface AgentSessionTokenSecrets {
   create(): string;
@@ -159,6 +171,12 @@ export interface ApplicationDataGrantAuthorizationPolicy {
     readonly categories: readonly z.infer<typeof dataCategorySchema>[];
     readonly fieldKeys: readonly string[];
     readonly fieldLabels: readonly string[];
+    readonly fields: readonly Readonly<{
+      fieldKey: string;
+      label: string;
+      value: ApplicationDraft["answers"][number]["value"];
+      sensitive: boolean;
+    }>[];
     readonly documentIds: readonly string[];
     readonly noticeVersion: string;
     readonly legalBasis: z.infer<typeof legalBasisSchema>;
@@ -672,6 +690,7 @@ export async function handleApproveDelegationRequest(
     const { interaction } = delegationApprovalInteractionSchema.parse(
       await readSmallJsonBody(request),
     );
+    requireAgentClientDecisionChannel(interaction.channel);
     if (interaction.requestId !== delegationId) {
       throw new DomainError({
         code: "VALIDATION",
@@ -722,6 +741,7 @@ export async function handleRevokeDelegationRequest(
     const { interaction } = delegationRevocationInteractionSchema.parse(
       await readSmallJsonBody(request),
     );
+    requireAgentClientDecisionChannel(interaction.channel);
     if (interaction.requestId !== delegationId) {
       throw new DomainError({
         code: "VALIDATION",
@@ -785,7 +805,6 @@ export async function handleCreateSubmissionReviewRequest(
       draftVersion: draft.version,
       recipient: presentation.recipientName,
       purpose: presentation.purpose,
-      fieldLabels: presentation.fieldLabels,
       noticeVersion: presentation.noticeVersion,
       expiresAt: new Date(Date.parse(now) + 5 * 60_000).toISOString(),
       ownerId,
@@ -813,7 +832,7 @@ export async function handleCreateSubmissionReviewRequest(
         draftVersion: record.draftVersion,
         recipient: record.recipient,
         purpose: record.purpose,
-        fieldLabels: record.fieldLabels,
+        fields: presentation.fields,
         noticeVersion: record.noticeVersion,
         expiresAt: record.expiresAt,
       }),
@@ -1160,6 +1179,19 @@ export async function handleApproveDataGrantRequest(
     }
     const guard = await dependencies.dataGrantPolicy.assertStoredDataGrantCurrent(requested);
     const { interaction } = grantApprovalInteractionSchema.parse(await readSmallJsonBody(request));
+    const delegations = await dependencies.delegations.listByResource(human.ownerId, draftId);
+    if (
+      interaction.channel === "first_party_ui" &&
+      (requested.approvalRequestId !== null && requested.approvalRequestId !== undefined
+        ? true
+        : requiresAgentClientApplicationDecision(human.draft, delegations))
+    ) {
+      throw new DomainError({
+        code: "FORBIDDEN",
+        message:
+          "Complete consent and submission decisions for this agent-assisted draft in the external agent client.",
+      });
+    }
     const isBoundToApproval =
       interaction.channel === "first_party_ui"
         ? interaction.requestId === grantId

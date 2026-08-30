@@ -26,18 +26,24 @@ interface WorkflowStep {
   readonly requiredInputs?: readonly string[];
 }
 
-interface WorkflowPlan {
-  readonly title: string;
+interface WorkflowBranch {
+  readonly when: string;
   readonly steps: readonly WorkflowStep[];
 }
 
+interface WorkflowPlan {
+  readonly title: string;
+  readonly steps: readonly WorkflowStep[];
+  readonly branches?: readonly WorkflowBranch[];
+}
+
 export const workflowVersion = "2.1";
+export const MAX_WORKFLOW_PLAN_RESULT_BYTES = 2_048;
 
 export const workflowBoundaries: readonly string[] = [
-  "This plan is advice from the site; it grants no authority and executes nothing.",
-  "In an agent flow, human questions and decisions stay in the agent client.",
-  "Jobbbler records exact application disclosure consent on the server before submission.",
-  "Scheduled monitoring may prepare updates but never submits applications.",
+  "Advisory only: executes nothing and grants no authority.",
+  "Human questions and decisions stay in agent client.",
+  "Monitoring never submits.",
 ];
 
 export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
@@ -137,7 +143,7 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
     ],
   },
   prepare_application: {
-    title: "Prepare one deliberate application",
+    title: "Prepare application safely",
     steps: [
       {
         intent: "Open the role",
@@ -146,52 +152,79 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
         humanAction: false,
       },
       {
-        intent: "Check how this role accepts applications",
+        intent: "Check application capability",
         tool: "get_job_application_capability",
         requiredInputs: ["jobId"],
         humanAction: false,
       },
+    ],
+    branches: [
       {
-        intent: "Prepare the application",
-        tool: "prepare_application",
-        requiredInputs: ["jobId"],
-        humanAction: false,
+        when: "applyMode=internal",
+        steps: [
+          {
+            intent: "Prepare the internal application",
+            tool: "prepare_application",
+            requiredInputs: ["jobId"],
+            humanAction: false,
+          },
+          {
+            intent: "Check missing facts",
+            tool: "get_application_readiness",
+            requiredInputs: ["draftId"],
+            humanAction: false,
+          },
+          {
+            intent: "Request preparation assistance",
+            tool: "request_application_assistance",
+            requiredInputs: ["draftId"],
+            humanAction: "Ask in the agent client whether to allow this draft only.",
+          },
+          {
+            intent: "Record assistance decision",
+            tool: "decide_application_assistance",
+            requiredInputs: ["draftId", "requestId", "decision"],
+            humanAction: false,
+          },
+          {
+            intent: "Propose bounded truthful answers",
+            tool: "propose_application_updates",
+            requiredInputs: ["draftId", "patches: fieldKey + value"],
+            humanAction: "Ask only for missing facts; never invent them.",
+          },
+          {
+            intent: "Present the exact submission review",
+            tool: "request_submission_review",
+            requiredInputs: ["draftId"],
+            humanAction: "Ask for the final decision in the agent client.",
+          },
+          {
+            intent: "Submit once only if approved",
+            tool: "decide_application_submission",
+            requiredInputs: ["draftId", "requestId", "draftVersion", "decision"],
+            humanAction: false,
+          },
+        ],
       },
       {
-        intent: "Check which facts are still needed",
-        tool: "get_application_readiness",
-        requiredInputs: ["draftId"],
-        humanAction: false,
+        when: "applyMode=external and employerSite.available=true",
+        steps: [
+          {
+            intent: "Open the validated employer page",
+            tool: null,
+            humanAction: "Open validated HTTPS employer page; create no draft or submission claim.",
+          },
+        ],
       },
       {
-        intent: "Request short-lived preparation assistance",
-        tool: "request_application_assistance",
-        requiredInputs: ["draftId"],
-        humanAction: "Ask the person in the agent client whether to allow this draft only.",
-      },
-      {
-        intent: "Record that assistance decision",
-        tool: "decide_application_assistance",
-        requiredInputs: ["draftId", "requestId", "decision"],
-        humanAction: false,
-      },
-      {
-        intent: "Prepare answers in one bounded update",
-        tool: "propose_application_updates",
-        requiredInputs: ["draftId", "patches: fieldKey + value"],
-        humanAction: "Ask only for facts that are still missing; never invent them.",
-      },
-      {
-        intent: "Present the exact recipient, data, and purpose",
-        tool: "request_submission_review",
-        requiredInputs: ["draftId"],
-        humanAction: "Ask for one final submission decision in the agent client.",
-      },
-      {
-        intent: "Record the decision and submit once if approved",
-        tool: "decide_application_submission",
-        requiredInputs: ["draftId", "requestId", "draftVersion", "decision"],
-        humanAction: false,
+        when: "applyMode=external and employerSite.available=false",
+        steps: [
+          {
+            intent: "Stop: employer page unavailable",
+            tool: null,
+            humanAction: "Stop: no validated HTTPS employer page; no draft or submission claim.",
+          },
+        ],
       },
     ],
   },
@@ -231,7 +264,9 @@ function preferredTool(goal: WorkflowGoal, route: string): string | null {
   }
   if (goal === "compare_roles" && route === "/compare") return "get_comparison";
   if (goal === "monitor_search" && route === "/saved") return "get_saved_alerts";
-  if (goal === "recover_workspace" && route === "/saved") return "get_saved_alerts";
+  if (goal === "prepare_application" && route === "/jobs/:jobId") {
+    return "get_job_application_capability";
+  }
   if (goal === "find_roles" && route === "/jobs/:jobId") return "get_job_details";
   return null;
 }
@@ -256,26 +291,49 @@ export function createWorkflowPlannerTool(
         const availableNow = context.availableTools();
         const currentRoute = typeof context.route === "function" ? context.route() : context.route;
         const preferred = preferredTool(parsed.goal, currentRoute);
+        const everyStep = [...plan.steps, ...(plan.branches?.flatMap(({ steps }) => steps) ?? [])];
+        const preferredStep = everyStep.find(
+          (step) =>
+            step.tool === preferred && step.tool !== null && availableNow.includes(step.tool),
+        );
         const nextStep =
-          plan.steps.find(
-            (step) =>
-              step.tool === preferred && step.tool !== null && availableNow.includes(step.tool),
-          ) ?? plan.steps.find((step) => step.tool !== null && availableNow.includes(step.tool));
+          preferredStep ??
+          everyStep.find((step) => step.tool === null || availableNow.includes(step.tool));
         return completedWebMcpResult({
-          summary: `Planned “${plan.title}”: ${String(plan.steps.length)} steps, advisory only.`,
+          summary: `Planned “${plan.title}”: ${String(everyStep.length)} steps; advisory.`,
           data: {
             workflowVersion,
             goal: parsed.goal,
             currentRoute,
             nextTool: nextStep?.tool ?? null,
             nextInputs: nextStep?.requiredInputs ?? [],
+            ...(nextStep === undefined || nextStep.humanAction === false
+              ? {}
+              : { nextHumanAction: nextStep.humanAction }),
             steps: plan.steps.map((step) => ({
+              intent: step.intent,
               tool: step.tool,
               needs: step.requiredInputs ?? [],
               ...(step.humanAction === false ? {} : { ask: step.humanAction }),
             })),
+            ...(plan.branches === undefined
+              ? {}
+              : {
+                  branches: plan.branches.map((branch) => ({
+                    when: branch.when,
+                    steps: branch.steps.map((step) => ({
+                      intent: step.intent,
+                      tool: step.tool,
+                      needs: step.requiredInputs ?? [],
+                      ...(step.humanAction === false ? {} : { ask: step.humanAction }),
+                    })),
+                  })),
+                }),
             boundaries: [...workflowBoundaries],
           },
+          ...(parsed.goal === "prepare_application"
+            ? { maximumBytes: MAX_WORKFLOW_PLAN_RESULT_BYTES }
+            : {}),
         });
       } catch (error) {
         return safeWebMcpErrorResult(error, signal, "Provide one supported goal.");

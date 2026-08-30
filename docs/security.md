@@ -15,7 +15,7 @@ Email addresses are normalized, encrypted with AES-256-GCM using authenticated a
 
 Application preparation has separate server-enforced boundaries for owner access, a narrowly scoped agent delegation, an exact reviewed disclosure, a current data grant, and a five-minute single-use human confirmation. The submission transaction checks the owner, draft version, immutable review hash, confirmation, and exact data-grant scope before advancing the draft and creating a receipt.
 
-For an external role, Jobbbler exposes only the validated HTTPS employer application page. It creates no application draft, prepares or discloses no application data, records no receipt or handoff, and makes no submitted claim. Historical `handed_off` records remain readable only for legacy compatibility; current server and storage writers cannot create them.
+For an external role, Jobbbler exposes only an available validated HTTPS employer application page; when none is available, the workflow stops. It creates no application draft, prepares or discloses no application data, records no receipt or handoff, and makes no submitted claim. Historical `handed_off` records remain readable only for legacy compatibility; current server and storage writers cannot create them.
 
 The detailed boundary model is in [Agent authorization and data consent](architecture/agent-authorization-and-consent.md).
 

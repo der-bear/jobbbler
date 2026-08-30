@@ -28,8 +28,10 @@
       person's decision stop before anything is shared or submitted.
 - [ ] Show that an unavailable or unsupported context leaves the ordinary UI
       usable.
-- [ ] Confirm tool output/activity does not expose secrets, reusable
-      credentials, raw PII, or raw source payloads.
+- [ ] Confirm activity, readiness, and safe errors expose no secrets, reusable
+      credentials, real PII, or raw source payloads. The pending exact review
+      may show only the synthetic application values, with sensitive fields
+      marked explicitly.
 
 ## Alert and application safety
 
@@ -41,11 +43,15 @@
 - [ ] Demonstrate `request_application_assistance`, the person's assistance
       decision relayed by `decide_application_assistance`, and only then
       `propose_application_updates`.
+- [ ] Confirm the site offers no approval, consent, confirmation, or submission
+      bypass after assistance is requested or an agent-suggested answer exists;
+      a purely manual draft may still finish in the first-party UI.
 - [ ] Present the exact request-bound submission review in the external agent
       client and stop with that decision pending; do not invoke submission or
       claim that data was shared.
-- [ ] Confirm an external role opens only its validated HTTPS employer page and
-      creates no Jobbbler draft, receipt, handoff record, or submitted claim.
+- [ ] Confirm an external role opens only an available validated HTTPS employer
+      page, stops when none is available, and creates no Jobbbler draft, receipt,
+      handoff record, or submitted claim.
 - [ ] Describe the stored interaction as a record of what was approved in its
       exact context, never as cryptographic proof of the human, model, or
       vendor.

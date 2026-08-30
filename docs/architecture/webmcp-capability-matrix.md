@@ -15,7 +15,7 @@ the real product, not a decorative wrapper or a separate MCP server.
 | Tool execution receives an `AbortSignal`                             | Every request and long-running operation receives the browser cancellation signal                                                                        | Cancellation produces a bounded cancelled result and no stale UI overwrite             | Cancel one search and show the activity receipt                      |
 | `readOnlyHint` and `untrustedContentHint` are hints, not authority   | Every manifest declares honest annotations; normalized job content is treated as untrusted                                                               | Shared manifest validation checks every tool and application state                     | Inspect one read and one action tool in Agent view                   |
 | JSON Schema guides the model but does not replace runtime validation | Zod rejects unknown fields, malformed IDs, duplicates, stale versions, and invalid ranges before mutation                                                | Deterministic invalid-input and atomicity tests pass on SQLite and PostgreSQL adapters | Send one invalid request and show a concise self-correction hint     |
-| Tool output should be concise and useful for the next action         | Every result is JSON-serializable and capped at 1.5 KB; workflow results include `nextTool` and required inputs                                          | Size tests cover every workflow and representative success/error result                | Search returns compact role facts and exact IDs                      |
+| Tool output should be concise and useful for the next action         | Results are JSON-serializable and bounded: 1.5 KB normally, 2 KB for the intent-rich application plan, and 64 KB only for the exact final-review values  | Size tests cover every workflow and representative success/error result                | Search returns compact role facts and exact IDs                      |
 | Page state should reflect completed tools                            | Search, comparison, alerts, and navigation reuse the same commands and UI bridges as the human interface                                                 | Tests assert URL and visible state update before completion                            | Ask for a search and watch URL, filters, results, and Activity agree |
 | WebMCP does not provide cryptographic agent identity                 | Browser capability, loginless owner session, draft ownership, and operation authority are separate server boundaries                                     | Server tests ignore claimed caller identity and validate owner-bound IDs               | Explain global discovery without claiming global authorization       |
 | Human interaction APIs and consent semantics are still evolving      | `requires_user_action` returns a server request ID plus exact presentation facts for the external agent client                                           | The server accepts only a decision bound to the live request and current draft version | The agent asks once for assistance and once for the exact submission |
@@ -56,15 +56,16 @@ MCP Resource dependency.
    decision.
 5. `propose_application_updates` writes one atomic batch from supplied facts;
    the agent asks only for missing facts and never invents sensitive data.
-6. `request_submission_review` presents recipient, purpose, included fields,
-   privacy notice, request ID, and draft version in the agent client.
+6. `request_submission_review` presents recipient, purpose, every exact field
+   value with an explicit sensitivity marker, privacy notice, request ID, and
+   draft version in the agent client.
 7. `decide_application_submission` records consent and submits the unchanged
    internal application once, or records no submission on decline.
 
 External-source roles are never falsely reported as submitted. Their capability
-response exposes only a validated HTTPS employer page; Jobbbler creates no
-application draft, prepares or discloses no application data, and records no
-receipt or handoff.
+response exposes only an available validated HTTPS employer page; if none is
+available, the agent stops. Jobbbler creates no application draft, prepares or
+discloses no application data, and records no receipt or handoff.
 
 ## Why imperative registration
 

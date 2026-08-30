@@ -24,14 +24,15 @@ const outcomeSteps = [
   },
   {
     title: "Apply",
-    copy: "It prepares one application, asks only for missing facts, and waits for your decision.",
+    copy: "After a capability check, it prepares one managed internal role. External roles continue on the validated employer page only when available. If no validated page is available, it stops.",
   },
 ] as const;
 
 const agentCan = [
   "Search, filter, inspect, and compare roles",
   "Return new or changed results from a saved search",
-  "Prepare one application for review",
+  "Prepare one application for a managed internal role",
+  "Continue to an available validated employer page for an external role; otherwise stop",
 ] as const;
 
 const onlyYouCan = [

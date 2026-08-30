@@ -1,16 +1,94 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { ApplicationWorkspace } from "@jobbbler/contracts";
+import type { AgentDelegationRecord } from "@jobbbler/storage";
+
 import {
   confirmationCookie,
   handleListApplications,
   handleRequestConfirmation,
   handleStartApplication,
+  handleSubmitApplication,
   type ApplicationRouteDependencies,
 } from "./application-route-handlers.js";
 
 const draftId = "application_550e8400-e29b-41d4-a716-446655440000";
 const reviewId = "review_550e8400-e29b-41d4-a716-446655440000";
 const confirmationId = "confirmation_550e8400-e29b-41d4-a716-446655440000";
+
+function storedDelegation(status: "requested" | "active"): AgentDelegationRecord {
+  return {
+    id: "delegation_550e8400-e29b-41d4-a716-446655440000",
+    ownerId: "owner_550e8400-e29b-41d4-a716-446655440000",
+    agentSessionId: "agent_session_550e8400-e29b-41d4-a716-446655440000",
+    resourceType: "application_draft",
+    resourceId: draftId,
+    operations: ["request_confirmation"],
+    purpose: "Prepare this application.",
+    status,
+    expiresAt: "2026-08-29T10:15:00.000Z",
+    createdAt: "2026-08-29T09:55:00.000Z",
+    approvedAt: status === "active" ? "2026-08-29T09:56:00.000Z" : null,
+    revokedAt: null,
+  };
+}
+
+function workspace(
+  input: Readonly<{
+    delegationStatus?: "requested" | "active";
+    agentSuggestion?: boolean;
+  }> = {},
+): ApplicationWorkspace {
+  return {
+    applyMode: "internal",
+    draft: {
+      id: draftId,
+      ownerId: "owner_550e8400-e29b-41d4-a716-446655440000",
+      jobId: "job_550e8400-e29b-41d4-a716-446655440000",
+      state: "reviewed",
+      version: 3,
+      answers:
+        input.agentSuggestion === true
+          ? [
+              {
+                fieldKey: "motivation",
+                value: "Agent-prepared note",
+                provenance: "agent_suggestion",
+                sensitive: false,
+                acceptedByHuman: false,
+              },
+            ]
+          : [],
+      createdAt: "2026-08-29T09:00:00.000Z",
+      updatedAt: "2026-08-29T10:00:00.000Z",
+    },
+    requirements: [],
+    recipient: {
+      id: "organization_550e8400-e29b-41d4-a716-446655440000",
+      name: "Northstar Systems",
+    },
+    purpose: "Submit this reviewed application to Northstar Systems.",
+    noticeVersion: "privacy-2026-08-29",
+    legalBasis: "consent",
+    review: null,
+    dataGrant: null,
+    delegationRequests:
+      input.delegationStatus === undefined
+        ? []
+        : [
+            {
+              id: "delegation_550e8400-e29b-41d4-a716-446655440000",
+              agentSessionId: "agent_session_550e8400-e29b-41d4-a716-446655440000",
+              operations: ["request_confirmation"],
+              purpose: "Prepare this application.",
+              status: input.delegationStatus,
+              expiresAt: "2026-08-29T10:15:00.000Z",
+              approvedAt: input.delegationStatus === "active" ? "2026-08-29T09:56:00.000Z" : null,
+            },
+          ],
+    receipt: null,
+  };
+}
 
 function dependencies(nodeEnv: "test" | "production" = "test"): ApplicationRouteDependencies {
   const ownerId = "owner_550e8400-e29b-41d4-a716-446655440000";
@@ -63,6 +141,7 @@ function dependencies(nodeEnv: "test" | "production" = "test"): ApplicationRoute
         })),
       },
       delegations: {
+        listByResource: vi.fn(async () => []),
         getActiveMatch: vi.fn(async () => ({
           id: "delegation_550e8400-e29b-41d4-a716-446655440000",
           ownerId,
@@ -81,9 +160,16 @@ function dependencies(nodeEnv: "test" | "production" = "test"): ApplicationRoute
     } as never,
     operations: {
       start: vi.fn(),
+      get: vi.fn(async () => workspace()),
       requestConfirmation: vi.fn(async () => ({
         id: confirmationId,
         expiresAt: "2026-08-29T10:05:00.000Z",
+      })),
+      submit: vi.fn(async () => ({
+        id: "receipt_550e8400-e29b-41d4-a716-446655440000",
+        status: "submitted" as const,
+        externalUrl: null,
+        createdAt: "2026-08-29T10:00:00.000Z",
       })),
     } as never,
     confirmation: { create: () => "not-returned-secret", hash: () => "a".repeat(64) },
@@ -102,6 +188,22 @@ function request(headers: HeadersInit = {}): Request {
       },
     },
   );
+}
+
+function submissionRequest(): Request {
+  return new Request(`https://jobbbler.test/api/v1/applications/${draftId}`, {
+    method: "POST",
+    headers: {
+      origin: "https://jobbbler.test",
+      cookie: "jobbbler_owner_session=owner; jobbbler_confirmation=confirmed",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      reviewId,
+      confirmationId,
+      idempotencyKey: "550e8400-e29b-41d4-a716-446655440000",
+    }),
+  });
 }
 
 describe("application confirmation route", () => {
@@ -157,6 +259,60 @@ describe("application confirmation route", () => {
       "a".repeat(64),
       "2026-08-29T10:00:00.000Z",
     );
+  });
+
+  it.each([
+    ["requested assistance", workspace(), [storedDelegation("requested")]],
+    ["active assistance", workspace(), [storedDelegation("active")]],
+    ["an agent-suggested answer", workspace({ agentSuggestion: true }), []],
+  ])(
+    "rejects first-party confirmation and submission after %s",
+    async (_state, assisted, storedDelegations) => {
+      const confirmationDependencies = dependencies();
+      vi.mocked(confirmationDependencies.operations.get).mockResolvedValue(assisted);
+      vi.mocked(
+        confirmationDependencies.authorization.delegations.listByResource,
+      ).mockResolvedValue(storedDelegations);
+      const confirmation = await handleRequestConfirmation(
+        request(),
+        { params: Promise.resolve({ draftId, reviewId }) },
+        confirmationDependencies,
+      );
+      expect(confirmation.status).toBe(403);
+      expect(confirmationDependencies.operations.requestConfirmation).not.toHaveBeenCalled();
+
+      const submissionDependencies = dependencies();
+      vi.mocked(submissionDependencies.operations.get).mockResolvedValue(assisted);
+      vi.mocked(submissionDependencies.authorization.delegations.listByResource).mockResolvedValue(
+        storedDelegations,
+      );
+      const submission = await handleSubmitApplication(
+        submissionRequest(),
+        { params: Promise.resolve({ draftId }) },
+        submissionDependencies,
+      );
+      expect(submission.status).toBe(403);
+      expect(submissionDependencies.operations.submit).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps first-party confirmation and submission for a purely manual draft", async () => {
+    const confirmationDependencies = dependencies();
+    const confirmation = await handleRequestConfirmation(
+      request(),
+      { params: Promise.resolve({ draftId, reviewId }) },
+      confirmationDependencies,
+    );
+    expect(confirmation.status).toBe(201);
+
+    const submissionDependencies = dependencies();
+    const submission = await handleSubmitApplication(
+      submissionRequest(),
+      { params: Promise.resolve({ draftId }) },
+      submissionDependencies,
+    );
+    expect(submission.status).toBe(200);
+    expect(submissionDependencies.operations.submit).toHaveBeenCalled();
   });
 });
 

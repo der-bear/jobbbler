@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import {
   applicationAnswerSchema,
   applicationFieldDefinitionSchema,
+  MAX_APPLICATION_SUBMISSION_REVIEW_FIELDS_BYTES,
   type ApplicationAnswer,
   type ApplicationDraft,
   type ApplicationFieldDefinition,
@@ -84,6 +85,16 @@ const requirements = applicationFieldDefinitionSchema.array().parse([
   },
 ]);
 
+export function requiresAgentClientApplicationDecision(
+  draft: Pick<ApplicationDraft, "answers">,
+  delegations: readonly Readonly<{ status: "requested" | "active" | "revoked" }>[],
+): boolean {
+  return (
+    delegations.some(({ status }) => status === "requested" || status === "active") ||
+    draft.answers.some(({ provenance }) => provenance === "agent_suggestion")
+  );
+}
+
 export const applicationPolicy: Readonly<{
   requirements: readonly ApplicationFieldDefinition[];
   noticeVersion: string;
@@ -111,6 +122,12 @@ export function applicationConsentPresentation(
   categories: readonly DataCategory[];
   fieldKeys: readonly string[];
   fieldLabels: readonly string[];
+  fields: readonly Readonly<{
+    fieldKey: string;
+    label: string;
+    value: ApplicationAnswer["value"];
+    sensitive: boolean;
+  }>[];
   documentIds: readonly string[];
   noticeVersion: string;
   legalBasis: LegalBasis;
@@ -133,6 +150,22 @@ export function applicationConsentPresentation(
     const answer = draft.answers.find((candidate) => candidate.fieldKey === fieldKey)!;
     return { fieldKey, value: answer.value };
   });
+  const fields = included.map(({ fieldKey, label, sensitive }) => ({
+    fieldKey,
+    label,
+    value: draft.answers.find((candidate) => candidate.fieldKey === fieldKey)!.value,
+    sensitive,
+  }));
+  if (
+    new TextEncoder().encode(JSON.stringify(fields)).byteLength >
+    MAX_APPLICATION_SUBMISSION_REVIEW_FIELDS_BYTES
+  ) {
+    throw new DomainError({
+      code: "VALIDATION",
+      message:
+        "The exact application review is too large for the external agent client. Shorten one or more answers before requesting review again.",
+    });
+  }
   return {
     recipientId: job.organizationId,
     recipientName: job.organizationName,
@@ -140,6 +173,7 @@ export function applicationConsentPresentation(
     categories: [...new Set(included.map(({ category }) => category))],
     fieldKeys: included.map(({ fieldKey }) => fieldKey),
     fieldLabels: included.map(({ label }) => label),
+    fields,
     documentIds: [],
     noticeVersion: applicationPolicy.noticeVersion,
     legalBasis: applicationPolicy.legalBasis,

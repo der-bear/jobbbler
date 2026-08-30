@@ -23,10 +23,10 @@ const workspace: ApplicationWorkspace = {
       },
       {
         fieldKey: "motivation",
-        value: "An agent-authored starting point.",
-        provenance: "agent_suggestion",
+        value: "A candidate-authored motivation note.",
+        provenance: "user_entered",
         sensitive: false,
-        acceptedByHuman: false,
+        acceptedByHuman: true,
       },
     ],
     createdAt: "2026-08-29T10:00:00.000Z",
@@ -94,7 +94,10 @@ describe("ApplicationView", () => {
         busy={false}
         confirmation={null}
         error={null}
-        fieldValues={{ full_name: "Ada Lovelace", motivation: "An agent-authored starting point." }}
+        fieldValues={{
+          full_name: "Ada Lovelace",
+          motivation: "A candidate-authored motivation note.",
+        }}
         job={job}
         onAction={() => undefined}
         onFieldChange={() => undefined}
@@ -105,7 +108,7 @@ describe("ApplicationView", () => {
     expect(markup).toContain("Application for Senior Product Engineer");
     expect(markup).toContain("Review your application");
     expect(markup).toContain("2 of 2 details ready");
-    expect(markup).toContain("Agent suggestion");
+    expect(markup).not.toContain("Agent suggestion");
     expect(markup).toContain("Northstar Systems");
     expect(markup).toContain("Review and submit to Northstar Systems");
     expect(markup).not.toContain("Step 1 of 4");
@@ -118,35 +121,72 @@ describe("ApplicationView", () => {
     expect(markup).not.toContain("payloadHash");
   });
 
-  it("describes agent-mediated decisions truthfully", () => {
+  it.each([
+    {
+      state: "requested assistance",
+      assistedWorkspace: {
+        ...workspace,
+        delegationRequests: [
+          {
+            id: "delegation_550e8400-e29b-41d4-a716-446655440000",
+            agentSessionId: "agent_session_550e8400-e29b-41d4-a716-446655440000",
+            operations: ["read_application", "edit_application"],
+            purpose: "Prepare this application.",
+            status: "requested" as const,
+            expiresAt: "2026-08-29T10:20:00.000Z",
+            approvedAt: null,
+          },
+        ],
+      } satisfies ApplicationWorkspace,
+    },
+    {
+      state: "active assistance",
+      assistedWorkspace: {
+        ...workspace,
+        delegationRequests: [
+          {
+            id: "delegation_550e8400-e29b-41d4-a716-446655440000",
+            agentSessionId: "agent_session_550e8400-e29b-41d4-a716-446655440000",
+            operations: ["read_application", "edit_application"],
+            purpose: "Prepare this application.",
+            status: "active" as const,
+            expiresAt: "2026-08-29T10:20:00.000Z",
+            approvedAt: "2026-08-29T10:05:00.000Z",
+          },
+        ],
+      } satisfies ApplicationWorkspace,
+    },
+    {
+      state: "an agent-suggested answer",
+      assistedWorkspace: {
+        ...workspace,
+        draft: {
+          ...workspace.draft,
+          answers: workspace.draft.answers.map((answer) =>
+            answer.fieldKey === "motivation"
+              ? { ...answer, provenance: "agent_suggestion" as const, acceptedByHuman: false }
+              : answer,
+          ),
+        },
+      } satisfies ApplicationWorkspace,
+    },
+  ])("keeps $state decisions in the external agent client", ({ assistedWorkspace }) => {
     const markup = renderToStaticMarkup(
       <ApplicationView
         busy={false}
         confirmation={null}
         error={null}
-        fieldValues={{ full_name: "Ada Lovelace", motivation: "Agent draft" }}
+        fieldValues={{ full_name: "Ada Lovelace", motivation: "Candidate facts" }}
         job={job}
         onAction={() => undefined}
         onFieldChange={() => undefined}
-        workspace={{
-          ...workspace,
-          delegationRequests: [
-            {
-              id: "delegation_550e8400-e29b-41d4-a716-446655440000",
-              agentSessionId: "agent_session_550e8400-e29b-41d4-a716-446655440000",
-              operations: ["read_application", "edit_application"],
-              purpose: "Prepare this application.",
-              status: "requested",
-              expiresAt: "2026-08-29T10:20:00.000Z",
-              approvedAt: null,
-            },
-          ],
-        }}
+        workspace={assistedWorkspace}
       />,
     );
 
-    expect(markup).toContain("only after your explicit decision for this exact application");
-    expect(markup).not.toContain("cannot approve sharing or submit for you");
+    expect(markup).toContain("Complete this decision in your external agent client");
+    expect(markup).not.toContain("Allow preparation");
+    expect(markup).not.toContain("Review and submit to Northstar Systems");
   });
 
   it("shows missing questions without making the user inspect every complete field", () => {

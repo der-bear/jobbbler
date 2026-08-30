@@ -46,7 +46,8 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
       },
       {
         name: "prepare_application",
-        purpose: "Create or reopen one private application draft for an explicitly chosen role.",
+        purpose:
+          "Create or reopen one private application draft for an explicitly chosen managed internal role.",
         readOnly: false,
       },
       {

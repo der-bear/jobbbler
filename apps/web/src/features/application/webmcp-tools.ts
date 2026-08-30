@@ -14,6 +14,7 @@ import type { JsonSchema, JsonValue, ToolManifest } from "@jobbbler/webmcp";
 import {
   completedWebMcpResult,
   failedWebMcpResult,
+  MAX_EXACT_REVIEW_RESULT_BYTES,
   requiresUserActionWebMcpResult,
   safeWebMcpErrorResult,
   type CompletedWebMcpResult,
@@ -401,7 +402,7 @@ function submissionReviewTool(
     name: "request_submission_review",
     purpose: "Ask the person to review and approve one exact completed application.",
     description:
-      "Present one clear final review with the recipient, purpose, included fields, and privacy notice. This tool grants no permission and submits nothing by itself.",
+      "Present one clear final review with the recipient, purpose, every exact field value and its sensitivity marker, and the privacy notice. This tool grants no permission and submits nothing by itself.",
     inputSchema: emptyInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -415,22 +416,18 @@ function submissionReviewTool(
           surface: "application_review",
           requestId: request.id,
           nextTool: "decide_application_submission",
+          maximumBytes: MAX_EXACT_REVIEW_RESULT_BYTES,
           presentation: {
             title: "Review and submit this application?",
             prompt: `Review the exact application for ${request.recipient}. Submission happens only after this decision.`,
             confirmLabel: "Submit this application",
-            facts: [
-              { key: "Recipient", value: request.recipient },
-              { key: "Purpose", value: request.purpose },
-              { key: "Included", value: request.fieldLabels.join(", ") },
-              { key: "Privacy notice", value: request.noticeVersion },
-              {
-                key: "Withdrawal",
-                value:
-                  "Available any time in your agent client; it stops future consent-based processing.",
-              },
-              { key: "Draft version", value: request.draftVersion },
-            ],
+            application: {
+              recipient: request.recipient,
+              purpose: request.purpose,
+              fields: request.fields,
+              privacyNotice: request.noticeVersion,
+              draftVersion: request.draftVersion,
+            },
           },
         });
       } catch (error) {
@@ -635,7 +632,7 @@ const stableApplicationToolDefinitions: readonly StableApplicationToolDefinition
     name: "request_submission_review",
     purpose: "Ask the person to review one exact completed application.",
     description:
-      "Present the recipient, purpose, included fields, and privacy notice in the agent client for one final decision. This submits nothing.",
+      "Present the recipient, purpose, every exact field value with an explicit sensitivity marker, and the privacy notice in the agent client for one final decision. This submits nothing.",
     readOnly: false,
     input: "draft",
   },

@@ -5,6 +5,7 @@ import type { JsonValue } from "@jobbbler/webmcp";
 import { ApiClientError } from "./query-client";
 
 export const MAX_WEBMCP_RESULT_BYTES = 1_500;
+export const MAX_EXACT_REVIEW_RESULT_BYTES = 64 * 1_024;
 
 interface ResourceReference {
   readonly type: string;
@@ -22,6 +23,18 @@ export interface UserActionPresentation {
   readonly prompt: string;
   readonly confirmLabel: string;
   readonly facts?: readonly ResultFact[];
+  readonly application?: {
+    readonly recipient: string;
+    readonly purpose: string;
+    readonly fields: readonly Readonly<{
+      fieldKey: string;
+      label: string;
+      value: JsonValue;
+      sensitive: boolean;
+    }>[];
+    readonly privacyNotice: string;
+    readonly draftVersion: number;
+  };
 }
 
 export interface CompletedWebMcpResult<TData extends JsonValue> {
@@ -74,9 +87,11 @@ export function webMcpResultSize(value: unknown): number {
   return new TextEncoder().encode(serialized).byteLength;
 }
 
-function assertBounded<TValue>(value: TValue): TValue {
-  if (webMcpResultSize(value) > MAX_WEBMCP_RESULT_BYTES) {
-    throw new Error("WebMCP tool results must not exceed 1,500 bytes.");
+function assertBounded<TValue>(value: TValue, maximumBytes = MAX_WEBMCP_RESULT_BYTES): TValue {
+  if (webMcpResultSize(value) > maximumBytes) {
+    throw new Error(
+      `WebMCP tool results must not exceed ${maximumBytes.toLocaleString("en-US")} bytes.`,
+    );
   }
   return value;
 }
@@ -87,6 +102,7 @@ export function completedWebMcpResult<TData extends JsonValue>(
     data: TData;
     resources?: readonly ResourceReference[];
     facts?: readonly ResultFact[];
+    maximumBytes?: number;
   }>,
 ): CompletedWebMcpResult<TData> {
   const result: CompletedWebMcpResult<TData> = {
@@ -96,7 +112,7 @@ export function completedWebMcpResult<TData extends JsonValue>(
     ...(options.resources === undefined ? {} : { resources: options.resources }),
     ...(options.facts === undefined ? {} : { facts: options.facts }),
   };
-  return assertBounded(result);
+  return assertBounded(result, options.maximumBytes);
 }
 
 export function requiresUserActionWebMcpResult(
@@ -107,16 +123,20 @@ export function requiresUserActionWebMcpResult(
     requestId?: string;
     nextTool?: string;
     presentation?: UserActionPresentation;
+    maximumBytes?: number;
   }>,
 ): RequiresUserActionWebMcpResult {
-  return assertBounded({
-    status: "requires_user_action",
-    summary: options.summary,
-    requestId: options.requestId ?? requestId(),
-    ...(options.nextTool === undefined ? {} : { nextTool: options.nextTool }),
-    userAction: { kind: options.kind, surface: options.surface },
-    ...(options.presentation === undefined ? {} : { presentation: options.presentation }),
-  });
+  return assertBounded(
+    {
+      status: "requires_user_action",
+      summary: options.summary,
+      requestId: options.requestId ?? requestId(),
+      ...(options.nextTool === undefined ? {} : { nextTool: options.nextTool }),
+      userAction: { kind: options.kind, surface: options.surface },
+      ...(options.presentation === undefined ? {} : { presentation: options.presentation }),
+    },
+    options.maximumBytes,
+  );
 }
 
 function requestId(): string {
