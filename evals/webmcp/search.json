@@ -201,7 +201,7 @@
       "prompt": "Start a private application for the Senior Full-Stack Engineer role, but do not share or submit anything.",
       "expected": {
         "kind": "tool_call",
-        "tool": "prepare_application",
+        "tool": "get_job_application_capability",
         "arguments": {
           "jobId": "job_550e8400-e29b-41d4-a716-446655440000"
         }

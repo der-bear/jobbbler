@@ -89,7 +89,7 @@ export function createCompareToolManifests(
     name: "get_comparison",
     purpose: "Read the complete source-backed comparison that is visible on the current page.",
     description:
-      "Read the current one-to-three-role comparison, including fit evidence, compensation, provenance, and unknowns. Use when the user asks about the comparison already open.",
+      "Read the current one-to-three-role comparison, including fit evidence, compensation, provenance, and unknowns. Use when the user asks about the comparison already open. If the person asks which role is best, which to keep, or which to remove without giving a ranking preference, ask for the person's ranking criteria instead of asking them to choose a role ID.",
     inputSchema: emptyInputSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     async execute(input, { signal }) {

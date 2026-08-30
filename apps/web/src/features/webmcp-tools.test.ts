@@ -310,6 +310,9 @@ describe("route-scoped WebMCP tool manifests", () => {
       "after two or three exact job IDs are known",
     );
     expect(tool(manifests, "compare_jobs").description).toContain("Never call it with one role");
+    expect(tool(manifests, "get_job_application_capability").description).toContain(
+      "call this directly without searching",
+    );
 
     const controller = new AbortController();
     const detail = await tool(manifests, "get_job_details").execute(
@@ -378,6 +381,9 @@ describe("route-scoped WebMCP tool manifests", () => {
       false,
       false,
     ]);
+    expect(tool(manifests, "get_comparison").description).toContain(
+      "ask for the person's ranking criteria",
+    );
 
     const controller = new AbortController();
     const comparison = await tool(manifests, "get_comparison").execute(
