@@ -13,9 +13,9 @@ roles: search, filters, saved alerts, and one deliberate application at a time.
 Describe what you want once, in plain words, to a compatible browser agent; the
 agent runs the search on the real site, the server keeps checking after you
 close the page, and the next answer contains only what changed. When it is time
-to apply, the flow deliberately slows down: the exact disclosure is shown, and
-one explicit decision — bound to that exact application — is recorded before
-anything is shared or submitted.
+to apply, the flow deliberately slows down: the exact disclosure is shown on
+the visible owner review surface, and one explicit decision — bound to that
+exact application — is recorded before anything is shared or submitted.
 
 The technology that makes this possible is WebMCP — no separately installed or
 declared MCP server. A global Agent layer is available on every page: the same
@@ -76,7 +76,7 @@ Built for the OpenAI WebMCP Challenge.
 
 | Find once                                                                                                                          | Stay updated                                                                            | Apply with control                                                                                                                     |
 | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Search and live filters — chips, multi-selects, and a minimum-salary selector — with every result opening as a readable role page. | Save the exact query, preview the timing, verify your email, and see only what changed. | Review one document-like draft, decide once on the exact disclosure, and the sealed payload submits exactly once.                      |
+| Search and live filters — chips, multi-selects, and a minimum-salary selector — with every result opening as a readable role page. | Save the exact query, preview the timing, verify your email, and see only what changed. | Review one exact document-like draft on the visible owner surface; the sealed payload submits exactly once after the bound decision.   |
 | Evidence, trade-offs, and source freshness stay on the role page.                                                                  | Pause or resume checking without exposing an address or credential to WebMCP.           | Agent-prepared answers keep their provenance; assisted drafts are read-only on the site and revised through the external agent client. |
 
 ![A role page reads like an article](docs/design/qa-role-article.png)
@@ -122,12 +122,15 @@ validate explicit IDs, ownership, and workflow state at execution time:
   `withdraw_application_consent` — each answering with the next safe step when
   its stage has not arrived
 
-Readiness, activity, and safe-error results never expose an owner ID, candidate
-answer, contact detail, reusable agent token, confirmation secret, raw email
-destination, or ciphertext. Two deliberately bounded pending-decision results
-carry only what the external agent client needs to present an exact review.
-`request_submission_review` returns the reviewed application field values with
-every sensitive field marked explicitly. `request_search_alert` returns the
+Operational WebMCP results stay within 1.5 KB; only the advisory
+`plan_job_workflow` result may use up to 2 KB. Readiness, activity, and
+safe-error results never expose an owner ID, candidate answer, contact detail,
+reusable agent token, confirmation secret, raw email destination, or
+ciphertext. `request_submission_review` freezes the exact application on the
+visible owner review surface and returns only a compact request-bound reference:
+review URL, recipient, purpose, field and sensitivity counts, notice version,
+draft version, and expiry. Exact application values do not travel in its
+WebMCP result or the external agent client. `request_search_alert` returns the
 masked destination, exact policy, expiry, and an opaque request-bound
 continuation token. Neither result returns a reusable credential or performs
 the final action.

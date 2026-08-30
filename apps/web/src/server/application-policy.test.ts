@@ -144,7 +144,7 @@ describe("application disclosure policy", () => {
     expect(after.valuesHash).not.toBe(before.valuesHash);
   });
 
-  it("rejects an exact agent-client review that cannot fit its bounded result", () => {
+  it("rejects an exact review that cannot fit the bounded review snapshot", () => {
     const oversized = {
       ...draft,
       answers: applicationPolicy.requirements.map(({ fieldKey, sensitive }) => ({
@@ -157,7 +157,7 @@ describe("application disclosure policy", () => {
     };
 
     expect(() => applicationConsentPresentation(oversized, job)).toThrow(
-      /too large for the external agent client.*shorten/i,
+      /too large for the bounded review snapshot.*shorten/i,
     );
   });
 

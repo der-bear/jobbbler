@@ -63,11 +63,13 @@ When the journey reaches an application, speed stops being the point.
   draft read-only and revisions stay in the external agent client.
 - Sharing reviewed data requires explicit permission bound to the exact
   reviewed payload, recipient, purpose, fields, and notice — permission
-  applies only to this exact application. The external agent client presents
-  that request and relays the person's decision instead of forcing the person
-  through a second website flow. The server accepts only the exact live request
-  ID and draft version and stores the decision channel as request-bound
-  evidence, without claiming cryptographic identity.
+  applies only to this exact application. The visible owner review surface
+  presents every exact value and sensitivity marker. WebMCP and the external
+  agent client receive only a compact request-bound reference with recipient,
+  purpose, counts, notice, draft version, expiry, and review URL, then relay the
+  person's decision. The server accepts only the exact live request ID and
+  draft version and stores the decision channel as request-bound evidence. It
+  verifies that exact request and unchanged review, not the person's identity.
 - The person can withdraw consent through the same agent interface in one tool
   call. Future consent-based processing stops immediately; any lawful
   historical submission receipt remains intact.
@@ -140,17 +142,21 @@ the external agent client presents the request. Only
 request ID can enable short-lived, draft-bound assistance; the same tool can
 withdraw that active authority only for the exact bound request. The agent can
 then propose truthful answers in bounded batches and request one exact
-submission review — recipient, purpose, exact field values with sensitivity
-markers, and privacy notice. The external agent client presents that review and relays the person's decision. The server
-accepts a submission decision only when it is bound to the exact
-request ID and draft version, seals the reviewed payload, and consumes a
-short-lived single-use confirmation for the idempotent submit. The stored
-consent receipt records the decision channel as evidence and deliberately does
-not claim cryptographic human identity. Exact field values appear only in the
-bounded pending-review result; raw chat, reusable credentials, and those raw
-values stay out of stored consent evidence. The same global tool surface lets
-the person withdraw that consent in one call; future consent-based processing
-stops while historical submission receipts remain honest.
+submission review. The exact field values and sensitivity markers stay on the
+visible owner review surface. `request_submission_review` returns a compact
+request-bound reference with the review URL, recipient, purpose, field and
+sensitivity counts, privacy-notice version, draft version, and expiry; its
+operational result remains within 1.5 KB. The external agent client relays the
+person's decision against that reference. The server accepts a submission
+decision only when it is bound to the exact request ID and draft version,
+rechecks the unchanged review snapshot, seals the reviewed payload, and
+consumes a short-lived single-use confirmation for the idempotent submit. The
+stored consent receipt records the decision channel as evidence and
+deliberately proves the request and server state, not cryptographic human
+identity. Raw chat, reusable credentials, and exact application values stay
+out of WebMCP results and stored consent evidence. The same global tool surface
+lets the person withdraw that consent in one call; future consent-based
+processing stops while historical submission receipts remain honest.
 
 A purely manual internal draft can still finish in the first-party UI. Once
 assistance is requested or an agent-suggested answer exists, the site offers no
@@ -250,8 +256,10 @@ session, agent session, reviewed payload, recipient, purpose, fields, notice,
 request ID, channel, and affirmative action; no raw chat is retained. An
 application still needs review plus a short-lived single-use confirmation.
 Tool activity and safe errors avoid raw PII, secrets, reusable tokens, and raw
-source HTML. Only the pending exact-review result carries the synthetic
-application values, with sensitive fields marked explicitly.
+source HTML. Operational WebMCP results stay within 1.5 KB; only the advisory
+`plan_job_workflow` result may use up to 2 KB. The final-review result carries a
+compact request-bound reference and counts, while exact synthetic application
+values and sensitivity markers stay on the visible owner review surface.
 
 ## Open source and local run
 

@@ -37,8 +37,8 @@ The current implementation keeps identity portable across both storage adapters.
 ## Agent authorization flow
 
 1. A WebMCP command reaches the Policy Enforcement Point in the BFF.
-2. The backend evaluates human owner, agent session, resource, action, state, expiry, and risk.
-3. If authority is absent but requestable, the response is a structured denial with a non-secret, server-issued request ID, exact presentation facts, and `requires_user_action` status.
+2. The backend evaluates the owner session, agent session, resource, action, state, expiry, and risk.
+3. If authority is absent but requestable, the response is a structured denial with a non-secret, server-issued request ID, bounded presentation facts or a compact owner-review reference, and `requires_user_action` status.
 4. The external agent client presents the named resource, operations, purpose,
    duration, and affected data classes through its own user-interaction surface.
 5. The person explicitly approves or declines there. While that request is
@@ -79,15 +79,19 @@ The browser agent session ID is a scoping handle, not a claim that Jobbbler has 
 ## Data authorization and consent
 
 The agent may request a data operation. For the final application review,
-Jobbbler returns every exact field value with an explicit sensitivity marker as
-a bounded structured presentation for the external agent client. The matching
-decision tool accepts only the exact live request ID, current draft version, and
-normalized decision; the server then stores the request-bound `agent_client`
-action and a hash of the reviewed values as evidence, not the raw values.
-Jobbbler does not claim that this evidence cryptographically verifies the human
-or agent identity.
+Jobbbler freezes every exact field value and sensitivity marker on the visible
+owner review surface. WebMCP returns only a compact request-bound reference
+with the review URL, recipient, purpose, field and sensitivity counts, notice
+version, draft version, and expiry; the exact values do not enter the tool
+result or external agent client. The matching decision tool accepts only the
+exact live request ID, current draft version, and normalized decision. The
+server rechecks that exact request against the unchanged review snapshot, then
+stores the request-bound `agent_client` action and a hash of the reviewed
+values as evidence, not the raw values. This verifies the exact request and
+server state, not the human, model, or agent-vendor identity.
 
-Before optional AI processing or disclosure to an employer, the presentation shows:
+Before optional AI processing or disclosure to an employer, the visible owner
+review presentation shows:
 
 - controller or recipient identity;
 - specific purpose;

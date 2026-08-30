@@ -167,7 +167,7 @@ export function applicationConsentPresentation(
     throw new DomainError({
       code: "VALIDATION",
       message:
-        "The exact application review is too large for the external agent client. Shorten one or more answers before requesting review again.",
+        "The exact application review is too large for the bounded review snapshot. Shorten one or more answers before requesting review again.",
     });
   }
   return {

@@ -6,7 +6,7 @@ Jobbbler must let an external browser agent begin any supported user outcome fro
 
 ## Decision
 
-Register one stable set of 24 focused tools on every Jobbbler document,
+Register one stable set of 26 focused tools on every Jobbbler document,
 including informational and malformed routes. Route, owner, draft, and stage
 requirements are enforced by each tool when it executes. This follows the
 product requirement that an external agent should never need to navigate in
@@ -41,15 +41,17 @@ same stable list on every route.
 - Assistance authorization and the exact submission decision remain separate
   `requires_user_action` transitions in the external agent client, bound to
   exact server requests.
-- Ordinary tool results stay within 1.5 KB, while the intent-rich application
-  plan is capped at 2 KB and the exact final-review presentation at 64 KB. Only
-  that pending review may include exact candidate field values, each marked as
-  sensitive or non-sensitive; no result includes raw source HTML or reusable
-  credentials.
+- Every operational tool result, including final-review requests, stays within
+  1.5 KB. Only the advisory `plan_job_workflow` result may use up to 2 KB. The
+  final-review result contains a compact request-bound reference with recipient,
+  purpose, field and sensitivity counts, notice version, draft version, expiry,
+  and review URL. Exact candidate values and sensitivity markers remain on the
+  visible owner review surface; no result includes them, raw source HTML, or
+  reusable credentials.
 
 ## Agent panel
 
-The panel communicates one unambiguous quantity: the 24 tools discoverable
+The panel communicates one unambiguous quantity: the 26 tools discoverable
 across Jobbbler. It groups them by outcome and explains that private actions
 still require an owned draft and the correct stage.
 
@@ -68,7 +70,7 @@ Branding expresses `signal over noise` through typography, whitespace, one everg
 ## Verification
 
 - Unit tests validate catalog completeness, unique names, navigation inputs, result size, annotations, and route/context classification.
-- The live WebMCP E2E test asserts the same 24 tools on Search, Role, Saved,
+- The live WebMCP E2E test asserts the same 26 tools on Search, Role, Saved,
   About, and Application routes.
 - The E2E journey calls `search_jobs` from a non-search page and verifies the URL, visible results, panel activity, and re-registration.
 - Accessibility verification covers keyboard traversal, tabs, focus visibility, labels, live regions, reduced motion, responsive reflow, and automated axe checks.
