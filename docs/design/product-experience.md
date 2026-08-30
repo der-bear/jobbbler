@@ -36,7 +36,7 @@ stays in architecture and design documents.
 | delegated authority      | your agent can only do what you allow             |
 | consent receipt          | a record of what you approved                     |
 | payload-bound permission | permission applies only to this exact application |
-| external handoff         | continue on the employer's website                |
+| external application     | continue on the employer's website                |
 | source provenance        | where this information came from                  |
 
 The same rule shapes in-product vocabulary: statuses read as human statements
@@ -66,11 +66,14 @@ becoming agent-controlled.**
 The human interface and WebMCP tools are two adapters over the same server
 commands and policies.
 
-- A person can complete every core journey through the visible interface
-  without WebMCP.
-- A compatible browser agent can start on any page with six stable, site-wide
-  tools and execute structured actions without simulating DOM clicks. The same
-  capability set remains discoverable across navigation.
+- A person can search, compare, save, monitor, and complete a manual internal
+  application through the visible interface without WebMCP. When they choose
+  the agent-assisted application path, its assistance and submission decisions
+  stay in the external agent client.
+- A compatible browser agent can start on any page with the complete 24-tool
+  set and execute structured actions without simulating DOM clicks. Six are
+  clear entry points; the rest validate their prerequisites when called. The
+  same capability set remains discoverable across navigation.
 - WebMCP is tab-bound and ephemeral. The tools exist while the page is loaded
   in the agent's live browser context; background alerts continue through the
   regular worker after the tab closes.
@@ -91,7 +94,7 @@ execution.
 | ----------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | Every page `*`                | One obvious task per screen            | Entry tools: `plan_job_workflow` (advisory only), `get_search_filters`, `search_jobs`, `open_job_details`, `prepare_application`, `open_jobbbler_page`                                                                                  | The global Agent layer starts with Activity, then Tools and Guide                                                             |
 | Search `/`                    | Express an outcome and inspect matches | Contextual `get_search_state`, which includes an explicit truncation summary for bounded criteria                                                                                                                                       | URL, filters, result count, and Agent activity receipts update together                                                       |
-| Role `/jobs/:jobId`           | Understand one opportunity             | `get_job_details`, `get_job_application_capability` (how this role accepts applications — what the agent may prepare, what stays human, whether an external handoff is required), `compare_jobs`                                        | Provenance, freshness, evidence, “What to verify”, and a clear next action                                                    |
+| Role `/jobs/:jobId`           | Understand one opportunity             | `get_job_details`, `get_job_application_capability` (whether Jobbbler may prepare it, which decisions stay human, or whether the person continues on the employer site), `compare_jobs`                                                 | Provenance, freshness, evidence, “What to verify”, and a clear next action                                                    |
 | Compare `/compare`            | Resolve a shortlist                    | `get_comparison`, `add_job_to_comparison`, `remove_job_from_comparison`                                                                                                                                                                 | One evidence table with differences and missing facts                                                                         |
 | Saved `/saved`                | Stay updated on an explicit search     | `get_saved_alerts`, `set_job_alert_state`, `open_saved_search`, `get_latest_search_update` (only what changed since the last check)                                                                                                     | Plain-language status (“Checking daily”, “Paused”), next run, “N changes since the last check”, and a masked destination only |
 | Application `/apply/:draftId` | Prepare one reviewed disclosure        | Seven outcome tools: readiness, one assistance decision, bounded answer preparation, one exact review, one submission decision, and one-call consent withdrawal. They stay discoverable but enforce owner and stage checks when called. | The agent client owns questions and decisions; Jobbbler stores the exact consent evidence and receipt                         |
@@ -120,7 +123,7 @@ explicit disclosure.
 
 The global Agent layer is available on every page. On desktop it is a
 resizable side panel; on mobile (and after being closed) a compact “Agent
-activity” button opens it. It is a transparency layer, not a competing
+view” button opens it. It is a transparency layer, not a competing
 workspace and not a source of authority.
 
 - The header states the panel's purpose in one line; a status row shows the
@@ -152,10 +155,10 @@ simulated chat inside Jobbbler:
 4. Navigation preserves the entire tool set; role and application actions
    validate their explicit IDs and workflow state when invoked.
 5. The agent prepares an application and requests exact data permission. The
-   person gives the draft-scoped assistance decision and final exact submission
-   decision in the external agent client.
-6. Jobbbler displays the resulting state and a concise activity receipt when
-   viewed.
+   person gives the draft-scoped assistance decision in the external agent
+   client, then receives the exact submission review there.
+6. The demo stops with that final decision pending. Nothing is shared or
+   submitted on camera.
 
 The public `/about/webmcp` explanation may illustrate this sequence, but it
 must remain optional and must not add a fake agent, decorative console, or

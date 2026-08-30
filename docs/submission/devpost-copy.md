@@ -44,26 +44,28 @@ seconds, and moves on.
 
 When the journey reaches an application, speed stops being the point.
 
-- Before anything starts, `get_job_application_capability` negotiates the
-  ground rules for this specific role: what the agent may prepare, what stays
-  human, and whether the application finishes on the employer's website.
+- Before preparing a known role, an agent can call
+  `get_job_application_capability` to read the ground rules: what Jobbbler may
+  prepare, which decisions stay with the person, and whether the person must
+  continue on the employer's website.
 - Seven outcome-oriented application tools are discoverable from every page and
   state-gated at execution: each answers with the next safe step when its
   moment has not arrived. Agent-prepared answers keep their provenance and
   stay editable until the person's final review.
 - Sharing reviewed data requires explicit permission bound to the exact
   reviewed payload, recipient, purpose, fields, and notice — permission
-  applies only to this exact application. The agent presents that request to
-  the person; Jobbbler binds the recorded decision to the exact server-issued
-  request ID and draft version and stores the decision channel as evidence,
-  without claiming cryptographic identity.
+  applies only to this exact application. The external agent client presents
+  that request and relays the person's decision instead of forcing the person
+  through a second website flow. The server accepts only the exact live request
+  ID and draft version and stores the decision channel as request-bound
+  evidence, without claiming cryptographic identity.
 - The person can withdraw consent through the same agent interface in one tool
   call. Future consent-based processing stops immediately; any lawful
   historical submission receipt remains intact.
 - Submission needs a fresh, short-lived, single-use confirmation, and the
   sealed payload cannot change between the person's review and the submit.
-- External roles end in an honest handoff (`handed_off`, never a fake
-  `submitted`); Jobbbler never claims an external submission it cannot prove.
+- External roles open a validated HTTPS employer page. Jobbbler creates no
+  draft, receipt, handoff record, or submitted claim for them.
 
 ## The technology — for judges
 
@@ -71,6 +73,9 @@ When the journey reaches an application, speed stops being the point.
 > operable by an external browser agent — without a separate MCP server,
 > without hiding what changed, and without confusing tool access with human
 > authority.
+
+> Jobbbler also teaches a visiting agent the safest useful path through its
+> tools — without executing the plan or granting authority.
 
 Jobbbler registers 24 focused WebMCP tools directly in the page. The same set
 stays discoverable on every page, so an agent never loses a capability by
@@ -82,7 +87,7 @@ alerts, permissions, and receipts stay consistent whether a person or an agent
 acted.
 
 `plan_job_workflow` is an optional advisory tool. It returns recommended safe
-steps toward a goal from the current page and is advisory only — it plans, it
+steps for the agent's current Jobbbler context and is advisory only — it plans, it
 never acts. The global Agent layer makes the same story visible to people in a
 plain hierarchy: Activity shows what happened, Tools groups the discoverable
 capabilities, and Guide explains how to begin from an external agent client.
@@ -116,19 +121,22 @@ deliveries, and require a verified email endpoint — and the first visit needs
 no account at all: a loginless private owner session with passwordless email
 recovery.
 
-The application flow is agent-first with one human review: the agent checks
-readiness, asks once for short-lived draft-bound assistance, proposes truthful
-answers in bounded batches, and then presents one exact submission review —
-recipient, purpose, fields, and privacy notice. The person decides in their
-external agent client; the server accepts the
-decision only when it is bound to the exact request ID and draft version,
-seals the reviewed payload, and issues a single-use confirmation before the
-idempotent submit. The stored consent receipt records the decision channel as
-evidence and deliberately does not claim cryptographic human identity.
-Sensitive values and raw chat stay out of tool results and stored consent
-evidence. The same global tool surface lets the person withdraw that consent
-in one call; future consent-based processing stops while historical submission
-receipts remain honest.
+The application flow is agent-first with request-bound human decisions. The
+agent checks readiness, calls `request_application_assistance`, and waits while
+the external agent client presents the request. Only
+`decide_application_assistance` with the person's decision and the exact live
+request ID can enable short-lived, draft-bound assistance. The agent can then
+propose truthful answers in bounded batches and request one exact submission
+review — recipient, purpose, fields, and privacy notice. The external agent
+client presents that review and relays the person's decision. The server
+accepts a submission decision only when it is bound to the exact
+request ID and draft version, seals the reviewed payload, and consumes a
+short-lived single-use confirmation for the idempotent submit. The stored
+consent receipt records the decision channel as evidence and deliberately does
+not claim cryptographic human identity. Sensitive values and raw chat stay out
+of tool results and stored consent evidence. The same global tool surface lets
+the person withdraw that consent in one call; future consent-based processing
+stops while historical submission receipts remain honest.
 
 ## Challenges we ran into
 
@@ -166,8 +174,9 @@ receipts remain honest.
   while supporting durable ownership.
 - Request-bound consent receipts connect the agent-client decision to an exact
   server record without overstating identity assurance.
-- Explicit delegation, immutable review, and one-time confirmation keep final
-  application actions controlled, and external roles end in an honest handoff.
+- Explicit delegation, immutable review, and one-time confirmation keep
+  internal application actions controlled. External roles continue on a
+  validated HTTPS employer page without a Jobbbler draft or receipt.
 - Source-aware job ingestion, safe normalized data, and focused
   domain/storage/worker tests create an auditable foundation.
 
@@ -204,7 +213,8 @@ system.
 - Live project: **[PRODUCTION_URL — replace before submission]**
 - Demo video: **[VIDEO_URL — replace before submission]**
 - Source repository: https://github.com/der-bear/jobbbler
-- WebMCP capability notes: `docs/architecture/webmcp-capability-matrix.md`
+- WebMCP registration code: https://github.com/der-bear/jobbbler/blob/main/packages/webmcp/src/register.ts
+- WebMCP capability notes: https://github.com/der-bear/jobbbler/blob/main/docs/architecture/webmcp-capability-matrix.md
 
 ## Privacy and safety
 

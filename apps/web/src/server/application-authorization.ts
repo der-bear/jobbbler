@@ -1,4 +1,4 @@
-import type { RequestDataGrant } from "@jobbbler/contracts";
+import type { Job, RequestDataGrant } from "@jobbbler/contracts";
 import { DomainError } from "@jobbbler/core-domain";
 import type {
   ApplicationRepository,
@@ -35,6 +35,15 @@ function currentDisclosureUnavailable(): DomainError {
   });
 }
 
+function assertInternalApplicationJob(job: Job): void {
+  if (job.applyMode === "external") {
+    throw new DomainError({
+      code: "CONFLICT",
+      message: "This role accepts applications on the employer's website.",
+    });
+  }
+}
+
 export function createApplicationDataGrantAuthorizationPolicy(
   repositories: ApplicationDataGrantPolicyRepositories,
 ): ApplicationDataGrantAuthorizationPolicy {
@@ -52,6 +61,7 @@ export function createApplicationDataGrantAuthorizationPolicy(
       repositories.jobs.getById(draft.jobId),
     ]);
     if (review === null || job === null) throw currentDisclosureUnavailable();
+    assertInternalApplicationJob(job);
     assertRequestedDisclosureMatches({ draft, review, job, request: input.request });
     return { draft, review, job };
   };
@@ -62,6 +72,7 @@ export function createApplicationDataGrantAuthorizationPolicy(
       if (draft === null) throw currentDisclosureUnavailable();
       const job = await repositories.jobs.getById(draft.jobId);
       if (job === null) throw currentDisclosureUnavailable();
+      assertInternalApplicationJob(job);
       return applicationConsentPresentation(draft, job);
     },
     assertDataGrantRequest: async (input) => {
@@ -105,6 +116,7 @@ export function createApplicationAuthorizationRouteDependencies(
   return {
     identity,
     applications: storage.applications,
+    jobs: storage.jobs,
     agentSessions: storage.agentSessions,
     delegations: storage.delegations,
     richDataGrants: storage.richDataGrants,

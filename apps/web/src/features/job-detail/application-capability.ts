@@ -35,36 +35,55 @@ function externalTarget(job: Job): string | null {
  * to implemented behavior; nothing here is aspirational.
  */
 export function applicationCapabilityData(job: Job): JsonValue {
-  const prepared = supportsJobbblerPreparation(job);
   const employerUrl = externalApplicationUrl(job);
+  if (!supportsJobbblerPreparation(job)) {
+    return {
+      jobId: job.id,
+      applyMode: job.applyMode,
+      preparationAvailable: false,
+      stages: [],
+      agentAccess:
+        "Unavailable: Jobbbler does not create an application resource for external roles.",
+      humanSteps: [
+        employerUrl === null
+          ? "The employer application page is unavailable; do not continue from Jobbbler"
+          : "Continue on the validated HTTPS employer application page",
+      ],
+      submission:
+        "Jobbbler creates no draft, receipt, handoff record, or submitted claim for this external role.",
+      employerSite: {
+        required: true,
+        target: externalTarget(job),
+        available: employerUrl !== null,
+      },
+      withdrawalSupported: false,
+      statusSyncSupported: false,
+    };
+  }
+
   return {
     jobId: job.id,
     applyMode: job.applyMode,
-    preparationAvailable: prepared,
-    stages: ["your_details", "review", "data_permission", "final_confirmation"],
+    preparationAvailable: true,
+    stages: ["private_draft", "assistance_decision", "application_review", "submission_decision"],
     agentAccess:
-      "Draft-bound, stage-scoped, expiring delegation; requested by the agent and approved only in the private workspace.",
+      "Assistance requires the person's decision in the external agent client; the server accepts only the exact live request and records request-bound evidence.",
     humanSteps: [
-      "Accept or edit every suggested answer",
-      "Approve the exact data disclosure",
-      "Give the final confirmation (single-use, expires in five minutes)",
+      "Review or correct the answers the agent prepared",
+      "Decide on the exact disclosure and submission in the external agent client",
+      "Withdraw active consent from the same agent workflow when needed",
     ],
     submission:
-      job.applyMode === "internal"
-        ? "Submitted by Jobbbler after a fresh human confirmation; material edits invalidate the review."
-        : "Never submitted externally: Jobbbler prepares the package and records an honest handoff.",
-    employerSite:
-      job.applyMode === "external"
-        ? { required: true, target: externalTarget(job), available: employerUrl !== null }
-        : { required: false },
-    withdrawalSupported: false,
+      "Jobbbler submits only the unchanged internal-demo payload after an explicit request-bound decision in the external agent client; approval is single-use and expires in five minutes.",
+    employerSite: { required: false },
+    withdrawalSupported: true,
     statusSyncSupported: false,
   };
 }
 
 export function applicationCapabilitySummary(job: Job): string {
   if (job.applyMode === "internal") {
-    return "Internal application: an agent may prepare it; sharing and the final confirmation stay with the human.";
+    return "Internal application: an agent may prepare it; the person makes request-bound assistance and submission decisions in the external agent client.";
   }
   return externalApplicationUrl(job) === null
     ? "External role: the employer's application page is unavailable."

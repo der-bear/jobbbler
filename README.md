@@ -37,7 +37,7 @@ Built for the OpenAI WebMCP Challenge.
   salary semantics, what to verify, and fit evidence stay visible in the
   interface. Salary ranking is currency-aware (EUR, USD, GBP, and CAD at pinned
   rates) and explains itself with evidence strings.
-- **Global agent layer.** Twenty-three focused tools for search, roles,
+- **Global agent layer.** Twenty-four focused tools for search, roles,
   comparison, saved alerts, and applications — all registered on every page,
   so navigation never costs an agent a capability. State-gated tools answer
   with a clear next step when
@@ -48,7 +48,7 @@ Built for the OpenAI WebMCP Challenge.
   **Tools**, **Guide** hierarchy. It shows readiness, the current tools, and
   human-readable activity without taking over the normal portal. Every activity
   entry leads with a human sentence, followed by the tool name, status, and
-  duration. On mobile, an "Agent activity" button opens the same layer. The
+  duration. On mobile, an "Agent view" button opens the same layer. The
   normal UI remains usable if WebMCP is unavailable.
 - **No-login first run.** No account required: an ephemeral private owner
   session lets someone start immediately. A verified email enables passwordless
@@ -60,20 +60,20 @@ Built for the OpenAI WebMCP Challenge.
   their external agent client, and the server accepts
   it only when it is bound to the exact server-issued request and draft
   version, recording the decision channel as evidence.
-- **Truthful actions.** Internal fictional-demo applications produce an
-  immutable receipt. External roles end in an honest handoff to the employer's
-  website (`handed_off`, never a fake `submitted`); Jobbbler never claims an
-  external submission it cannot prove.
+- **Truthful actions.** Internal fictional-demo applications can produce an
+  immutable receipt after the exact request-bound decision. External roles open
+  a validated HTTPS employer page; Jobbbler creates no draft, receipt, handoff
+  record, or submitted claim for them.
 - **Durable automation.** Saved searches keep being checked after you close the
   page: a worker with leases, deterministic change detection, delivery
   idempotency, bounded retries, and verified encrypted email endpoints.
 
 ## Product tour
 
-| Find once                                                                                                            | Stay updated                                                                            | Apply with control                                                                                                |
-| -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Search and live filters — chips, multi-selects, a salary slider — with every result opening as a readable role page. | Save the exact query, preview the timing, verify your email, and see only what changed. | Review one document-like draft, decide once on the exact disclosure, and the sealed payload submits exactly once. |
-| Evidence, trade-offs, and source freshness stay on the role page.                                                    | Pause or resume checking without exposing an address or credential to WebMCP.           | Agent-prepared answers keep their provenance and stay editable until the person's review.                         |
+| Find once                                                                                                                          | Stay updated                                                                            | Apply with control                                                                                                |
+| ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Search and live filters — chips, multi-selects, and a minimum-salary selector — with every result opening as a readable role page. | Save the exact query, preview the timing, verify your email, and see only what changed. | Review one document-like draft, decide once on the exact disclosure, and the sealed payload submits exactly once. |
+| Evidence, trade-offs, and source freshness stay on the role page.                                                                  | Pause or resume checking without exposing an address or credential to WebMCP.           | Agent-prepared answers keep their provenance and stay editable until the person's review.                         |
 
 ![A role page reads like an article](docs/design/qa-role-article.png)
 
@@ -84,8 +84,8 @@ strict JSON schemas, stable global registration with state-gated execution,
 cancellation propagation, explicit annotations, and concise JSON-serializable
 results. A browser capability is never treated as identity or authorization.
 
-> Jobbbler does not only expose tools. It publishes a live workflow manifest
-> that helps an external agent compose those tools into safe, useful outcomes.
+> Jobbbler also teaches a visiting agent the safest useful path through its
+> tools — without executing the plan or granting authority.
 
 `plan_job_workflow` returns recommended safe steps for a goal from the current
 page. It is advisory only: it plans, it never acts.
@@ -100,7 +100,8 @@ validate explicit IDs, ownership, and workflow state at execution time:
   bounded criteria)
 - Role `/jobs/:jobId`: `get_job_details`, `get_job_application_capability`
   (how this role accepts applications — what the agent may prepare, what stays
-  human, and whether an external handoff is required), `compare_jobs`
+  human, and whether the person must continue on the employer site),
+  `compare_jobs`
 - Comparison `/compare`: `get_comparison`, `add_job_to_comparison`,
   `remove_job_from_comparison`
 - Saved `/saved`: `get_saved_alerts`, `set_job_alert_state`,
@@ -113,12 +114,14 @@ validate explicit IDs, ownership, and workflow state at execution time:
   `withdraw_application_consent` — each answering with the next safe step when
   its stage has not arrived
 
-The application flow never exposes an owner ID, candidate answer, reusable
-agent token, confirmation secret, email destination, or ciphertext in tool
-input/output.
+Application tool results never expose an owner ID, candidate answer or contact
+detail, reusable agent token, confirmation secret, email destination, or
+ciphertext. Agent-supplied draft patches are accepted as bounded tool input,
+then remain visible and editable in the private review.
 
-See the [WebMCP capability matrix](docs/architecture/webmcp-capability-matrix.md)
-and [authorization and consent design](docs/architecture/agent-authorization-and-consent.md).
+See the [actual `registerTool` implementation](packages/webmcp/src/register.ts),
+the [WebMCP capability matrix](docs/architecture/webmcp-capability-matrix.md),
+and the [authorization and consent design](docs/architecture/agent-authorization-and-consent.md).
 
 ## Architecture
 

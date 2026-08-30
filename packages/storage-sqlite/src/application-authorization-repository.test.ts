@@ -685,6 +685,30 @@ describe("SQLite application authorization persistence", () => {
         reviewPayloadHash: review.payloadHash,
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
+        grant: { ...grant, version: 0 },
+        receipt: {
+          ...receipt,
+          id: "receipt_71000000-0000-7000-8000-000000000099",
+          status: "handed_off",
+          externalUrl: "https://jobs.example.test/opening/42",
+        },
+        now,
+      }),
+    ).rejects.toMatchObject({ code: "VALIDATION" });
+    await expect(
+      storage.applications.getConfirmation(confirmation.id, ownerId),
+    ).resolves.toMatchObject({ status: "active", consumedAt: null });
+    await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toBeNull();
+
+    await expect(
+      storage.applications.completeSubmission({
+        ownerId,
+        draftId,
+        expectedDraftVersion: reviewed.version,
+        reviewId: review.id,
+        reviewPayloadHash: review.payloadHash,
+        confirmationId: confirmation.id,
+        confirmationHash: confirmation.confirmationHash,
         grant: { ...grant, version: 0, categories: ["contact"] },
         receipt,
         now,

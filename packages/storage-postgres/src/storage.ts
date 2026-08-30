@@ -1443,10 +1443,8 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
             input.receipt.draftId !== input.draftId ||
             input.receipt.reviewId !== input.reviewId ||
             input.receipt.confirmationId !== input.confirmationId ||
-            (input.receipt.status === "submitted" && input.receipt.externalUrl !== null) ||
-            (input.receipt.status === "handed_off" &&
-              (input.receipt.externalUrl === null ||
-                !input.receipt.externalUrl.startsWith("https://")))
+            input.receipt.status !== "submitted" ||
+            input.receipt.externalUrl !== null
           )
             throw domain("VALIDATION", "Submission receipt must bind a safe exact submission.");
           const consumed = { ...confirmation, status: "consumed" as const, consumedAt: input.now };

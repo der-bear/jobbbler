@@ -322,10 +322,7 @@ export async function handleSubmitApplication(
         kind: "application",
         key: "submit_application",
         status: "completed",
-        safeSummary:
-          result.status === "handed_off"
-            ? "External application handoff recorded."
-            : "Reviewed application submitted with an immutable receipt.",
+        safeSummary: "Reviewed application submitted with an immutable receipt.",
         actorKind: actor.kind,
         aggregate: { type: "application_draft", version: workspace.draft.version },
         occurredAt: now,

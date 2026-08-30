@@ -505,6 +505,29 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: submissionGrant,
+        receipt: {
+          ...receipt,
+          id: "receipt-postgres-auth-handoff",
+          status: "handed_off",
+          externalUrl: "https://jobs.example.test/opening/42",
+        },
+        now,
+      }),
+    ).rejects.toMatchObject({ code: "VALIDATION" });
+    await expect(
+      storage.applications.getConfirmation(confirmation.id, ownerId),
+    ).resolves.toMatchObject({ status: "active", consumedAt: null });
+    await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toBeNull();
+    await expect(
+      storage.applications.completeSubmission({
+        ownerId,
+        draftId,
+        expectedDraftVersion: 1,
+        reviewId: review.id,
+        reviewPayloadHash: review.payloadHash,
+        confirmationId: confirmation.id,
+        confirmationHash: confirmation.confirmationHash,
+        grant: submissionGrant,
         receipt,
         now,
       }),

@@ -157,7 +157,7 @@ export function applicationConsentPresentation(
 
 export function applicationPurpose(job: Pick<Job, "organizationName" | "applyMode">): string {
   return job.applyMode === "external"
-    ? `Prepare this reviewed application for external handoff to ${job.organizationName}.`
+    ? `Continue on ${job.organizationName}'s website without a Jobbbler application workflow.`
     : `Submit this reviewed application to ${job.organizationName}.`;
 }
 

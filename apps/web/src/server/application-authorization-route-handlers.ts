@@ -33,6 +33,7 @@ import type {
   ApplicationRepository,
   DelegationRepository,
   IdempotencyRepository,
+  JobRepository,
   RichDataGrantMatchInput,
   RichDataGrantApprovalGuard,
   RichDataGrantRecord,
@@ -179,6 +180,7 @@ export interface ApplicationAuthorizationRouteDependencies {
     ApplicationRepository,
     "getById" | "getByOwner" | "applyMaterialEdit"
   >;
+  readonly jobs: Pick<JobRepository, "getById">;
   readonly agentSessions: AgentSessionRepository;
   readonly delegations: DelegationRepository;
   readonly richDataGrants: RichDataGrantRepository;
@@ -374,6 +376,29 @@ async function requireHumanDraft(
   return { draft, ownerId: current.owner.id };
 }
 
+async function applicationJobMode(
+  draft: ApplicationDraft,
+  dependencies: ApplicationAuthorizationRouteDependencies,
+): Promise<"internal" | "external"> {
+  const job = await dependencies.jobs.getById(draft.jobId);
+  if (job === null) {
+    throw new DomainError({ code: "NOT_FOUND", message: "Application job was not found." });
+  }
+  return job.applyMode;
+}
+
+async function requireInternalApplicationDraft(
+  draft: ApplicationDraft,
+  dependencies: ApplicationAuthorizationRouteDependencies,
+): Promise<void> {
+  if ((await applicationJobMode(draft, dependencies)) === "external") {
+    throw new DomainError({
+      code: "CONFLICT",
+      message: "This role accepts applications on the employer's website.",
+    });
+  }
+}
+
 export async function requireApplicationAgentSession(
   request: Request,
   draftId: string,
@@ -510,6 +535,7 @@ export async function handleCreateAgentSessionRequest(
     const { draftId: rawDraftId } = await context.params;
     const draftId = parseEntityId(rawDraftId);
     const human = await requireHumanDraft(request, draftId, "create-agent-session", dependencies);
+    await requireInternalApplicationDraft(human.draft, dependencies);
     const parsed = createAgentSessionBodySchema.parse(await readSmallJsonBody(request));
     const rawToken = dependencies.agentTokens.create();
     const now = dependencies.identity.now();
@@ -584,6 +610,7 @@ export async function handleCreateDelegationRequest(
     const { draftId: rawDraftId } = await context.params;
     const draftId = parseEntityId(rawDraftId);
     const agent = await requireApplicationAgentSession(request, draftId, dependencies);
+    await requireInternalApplicationDraft(agent.draft, dependencies);
     const parsed = createDelegationBodySchema.parse(await readSmallJsonBody(request));
     const now = dependencies.identity.now();
     const requested = requestDelegation({
@@ -637,6 +664,7 @@ export async function handleApproveDelegationRequest(
     const draftId = parseEntityId(params.draftId);
     const delegationId = parseEntityId(params.delegationId);
     const human = await requireHumanDraft(request, draftId, "approve-delegation", dependencies);
+    await requireInternalApplicationDraft(human.draft, dependencies);
     const requested = await dependencies.delegations.getById(delegationId, human.ownerId);
     if (requested === null || requested.resourceId !== draftId) {
       throw new DomainError({ code: "NOT_FOUND", message: "Delegation request was not found." });
@@ -745,6 +773,7 @@ export async function handleCreateSubmissionReviewRequest(
     const actor = request.headers.has("authorization")
       ? await requireAgentOperation(request, draftId, "request_data_consent", dependencies)
       : await requireHumanDraft(request, draftId, "request-submission-review", dependencies);
+    await requireInternalApplicationDraft(actor.draft, dependencies);
     const ownerId = actor.draft.ownerId;
     const draft = actor.draft;
     const presentation = await dependencies.dataGrantPolicy.consentPresentation(ownerId, draftId);
@@ -814,6 +843,7 @@ export async function handleDecideSubmissionReviewRequest(
       "decide-submission-review",
       dependencies,
     );
+    await requireInternalApplicationDraft(human.draft, dependencies);
     const parsed = submissionDecisionBodySchema.parse(await readSmallJsonBody(request));
     if (
       parsed.interaction.requestId !== interactionRequestId ||
@@ -969,6 +999,7 @@ async function dataGrantRequester(
       "request_data_consent",
       dependencies,
     );
+    await requireInternalApplicationDraft(agent.draft, dependencies);
     return {
       ownerId: agent.draft.ownerId,
       boundaries: [agent.session.expiresAt, agent.delegation.expiresAt],
@@ -977,6 +1008,7 @@ async function dataGrantRequester(
     };
   }
   const human = await requireHumanDraft(request, draftId, "request-data-grant", dependencies);
+  await requireInternalApplicationDraft(human.draft, dependencies);
   return {
     ownerId: human.ownerId,
     boundaries: [],
@@ -1121,6 +1153,7 @@ export async function handleApproveDataGrantRequest(
     const draftId = parseEntityId(params.draftId);
     const grantId = parseEntityId(params.grantId);
     const human = await requireHumanDraft(request, draftId, "approve-data-grant", dependencies);
+    await requireInternalApplicationDraft(human.draft, dependencies);
     const requested = await dependencies.richDataGrants.getById(grantId, human.ownerId, draftId);
     if (requested === null) {
       throw new DomainError({ code: "NOT_FOUND", message: "Data grant request was not found." });
@@ -1215,6 +1248,7 @@ export async function handleWithdrawApplicationConsentRequest(
     const { draftId: rawDraftId } = await context.params;
     const draftId = parseEntityId(rawDraftId);
     const human = await requireHumanDraft(request, draftId, "withdraw-consent", dependencies);
+    const applyMode = await applicationJobMode(human.draft, dependencies);
     const { interaction } = grantWithdrawalInteractionSchema.parse(
       await readSmallJsonBody(request),
     );
@@ -1237,7 +1271,9 @@ export async function handleWithdrawApplicationConsentRequest(
       );
     }
     const boundaryDraft =
-      human.draft.state === "submitted" || human.draft.state === "handed_off"
+      applyMode === "external" ||
+      human.draft.state === "submitted" ||
+      human.draft.state === "handed_off"
         ? human.draft
         : await dependencies.applications.applyMaterialEdit({
             ownerId: human.ownerId,

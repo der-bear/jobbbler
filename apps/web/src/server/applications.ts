@@ -131,25 +131,24 @@ async function requireJob(storage: Storage, jobId: string): Promise<Job> {
   return job;
 }
 
-function requireSafeExternalHandoffUrl(job: Job): string {
-  if (job.applyMode !== "external" || job.source.url === null) {
+function assertInternalApplicationJob(job: Job): void {
+  if (job.applyMode === "external") {
     throw new DomainError({
       code: "CONFLICT",
-      message: "This role does not provide an external application source.",
+      message: "This role accepts applications on the employer's website.",
     });
   }
-  try {
-    const source = new URL(job.source.url);
-    if (source.protocol !== "https:" || source.username.length > 0 || source.password.length > 0) {
-      throw new Error("Unsafe external source URL.");
-    }
-  } catch {
-    throw new DomainError({
-      code: "CONFLICT",
-      message: "This role does not provide a safe HTTPS application source.",
-    });
-  }
-  return job.source.url;
+}
+
+async function requireOwnedInternalDraft(
+  storage: Storage,
+  ownerId: string,
+  draftId: string,
+): Promise<Readonly<{ draft: ApplicationDraft; job: Job }>> {
+  const draft = await requireOwnedDraft(storage, ownerId, draftId);
+  const job = await requireJob(storage, draft.jobId);
+  assertInternalApplicationJob(job);
+  return { draft, job };
 }
 
 async function requireExactActiveGrant(
@@ -282,21 +281,16 @@ export function createApplicationRouteDependencies(
 
       async start(ownerId, raw, now) {
         const { jobId } = startApplicationInputSchema.parse(raw);
-        const existing = await storage.applications.getByOwnerAndJob(ownerId, jobId);
-        if (existing !== null) return { draft: existing, disposition: "reopened" as const };
         const job = await requireJob(storage, jobId);
+        assertInternalApplicationJob(job);
         if (job.status !== "open") {
           throw new DomainError({
             code: "CONFLICT",
             message: "This role is no longer open for applications.",
           });
         }
-        if (job.applyMode === "external") {
-          throw new DomainError({
-            code: "CONFLICT",
-            message: "This role accepts applications on the employer's website.",
-          });
-        }
+        const existing = await storage.applications.getByOwnerAndJob(ownerId, jobId);
+        if (existing !== null) return { draft: existing, disposition: "reopened" as const };
         const draft = createApplicationDraft({
           id: createEntityId("application"),
           ownerId,
@@ -316,7 +310,7 @@ export function createApplicationRouteDependencies(
 
       async answer(actor: ApplicationActor, draftId, raw, now) {
         const input = answerBodySchema.parse(raw);
-        const draft = await requireOwnedDraft(storage, actor.ownerId, draftId);
+        const { draft } = await requireOwnedInternalDraft(storage, actor.ownerId, draftId);
         const result =
           "answers" in input
             ? setApplicationAnswers(domainDraft(draft), {
@@ -344,7 +338,7 @@ export function createApplicationRouteDependencies(
       },
 
       async validate(actor: ApplicationActor, draftId, now) {
-        const draft = await requireOwnedDraft(storage, actor.ownerId, draftId);
+        const { draft } = await requireOwnedInternalDraft(storage, actor.ownerId, draftId);
         const next = persistableDraft(validateApplication(domainDraft(draft), actor.ownerId, now));
         return next.version === draft.version
           ? draft
@@ -353,8 +347,7 @@ export function createApplicationRouteDependencies(
 
       async review(actor: ApplicationActor, draftId, raw, now) {
         const { expectedVersion } = reviewBodySchema.parse(raw);
-        const draft = await requireOwnedDraft(storage, actor.ownerId, draftId);
-        const job = await requireJob(storage, draft.jobId);
+        const { draft, job } = await requireOwnedInternalDraft(storage, actor.ownerId, draftId);
         if (expectedVersion !== draft.version) {
           throw new DomainError({
             code: "CONFLICT",
@@ -385,11 +378,8 @@ export function createApplicationRouteDependencies(
       },
 
       async requestConfirmation(ownerId, draftId, reviewId, confirmationHash, now) {
-        const draft = await requireOwnedDraft(storage, ownerId, draftId);
-        const [review, job] = await Promise.all([
-          storage.applications.getReview(reviewId, ownerId),
-          requireJob(storage, draft.jobId),
-        ]);
+        const { draft, job } = await requireOwnedInternalDraft(storage, ownerId, draftId);
+        const review = await storage.applications.getReview(reviewId, ownerId);
         if (review === null) throw notFound("Application review");
         await requireExactActiveGrant(storage, ownerId, draft, review, job, now);
         const confirmation = confirmReview(domainDraft(draft), review, {
@@ -404,20 +394,9 @@ export function createApplicationRouteDependencies(
 
       async submit(actor: ApplicationActor, draftId, raw, confirmationHash, now) {
         const input = submitBodySchema.parse(raw);
-        const draft = await requireOwnedDraft(storage, actor.ownerId, draftId);
-        const [review, job] = await Promise.all([
-          storage.applications.getReview(input.reviewId, actor.ownerId),
-          requireJob(storage, draft.jobId),
-        ]);
+        const { draft, job } = await requireOwnedInternalDraft(storage, actor.ownerId, draftId);
+        const review = await storage.applications.getReview(input.reviewId, actor.ownerId);
         if (review === null) throw notFound("Application review");
-        const externalUrl =
-          job.applyMode === "external" ? requireSafeExternalHandoffUrl(job) : null;
-        if (job.applyMode === "external" && actor.kind !== "human") {
-          throw new DomainError({
-            code: "FORBIDDEN",
-            message: "An external handoff requires the human application workspace.",
-          });
-        }
         const grant = await requireExactActiveGrant(
           storage,
           actor.ownerId,
@@ -453,8 +432,8 @@ export function createApplicationRouteDependencies(
             reviewId: review.id,
             confirmationId: input.confirmationId,
             idempotencyKey: input.idempotencyKey,
-            status: externalUrl === null ? "submitted" : "handed_off",
-            externalUrl,
+            status: "submitted",
+            externalUrl: null,
             createdAt: now,
           },
           now,

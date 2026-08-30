@@ -134,7 +134,7 @@ An internal submission is allowed only when all statements are true in one trans
 - the idempotency key is valid and either new or mapped to the same response;
 - no revoke or material edit won the race before the adapter claim.
 
-Submission token consumption, state transition, audit record, outbox event, and idempotency response commit atomically. External jobs produce only a prepared packet and `handed_off` receipt.
+Submission token consumption, state transition, audit record, outbox event, and idempotency response commit atomically for internal demo applications. External jobs open only a validated HTTPS employer page: Jobbbler creates no draft, prepares or discloses no application data, records no receipt, and makes no submitted claim. Historical `handed_off` records are read-only legacy compatibility and cannot be created by current server or storage writers.
 
 ## Token classes
 

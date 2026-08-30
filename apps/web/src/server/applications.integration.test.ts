@@ -8,7 +8,7 @@ import type { Job } from "@jobbbler/contracts";
 import { createSqliteStorage } from "@jobbbler/storage-sqlite";
 
 import { createApplicationDataGrantAuthorizationPolicy } from "./application-authorization";
-import { applicationDataGrantScope } from "./application-policy";
+import { applicationDataGrantScope, applicationReviewPayloadHash } from "./application-policy";
 import { createApplicationRouteDependencies } from "./applications";
 
 const now = "2026-08-29T10:00:00.000Z";
@@ -64,6 +64,88 @@ async function fixture() {
     job,
     operations: createApplicationRouteDependencies(storage, {} as never).operations,
   };
+}
+
+function externalVersion(job: Job): Job {
+  return {
+    ...job,
+    applyMode: "external",
+    source: {
+      key: "external_source",
+      label: "External source",
+      url: "https://jobs.example.test/opening/42",
+    },
+  };
+}
+
+async function legacyExternalSubmissionFixture() {
+  const current = await fixture();
+  let draft = (await current.operations.start(ownerId, { jobId }, now)).draft;
+  draft = await current.operations.answer(
+    { kind: "human", ownerId },
+    draft.id,
+    {
+      expectedVersion: draft.version,
+      answer: {
+        fieldKey: "full_name",
+        value: "Alex Morgan",
+        provenance: "user_entered",
+        sensitive: true,
+        acceptedByHuman: true,
+      },
+    },
+    now,
+  );
+  const externalJob = externalVersion(current.job);
+  await current.storage.jobs.upsert(externalJob);
+  const reviewed = await current.storage.applications.update(
+    {
+      ...draft,
+      state: "reviewed",
+      version: draft.version + 1,
+      updatedAt: now,
+    },
+    draft.version,
+  );
+  const review = {
+    id: "review_81000000-0000-7000-8000-000000000099",
+    ownerId,
+    draftId: reviewed.id,
+    draftVersion: reviewed.version,
+    payloadHash: applicationReviewPayloadHash(reviewed, externalJob),
+    findings: [],
+    status: "active" as const,
+    createdAt: now,
+    invalidatedAt: null,
+  };
+  await current.storage.applications.insertReview(review);
+  const scope = applicationDataGrantScope({ draft: reviewed, review, job: externalJob });
+  const grant = await current.storage.richDataGrants.insert({
+    id: "grant_81000000-0000-7000-8000-000000000099",
+    ownerId,
+    draftId: reviewed.id,
+    ...scope,
+    status: "active",
+    expiresAt: future,
+    createdAt: now,
+    approvedAt: now,
+    withdrawnAt: null,
+    version: 0,
+  });
+  const confirmation = {
+    id: "confirmation_81000000-0000-7000-8000-000000000099",
+    ownerId,
+    draftId: reviewed.id,
+    reviewId: review.id,
+    payloadHash: review.payloadHash,
+    confirmationHash: "e".repeat(64),
+    status: "active" as const,
+    expiresAt: future,
+    createdAt: now,
+    consumedAt: null,
+  };
+  await current.storage.applications.insertConfirmation(confirmation);
+  return { ...current, reviewed, review, grant, confirmation };
 }
 
 afterEach(async () => {
@@ -249,14 +331,8 @@ describe("application operations with SQLite", () => {
   it("keeps external roles out of the internal application state machine", async () => {
     const { storage, job, operations } = await fixture();
     const externalJob: Job = {
-      ...job,
+      ...externalVersion(job),
       id: "job_81000000-0000-7000-8000-000000000002",
-      applyMode: "external",
-      source: {
-        key: "external_source",
-        label: "External source",
-        url: "https://jobs.example.test/opening/42",
-      },
     };
     await storage.jobs.upsert(externalJob);
 
@@ -265,4 +341,115 @@ describe("application operations with SQLite", () => {
       message: "This role accepts applications on the employer's website.",
     });
   });
+
+  it("never reopens a legacy draft after its role becomes external", async () => {
+    const { storage, job, operations } = await fixture();
+    const existing = (await operations.start(ownerId, { jobId }, now)).draft;
+    await storage.jobs.upsert(externalVersion(job));
+
+    await expect(operations.start(ownerId, { jobId }, now)).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "This role accepts applications on the employer's website.",
+    });
+    await expect(storage.applications.getByOwner(existing.id, ownerId)).resolves.toEqual(existing);
+  });
+
+  it("rejects every preparation mutation for a readable legacy external draft", async () => {
+    const { storage, job, operations } = await fixture();
+    const existing = (await operations.start(ownerId, { jobId }, now)).draft;
+    await storage.jobs.upsert(externalVersion(job));
+    const rejection = {
+      code: "CONFLICT",
+      message: "This role accepts applications on the employer's website.",
+    };
+    const commands = [
+      () =>
+        operations.answer(
+          { kind: "human", ownerId },
+          existing.id,
+          {
+            expectedVersion: existing.version,
+            answer: {
+              fieldKey: "full_name",
+              value: "Alex Morgan",
+              provenance: "user_entered",
+              sensitive: true,
+              acceptedByHuman: true,
+            },
+          },
+          now,
+        ),
+      () => operations.validate({ kind: "human", ownerId }, existing.id, now),
+      () =>
+        operations.review(
+          { kind: "human", ownerId },
+          existing.id,
+          { expectedVersion: existing.version },
+          now,
+        ),
+      () =>
+        operations.requestConfirmation(
+          ownerId,
+          existing.id,
+          "review_81000000-0000-7000-8000-000000000098",
+          "d".repeat(64),
+          now,
+        ),
+      () =>
+        operations.submit(
+          { kind: "human", ownerId },
+          existing.id,
+          {
+            reviewId: "review_81000000-0000-7000-8000-000000000098",
+            confirmationId: "confirmation_81000000-0000-7000-8000-000000000098",
+            idempotencyKey: "550e8400-e29b-41d4-a716-446655440098",
+          },
+          "d".repeat(64),
+          now,
+        ),
+    ];
+
+    for (const command of commands) {
+      await expect(command()).rejects.toMatchObject(rejection);
+      await expect(storage.applications.getByOwner(existing.id, ownerId)).resolves.toEqual(
+        existing,
+      );
+    }
+  });
+
+  it.each(["human", "agent"] as const)(
+    "rejects %s external finalization without consuming confirmation or grant state",
+    async (kind) => {
+      const { storage, operations, reviewed, review, grant, confirmation } =
+        await legacyExternalSubmissionFixture();
+
+      await expect(
+        operations.submit(
+          { kind, ownerId },
+          reviewed.id,
+          {
+            reviewId: review.id,
+            confirmationId: confirmation.id,
+            idempotencyKey: "550e8400-e29b-41d4-a716-446655440099",
+          },
+          confirmation.confirmationHash,
+          now,
+        ),
+      ).rejects.toMatchObject({
+        code: "CONFLICT",
+        message: "This role accepts applications on the employer's website.",
+      });
+      await expect(
+        storage.applications.getConfirmation(confirmation.id, ownerId),
+      ).resolves.toMatchObject({ status: "active", consumedAt: null });
+      await expect(
+        storage.richDataGrants.getById(grant.id, ownerId, reviewed.id),
+      ).resolves.toMatchObject({ status: "active" });
+      await expect(storage.applications.getLatestReceipt(reviewed.id, ownerId)).resolves.toBeNull();
+      await expect(storage.applications.getByOwner(reviewed.id, ownerId)).resolves.toMatchObject({
+        state: "reviewed",
+        version: reviewed.version,
+      });
+    },
+  );
 });

@@ -19,8 +19,8 @@
 - [ ] Verify WebMCP in a supported browser context using the real registered
       tools.
 - [ ] Verify the global Agent layer on more than one route: the same 24 focused
-      tools stay registered everywhere, and state-gated tools answer with a
-      clear next step when they are not ready.
+      imperative tools stay registered everywhere, and state-gated tools
+      answer with a clear next step when they are not ready.
 - [ ] Record actual registration/readiness, tool activity, search, compare,
       saved alert, and application boundaries.
 - [ ] Confirm the video matches the storyboard's 0–160s beats and narration
@@ -37,11 +37,15 @@
       or OTP.
 - [ ] Show real latest-run and delivery state, including a truthful retry-safe
       state if used.
-- [ ] Use the clearly fictional internal-demo employer for application
-      submission footage.
-- [ ] Demonstrate the real agent assistance request, the person's recorded
-      decision on the exact payload-bound disclosure, and the single-use
-      confirmation inside the one review-and-decide flow.
+- [ ] Use the clearly fictional internal-demo employer for application footage.
+- [ ] Demonstrate `request_application_assistance`, the person's assistance
+      decision relayed by `decide_application_assistance`, and only then
+      `propose_application_updates`.
+- [ ] Present the exact request-bound submission review in the external agent
+      client and stop with that decision pending; do not invoke submission or
+      claim that data was shared.
+- [ ] Confirm an external role opens only its validated HTTPS employer page and
+      creates no Jobbbler draft, receipt, handoff record, or submitted claim.
 - [ ] Describe the stored interaction as a record of what was approved in its
       exact context, never as cryptographic proof of the human, model, or
       vendor.
@@ -53,11 +57,10 @@
 - [ ] Keep final video below three minutes, with intelligible audio and
       visible UI at normal playback speed.
 - [ ] Confirm gallery screenshots show the current global Agent layer — the
-      three-tab Guide / Activity / Tools hierarchy, stable-core/contextual
-      distinction, and current readiness state — not an older rail.
+      Activity / Tools / Guide tab order, current readiness state, and Tools
+      groups Find / Inspect and compare / Alerts / Apply — not an older rail.
 - [ ] Re-run `pnpm verify`, the focused E2E suite, and the local PostgreSQL
-      contract suite on the final build and record the fresh numbers; earlier
-      recorded figures predate the agent-first application pass.
+      contract suite on the final build and record the fresh numbers.
 - [ ] Validate gallery image crops, captions, alt text, dimensions, and
       file-size limits on Devpost.
 - [ ] Recapture all four gallery crops on the final interface — the checked-in

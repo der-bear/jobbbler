@@ -20,7 +20,7 @@ const outcomeSteps = [
   },
   {
     title: "Monitor",
-    copy: "It saves the exact search so Jobbbler can report only what changes later.",
+    copy: "You save the exact search so Jobbbler can report only what changes later.",
   },
   {
     title: "Apply",

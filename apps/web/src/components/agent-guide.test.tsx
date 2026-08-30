@@ -52,7 +52,7 @@ describe("AgentGuide", () => {
     expect(markup).toContain("Review the exact application in your agent client");
     expect(markup).toContain("What the tools handle");
     expect(markup).toContain("What stays with you");
-    expect(markup).toContain("Prepare answers and a cover letter");
+    expect(markup).toContain("Prepare answers and a short motivation note");
     expect(markup).toContain("Consent to process your data");
     expect(markup).toContain("right to withdraw it");
   });

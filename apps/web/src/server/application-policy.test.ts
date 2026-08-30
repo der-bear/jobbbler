@@ -153,53 +153,6 @@ describe("application disclosure policy", () => {
     ).toThrow(/exact reviewed disclosure/i);
   });
 
-  it("binds an external handoff disclosure to its exact HTTPS source URL", () => {
-    const externalJob: Job = {
-      ...job,
-      applyMode: "external",
-      source: {
-        key: "external_source",
-        label: "External source",
-        url: "https://jobs.example.test/opening/42",
-      },
-    };
-    const externalReview: ApplicationReviewRecord = {
-      ...review,
-      payloadHash: applicationReviewPayloadHash(draft, externalJob),
-    };
-    const disclosure = applicationDisclosureFor(draft);
-    const exact = {
-      recipientId: externalJob.organizationId,
-      purpose: `Prepare this reviewed application for external handoff to ${externalJob.organizationName}.`,
-      payloadHash: externalReview.payloadHash,
-      categories: disclosure.categories,
-      fieldKeys: disclosure.fieldKeys,
-      documentIds: disclosure.documentIds,
-      noticeVersion: applicationPolicy.noticeVersion,
-      legalBasis: applicationPolicy.legalBasis,
-    } as const;
-
-    expect(() =>
-      assertRequestedDisclosureMatches({
-        draft,
-        review: externalReview,
-        job: externalJob,
-        request: exact,
-      }),
-    ).not.toThrow();
-    expect(() =>
-      assertRequestedDisclosureMatches({
-        draft,
-        review: externalReview,
-        job: {
-          ...externalJob,
-          source: { ...externalJob.source, url: "https://jobs.example.test/opening/43" },
-        },
-        request: exact,
-      }),
-    ).toThrow(/exact reviewed disclosure/i);
-  });
-
   it("keeps agent suggestions unaccepted and rejects forged sensitivity metadata", () => {
     expect(
       normalizeApplicationAnswer(

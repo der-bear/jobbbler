@@ -34,7 +34,7 @@ const draft: ApplicationDraft = {
   updatedAt: now,
 };
 
-const job = {
+const job: Job = {
   id: draft.jobId,
   organizationId: "organization_73000000-0000-7000-8000-000000000001",
   organizationName: "Northstar Systems",
@@ -52,7 +52,7 @@ const job = {
   status: "open",
   publishedAt: now,
   updatedAt: now,
-} satisfies Job;
+};
 
 const review: ApplicationReviewRecord = {
   id: "review_73000000-0000-7000-8000-000000000001",
@@ -153,6 +153,41 @@ describe("application data-grant authorization composition", () => {
 
     await expect(policy.assertStoredDataGrantCurrent(stored)).rejects.toMatchObject({
       code: "CONFLICT",
+    });
+  });
+
+  it("never presents or authorizes disclosure for a legacy external draft", async () => {
+    const externalJob: Job = {
+      ...job,
+      applyMode: "external",
+      source: {
+        key: "external_source",
+        label: "External source",
+        url: "https://jobs.example.test/opening/42",
+      },
+    };
+    const externalReview: ApplicationReviewRecord = {
+      ...review,
+      payloadHash: applicationReviewPayloadHash(draft, externalJob),
+    };
+    const externalRequest = {
+      ...exactRequest,
+      purpose: applicationPurpose(externalJob),
+      payloadHash: externalReview.payloadHash,
+    };
+    const current = repositories({ review: externalReview });
+    current.jobs.getById.mockResolvedValue(externalJob);
+    const policy = createApplicationDataGrantAuthorizationPolicy(current);
+
+    await expect(policy.consentPresentation(ownerId, draftId)).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "This role accepts applications on the employer's website.",
+    });
+    await expect(
+      policy.assertDataGrantRequest({ ownerId, draftId, request: externalRequest }),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "This role accepts applications on the employer's website.",
     });
   });
 });

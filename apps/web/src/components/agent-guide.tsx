@@ -140,7 +140,7 @@ export function AgentGuide() {
           <ul>
             <li>Search, inspect, and compare roles</li>
             <li>Monitor saved searches for changes</li>
-            <li>Prepare answers and a cover letter</li>
+            <li>Prepare answers and a short motivation note</li>
           </ul>
         </section>
         <section aria-labelledby="guide-control">

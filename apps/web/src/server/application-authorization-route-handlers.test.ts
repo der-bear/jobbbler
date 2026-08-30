@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { ApplicationDraft } from "@jobbbler/contracts";
+import type { ApplicationDraft, Job } from "@jobbbler/contracts";
 import type {
   AgentDelegationRecord,
   AgentSessionRecord,
@@ -50,6 +50,26 @@ const draft: ApplicationDraft = {
   createdAt: now,
   updatedAt: now,
 };
+
+const job = {
+  id: jobId,
+  organizationId: recipientId,
+  organizationName: "Northstar Systems",
+  title: "Senior Product Engineer",
+  summary: "Build trustworthy tools.",
+  categories: ["software_engineering"],
+  workModel: "remote",
+  employmentType: "full_time",
+  seniority: "senior",
+  locations: ["Europe"],
+  skills: ["TypeScript"],
+  salary: null,
+  source: { key: "jobbbler_demo", label: "Jobbbler demo", url: null },
+  applyMode: "internal",
+  status: "open",
+  publishedAt: now,
+  updatedAt: now,
+} satisfies Job;
 
 const agentSession: AgentSessionRecord = {
   id: sessionId,
@@ -108,7 +128,7 @@ const approvalGuard = {
 
 function dependencies(): ApplicationAuthorizationRouteDependencies {
   const idempotencyRecords = new Map<string, IdempotencyRecord>();
-  return {
+  const current: ApplicationAuthorizationRouteDependencies = {
     identity: {
       identity: {
         createEphemeralSession: vi.fn(),
@@ -169,6 +189,7 @@ function dependencies(): ApplicationAuthorizationRouteDependencies {
       ),
       applyMaterialEdit: vi.fn(async (input) => input.draft),
     },
+    jobs: { getById: vi.fn(async () => job) },
     agentSessions: {
       insert: vi.fn(async (record: AgentSessionRecord) => record),
       getById: vi.fn(async () => agentSession),
@@ -240,6 +261,7 @@ function dependencies(): ApplicationAuthorizationRouteDependencies {
       hash: () => tokenHash,
     },
   };
+  return current;
 }
 
 function request(
@@ -343,6 +365,33 @@ describe("application authorization route handlers", () => {
       createdAt: now,
     });
     expect(current.identity.rateLimiter.check).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not create application authority for a readable legacy external draft", async () => {
+    const current = dependencies();
+    vi.mocked(current.jobs.getById).mockResolvedValue({
+      ...job,
+      applyMode: "external",
+      source: {
+        key: "external_source",
+        label: "External source",
+        url: "https://jobs.example.test/opening/42",
+      },
+    });
+
+    const response = await handleCreateAgentSessionRequest(
+      request(
+        `/api/v1/applications/${draftId}/agent-sessions`,
+        "POST",
+        { requestedTtlSeconds: 900 },
+        { human: true },
+      ),
+      draftContext,
+      current,
+    );
+
+    expect(response.status).toBe(409);
+    expect(current.agentSessions.insert).not.toHaveBeenCalled();
   });
 
   it("rejects cross-origin creation and applies a durable rate limit before issuing a token", async () => {
@@ -742,6 +791,44 @@ describe("application authorization route handlers", () => {
         futureConsentProcessingStopped: true,
       },
     });
+  });
+
+  it("withdraws legacy external consent without editing the readable draft", async () => {
+    const current = dependencies();
+    vi.mocked(current.jobs.getById).mockResolvedValue({
+      ...job,
+      applyMode: "external",
+      source: {
+        key: "external_source",
+        label: "External source",
+        url: "https://jobs.example.test/opening/42",
+      },
+    });
+    current.richDataGrants.listByDraft = vi.fn(async () => [
+      { ...grant, status: "active" as const, approvedAt: now },
+    ]);
+
+    const response = await handleWithdrawApplicationConsentRequest(
+      request(
+        `/api/v1/applications/${draftId}/consent`,
+        "DELETE",
+        {
+          interaction: {
+            channel: "agent_client",
+            requestId: "interaction_760e8400-e29b-41d4-a716-446655440099",
+            affirmation: "withdrawn",
+            evidenceVersion: "agent-interaction-v1",
+          },
+        },
+        { human: true },
+      ),
+      draftContext,
+      current,
+    );
+
+    expect(response.status).toBe(200);
+    expect(current.richDataGrants.withdraw).toHaveBeenCalledTimes(1);
+    expect(current.applications.applyMaterialEdit).not.toHaveBeenCalled();
   });
 
   it("blocks scope drift before storing a grant and stale review approval before activation", async () => {
