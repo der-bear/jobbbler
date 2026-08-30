@@ -31,6 +31,7 @@ import { createSearchToolManifests } from "./search/webmcp-tools";
 const firstJobId = "job_00000001-0000-7000-8000-000000000001";
 const secondJobId = "job_00000004-0000-7000-8000-000000000004";
 const thirdJobId = "job_00000005-0000-7000-8000-000000000005";
+const fourthJobId = "job_00000006-0000-7000-8000-000000000006";
 
 const searchCriteria: JobSearchCriteria = {
   query: "platform",
@@ -82,6 +83,13 @@ const thirdJob: Job = {
   title: "Staff Reliability Engineer",
 };
 
+const fourthJob: Job = {
+  ...firstJob,
+  id: fourthJobId,
+  organizationId: "org_00000006-0000-7000-8000-000000000006",
+  title: "Senior Infrastructure Engineer",
+};
+
 const fit: JobFit = {
   eligible: true,
   score: 88,
@@ -123,6 +131,7 @@ type ToolManifest = Readonly<{
   name: string;
   purpose: string;
   description: string;
+  inputSchema: unknown;
   annotations: Readonly<{ readOnlyHint: boolean; untrustedContentHint: boolean }>;
   execute(input: unknown, options: Readonly<{ signal: AbortSignal }>): Promise<ToolOutput>;
 }>;
@@ -178,11 +187,18 @@ describe("route-scoped WebMCP tool manifests", () => {
     let receivedSignal: AbortSignal | undefined;
     const searchJobs = vi.fn(
       async (
-        _input: JobSearchInput,
+        input: JobSearchInput,
         options: { readonly signal: AbortSignal },
       ): Promise<SearchJobsResult> => {
         receivedSignal = options.signal;
-        return searchJobsResultSchema.parse(searchResult);
+        return searchJobsResultSchema.parse({
+          ...searchResult,
+          criteria: {
+            ...searchResult.criteria,
+            cursor: input.cursor ?? null,
+            limit: input.limit ?? 20,
+          },
+        });
       },
     );
     const onSearchCommitted = vi.fn();
@@ -209,7 +225,7 @@ describe("route-scoped WebMCP tool manifests", () => {
 
     const controller = new AbortController();
     const success = await tool(manifests, "search_jobs").execute(
-      { query: "platform", limit: 20 },
+      { query: "platform", limit: 3 },
       { signal: controller.signal },
     );
     expect(receivedSignal).toBe(controller.signal);
@@ -230,6 +246,12 @@ describe("route-scoped WebMCP tool manifests", () => {
         { signal: controller.signal },
       ),
     );
+    await expectSafeRejection(
+      tool(manifests, "search_jobs").execute(
+        { query: "platform", limit: 20 },
+        { signal: controller.signal },
+      ),
+    );
     await tool(manifests, "search_jobs").execute(
       { query: "platform", cursor: "opaque-next-page" },
       { signal: controller.signal },
@@ -244,6 +266,7 @@ describe("route-scoped WebMCP tool manifests", () => {
     const nextCursor = "cursor_" + "x".repeat(249);
     const pagedSearch: SearchJobsResult = {
       ...searchResult,
+      criteria: { ...searchResult.criteria, limit: 3 },
       jobs: [
         { ...firstJob, matchScore: 88, matchEvidence: fit.evidence },
         { ...secondJob, matchScore: 84, matchEvidence: fit.evidence },
@@ -260,7 +283,7 @@ describe("route-scoped WebMCP tool manifests", () => {
     }) as readonly ToolManifest[];
 
     const result = await tool(manifests, "search_jobs").execute(
-      { query: "platform", limit: 20 },
+      { query: "platform", limit: 3 },
       { signal: new AbortController().signal },
     );
 
@@ -272,6 +295,67 @@ describe("route-scoped WebMCP tool manifests", () => {
       },
     });
     expectBoundedJson(result);
+  });
+
+  it("keeps every backend match reachable across its three-result pages", async () => {
+    const jobs = [firstJob, secondJob, thirdJob, fourthJob].map((job, index) => ({
+      ...job,
+      matchScore: 88 - index * 4,
+      matchEvidence: fit.evidence,
+    }));
+    let visibleHref = "";
+    const manifests = createSearchToolManifests({
+      async searchJobs(input) {
+        const limit = input.limit ?? 20;
+        const offset = input.cursor === undefined ? 0 : Number(input.cursor.replace("cursor-", ""));
+        const page = jobs.slice(offset, offset + limit);
+        const nextOffset = offset + page.length;
+        return {
+          ...searchResult,
+          criteria: {
+            ...searchCriteria,
+            query: input.query ?? null,
+            cursor: input.cursor ?? null,
+            limit,
+          },
+          jobs: page,
+          total: jobs.length,
+          nextCursor: nextOffset < jobs.length ? `cursor-${String(nextOffset)}` : null,
+        };
+      },
+      getSearchState: () => null,
+      onSearchCommitted: () => undefined,
+      onNavigate(href) {
+        visibleHref = href;
+      },
+    }) as readonly ToolManifest[];
+    const controller = new AbortController();
+    expect(tool(manifests, "search_jobs").inputSchema).toMatchObject({
+      properties: { limit: { minimum: 3, maximum: 3, default: 3 } },
+    });
+
+    const firstPage = await tool(manifests, "search_jobs").execute(
+      { query: "platform" },
+      { signal: controller.signal },
+    );
+    expect(firstPage).toMatchObject({
+      status: "completed",
+      data: {
+        jobs: [{ id: firstJobId }, { id: secondJobId }, { id: thirdJobId }],
+        nextCursor: "cursor-3",
+        hasMore: true,
+      },
+    });
+    expect(visibleHref).toBe("/jobs?q=platform&limit=3");
+
+    const secondPage = await tool(manifests, "search_jobs").execute(
+      { query: "platform", cursor: "cursor-3" },
+      { signal: controller.signal },
+    );
+    expect(secondPage).toMatchObject({
+      status: "completed",
+      data: { jobs: [{ id: fourthJobId }], nextCursor: null, hasMore: false },
+    });
   });
 
   it("commits navigation and search state before an immediate follow-up reads it", async () => {
@@ -400,9 +484,7 @@ describe("route-scoped WebMCP tool manifests", () => {
       },
     });
     expect(JSON.stringify(exact)).not.toContain("truncation");
-    expect(new TextEncoder().encode(JSON.stringify(exact)).byteLength).toBeLessThanOrEqual(
-      64 * 1_024,
-    );
+    expectBoundedJson(exact);
 
     await expectSafeRejection(
       tool(manifests, "get_search_state").execute(

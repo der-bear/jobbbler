@@ -19,7 +19,6 @@ import type { JsonSchema, JsonValue, ToolManifest } from "@jobbbler/webmcp";
 import { searchInputToSearchParams } from "@/lib/search-url";
 import type { WebMcpNavigate } from "@/lib/webmcp-navigation";
 import {
-  MAX_EXACT_REVIEW_RESULT_BYTES,
   completedWebMcpResult,
   safeWebMcpErrorResult,
   type CompletedWebMcpResult,
@@ -155,11 +154,30 @@ export const jobSearchToolInputJsonSchema = {
   },
 } as const satisfies JsonSchema;
 
+const searchJobsPageSize = 3;
+const searchJobsToolInputJsonSchema = {
+  ...jobSearchToolInputJsonSchema,
+  properties: {
+    ...jobSearchToolInputJsonSchema.properties,
+    limit: {
+      type: "integer",
+      description:
+        "Fixed agent page size. Omit this field or pass 3 so nextCursor reaches every result.",
+      minimum: searchJobsPageSize,
+      maximum: searchJobsPageSize,
+      default: searchJobsPageSize,
+    },
+  },
+} as const satisfies JsonSchema;
+
 const emptyInput = z.strictObject({});
 const searchStateInput = z.strictObject({
   detail: z.enum(["summary", "exact"]).default("summary"),
 });
 export const jobSearchToolInput = jobSearchInputSchema;
+const searchJobsToolInput = jobSearchInputSchema.extend({
+  limit: z.literal(searchJobsPageSize).default(searchJobsPageSize),
+});
 
 export interface SearchWebMcpState {
   readonly criteria: JobSearchCriteria;
@@ -284,7 +302,7 @@ function compactSearchResult(result: SearchJobsResult): JsonValue {
       matchScore: job.matchScore ?? null,
     })),
     nextCursor: result.nextCursor,
-    hasMore: result.nextCursor !== null || result.total > result.jobs.length,
+    hasMore: result.nextCursor !== null,
   };
 }
 
@@ -296,11 +314,11 @@ export function createSearchToolManifests(
     purpose: "Search the public technology-job catalog and synchronize the visible results.",
     description:
       "Search Jobbbler's source-backed technology roles with the preferences the person supplied. Ask for one useful preference when the request gives no role, skill, location, work model, or other search criterion. Applies validated criteria to the visible page and returns compact matches with IDs.",
-    inputSchema: jobSearchToolInputJsonSchema,
+    inputSchema: searchJobsToolInputJsonSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
       try {
-        const parsed = jobSearchToolInput.parse(input);
+        const parsed = searchJobsToolInput.parse(input);
         const result = await dependencies.searchJobs(parsed, { signal });
         const parameters = searchInputToSearchParams(parsed);
         const href = parameters.size === 0 ? "/jobs" : `/jobs?${parameters.toString()}`;
@@ -350,7 +368,6 @@ export function createSearchToolManifests(
               criteria: reusableCriteria(state.criteria),
             },
             facts: [{ key: "visible_total", value: state.total }],
-            maximumBytes: MAX_EXACT_REVIEW_RESULT_BYTES,
           });
         }
         return completedWebMcpResult({
