@@ -7,14 +7,20 @@ function isAbortError(error: unknown, signal: AbortSignal): boolean {
   return signal.aborted || (error instanceof DOMException && error.name === "AbortError");
 }
 
-function terminalActivity(
-  output: unknown,
-):
-  | { readonly status: "cancelled" | "failed" | "requires_user_action"; readonly summary: string }
+function terminalActivity(output: unknown):
+  | {
+      readonly status: "cancelled" | "completed" | "failed" | "requires_user_action";
+      readonly summary: string;
+    }
   | undefined {
   if (typeof output !== "object" || output === null || !("status" in output)) return undefined;
   const status = output.status;
-  if (status !== "cancelled" && status !== "failed" && status !== "requires_user_action") {
+  if (
+    status !== "cancelled" &&
+    status !== "completed" &&
+    status !== "failed" &&
+    status !== "requires_user_action"
+  ) {
     return undefined;
   }
   const summary =
@@ -38,9 +44,10 @@ function registeredTool<I, O>(
     inputSchema: manifest.inputSchema,
     annotations: manifest.annotations,
     async execute(input, options) {
+      const signal = options?.signal ?? new AbortController().signal;
       const activityId = activities?.start(manifest.name, `Running ${manifest.purpose}`);
       try {
-        const output = await manifest.execute(input as I, options);
+        const output = await manifest.execute(input as I, { signal });
         const terminal = terminalActivity(output);
         activities?.finish(
           activityId ?? "",
@@ -51,8 +58,8 @@ function registeredTool<I, O>(
       } catch (error) {
         activities?.finish(
           activityId ?? "",
-          isAbortError(error, options.signal) ? "cancelled" : "failed",
-          isAbortError(error, options.signal)
+          isAbortError(error, signal) ? "cancelled" : "failed",
+          isAbortError(error, signal)
             ? `Cancelled ${manifest.purpose}`
             : `Failed ${manifest.purpose}`,
         );

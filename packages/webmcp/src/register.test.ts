@@ -256,6 +256,59 @@ describe("WebMCP framework core", () => {
     ]);
   });
 
+  it("supplies a live cancellation signal when an early client omits it", async () => {
+    const modelContext = new FakeModelContext();
+    let receivedSignal: AbortSignal | undefined;
+    await registerToolSet(
+      [
+        manifest({
+          execute: async (_input, options) => {
+            receivedSignal = options.signal;
+            return { count: 1 };
+          },
+        }),
+      ],
+      { modelContext },
+    );
+
+    await modelContext.registrations[0]!.tool.execute(
+      { query: "platform" },
+      {} as { readonly signal: AbortSignal },
+    );
+
+    expect(receivedSignal).toBeInstanceOf(AbortSignal);
+    expect(receivedSignal?.aborted).toBe(false);
+  });
+
+  it("uses the tool result summary for a completed activity", async () => {
+    const modelContext = new FakeModelContext();
+    const activities = new AgentActivityStore();
+    await registerToolSet(
+      [
+        manifest({
+          execute: async () => ({
+            count: 1,
+            status: "completed" as const,
+            summary: "Read the role and its source-backed fit evidence.",
+          }),
+        }),
+      ],
+      { modelContext, activities },
+    );
+
+    await modelContext.registrations[0]!.tool.execute(
+      { query: "platform" },
+      { signal: new AbortController().signal },
+    );
+
+    expect(activities.snapshot()).toMatchObject([
+      {
+        status: "completed",
+        safeSummary: "Read the role and its source-backed fit evidence.",
+      },
+    ]);
+  });
+
   it("preserves a safe returned terminal envelope in the activity timeline", async () => {
     const modelContext = new FakeModelContext();
     const activities = new AgentActivityStore({ now: () => new Date("2026-08-29T00:00:00.000Z") });
