@@ -50,11 +50,29 @@ describe("saved-route WebMCP tools", () => {
       listSavedSearches: vi.fn(async () => [savedSearch]),
       listSchedules: vi.fn(async () => [schedule]),
       setScheduleEnabled: vi.fn(),
+      savedSearchHref: () => "/",
+      getLatestRun: vi.fn(async () => ({
+        savedSearchId: savedSearch.id,
+        evaluation: null,
+        delivery: null,
+      })),
+      onNavigate: () => undefined,
       onScheduleCommitted: vi.fn(),
     });
 
-    expect(manifests.map(({ name }) => name)).toEqual(["get_saved_alerts", "set_job_alert_state"]);
-    expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([true, false]);
+    expect(manifests.map(({ name }) => name)).toEqual([
+      "get_saved_alerts",
+      "set_job_alert_state",
+      "open_saved_search",
+      "get_latest_search_update",
+    ]);
+    expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([
+      true,
+      false,
+      false,
+      true,
+    ]);
+    expect(manifests[1]!.description).toContain("exact schedule ID");
     const result = await manifests[0]!.execute({}, { signal: new AbortController().signal });
     expect(result).toMatchObject({
       status: "completed",
@@ -80,6 +98,13 @@ describe("saved-route WebMCP tools", () => {
       listSavedSearches: vi.fn(async () => [savedSearch]),
       listSchedules: vi.fn(async () => [schedule]),
       setScheduleEnabled,
+      savedSearchHref: () => "/",
+      getLatestRun: vi.fn(async () => ({
+        savedSearchId: savedSearch.id,
+        evaluation: null,
+        delivery: null,
+      })),
+      onNavigate: () => undefined,
       onScheduleCommitted,
     });
     const signal = new AbortController().signal;
@@ -103,6 +128,13 @@ describe("saved-route WebMCP tools", () => {
       listSavedSearches: vi.fn(async () => [savedSearch]),
       listSchedules: vi.fn(async () => [schedule]),
       setScheduleEnabled,
+      savedSearchHref: () => "/",
+      getLatestRun: vi.fn(async () => ({
+        savedSearchId: savedSearch.id,
+        evaluation: null,
+        delivery: null,
+      })),
+      onNavigate: () => undefined,
       onScheduleCommitted: vi.fn(),
     });
     const signal = new AbortController().signal;

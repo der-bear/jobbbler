@@ -21,7 +21,7 @@ import {
 } from "@/lib/job-format";
 import { ApiClientError, queryApi } from "@/lib/query-client";
 
-import { compareApiUrl, resolveCompareSelection } from "./compare-state";
+import { compareApiUrl, comparisonRowVisibility, resolveCompareSelection } from "./compare-state";
 import styles from "./compare-workspace.module.css";
 
 type LoadState =
@@ -34,10 +34,9 @@ function errorMessage(error: unknown): string {
   return "The comparison could not be loaded. Please retry.";
 }
 
-function JobHeading({ job, fit }: Readonly<{ job: Job; fit: JobFit }>) {
+function JobHeading({ job }: Readonly<{ job: Job }>) {
   return (
     <div className={styles["jobHeading"]}>
-      <p className={styles["match"]}>{fit.score}% match</p>
       <h2>{job.title}</h2>
       <p>{job.organizationName}</p>
       <Link href={`/jobs/${encodeURIComponent(job.id)}`}>Open role</Link>
@@ -47,7 +46,7 @@ function JobHeading({ job, fit }: Readonly<{ job: Job; fit: JobFit }>) {
 
 function FitNotes({ fit }: Readonly<{ fit: JobFit }>) {
   if (fit.evidence.length === 0)
-    return <p className={styles["unknown"]}>No positive evidence supplied.</p>;
+    return <p className={styles["unknown"]}>No match evidence in the selected criteria.</p>;
   return (
     <ul className={styles["fitNotes"]}>
       {fit.evidence.slice(0, 3).map((evidence, index) => (
@@ -62,7 +61,8 @@ function FitNotes({ fit }: Readonly<{ fit: JobFit }>) {
 
 function RiskNotes({ fit }: Readonly<{ fit: JobFit }>) {
   const notes = [...fit.caveats, ...fit.exclusions];
-  if (notes.length === 0) return <p className={styles["unknown"]}>No trade-offs identified.</p>;
+  if (notes.length === 0)
+    return <p className={styles["unknown"]}>No trade-offs found in the selected criteria.</p>;
   return (
     <ul className={styles["fitNotes"]}>
       {notes.slice(0, 3).map((note, index) => (
@@ -76,26 +76,31 @@ function RiskNotes({ fit }: Readonly<{ fit: JobFit }>) {
 }
 
 function ComparisonTable({ result }: Readonly<{ result: CompareJobsResult }>) {
+  const visible = comparisonRowVisibility(result.jobs.map(({ fit }) => fit));
   return (
     <div className={styles["tableScroll"]}>
       <table className={styles["comparisonTable"]}>
         <thead>
           <tr>
             <th scope="col">Criterion</th>
-            {result.jobs.map(({ job, fit }) => (
+            {result.jobs.map(({ job }) => (
               <th key={job.id} scope="col">
-                <JobHeading fit={fit} job={job} />
+                <JobHeading job={job} />
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <th scope="row">Eligibility</th>
-            {result.jobs.map(({ job, fit }) => (
-              <td key={job.id}>{fit.eligible ? "Eligible" : "Does not meet current criteria"}</td>
-            ))}
-          </tr>
+          {visible.eligibility ? (
+            <tr>
+              <th scope="row">Eligibility</th>
+              {result.jobs.map(({ job, fit }) => (
+                <td key={job.id}>
+                  {fit.eligible ? "Meets current criteria" : "Does not meet current criteria"}
+                </td>
+              ))}
+            </tr>
+          ) : null}
           <tr>
             <th scope="row">Work and location</th>
             {result.jobs.map(({ job }) => (
@@ -119,22 +124,26 @@ function ComparisonTable({ result }: Readonly<{ result: CompareJobsResult }>) {
               <td key={job.id}>{salaryLabel(job.salary)}</td>
             ))}
           </tr>
-          <tr>
-            <th scope="row">Why it matches</th>
-            {result.jobs.map(({ job, fit }) => (
-              <td key={job.id}>
-                <FitNotes fit={fit} />
-              </td>
-            ))}
-          </tr>
-          <tr>
-            <th scope="row">Trade-offs</th>
-            {result.jobs.map(({ job, fit }) => (
-              <td key={job.id}>
-                <RiskNotes fit={fit} />
-              </td>
-            ))}
-          </tr>
+          {visible.fit ? (
+            <tr>
+              <th scope="row">Why it matches</th>
+              {result.jobs.map(({ job, fit }) => (
+                <td key={job.id}>
+                  <FitNotes fit={fit} />
+                </td>
+              ))}
+            </tr>
+          ) : null}
+          {visible.tradeOffs ? (
+            <tr>
+              <th scope="row">Trade-offs</th>
+              {result.jobs.map(({ job, fit }) => (
+                <td key={job.id}>
+                  <RiskNotes fit={fit} />
+                </td>
+              ))}
+            </tr>
+          ) : null}
           <tr>
             <th scope="row">Source and freshness</th>
             {result.jobs.map(({ job }) => (
@@ -154,21 +163,23 @@ function ComparisonTable({ result }: Readonly<{ result: CompareJobsResult }>) {
               </td>
             ))}
           </tr>
-          <tr>
-            <th scope="row">Unknowns</th>
-            {result.jobs.map(({ job, fit }) => {
-              const unknown = Object.values(fit.dimensions).filter(
-                (dimension) => dimension.status === "unknown",
-              ).length;
-              return (
-                <td key={job.id}>
-                  {unknown === 0
-                    ? "No ranking dimensions are unknown."
-                    : `${String(unknown)} ranking dimension${unknown === 1 ? " is" : "s are"} unknown.`}
-                </td>
-              );
-            })}
-          </tr>
+          {visible.unknowns ? (
+            <tr>
+              <th scope="row">Unknowns</th>
+              {result.jobs.map(({ job, fit }) => {
+                const unknown = Object.values(fit.dimensions).filter(
+                  (dimension) => dimension.status === "unknown",
+                ).length;
+                return (
+                  <td key={job.id}>
+                    {unknown === 0
+                      ? "No missing facts in the selected criteria."
+                      : `${String(unknown)} unanswered item${unknown === 1 ? "" : "s"} — confirm with the employer.`}
+                  </td>
+                );
+              })}
+            </tr>
+          ) : null}
         </tbody>
       </table>
     </div>
@@ -179,14 +190,13 @@ function EmptyComparison({ kind }: Readonly<{ kind: "missing" | "invalid" }>) {
   const invalid = kind === "invalid";
   return (
     <section className={styles["empty"]}>
-      <p className={styles["eyebrow"]}>Comparison</p>
       <h1>{invalid ? "Use one to three distinct roles" : "Choose roles to compare"}</h1>
       <p>
         {invalid
-          ? "The shared link contains duplicate, blank, or more than three job IDs. Return to search and select a valid set."
-          : "Comparison links are shareable. Add one to three job IDs as repeated id parameters to compare source-backed facts side by side."}
+          ? "This comparison link lists the same role twice or more than three roles. Go back to search and pick up to three."
+          : "Pick up to three roles from search to see their facts side by side. The link you get is shareable."}
       </p>
-      <Link href="/">Return to search</Link>
+      <Link href="/jobs">Return to search</Link>
     </section>
   );
 }
@@ -219,7 +229,6 @@ export function CompareWorkspace({
   if (state.kind === "loading") {
     return (
       <section aria-live="polite" className={styles["state"]}>
-        <p className={styles["eyebrow"]}>Comparison</p>
         <h1>Gathering source-backed facts</h1>
       </section>
     );
@@ -227,9 +236,8 @@ export function CompareWorkspace({
   if (state.kind === "error") {
     return (
       <section aria-live="polite" className={styles["state"]}>
-        <p className={styles["eyebrow"]}>Comparison unavailable</p>
         <h1>{state.message}</h1>
-        <Link href="/">Return to search</Link>
+        <Link href="/jobs">Return to search</Link>
       </section>
     );
   }
@@ -238,7 +246,6 @@ export function CompareWorkspace({
     <section className={styles["workspace"]}>
       <header className={styles["header"]}>
         <div>
-          <p className={styles["eyebrow"]}>Side-by-side</p>
           <h1>Compare roles on the facts</h1>
         </div>
         <p>
@@ -248,8 +255,8 @@ export function CompareWorkspace({
       </header>
       <ComparisonTable result={state.result} />
       <p className={styles["footnote"]}>
-        Scores reflect the active comparison criteria. Original listings remain the source of truth
-        for availability and application details.
+        Everything shown comes from the original listings, which remain the source of truth for
+        availability and application details.
       </p>
     </section>
   );

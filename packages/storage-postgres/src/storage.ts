@@ -163,6 +163,19 @@ async function list<T>(sql: PostgresExecutor, kind: string, ownerId?: string): P
   return rows.map(body<T>);
 }
 
+export async function findOwnerSessionByTokenHash(
+  sql: PostgresExecutor,
+  tokenHash: string,
+): Promise<OwnerSessionRecord | null> {
+  const rows = await sql<EntityRow[]>`
+    SELECT id, owner_id, body, version
+    FROM jobbbler.entity_records
+    WHERE kind = 'owner_session'
+      AND body->>'tokenHash' = ${tokenHash}
+    LIMIT 1`;
+  return rows[0] === undefined ? null : body<OwnerSessionRecord>(rows[0]);
+}
+
 async function listByOwnerDraft<T>(
   sql: PostgresExecutor,
   kind: "delegation" | "rich_data_grant",
@@ -215,12 +228,19 @@ async function updateVersioned<T extends { readonly id: string; readonly version
   record: T,
   expectedVersion: number,
 ): Promise<T> {
-  const existing = await get<T>(sql, kind, record.id);
-  if (existing === null) throw domain("NOT_FOUND", `${kind} was not found.`);
-  if (existing.version !== expectedVersion)
-    throw domain("CONFLICT", `${kind} changed after it was read. Refresh and retry.`);
   const stored = { ...record, version: expectedVersion + 1 } as T;
-  return write(sql, kind, stored);
+  const rows = await sql<EntityRow[]>`
+    UPDATE jobbbler.entity_records
+    SET owner_id = ${ownerOf(stored)},
+        body = ${sql.json(stored)},
+        version = ${stored.version},
+        updated_at = ${timestamp((stored as { readonly updatedAt?: unknown }).updatedAt)}
+    WHERE kind = ${kind} AND id = ${stored.id} AND version = ${expectedVersion}
+    RETURNING id, owner_id, body, version`;
+  if (rows[0] !== undefined) return body<T>(rows[0]);
+  const existing = await get<T>(sql, kind, stored.id);
+  if (existing === null) throw domain("NOT_FOUND", `${kind} was not found.`);
+  throw domain("CONFLICT", `${kind} changed after it was read. Refresh and retry.`);
 }
 
 async function requireWorkItemMutation(
@@ -396,9 +416,8 @@ function createIdentityStore(sql: PostgresSql): IdentityStore {
       return { owner: input.owner, session: input.session };
     },
     async resolveSession(tokenHash, now) {
-      const sessions = await list<OwnerSessionRecord>(sql, "owner_session");
-      const session = sessions.find((item) => item.tokenHash === tokenHash);
-      if (session === undefined) return null;
+      const session = await findOwnerSessionByTokenHash(sql, tokenHash);
+      if (session === null) return null;
       if (session.status === "active" && session.expiresAt <= now)
         await write(sql, "owner_session", { ...session, status: "expired", updatedAt: now });
       const active = session.status === "active" && session.expiresAt > now ? session : null;
@@ -868,6 +887,24 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
           catalogUpdatedAt: latest,
         };
       },
+      async suggestLocations(query, limit) {
+        const normalizedQuery = query.trim().slice(0, 120).toLocaleLowerCase("en");
+        if (normalizedQuery.length === 0) return [];
+        const safeLimit = Math.min(20, Math.max(1, Math.trunc(limit)));
+        const prefixUpperBound = `${normalizedQuery}${String.fromCodePoint(0x10ffff)}`;
+        const rows = await sql<{ readonly value: string }[]>`
+          SELECT min(value) AS value
+          FROM jobbbler.job_location_suggestions
+          WHERE normalized_value COLLATE "C" >= ${normalizedQuery}
+            AND normalized_value COLLATE "C" < ${prefixUpperBound}
+          GROUP BY normalized_value
+          ORDER BY
+            CASE WHEN normalized_value = ${normalizedQuery} THEN 0 ELSE 1 END,
+            count(*) DESC,
+            normalized_value ASC
+          LIMIT ${safeLimit}`;
+        return rows.map(({ value }) => value);
+      },
     },
     savedSearches: {
       async insert(record) {
@@ -881,6 +918,39 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
       },
       async update(record, expectedVersion) {
         return updateVersioned(sql, "saved_search", record, expectedVersion);
+      },
+      async delete(id) {
+        return sql.begin(async (transaction) => {
+          const tx = transaction as PostgresExecutor;
+          const existing = await tx<{ readonly id: string }[]>`
+            SELECT id FROM jobbbler.entity_records
+            WHERE kind = 'saved_search' AND id = ${id}
+            FOR UPDATE`;
+          if (existing.length === 0) return false;
+          await tx`
+            DELETE FROM jobbbler.entity_records
+            WHERE kind = 'alert_change' AND body->>'evaluationId' IN (
+              SELECT evaluation.id FROM jobbbler.entity_records AS evaluation
+              WHERE evaluation.kind = 'alert_evaluation'
+                AND evaluation.body->>'savedSearchId' = ${id}
+            )`;
+          await tx`
+            DELETE FROM jobbbler.entity_records
+            WHERE kind = 'alert_delivery' AND body->>'scheduleId' IN (
+              SELECT schedule.id FROM jobbbler.entity_records AS schedule
+              WHERE schedule.kind = 'schedule' AND schedule.body->>'savedSearchId' = ${id}
+            )`;
+          await tx`
+            DELETE FROM jobbbler.entity_records
+            WHERE kind = 'alert_evaluation' AND body->>'savedSearchId' = ${id}`;
+          await tx`
+            DELETE FROM jobbbler.entity_records
+            WHERE kind = 'schedule' AND body->>'savedSearchId' = ${id}`;
+          await tx`
+            DELETE FROM jobbbler.entity_records
+            WHERE kind = 'saved_search' AND id = ${id}`;
+          return true;
+        });
       },
     },
     schedules: {
@@ -1085,6 +1155,12 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
             .sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0] ?? null
         );
       },
+      async listByOwner(ownerId) {
+        return (await list<ApplicationDraft>(sql, "application", ownerId)).sort(
+          (left, right) =>
+            right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id),
+        );
+      },
       async getLatestReview(draftId, ownerId) {
         return (
           (await list<ApplicationReviewRecord>(sql, "application_review", ownerId))
@@ -1141,7 +1217,23 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
                 { ...confirmation, status: "invalidated" as const },
                 input.ownerId,
               );
-          await tx`DELETE FROM jobbbler.entity_records WHERE kind = 'rich_data_grant' AND owner_id = ${input.ownerId} AND body->>'draftId' = ${input.draft.id}`;
+          for (const grant of await list<RichDataGrantRecord>(tx, "rich_data_grant", input.ownerId))
+            if (
+              grant.draftId === input.draft.id &&
+              (grant.status === "requested" || grant.status === "active")
+            )
+              await write(
+                tx,
+                "rich_data_grant",
+                {
+                  ...grant,
+                  status: "withdrawn" as const,
+                  withdrawnAt: input.now,
+                  version: (grant.version ?? 0) + 1,
+                },
+                input.ownerId,
+                (grant.version ?? 0) + 1,
+              );
           return input.draft;
         });
       },
@@ -1421,23 +1513,53 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
           LIMIT 1`;
         return rows[0] === undefined ? null : body<AgentDelegationRecord>(rows[0]);
       },
-      async approve(id, ownerId, approvedAt) {
-        const current = await this.getById(id, ownerId);
-        if (current === null || current.status !== "requested" || current.expiresAt <= approvedAt)
-          throw domain("CONFLICT", "Delegation is unavailable, expired, or not awaiting approval.");
-        const next = { ...current, status: "active" as const, approvedAt };
-        await write(sql, "delegation", next, ownerId);
-        return next;
+      async approve(id, ownerId, approvedAt, evidence) {
+        return sql.begin(async (transaction) => {
+          const tx = transaction as PostgresExecutor;
+          const current = await getForUpdate<AgentDelegationRecord>(tx, "delegation", id);
+          if (
+            current?.ownerId !== ownerId ||
+            current.status !== "requested" ||
+            current.expiresAt <= approvedAt
+          )
+            throw domain(
+              "CONFLICT",
+              "Delegation is unavailable, expired, or not awaiting approval.",
+            );
+          const next = {
+            ...current,
+            status: "active" as const,
+            approvedAt,
+            decisionChannel: evidence?.channel ?? null,
+            decisionRequestId: evidence?.requestId ?? null,
+            decisionAction: evidence?.action ?? null,
+            decisionEvidenceVersion: evidence?.evidenceVersion ?? null,
+          };
+          await write(tx, "delegation", next, ownerId);
+          return next;
+        });
       },
-      async revoke(id, ownerId, revokedAt) {
-        const current = await this.getById(id, ownerId);
-        if (current === null) throw domain("CONFLICT", "Delegation is not available for owner.");
-        if (current.status === "revoked") return current;
-        if (current.status !== "requested" && current.status !== "active")
-          throw domain("CONFLICT", "Delegation is not revocable for owner.");
-        const next = { ...current, status: "revoked" as const, revokedAt };
-        await write(sql, "delegation", next, ownerId);
-        return next;
+      async revoke(id, ownerId, revokedAt, evidence) {
+        return sql.begin(async (transaction) => {
+          const tx = transaction as PostgresExecutor;
+          const current = await getForUpdate<AgentDelegationRecord>(tx, "delegation", id);
+          if (current?.ownerId !== ownerId)
+            throw domain("CONFLICT", "Delegation is not available for owner.");
+          if (current.status === "revoked") return current;
+          if (current.status !== "requested" && current.status !== "active")
+            throw domain("CONFLICT", "Delegation is not revocable for owner.");
+          const next = {
+            ...current,
+            status: "revoked" as const,
+            revokedAt,
+            decisionChannel: evidence?.channel ?? null,
+            decisionRequestId: evidence?.requestId ?? null,
+            decisionAction: evidence?.action ?? null,
+            decisionEvidenceVersion: evidence?.evidenceVersion ?? null,
+          };
+          await write(tx, "delegation", next, ownerId);
+          return next;
+        });
       },
     },
     dataGrants: {
@@ -1601,7 +1723,7 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
         await write(sql, "rich_data_grant", next, ownerId, next.version);
         return next;
       },
-      async withdraw(id, ownerId, draftId, at) {
+      async withdraw(id, ownerId, draftId, at, evidence) {
         return sql.begin(async (transaction) => {
           const tx = transaction as PostgresExecutor;
           const current = await getForUpdate<RichDataGrantRecord>(tx, "rich_data_grant", id);
@@ -1614,6 +1736,10 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
             ...current,
             status: "withdrawn" as const,
             withdrawnAt: at,
+            withdrawalChannel: evidence?.channel ?? null,
+            withdrawalRequestId: evidence?.requestId ?? null,
+            withdrawalAction: evidence?.action ?? null,
+            withdrawalEvidenceVersion: evidence?.evidenceVersion ?? null,
             version: (current.version ?? 0) + 1,
           };
           await write(tx, "rich_data_grant", next, ownerId, next.version);

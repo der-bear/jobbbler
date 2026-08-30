@@ -7,12 +7,24 @@ describe("WebMCP explanation", () => {
   it("presents the agentic-web value in mainstream language without inventing an embedded agent", () => {
     const markup = renderToStaticMarkup(<WebMcpAboutPage />);
 
-    expect(markup).toContain("A job portal your browser agent can understand");
+    expect(markup).toContain("Ask for an outcome");
     expect(markup).toContain("No separate MCP server");
-    expect(markup).toContain("discovers the actions available on that page");
+    expect(markup).toContain("One request, a complete workflow");
+    expect(markup).toContain("Open this Jobbbler site");
+    expect(markup).toContain("compare the strongest options");
+    expect(markup).toContain("show me exactly what will be submitted");
+    expect(markup).toContain("Copy prompt");
+    expect(markup).toContain("Search");
+    expect(markup).toContain("Compare");
+    expect(markup).toContain("Monitor");
+    expect(markup).toContain("Apply");
+    expect(markup).toContain("Proof you can see");
     expect(markup).toContain("The conversation stays in your agent client");
-    expect(markup).toContain("alerts keep running through Jobbbler");
-    expect(markup).toContain("agent-mediated approval");
+    expect(markup).toContain("Jobbbler keeps checking after the tab closes");
+    expect(markup).toContain("You approve the important parts");
+    expect(markup).toContain("Only you can");
+    expect(markup).not.toContain("Every tool, page by page");
+    expect(markup).not.toContain("request_application_access");
     expect(markup).not.toContain("chat input");
   });
 });

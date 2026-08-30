@@ -91,7 +91,7 @@ export const applicationPolicy: Readonly<{
 }> = Object.freeze({
   requirements: Object.freeze(requirements),
   noticeVersion: "privacy-2026-08-29",
-  legalBasis: "user_instruction",
+  legalBasis: "consent",
 });
 
 function hasValue(value: unknown): boolean {
@@ -99,6 +99,60 @@ function hasValue(value: unknown): boolean {
   if (typeof value === "string") return value.trim().length > 0;
   if (Array.isArray(value)) return value.length > 0;
   return true;
+}
+
+export function applicationConsentPresentation(
+  draft: ApplicationDraft,
+  job: Job,
+): Readonly<{
+  recipientId: string;
+  recipientName: string;
+  purpose: string;
+  categories: readonly DataCategory[];
+  fieldKeys: readonly string[];
+  fieldLabels: readonly string[];
+  documentIds: readonly string[];
+  noticeVersion: string;
+  legalBasis: LegalBasis;
+  valuesHash: string;
+}> {
+  const included = applicationPolicy.requirements.filter((requirement) => {
+    const answer = draft.answers.find(({ fieldKey }) => fieldKey === requirement.fieldKey);
+    return answer !== undefined && hasValue(answer.value);
+  });
+  const missing = applicationPolicy.requirements
+    .filter(({ required }) => required)
+    .filter((requirement) => !included.some(({ fieldKey }) => fieldKey === requirement.fieldKey));
+  if (missing.length > 0) {
+    throw new DomainError({
+      code: "VALIDATION",
+      message: `Required fields are incomplete: ${missing.map(({ fieldKey }) => fieldKey).join(", ")}.`,
+    });
+  }
+  const normalizedValues = included.map(({ fieldKey }) => {
+    const answer = draft.answers.find((candidate) => candidate.fieldKey === fieldKey)!;
+    return { fieldKey, value: answer.value };
+  });
+  return {
+    recipientId: job.organizationId,
+    recipientName: job.organizationName,
+    purpose: applicationPurpose(job),
+    categories: [...new Set(included.map(({ category }) => category))],
+    fieldKeys: included.map(({ fieldKey }) => fieldKey),
+    fieldLabels: included.map(({ label }) => label),
+    documentIds: [],
+    noticeVersion: applicationPolicy.noticeVersion,
+    legalBasis: applicationPolicy.legalBasis,
+    valuesHash: createHash("sha256")
+      .update("jobbbler:application-consent-values:v2\u0000")
+      .update(
+        JSON.stringify({
+          consentRevision: draft.consentRevision ?? 0,
+          values: normalizedValues,
+        }),
+      )
+      .digest("hex"),
+  };
 }
 
 export function applicationPurpose(job: Pick<Job, "organizationName" | "applyMode">): string {

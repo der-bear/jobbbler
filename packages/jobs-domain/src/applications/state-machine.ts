@@ -8,6 +8,7 @@ export interface ApplicationDraftRecord {
   readonly jobId: string;
   readonly state: ApplicationState;
   readonly version: number;
+  readonly consentRevision?: number | undefined;
   readonly answers: readonly ApplicationAnswer[];
   readonly requiredFieldKeys: readonly string[];
   readonly createdAt: string;
@@ -123,6 +124,63 @@ export function setApplicationAnswer(
     ...draft.answers.filter((answer) => answer.fieldKey !== input.answer.fieldKey),
     input.answer,
   ].sort((left, right) => left.fieldKey.localeCompare(right.fieldKey));
+  const next: ApplicationDraftRecord = {
+    ...draft,
+    answers,
+    version: materiallyChanged ? draft.version + 1 : draft.version,
+    state: materiallyChanged ? "draft" : draft.state,
+    updatedAt: input.now,
+  };
+  const invalidatedReview =
+    materiallyChanged && input.review?.status === "active"
+      ? { ...input.review, status: "invalidated" as const, invalidatedAt: input.now }
+      : undefined;
+  const invalidatedConfirmation =
+    materiallyChanged && input.confirmation?.status === "active"
+      ? { ...input.confirmation, status: "invalidated" as const }
+      : undefined;
+  return {
+    draft: next,
+    ...(invalidatedReview === undefined ? {} : { invalidatedReview }),
+    ...(invalidatedConfirmation === undefined ? {} : { invalidatedConfirmation }),
+  };
+}
+
+export function setApplicationAnswers(
+  draft: ApplicationDraftRecord,
+  input: Readonly<{
+    ownerId: string;
+    expectedVersion: number;
+    answers: readonly ApplicationAnswer[];
+    now: string;
+    review?: ApplicationReview;
+    confirmation?: ApplicationConfirmation;
+  }>,
+): Readonly<{
+  draft: ApplicationDraftRecord;
+  invalidatedReview?: ApplicationReview;
+  invalidatedConfirmation?: ApplicationConfirmation;
+}> {
+  owner(draft, input.ownerId);
+  if (!usableState(draft.state) || draft.version !== input.expectedVersion) {
+    throw new DomainError({ code: "CONFLICT", message: "The draft changed before this edit." });
+  }
+  if (input.answers.length < 1 || input.answers.length > 24) {
+    throw new DomainError({ code: "VALIDATION", message: "Provide one to 24 answers." });
+  }
+  const seen = new Set<string>();
+  for (const answer of input.answers) {
+    if (seen.has(answer.fieldKey)) {
+      throw new DomainError({ code: "VALIDATION", message: "Application fields must be unique." });
+    }
+    seen.add(answer.fieldKey);
+  }
+  const byField = new Map(draft.answers.map((answer) => [answer.fieldKey, answer]));
+  input.answers.forEach((answer) => byField.set(answer.fieldKey, answer));
+  const answers = [...byField.values()].sort((left, right) =>
+    left.fieldKey.localeCompare(right.fieldKey),
+  );
+  const materiallyChanged = JSON.stringify(draft.answers) !== JSON.stringify(answers);
   const next: ApplicationDraftRecord = {
     ...draft,
     answers,

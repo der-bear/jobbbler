@@ -1,8 +1,8 @@
+"use client";
+
 import {
   ArrowClockwiseIcon,
-  CaretDownIcon,
   CheckCircleIcon,
-  InfoIcon,
   WarningCircleIcon,
   XIcon,
 } from "@phosphor-icons/react";
@@ -15,10 +15,7 @@ import styles from "./agent-activity-rail.module.css";
 export interface AgentActivityRailProps {
   readonly activities: readonly ToolActivity[];
   readonly className?: string;
-  readonly initiallyExpanded?: boolean;
   readonly maxItems?: number;
-  readonly registeredToolCount: number;
-  readonly status?: ReactNode;
   readonly webMcpAvailable: boolean;
 }
 
@@ -34,7 +31,7 @@ const activityPresentation: Readonly<Record<ToolActivity["status"], ActivityPres
   },
   completed: {
     icon: <CheckCircleIcon aria-hidden="true" size={15} weight="fill" />,
-    label: "Completed",
+    label: "Complete",
   },
   requires_user_action: {
     icon: <WarningCircleIcon aria-hidden="true" size={15} weight="fill" />,
@@ -42,7 +39,7 @@ const activityPresentation: Readonly<Record<ToolActivity["status"], ActivityPres
   },
   failed: {
     icon: <WarningCircleIcon aria-hidden="true" size={15} weight="fill" />,
-    label: "Needs attention",
+    label: "Error",
   },
   cancelled: {
     icon: <XIcon aria-hidden="true" size={15} weight="bold" />,
@@ -50,116 +47,111 @@ const activityPresentation: Readonly<Record<ToolActivity["status"], ActivityPres
   },
 };
 
-function compactTime(value: string): string {
-  return `${value.slice(11, 16)} UTC`;
+function durationLabel(startedAt: string, completedAt: string | null): string | null {
+  if (completedAt === null) return null;
+  const elapsed = Date.parse(completedAt) - Date.parse(startedAt);
+  if (!Number.isFinite(elapsed) || elapsed <= 0) return null;
+  return elapsed < 1_000 ? String(elapsed) + " ms" : (elapsed / 1_000).toFixed(1) + " s";
 }
 
-function toolLabel(toolName: string): string {
-  return toolName.replaceAll("_", " ");
-}
-
-function toolCountLabel(count: number): string {
-  return `${String(count)} action${count === 1 ? "" : "s"} available on this page`;
-}
-
-function disclosureStatus(activities: readonly ToolActivity[], webMcpAvailable: boolean): string {
-  if (activities.some((activity) => activity.status === "requires_user_action")) {
-    return "Approval needed";
+export function groupedActivities(activities: readonly ToolActivity[]): readonly Readonly<{
+  activity: ToolActivity;
+  count: number;
+}>[] {
+  const groups: { activity: ToolActivity; count: number }[] = [];
+  for (const sourceActivity of activities) {
+    const activity = normalizeLegacyActivity(sourceActivity);
+    const previous = groups.at(-1);
+    if (
+      previous !== undefined &&
+      previous.activity.toolName === activity.toolName &&
+      previous.activity.status === activity.status &&
+      previous.activity.safeSummary === activity.safeSummary
+    ) {
+      previous.activity = activity;
+      previous.count += 1;
+    } else {
+      groups.push({ activity, count: 1 });
+    }
   }
-  if (activities.some((activity) => activity.status === "failed")) return "Needs attention";
-  if (activities.some((activity) => activity.status === "running")) return "Agent working";
-  if (activities.length > 0) return "Recently updated";
-  return webMcpAvailable ? "Available" : "Browser mode";
+  return groups;
+}
+
+function normalizeLegacyActivity(activity: ToolActivity): ToolActivity {
+  if (activity.toolName !== "start_application") return activity;
+  return {
+    ...activity,
+    toolName: "prepare_application",
+    safeSummary:
+      activity.safeSummary === "Application workspace created."
+        ? "Application prepared."
+        : activity.safeSummary,
+  };
+}
+
+export function activityReceiptCount(activities: readonly ToolActivity[]): number {
+  return groupedActivities(activities).length;
 }
 
 export function AgentActivityRail({
   activities,
   className,
-  initiallyExpanded = false,
   maxItems = 4,
-  registeredToolCount,
-  status,
   webMcpAvailable,
 }: AgentActivityRailProps) {
   const itemLimit = Math.max(0, maxItems);
-  const visibleActivities = itemLimit === 0 ? [] : activities.slice(-itemLimit).reverse();
-  const needsAttention = activities.some(
-    (activity) =>
-      activity.status === "running" ||
-      activity.status === "requires_user_action" ||
-      activity.status === "failed",
-  );
+  const visibleActivities =
+    itemLimit === 0 ? [] : groupedActivities(activities).slice(-itemLimit).reverse();
+  const latestSourceActivity = activities.at(-1);
+  const latestActivity =
+    latestSourceActivity === undefined ? undefined : normalizeLegacyActivity(latestSourceActivity);
 
   return (
-    <details
-      className={`${styles["rail"]} ${className ?? ""}`}
-      open={initiallyExpanded || needsAttention || undefined}
+    <section
+      aria-label="Agent activity log"
+      className={[styles["rail"], className].filter(Boolean).join(" ")}
     >
-      <summary className={styles["summary"]}>
-        <span>
-          <small>Optional assistant layer</small>
-          <strong>Agent activity</strong>
-        </span>
-        <span className={styles["summaryStatus"]} data-attention={String(needsAttention)}>
-          {disclosureStatus(activities, webMcpAvailable)}
-          <CaretDownIcon aria-hidden="true" className={styles["chevron"]} size={14} />
-        </span>
-      </summary>
+      <p aria-live="polite" className="sr-only">
+        {latestActivity === undefined
+          ? ""
+          : activityPresentation[latestActivity.status].label + ": " + latestActivity.safeSummary}
+      </p>
 
-      <div className={styles["body"]}>
-        <header className={styles["header"]}>
-          <div>
-            <p className={styles["eyebrow"]}>Agent activity</p>
-            <h2>What changed</h2>
-          </div>
-          {status ?? (
-            <span
-              aria-label={webMcpAvailable ? "WebMCP available" : "WebMCP unavailable"}
-              className={styles["capability"]}
-              data-available={String(webMcpAvailable)}
-              role="status"
-            >
-              <InfoIcon
-                aria-hidden="true"
-                size={14}
-                weight={webMcpAvailable ? "fill" : "regular"}
-              />
-              <span>{webMcpAvailable ? "WebMCP available" : "WebMCP unavailable"}</span>
-            </span>
+      {visibleActivities.length === 0 ? (
+        <div className={styles["empty"]} role="status">
+          <p>{webMcpAvailable ? "No agent activity yet" : "No agent actions in this browser."}</p>
+          {webMcpAvailable ? (
+            <span>Tool calls and visible results will appear here.</span>
+          ) : (
+            <span>The job portal still works normally.</span>
           )}
-        </header>
-        <p className={styles["toolCount"]}>{toolCountLabel(registeredToolCount)}</p>
-
-        {visibleActivities.length === 0 ? (
-          <p className={styles["empty"]} role="status">
-            Nothing changed by an agent in this session. You can use every feature yourself.
-          </p>
-        ) : (
-          <ol aria-live="polite" aria-relevant="additions text" className={styles["timeline"]}>
-            {visibleActivities.map((activity) => {
-              const presentation = activityPresentation[activity.status];
-              const time = activity.completedAt ?? activity.startedAt;
-              return (
-                <li
-                  aria-busy={activity.status === "running" || undefined}
-                  data-status={activity.status}
-                  key={activity.id}
-                >
-                  <span className={styles["marker"]}>{presentation.icon}</span>
-                  <div className={styles["entry"]}>
-                    <div className={styles["entryHeader"]}>
-                      <code>{toolLabel(activity.toolName)}</code>
-                      <span className={styles["state"]}>{presentation.label}</span>
-                    </div>
-                    <p>{activity.safeSummary}</p>
-                    <time dateTime={time}>{compactTime(time)}</time>
+        </div>
+      ) : (
+        <ol className={styles["timeline"]}>
+          {visibleActivities.map(({ activity, count }) => {
+            const presentation = activityPresentation[activity.status];
+            const duration = durationLabel(activity.startedAt, activity.completedAt);
+            return (
+              <li
+                aria-busy={activity.status === "running" || undefined}
+                data-status={activity.status}
+                key={activity.id}
+              >
+                <span className={styles["marker"]}>{presentation.icon}</span>
+                <div className={styles["entry"]}>
+                  <p>{activity.safeSummary}</p>
+                  <code>{activity.toolName}</code>
+                  <div className={styles["meta"]}>
+                    <span>{presentation.label}</span>
+                    {count > 1 ? <span>{String(count)} calls</span> : null}
+                    {duration === null ? null : <span>{duration}</span>}
                   </div>
-                </li>
-              );
-            })}
-          </ol>
-        )}
-      </div>
-    </details>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </section>
   );
 }

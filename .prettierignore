@@ -8,3 +8,4 @@ test-results/
 # Source material is preserved verbatim.
 docs/kickoff/
 docs/rules/
+.impeccable/

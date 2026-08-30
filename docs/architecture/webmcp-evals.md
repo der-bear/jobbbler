@@ -1,48 +1,69 @@
 # WebMCP Evaluation Fixtures
 
-These fixtures make the WebMCP demo reviewable without requiring a judge to
-guess tool choice from a free-form prompt. They implement the route ownership
-in [the capability matrix](./webmcp-capability-matrix.md): search tools on
-`/`, detail and compare-start tools on `/jobs/:jobId`, and comparison tools on
-`/compare`.
+The fixtures under `evals/webmcp/` test whether an external model selects the
+right Jobbbler tool, supplies valid arguments, preserves order, and stops for
+the person's decision. Every fixture exposes the same 24-tool list that the
+production page registers on every route. Route and workflow state live in the
+case context; they do not artificially hide competing tools from the model.
 
-## Fixture Contract
+## Fixture contract
 
-The JSON files under `evals/webmcp/` are deterministic model-routing cases.
-Each case supplies a stable route context, a prompt, and one expected result:
+Each case supplies a route, stable product context, a prompt, and one expected
+result:
 
-- `tool_call`: invoke exactly `tool` with a deep-equal `arguments` object.
-- `clarification`: do not invoke a tool; the response must cover every
-  `mustMention` item.
-- `reject_input`: do not invoke a tool; identify the requested `intendedTool`,
-  offending `field`, and every `mustMention` item.
+- `tool_call` — invoke exactly `tool` with deep-equal `arguments`;
+- `clarification` — invoke nothing and cover every `mustMention` item;
+- `reject_input` — invoke nothing, identify the intended tool and invalid
+  field, and explain the listed constraint.
 
-The fixture arguments are the manifest contract for Task 7. Search arguments
-use the public search criteria shape; job identifiers use the `job_` entity-ID
-format; comparisons never contain more than three unique job IDs.
+Search arguments use the public criteria contract. Job IDs use the `job_`
+entity format. Comparisons contain two or three unique IDs. Application
+decisions require the exact server request ID and current draft version.
+
+`plan_job_workflow` is available in every case but remains optional. Direct
+requests should normally select the direct outcome tool. Planning prompts may
+use it to receive a compact route-aware sequence, required inputs, and human
+decision points.
 
 ## Coverage
 
-| Fixture        | Route tools                                    | Judge-facing behavior                                                                                                               |
-| -------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `search.json`  | `search_jobs`, `get_search_state`              | Direct and natural-language search, state reading, vague intent, comparison before selection, invalid salary range.                 |
-| `detail.json`  | `get_job_details`, `compare_jobs`              | Current-job detail, explicit and paraphrased comparison, missing second job, comparison-only action on the wrong route, invalid ID. |
-| `compare.json` | `get_comparison`, `remove_job_from_comparison` | Current comparison, ordinal removal, ambiguous ranking, unsupported add operation, removal of an unselected job.                    |
+| Fixture            | Main outcomes tested                                                                                                                  |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `search.json`      | Exact and paraphrased search, active state, opening a role, monitoring plan, vague intent, premature comparison, invalid salary range |
+| `detail.json`      | Source-backed role facts, application capability, explicit comparison, missing target, invalid ID                                     |
+| `compare.json`     | Current comparison, ordinal removal, addition, ambiguous ranking, unselected role                                                     |
+| `saved.json`       | Alert reading, pause or resume by exact schedule ID, reopen criteria, latest delta, ambiguous alert, unknown schedule                 |
+| `application.json` | Readiness, assistance request and exact decision, atomic answer batch, final review, approved or declined exact submission            |
 
-An evaluator should load the named route and fixture context, expose only the
-listed `registeredTools`, then compare the observed result with `expected`.
-This deliberately tests the conventional no-WebMCP boundary: an action that is
-not registered for the route must result in a clarification or local validation
-failure, never an invented tool call.
+## Evaluation method
 
-## Demo Script
+1. Load the complete 24 manifests and the case's route/state context.
+2. Run direct, paraphrased, ambiguous, wrong-order, and invalid-input prompts.
+3. Score tool selection, argument accuracy, safe sequencing, and refusal to
+   invent a human decision.
+4. Run weak/low-effort and stronger/default models. Fix ambiguous tools or
+   schemas, not a single model with narrow negative prompt patches.
+5. Deterministic tests still own tool logic, atomicity, output size, and UI
+   synchronization; probabilistic evals own model routing quality.
 
-For a concise judge demonstration:
+## Pre-release model pass — 30 August 2026
 
-1. On search, run `search-direct-filtered`, then ask for active filters.
-2. Open the seeded detail job and run `detail-direct-compare-current-and-known-job`.
-3. Open the resulting comparison and run `compare-direct-remove-second-job`.
-4. Show one negative case, such as `search-wrong-order-compare-before-results`.
+- Luna at low effort: 50 isolated routing decisions. The first pass scored
+  48/50; both misses tried to compare before two exact role IDs existed. After
+  the `compare_jobs` description was tightened to forbid one-role calls, the
+  two cases were re-run and the final result was 50/50.
+- Terra at medium effort: 10/10 end-to-end routing decisions, including alert
+  disambiguation, assistance authorization, batched application preparation,
+  and the exact final submission decision.
+- A follow-up pass confirmed that `prepare_application` creates or reopens a
+  draft but grants no preparation authority, while `open_jobbbler_page` clearly
+  separates the Applications list from an exact private application.
 
-This proves useful routing, structured arguments, maximum-three comparison
-guardrails, and a safe clarification path without exposing privileged actions.
+These are isolated model-judgment runs, not production telemetry. The checked-in
+deterministic suites separately verify schemas, execution, cancellation,
+bounded output, UI synchronization, storage atomicity, and builds.
+
+The judge demo should show one natural-language search, one comparison, one
+saved-search delta, and the application sequence from assistance request to an
+exact final decision. No fixture, model, or agent may self-approve consent or
+claim an external employer received an application.

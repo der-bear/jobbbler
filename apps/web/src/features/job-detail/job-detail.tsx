@@ -10,7 +10,7 @@ import {
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import {
@@ -22,6 +22,7 @@ import {
 import { useToast } from "@jobbbler/ui";
 
 import { startApplication } from "@/features/application/start-application";
+import { externalApplicationUrl, supportsJobbblerPreparation } from "./application-capability";
 import {
   compactDate,
   employmentLabel,
@@ -34,6 +35,8 @@ import { ApiClientError, queryApi } from "@/lib/query-client";
 import { subscribeWebMcpJobDetailCommit } from "@/lib/webmcp-ui-bridge";
 
 import styles from "./job-detail.module.css";
+
+export { externalApplicationUrl, supportsJobbblerPreparation };
 
 type LoadState =
   | { readonly kind: "loading" }
@@ -51,25 +54,26 @@ const dimensionLabels: Readonly<Record<keyof JobFit["dimensions"], string>> = {
   freshness: "Freshness",
 };
 
+export function applicationActionLabel(job: Pick<Job, "applyMode">): string {
+  return job.applyMode === "external" ? "Apply on employer site" : "Apply";
+}
+
+export function hasMeaningfulSearchCriteria(criteriaSearch: string): boolean {
+  const parameters = new URLSearchParams(
+    criteriaSearch.startsWith("?") ? criteriaSearch.slice(1) : criteriaSearch,
+  );
+  parameters.delete("sort");
+  parameters.delete("limit");
+  parameters.delete("cursor");
+  return parameters.size > 0;
+}
+
 function errorMessage(error: unknown): string {
   if (error instanceof ApiClientError && error.code === "NOT_FOUND") {
     return "This role is no longer available in the current catalog.";
   }
   if (error instanceof ApiClientError) return error.message;
   return "This role could not be loaded. Please retry.";
-}
-
-export function supportsJobbblerPreparation(job: Job): boolean {
-  if (job.applyMode === "internal") return true;
-  if (job.source.url === null) return false;
-  try {
-    const source = new URL(job.source.url);
-    return (
-      source.protocol === "https:" && source.username.length === 0 && source.password.length === 0
-    );
-  } catch {
-    return false;
-  }
 }
 
 function ListOrUnknown({
@@ -104,31 +108,25 @@ function ListOrUnknown({
 
 function JobIdentity({
   job,
-  fit,
   criteriaSearch,
   applicationBusy,
   onStartApplication,
 }: Readonly<{
   job: Job;
-  fit: JobFit;
   criteriaSearch: string;
   applicationBusy: boolean;
   onStartApplication(): void;
 }>) {
   const canPrepare = supportsJobbblerPreparation(job);
+  const employerApplicationUrl = externalApplicationUrl(job);
 
   return (
     <header className={styles["identity"]}>
-      <p className={styles["eyebrow"]}>Role record</p>
       <div className={styles["titleRow"]}>
         <div>
           <h1>{job.title}</h1>
           <p className={styles["organization"]}>{job.organizationName}</p>
         </div>
-        <p className={styles["score"]}>
-          <strong>{fit.score}%</strong>
-          <span>{fit.eligible ? "current criteria" : "not eligible"}</span>
-        </p>
       </div>
       <div className={styles["facts"]}>
         <span>
@@ -155,72 +153,74 @@ function JobIdentity({
             type="button"
           >
             <PaperPlaneTiltIcon aria-hidden="true" size={16} />
-            {applicationBusy
-              ? "Opening application…"
-              : job.applyMode === "external"
-                ? "Prepare external application"
-                : "Apply with Jobbbler"}
+            {applicationBusy ? "Opening…" : applicationActionLabel(job)}
           </button>
+        ) : employerApplicationUrl !== null ? (
+          <a
+            className={styles["applyButton"]}
+            href={employerApplicationUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            <PaperPlaneTiltIcon aria-hidden="true" size={16} />
+            {applicationActionLabel(job)}
+          </a>
         ) : (
-          <span className={styles["unavailableLink"]}>External application source unavailable</span>
+          <span className={styles["unavailableLink"]}>
+            The employer's application page is unavailable
+          </span>
         )}
       </div>
     </header>
   );
 }
 
-function FitEvidence({ fit }: Readonly<{ fit: JobFit }>) {
+function FitEvidence({ criteriaSearch, fit }: Readonly<{ criteriaSearch: string; fit: JobFit }>) {
+  if (!hasMeaningfulSearchCriteria(criteriaSearch)) return null;
+
+  const hasSignal =
+    fit.evidence.length > 0 || fit.caveats.length > 0 || fit.exclusions.length > 0 || !fit.eligible;
   const unknownDimensions = Object.entries(fit.dimensions)
     .filter(([, dimension]) => dimension.status === "unknown")
     .map(([key]) => dimensionLabels[key as keyof JobFit["dimensions"]]);
 
+  if (!hasSignal) return null;
+
   return (
-    <section aria-labelledby="why-this-matches" className={styles["evidenceSection"]}>
+    <section aria-labelledby="how-it-fits" className={styles["evidenceSection"]}>
       <div className={styles["sectionHeading"]}>
         <div>
-          <p className={styles["eyebrow"]}>Fit assessment</p>
-          <h2 id="why-this-matches">Why this matches</h2>
+          <h2 id="how-it-fits">How it fits your search</h2>
+          {fit.eligible ? null : (
+            <p className={styles["ineligibleNote"]}>
+              This role does not meet your current criteria.
+            </p>
+          )}
         </div>
-        <p className={styles["matchScore"]}>
-          <strong>{fit.score}%</strong>
-          <span>{fit.eligible ? "eligible" : "not eligible"}</span>
-        </p>
       </div>
       <div className={styles["evidenceGrid"]}>
         <div>
-          <h3>Evidence</h3>
-          <ListOrUnknown
-            empty="No positive evidence was supplied for the current criteria."
-            items={fit.evidence}
-          />
+          <h3>Matches</h3>
+          <ListOrUnknown empty="No direct match evidence was available." items={fit.evidence} />
         </div>
-        <div>
-          <h3>Trade-offs</h3>
-          <ListOrUnknown
-            empty="No trade-offs were identified."
-            items={fit.caveats}
-            tone="caution"
-          />
-          {fit.exclusions.length > 0 ? (
-            <>
-              <h3 className={styles["subheading"]}>Exclusions</h3>
-              <ListOrUnknown
-                empty="No exclusions were identified."
-                items={fit.exclusions}
-                tone="caution"
-              />
-            </>
-          ) : null}
-        </div>
+        {fit.caveats.length > 0 || fit.exclusions.length > 0 ? (
+          <div>
+            <h3>Keep in mind</h3>
+            <ListOrUnknown empty="" items={fit.caveats} tone="caution" />
+            {fit.exclusions.length > 0 ? (
+              <>
+                <h3 className={styles["subheading"]}>Outside your filters</h3>
+                <ListOrUnknown empty="" items={fit.exclusions} tone="caution" />
+              </>
+            ) : null}
+          </div>
+        ) : null}
       </div>
-      <div className={styles["unknowns"]}>
-        <h3>Known unknowns</h3>
-        <p>
-          {unknownDimensions.length === 0
-            ? "No ranking dimensions are marked unknown."
-            : `The source did not establish: ${unknownDimensions.join(", ")}.`}
+      {unknownDimensions.length === 0 ? null : (
+        <p className={styles["unknowns"]}>
+          Not stated in the posting: {unknownDimensions.join(", ")}.
         </p>
-      </div>
+      )}
     </section>
   );
 }
@@ -229,8 +229,7 @@ function SourceAndFreshness({ job }: Readonly<{ job: Job }>) {
   return (
     <section aria-labelledby="source-and-freshness" className={styles["provenanceSection"]}>
       <div>
-        <p className={styles["eyebrow"]}>Provenance</p>
-        <h2 id="source-and-freshness">Source and freshness</h2>
+        <h2 id="source-and-freshness">About this posting</h2>
       </div>
       <dl className={styles["provenanceList"]}>
         <div>
@@ -247,7 +246,11 @@ function SourceAndFreshness({ job }: Readonly<{ job: Job }>) {
         </div>
         <div>
           <dt>Application</dt>
-          <dd>{job.applyMode === "external" ? "External source only" : "Internal application"}</dd>
+          <dd>
+            {job.applyMode === "external"
+              ? "Finishes on the employer's website"
+              : "Handled on Jobbbler"}
+          </dd>
         </div>
       </dl>
       <p className={styles["sourceNote"]}>
@@ -275,15 +278,13 @@ function DetailContent({
       <JobIdentity
         applicationBusy={applicationBusy}
         criteriaSearch={criteriaSearch}
-        fit={result.fit}
         job={result.job}
         onStartApplication={onStartApplication}
       />
-      <FitEvidence fit={result.fit} />
+      <FitEvidence criteriaSearch={criteriaSearch} fit={result.fit} />
       <section className={styles["roleFacts"]}>
         <div>
-          <p className={styles["eyebrow"]}>Role details</p>
-          <h2>Skills and terms</h2>
+          <h2>Skills</h2>
         </div>
         <div className={styles["skills"]}>
           {result.job.skills.length === 0 ? (
@@ -303,8 +304,16 @@ function DetailContent({
 export function JobDetail({
   jobId,
   criteriaSearch,
-}: Readonly<{ jobId: string; criteriaSearch: string }>) {
-  const [state, setState] = useState<LoadState>({ kind: "loading" });
+  initialResult,
+}: Readonly<{
+  jobId: string;
+  criteriaSearch: string;
+  initialResult?: JobDetailResult | undefined;
+}>) {
+  const [state, setState] = useState<LoadState>(() =>
+    initialResult === undefined ? { kind: "loading" } : { kind: "ready", result: initialResult },
+  );
+  const hydratedFromServer = useRef(initialResult !== undefined);
   const [applicationBusy, setApplicationBusy] = useState(false);
   const router = useRouter();
   const toast = useToast();
@@ -337,6 +346,10 @@ export function JobDetail({
   );
 
   useEffect(() => {
+    if (hydratedFromServer.current) {
+      hydratedFromServer.current = false;
+      return;
+    }
     const controller = new AbortController();
     setState({ kind: "loading" });
 
@@ -368,11 +381,8 @@ export function JobDetail({
 
   return (
     <section aria-live="polite" className={styles["state"]}>
-      <p className={styles["eyebrow"]}>
-        {state.kind === "loading" ? "Loading role" : "Role unavailable"}
-      </p>
-      <h1>{state.kind === "loading" ? "Gathering the source record" : state.message}</h1>
-      {state.kind === "error" ? <Link href="/">Return to search</Link> : null}
+      <h1>{state.kind === "loading" ? "Loading this role…" : state.message}</h1>
+      {state.kind === "error" ? <Link href="/jobs">Return to search</Link> : null}
     </section>
   );
 }

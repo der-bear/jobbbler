@@ -139,6 +139,7 @@ interface ApplicationRow {
   readonly job_id: string;
   readonly state: ApplicationDraft["state"];
   readonly version: number;
+  readonly consent_revision: number;
   readonly answers_json: string;
   readonly created_at: string;
   readonly updated_at: string;
@@ -302,6 +303,7 @@ function applicationFromRow(row: ApplicationRow): ApplicationDraft {
     jobId: row.job_id,
     state: row.state,
     version: row.version,
+    ...(row.consent_revision === 0 ? {} : { consentRevision: row.consent_revision }),
     answers: parseJson(row.answers_json),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -343,7 +345,15 @@ function applicationRecord<T>(row: Record<string, unknown>): T {
     approval_request_id: "approvalRequestId",
     affirmative_action: "affirmativeAction",
     approval_evidence_version: "approvalEvidenceVersion",
+    withdrawal_channel: "withdrawalChannel",
+    withdrawal_request_id: "withdrawalRequestId",
+    withdrawal_action: "withdrawalAction",
+    withdrawal_evidence_version: "withdrawalEvidenceVersion",
     revoked_at: "revokedAt",
+    decision_channel: "decisionChannel",
+    decision_request_id: "decisionRequestId",
+    decision_action: "decisionAction",
+    decision_evidence_version: "decisionEvidenceVersion",
     recipient_id: "recipientId",
     withdrawn_at: "withdrawnAt",
     findings_json: "findings",
@@ -362,10 +372,18 @@ function applicationRecord<T>(row: Record<string, unknown>): T {
     }
   }
   for (const optionalEvidenceKey of [
+    "decisionChannel",
+    "decisionRequestId",
+    "decisionAction",
+    "decisionEvidenceVersion",
     "approvalChannel",
     "approvalRequestId",
     "affirmativeAction",
     "approvalEvidenceVersion",
+    "withdrawalChannel",
+    "withdrawalRequestId",
+    "withdrawalAction",
+    "withdrawalEvidenceVersion",
   ] as const) {
     if (parsed[optionalEvidenceKey] === null) delete parsed[optionalEvidenceKey];
   }
@@ -838,6 +856,32 @@ function searchJobs(
   };
 }
 
+function suggestLocations(
+  database: SqliteDatabase,
+  query: string,
+  limit: number,
+): readonly string[] {
+  const normalizedQuery = query.trim().slice(0, 120).toLocaleLowerCase("en");
+  if (normalizedQuery.length === 0) return [];
+  const safeLimit = Math.min(20, Math.max(1, Math.trunc(limit)));
+  const rows = database
+    .prepare(
+      `SELECT min(value) AS value, COUNT(*) AS frequency
+       FROM job_location_suggestions
+       WHERE normalized_value >= ? AND normalized_value < ?
+       GROUP BY normalized_value
+       ORDER BY
+         CASE WHEN normalized_value = ? THEN 0 ELSE 1 END,
+         frequency DESC,
+         normalized_value ASC
+       LIMIT ?`,
+    )
+    .all(normalizedQuery, `${normalizedQuery}\uffff`, normalizedQuery, safeLimit) as {
+    readonly value: string;
+  }[];
+  return rows.map(({ value }) => value);
+}
+
 function createRepositories(
   database: SqliteDatabase,
 ): Omit<Storage, "close" | "identity" | "ingestion" | "alerts" | "rateLimits"> {
@@ -873,6 +917,9 @@ function createRepositories(
       },
       async search(query) {
         return searchJobs(database, query.criteria, query.now, query.limit);
+      },
+      async suggestLocations(query, limit) {
+        return suggestLocations(database, query, limit);
       },
       async listAll() {
         const rows = database.prepare("SELECT * FROM jobs ORDER BY id").all() as JobRow[];
@@ -928,6 +975,10 @@ function createRepositories(
           SavedSearchRow | undefined;
         if (row === undefined) throw notFound("Saved search");
         return savedSearchFromRow(row);
+      },
+      async delete(id) {
+        const result = database.prepare("DELETE FROM saved_searches WHERE id = ?").run(id);
+        return result.changes > 0;
       },
     },
     schedules: {
@@ -1020,10 +1071,14 @@ function createRepositories(
         database
           .prepare(
             `INSERT INTO application_drafts(
-               id, owner_id, job_id, state, version, answers_json, created_at, updated_at
-             ) VALUES (@id, @ownerId, @jobId, @state, @version, @answersJson, @createdAt, @updatedAt)`,
+               id, owner_id, job_id, state, version, consent_revision, answers_json, created_at, updated_at
+             ) VALUES (@id, @ownerId, @jobId, @state, @version, @consentRevision, @answersJson, @createdAt, @updatedAt)`,
           )
-          .run({ ...parsed, answersJson: json(parsed.answers) });
+          .run({
+            ...parsed,
+            consentRevision: parsed.consentRevision ?? 0,
+            answersJson: json(parsed.answers),
+          });
         return parsed;
       },
       async getById(id) {
@@ -1038,6 +1093,7 @@ function createRepositories(
             `UPDATE application_drafts
              SET state = @state,
                  answers_json = @answersJson,
+                 consent_revision = @consentRevision,
                  version = version + 1,
                  updated_at = @updatedAt
              WHERE id = @id AND version = @expectedVersion`,
@@ -1046,6 +1102,7 @@ function createRepositories(
             id: parsed.id,
             state: parsed.state,
             answersJson: json(parsed.answers),
+            consentRevision: parsed.consentRevision ?? 0,
             updatedAt: parsed.updatedAt,
             expectedVersion,
           });
@@ -1077,6 +1134,14 @@ function createRepositories(
           .get(ownerId, jobId) as ApplicationRow | undefined;
         return row === undefined ? null : applicationFromRow(row);
       },
+      async listByOwner(ownerId) {
+        const rows = database
+          .prepare(
+            "SELECT * FROM application_drafts WHERE owner_id=? ORDER BY updated_at DESC, id DESC",
+          )
+          .all(ownerId) as ApplicationRow[];
+        return rows.map(applicationFromRow);
+      },
       async getLatestReview(draftId, ownerId) {
         const row = database
           .prepare(
@@ -1103,11 +1168,12 @@ function createRepositories(
         const apply = database.transaction(() => {
           const changed = database
             .prepare(
-              "UPDATE application_drafts SET state=@state, answers_json=@answersJson, version=version+1, updated_at=@updatedAt WHERE id=@id AND owner_id=@ownerId AND version=@expectedVersion",
+              "UPDATE application_drafts SET state=@state, answers_json=@answersJson, consent_revision=@consentRevision, version=version+1, updated_at=@updatedAt WHERE id=@id AND owner_id=@ownerId AND version=@expectedVersion",
             )
             .run({
               ...parsed,
               answersJson: json(parsed.answers),
+              consentRevision: parsed.consentRevision ?? 0,
               expectedVersion: input.expectedVersion,
             });
           if (changed.changes !== 1)
@@ -1126,8 +1192,12 @@ function createRepositories(
             )
             .run(input.ownerId, parsed.id);
           database
-            .prepare("DELETE FROM application_data_grant_bindings WHERE owner_id=? AND draft_id=?")
-            .run(input.ownerId, parsed.id);
+            .prepare(
+              `UPDATE application_data_grant_bindings
+               SET status='withdrawn', withdrawn_at=?, version=version+1
+               WHERE owner_id=? AND draft_id=? AND status IN ('requested','active')`,
+            )
+            .run(input.now, input.ownerId, parsed.id);
           const row = database
             .prepare("SELECT * FROM application_drafts WHERE id=? AND owner_id=?")
             .get(parsed.id, input.ownerId) as ApplicationRow;
@@ -1153,11 +1223,12 @@ function createRepositories(
         const seal = database.transaction(() => {
           const changed = database
             .prepare(
-              "UPDATE application_drafts SET state=@state, answers_json=@answersJson, version=version+1, updated_at=@updatedAt WHERE id=@id AND owner_id=@ownerId AND version=@expectedVersion",
+              "UPDATE application_drafts SET state=@state, answers_json=@answersJson, consent_revision=@consentRevision, version=version+1, updated_at=@updatedAt WHERE id=@id AND owner_id=@ownerId AND version=@expectedVersion",
             )
             .run({
               ...parsed,
               answersJson: json(parsed.answers),
+              consentRevision: parsed.consentRevision ?? 0,
               expectedVersion: input.expectedVersion,
             });
           if (changed.changes !== 1)
@@ -1476,13 +1547,22 @@ function createRepositories(
           .prepare(
             `INSERT INTO application_delegation_records(
                id, owner_id, agent_id, resource_type, resource_id, operations_json, purpose,
-               status, expires_at, created_at, approved_at, revoked_at
+               status, expires_at, created_at, approved_at, revoked_at,
+               decision_channel, decision_request_id, decision_action, decision_evidence_version
              ) VALUES (
                @id, @ownerId, @agentSessionId, @resourceType, @resourceId, @operationsJson,
-               @purpose, @status, @expiresAt, @createdAt, @approvedAt, @revokedAt
+               @purpose, @status, @expiresAt, @createdAt, @approvedAt, @revokedAt,
+               @decisionChannel, @decisionRequestId, @decisionAction, @decisionEvidenceVersion
              )`,
           )
-          .run({ ...record, operationsJson: json(record.operations) });
+          .run({
+            ...record,
+            operationsJson: json(record.operations),
+            decisionChannel: record.decisionChannel ?? null,
+            decisionRequestId: record.decisionRequestId ?? null,
+            decisionAction: record.decisionAction ?? null,
+            decisionEvidenceVersion: record.decisionEvidenceVersion ?? null,
+          });
         return record;
       },
       async getById(id, ownerId) {
@@ -1529,17 +1609,30 @@ function createRepositories(
           .get(input) as Record<string, unknown> | undefined;
         return row === undefined ? null : applicationRecord<AgentDelegationRecord>(row);
       },
-      async approve(id, ownerId, approvedAt) {
+      async approve(id, ownerId, approvedAt, evidence) {
         const result = database
           .prepare(
             `UPDATE application_delegation_records
-             SET status = 'active', approved_at = ?
-             WHERE id = ?
-               AND owner_id = ?
+             SET status = 'active',
+                 approved_at = @approvedAt,
+                 decision_channel = @decisionChannel,
+                 decision_request_id = @decisionRequestId,
+                 decision_action = @decisionAction,
+                 decision_evidence_version = @decisionEvidenceVersion
+             WHERE id = @id
+               AND owner_id = @ownerId
                AND status = 'requested'
-               AND expires_at > ?`,
+               AND expires_at > @approvedAt`,
           )
-          .run(approvedAt, id, ownerId, approvedAt);
+          .run({
+            id,
+            ownerId,
+            approvedAt,
+            decisionChannel: evidence?.channel ?? null,
+            decisionRequestId: evidence?.requestId ?? null,
+            decisionAction: evidence?.action ?? null,
+            decisionEvidenceVersion: evidence?.evidenceVersion ?? null,
+          });
         if (result.changes !== 1) {
           throw new DomainError({
             code: "CONFLICT",
@@ -1551,7 +1644,7 @@ function createRepositories(
           .get(id, ownerId) as Record<string, unknown>;
         return applicationRecord<AgentDelegationRecord>(row);
       },
-      async revoke(id, ownerId, revokedAt) {
+      async revoke(id, ownerId, revokedAt, evidence) {
         const existing = database
           .prepare("SELECT * FROM application_delegation_records WHERE id = ? AND owner_id = ?")
           .get(id, ownerId) as Record<string, unknown> | undefined;
@@ -1566,10 +1659,23 @@ function createRepositories(
         database
           .prepare(
             `UPDATE application_delegation_records
-             SET status = 'revoked', revoked_at = ?
-             WHERE id = ? AND owner_id = ? AND status IN ('requested', 'active')`,
+             SET status = 'revoked',
+                 revoked_at = @revokedAt,
+                 decision_channel = @decisionChannel,
+                 decision_request_id = @decisionRequestId,
+                 decision_action = @decisionAction,
+                 decision_evidence_version = @decisionEvidenceVersion
+             WHERE id = @id AND owner_id = @ownerId AND status IN ('requested', 'active')`,
           )
-          .run(revokedAt, id, ownerId);
+          .run({
+            id,
+            ownerId,
+            revokedAt,
+            decisionChannel: evidence?.channel ?? null,
+            decisionRequestId: evidence?.requestId ?? null,
+            decisionAction: evidence?.action ?? null,
+            decisionEvidenceVersion: evidence?.evidenceVersion ?? null,
+          });
         const row = database
           .prepare("SELECT * FROM application_delegation_records WHERE id = ? AND owner_id = ?")
           .get(id, ownerId) as Record<string, unknown>;
@@ -1672,13 +1778,15 @@ function createRepositories(
                  categories_json, field_keys_json, document_ids_json, notice_version,
                  legal_basis, status, expires_at, created_at, approved_at, withdrawn_at,
                  approval_channel, approval_request_id, affirmative_action,
-                 approval_evidence_version, version
+                 approval_evidence_version, withdrawal_channel, withdrawal_request_id,
+                 withdrawal_action, withdrawal_evidence_version, version
                ) VALUES (
                  @id, @ownerId, @draftId, @recipientId, @purpose, @payloadHash,
                  @categoriesJson, @fieldKeysJson, @documentIdsJson, @noticeVersion,
                  @legalBasis, @status, @expiresAt, @createdAt, @approvedAt, @withdrawnAt,
                  @approvalChannel, @approvalRequestId, @affirmativeAction,
-                 @approvalEvidenceVersion, @version
+                 @approvalEvidenceVersion, @withdrawalChannel, @withdrawalRequestId,
+                 @withdrawalAction, @withdrawalEvidenceVersion, @version
                )`,
             )
             .run({
@@ -1690,6 +1798,10 @@ function createRepositories(
               approvalRequestId: record.approvalRequestId ?? null,
               affirmativeAction: record.affirmativeAction ?? null,
               approvalEvidenceVersion: record.approvalEvidenceVersion ?? null,
+              withdrawalChannel: record.withdrawalChannel ?? null,
+              withdrawalRequestId: record.withdrawalRequestId ?? null,
+              withdrawalAction: record.withdrawalAction ?? null,
+              withdrawalEvidenceVersion: record.withdrawalEvidenceVersion ?? null,
               version: 0,
             });
         } catch (error) {
@@ -1845,7 +1957,7 @@ function createRepositories(
           .get(id, ownerId, draftId) as Record<string, unknown>;
         return applicationRecord<RichDataGrantRecord>(row);
       },
-      async withdraw(id, ownerId, draftId, withdrawnAt) {
+      async withdraw(id, ownerId, draftId, withdrawnAt, evidence) {
         const withdraw = database.transaction(() => {
           const existing = database
             .prepare(
@@ -1861,9 +1973,26 @@ function createRepositories(
           if (stored.status === "withdrawn") return stored;
           const changed = database
             .prepare(
-              "UPDATE application_data_grant_bindings SET status='withdrawn', withdrawn_at=?, version=version+1 WHERE id=? AND owner_id=? AND draft_id=? AND status IN ('requested','active')",
+              `UPDATE application_data_grant_bindings
+               SET status='withdrawn', withdrawn_at=@withdrawnAt,
+                   withdrawal_channel=@withdrawalChannel,
+                   withdrawal_request_id=@withdrawalRequestId,
+                   withdrawal_action=@withdrawalAction,
+                   withdrawal_evidence_version=@withdrawalEvidenceVersion,
+                   version=version+1
+               WHERE id=@id AND owner_id=@ownerId AND draft_id=@draftId
+                 AND status IN ('requested','active')`,
             )
-            .run(withdrawnAt, id, ownerId, draftId);
+            .run({
+              withdrawnAt,
+              id,
+              ownerId,
+              draftId,
+              withdrawalChannel: evidence?.channel ?? null,
+              withdrawalRequestId: evidence?.requestId ?? null,
+              withdrawalAction: evidence?.action ?? null,
+              withdrawalEvidenceVersion: evidence?.evidenceVersion ?? null,
+            });
           if (changed.changes !== 1)
             throw new DomainError({
               code: "CONFLICT",
@@ -1878,6 +2007,10 @@ function createRepositories(
             ...stored,
             status: "withdrawn" as const,
             withdrawnAt,
+            withdrawalChannel: evidence?.channel ?? null,
+            withdrawalRequestId: evidence?.requestId ?? null,
+            withdrawalAction: evidence?.action ?? null,
+            withdrawalEvidenceVersion: evidence?.evidenceVersion ?? null,
             version: (stored.version ?? 0) + 1,
           };
         });

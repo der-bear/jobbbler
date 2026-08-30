@@ -1,14 +1,14 @@
 :root {
   --jb-font-ui: var(--font-manrope, Manrope, ui-sans-serif, system-ui, sans-serif);
-  --jb-font-mono: var(--font-ibm-plex-mono, "IBM Plex Mono", ui-monospace, monospace);
-  --jb-canvas: #f7f7f3;
+  --jb-font-mono: var(--jb-font-ui);
+  --jb-canvas: #ffffff;
   --jb-surface: #ffffff;
-  --jb-surface-muted: #f1f2eb;
-  --jb-surface-strong: #e7e9df;
-  --jb-text: #162218;
-  --jb-text-muted: #667067;
-  --jb-border: #d8dcd2;
-  --jb-border-strong: #afb8ad;
+  --jb-surface-muted: #f6f6f4;
+  --jb-surface-strong: #ececea;
+  --jb-text: #37352f;
+  --jb-text-muted: #73726e;
+  --jb-border: #e9e9e7;
+  --jb-border-strong: #94938e;
   --jb-signal: #1e6a39;
   --jb-signal-strong: #15532d;
   --jb-signal-contrast: #ffffff;
@@ -43,14 +43,14 @@
 }
 
 :root[data-theme="dark"] {
-  --jb-canvas: #142018;
-  --jb-surface: #1b2a20;
-  --jb-surface-muted: #233328;
-  --jb-surface-strong: #304334;
-  --jb-text: #f5f6ef;
-  --jb-text-muted: #c0c8bc;
-  --jb-border: #415246;
-  --jb-border-strong: #637265;
+  --jb-canvas: #191919;
+  --jb-surface: #1f1f1f;
+  --jb-surface-muted: #262625;
+  --jb-surface-strong: #333330;
+  --jb-text: #e8e8e6;
+  --jb-text-muted: #a3a29e;
+  --jb-border: #333331;
+  --jb-border-strong: #6f6f6b;
   --jb-signal: #70c98e;
   --jb-signal-strong: #8adba5;
   --jb-signal-contrast: #102116;

@@ -122,16 +122,15 @@ export function OwnerPrivacyControls({ owner, onRecovered, onDeleted }: OwnerPri
     return (
       <details className={styles["panel"]}>
         <summary className={styles["summary"]}>
-          <span>Private access</span>
-          <strong>Recover workspace</strong>
+          <span>Been here before?</span>
+          <strong>Restore with email</strong>
         </summary>
         <div className={styles["content"]}>
           <div>
-            <span className={styles["label"]}>Private access</span>
-            <h3>Recover a verified workspace</h3>
+            <h3>Restore your saved searches</h3>
             <p>
-              If a verified workspace matches this email, we send a short-lived code. The response
-              never confirms whether an account exists.
+              Enter the email you verified earlier and we send a short-lived code. The response
+              never reveals whether an account exists.
             </p>
           </div>
           {recoveryId === null ? (
@@ -178,7 +177,7 @@ export function OwnerPrivacyControls({ owner, onRecovered, onDeleted }: OwnerPri
                   Start over
                 </button>
                 <button disabled={busy || recoveryCode.length !== 6} type="submit">
-                  Recover workspace
+                  Restore
                 </button>
               </div>
             </form>

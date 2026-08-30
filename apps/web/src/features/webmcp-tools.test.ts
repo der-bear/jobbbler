@@ -119,7 +119,11 @@ function tool(manifests: readonly ToolManifest[], name: string): ToolManifest {
   return manifest;
 }
 
-function expectAnnotatedUntrustedRoute(manifests: readonly ToolManifest[], names: string[]): void {
+function expectAnnotatedUntrustedRoute(
+  manifests: readonly ToolManifest[],
+  names: string[],
+  trustedContentNames: readonly string[] = [],
+): void {
   expect(manifests.map(({ name }) => name)).toEqual(names);
   expect(new Set(manifests.map(({ purpose }) => purpose)).size).toBe(manifests.length);
   expect(new Set(manifests.map(({ description }) => description)).size).toBe(manifests.length);
@@ -132,7 +136,9 @@ function expectAnnotatedUntrustedRoute(manifests: readonly ToolManifest[], names
   );
   for (const manifest of manifests) {
     expect(typeof manifest.annotations.readOnlyHint).toBe("boolean");
-    expect(manifest.annotations.untrustedContentHint).toBe(true);
+    expect(manifest.annotations.untrustedContentHint).toBe(
+      !trustedContentNames.includes(manifest.name),
+    );
   }
 }
 
@@ -174,8 +180,18 @@ describe("route-scoped WebMCP tool manifests", () => {
       onNavigate,
     }) as readonly ToolManifest[];
 
-    expectAnnotatedUntrustedRoute(manifests, ["search_jobs", "get_search_state"]);
-    expect(manifests.every(({ annotations }) => annotations.readOnlyHint)).toBe(true);
+    expectAnnotatedUntrustedRoute(
+      manifests,
+      ["search_jobs", "get_search_state", "get_search_filters", "open_job_details"],
+      ["get_search_filters"],
+    );
+    expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([
+      false,
+      true,
+      true,
+      false,
+    ]);
+    expect(tool(manifests, "search_jobs").description).toContain("Ask for one useful preference");
 
     const controller = new AbortController();
     const success = await tool(manifests, "search_jobs").execute(
@@ -204,6 +220,51 @@ describe("route-scoped WebMCP tool manifests", () => {
         { signal: controller.signal },
       ),
     );
+  });
+
+  it("reports every compacted search-state field instead of silently dropping criteria", async () => {
+    const criteria: JobSearchCriteria = {
+      ...searchCriteria,
+      query: "Q".repeat(100),
+      categories: ["software_engineering", "product", "security"],
+      workModels: ["remote", "hybrid", "onsite"],
+      seniorities: ["senior", "staff", "principal"],
+      locations: ["L".repeat(40), "Europe", "Kyiv"],
+      skills: ["TypeScript", "PostgreSQL"],
+      excludeKeywords: ["agency", "crypto"],
+    };
+    const manifests = createSearchToolManifests({
+      searchJobs: async () => searchResult,
+      getSearchState: () => ({ criteria, total: 7 }),
+      onSearchCommitted: () => undefined,
+      onNavigate: () => undefined,
+    }) as readonly ToolManifest[];
+
+    const output = await tool(manifests, "get_search_state").execute(
+      {},
+      { signal: new AbortController().signal },
+    );
+
+    expect(output).toMatchObject({
+      status: "completed",
+      data: {
+        criteria: {
+          truncation: {
+            complete: false,
+            omitted: {
+              categories: 1,
+              workModels: 1,
+              seniorities: 1,
+              locations: 1,
+              skills: 1,
+              excludeKeywords: 1,
+            },
+            shortened: ["query", "locations"],
+          },
+        },
+      },
+    });
+    expectBoundedJson(output);
   });
 
   it("creates detail route tools, forwards cancellation to typed commands, and synchronizes detail and comparison UI", async () => {
@@ -235,8 +296,20 @@ describe("route-scoped WebMCP tool manifests", () => {
       onNavigate,
     }) as readonly ToolManifest[];
 
-    expectAnnotatedUntrustedRoute(manifests, ["get_job_details", "compare_jobs"]);
-    expect(manifests.every(({ annotations }) => annotations.readOnlyHint)).toBe(true);
+    expectAnnotatedUntrustedRoute(manifests, [
+      "get_job_details",
+      "get_job_application_capability",
+      "compare_jobs",
+    ]);
+    expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([
+      true,
+      true,
+      false,
+    ]);
+    expect(tool(manifests, "compare_jobs").description).toContain(
+      "after two or three exact job IDs are known",
+    );
+    expect(tool(manifests, "compare_jobs").description).toContain("Never call it with one role");
 
     const controller = new AbortController();
     const detail = await tool(manifests, "get_job_details").execute(
@@ -295,8 +368,16 @@ describe("route-scoped WebMCP tool manifests", () => {
       onNavigate,
     }) as readonly ToolManifest[];
 
-    expectAnnotatedUntrustedRoute(manifests, ["get_comparison", "remove_job_from_comparison"]);
-    expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([true, false]);
+    expectAnnotatedUntrustedRoute(manifests, [
+      "get_comparison",
+      "remove_job_from_comparison",
+      "add_job_to_comparison",
+    ]);
+    expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([
+      true,
+      false,
+      false,
+    ]);
 
     const controller = new AbortController();
     const comparison = await tool(manifests, "get_comparison").execute(
@@ -324,6 +405,30 @@ describe("route-scoped WebMCP tool manifests", () => {
       ),
     );
     expect(removeJobFromComparison).toHaveBeenCalledOnce();
+  });
+
+  it("reads an explicitly identified role without requiring its page to be open", async () => {
+    const getJobDetails = vi.fn(async (): Promise<JobDetailResult> => ({
+      job: secondJob,
+      fit,
+    }));
+    const manifests = createJobDetailToolManifests({
+      getJobDetails,
+      compareJobs: async () => comparisonResult,
+      onDetailCommitted: () => undefined,
+      onNavigate: () => undefined,
+    }) as readonly ToolManifest[];
+
+    const result = await tool(manifests, "get_job_details").execute(
+      { jobId: secondJobId },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result.status).toBe("completed");
+    expect(getJobDetails).toHaveBeenCalledWith(
+      { jobId: secondJobId },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 
   it("keeps successful outputs inside the browser budget at contract field maxima", async () => {

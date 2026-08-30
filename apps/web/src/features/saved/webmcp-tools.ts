@@ -8,6 +8,8 @@ import {
 } from "@jobbbler/contracts";
 import type { JsonSchema, JsonValue, ToolManifest } from "@jobbbler/webmcp";
 
+import type { LatestSearchRun } from "@/lib/latest-run";
+
 import {
   completedWebMcpResult,
   safeWebMcpErrorResult,
@@ -41,6 +43,34 @@ const stateInputSchema = {
 const emptyInput = z.strictObject({});
 const stateInput = z.strictObject({ scheduleId: entityIdSchema, enabled: z.boolean() });
 
+const openSavedInputSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    savedSearchId: {
+      type: "string",
+      description: "A saved search ID returned by get_saved_alerts.",
+      pattern: "^saved_search_[0-9a-f-]{36}$",
+    },
+  },
+  required: ["savedSearchId"],
+} as const satisfies JsonSchema;
+
+const openSavedInput = z.strictObject({ savedSearchId: entityIdSchema });
+
+const latestUpdateInputSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    savedSearchId: {
+      type: "string",
+      description: "A saved search ID returned by get_saved_alerts.",
+      pattern: "^saved_search_[0-9a-f-]{36}$",
+    },
+  },
+  required: ["savedSearchId"],
+} as const satisfies JsonSchema;
+
 export interface SavedToolDependencies {
   listSavedSearches(options: Readonly<{ signal: AbortSignal }>): Promise<readonly SavedSearch[]>;
   listSchedules(options: Readonly<{ signal: AbortSignal }>): Promise<readonly JobAlertSchedule[]>;
@@ -50,6 +80,12 @@ export interface SavedToolDependencies {
     options: Readonly<{ signal: AbortSignal }>,
   ): Promise<JobAlertSchedule>;
   onScheduleCommitted(schedule: JobAlertSchedule): Promise<void> | void;
+  savedSearchHref(savedSearch: SavedSearch): string;
+  onNavigate(href: string): Promise<void> | void;
+  getLatestRun(
+    savedSearchId: string,
+    options: Readonly<{ signal: AbortSignal }>,
+  ): Promise<LatestSearchRun>;
 }
 
 type SavedToolOutput = CompletedWebMcpResult<JsonValue> | SafeWebMcpErrorResult;
@@ -107,7 +143,7 @@ export function createSavedToolManifests(
     name: "set_job_alert_state",
     purpose: "Pause or resume one existing saved job alert in the current private workspace.",
     description:
-      "Pause or resume an alert returned by get_saved_alerts. This reversible action updates the visible workspace and never changes its criteria or email destination.",
+      "Pause or resume one alert using the exact schedule ID returned by get_saved_alerts. If several alerts exist and the person did not identify one, ask which alert. This reversible action never changes its criteria or email destination.",
     inputSchema: stateInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -157,5 +193,112 @@ export function createSavedToolManifests(
     },
   };
 
-  return [getSavedAlerts, setJobAlertState];
+  const openSavedSearch: ToolManifest<unknown, SavedToolOutput> = {
+    name: "open_saved_search",
+    purpose: "Open one saved search on the results page with its exact stored criteria.",
+    description:
+      "Navigate to the search page with the exact criteria of a saved search returned by get_saved_alerts. The search tools then apply to that restored search.",
+    inputSchema: openSavedInputSchema,
+    annotations: { readOnlyHint: false, untrustedContentHint: true },
+    async execute(input, { signal }) {
+      try {
+        const parsed = openSavedInput.parse(input);
+        const savedSearches = await dependencies.listSavedSearches({ signal });
+        const savedSearch = savedSearches.find(({ id }) => id === parsed.savedSearchId);
+        if (savedSearch === undefined) {
+          throw new z.ZodError([
+            {
+              code: "custom",
+              path: ["savedSearchId"],
+              message: "The saved search is not in the current private workspace.",
+            },
+          ]);
+        }
+        await dependencies.onNavigate(dependencies.savedSearchHref(savedSearch));
+        return completedWebMcpResult({
+          summary: "Opened the saved search on the results page with its stored criteria.",
+          data: { savedSearchId: savedSearch.id, route: "/" },
+          resources: [
+            { type: "saved_search", id: savedSearch.id, label: short(savedSearch.name, 64) },
+          ],
+        });
+      } catch (error) {
+        return safeWebMcpErrorResult(
+          error,
+          signal,
+          "Provide one saved search ID from get_saved_alerts.",
+        );
+      }
+    },
+  };
+
+  const getLatestSearchUpdate: ToolManifest<unknown, SavedToolOutput> = {
+    name: "get_latest_search_update",
+    purpose: "Read what changed since a saved search was last checked, not the full result list.",
+    description:
+      "Read the most recent server-side check of one saved search: counts of new, updated, closed, and no-longer-matching roles, plus up to five change references. Monitoring runs without an open tab.",
+    inputSchema: latestUpdateInputSchema,
+    annotations: { readOnlyHint: true, untrustedContentHint: true },
+    async execute(input, { signal }) {
+      try {
+        const parsed = openSavedInput.parse(input);
+        const savedSearches = await dependencies.listSavedSearches({ signal });
+        const savedSearch = savedSearches.find(({ id }) => id === parsed.savedSearchId);
+        if (savedSearch === undefined) {
+          throw new z.ZodError([
+            {
+              code: "custom",
+              path: ["savedSearchId"],
+              message: "The saved search is not in the current private workspace.",
+            },
+          ]);
+        }
+        const run = await dependencies.getLatestRun(savedSearch.id, { signal });
+        if (run.evaluation === null) {
+          return completedWebMcpResult({
+            summary:
+              "This saved search has not been checked yet. The next scheduled run will establish its baseline.",
+            data: { savedSearchId: savedSearch.id, checked: false },
+          });
+        }
+        const counts = { new: 0, updated: 0, closed: 0, no_longer_matching: 0 };
+        for (const item of run.evaluation.changes.items) counts[item.kind] += 1;
+        const parts = [
+          counts.new > 0 ? `${String(counts.new)} new` : null,
+          counts.updated > 0 ? `${String(counts.updated)} updated` : null,
+          counts.closed > 0 ? `${String(counts.closed)} closed` : null,
+          counts.no_longer_matching > 0
+            ? `${String(counts.no_longer_matching)} no longer matching`
+            : null,
+        ].filter((part): part is string => part !== null);
+        return completedWebMcpResult({
+          summary:
+            parts.length === 0
+              ? "No meaningful changes since the last check."
+              : `Since the last check: ${parts.join(", ")}.`,
+          data: {
+            savedSearchId: savedSearch.id,
+            checked: true,
+            checkedAt: run.evaluation.createdAt,
+            baselineCount: run.evaluation.baselineCount,
+            counts,
+            truncated: run.evaluation.changes.truncated,
+            changes: run.evaluation.changes.items
+              .slice(0, 5)
+              .map(({ jobId, kind }) => ({ jobId, kind })),
+            deliveryStatus: run.delivery?.status ?? null,
+          },
+          facts: [{ key: "changes_total", value: run.evaluation.changes.total }],
+        });
+      } catch (error) {
+        return safeWebMcpErrorResult(
+          error,
+          signal,
+          "Provide one saved search ID from get_saved_alerts.",
+        );
+      }
+    },
+  };
+
+  return [getSavedAlerts, setJobAlertState, openSavedSearch, getLatestSearchUpdate];
 }

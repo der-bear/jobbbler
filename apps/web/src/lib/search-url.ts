@@ -1,5 +1,6 @@
 import {
   jobSearchInputSchema,
+  type JobSearchCriteria,
   type JobSearchInput,
   type ParsedJobSearchInput,
 } from "@jobbbler/contracts";
@@ -93,4 +94,35 @@ export function searchParamsToInput(parameters: URLSearchParams): ParsedJobSearc
     cursor: single(parameters, "cursor"),
     limit: numberParameter(parameters, "limit"),
   });
+}
+
+export function criteriaToSearchInput(criteria: JobSearchCriteria): JobSearchInput {
+  return {
+    ...(criteria.query === null ? {} : { query: criteria.query }),
+    categories: criteria.categories,
+    workModels: criteria.workModels,
+    seniorities: criteria.seniorities,
+    locations: criteria.locations,
+    skills: criteria.skills,
+    excludeKeywords: criteria.excludeKeywords,
+    ...(criteria.salary === null
+      ? {}
+      : {
+          salary: {
+            ...(criteria.salary.minimum === null ? {} : { minimum: criteria.salary.minimum }),
+            ...(criteria.salary.maximum === null ? {} : { maximum: criteria.salary.maximum }),
+            ...(criteria.salary.currency === null ? {} : { currency: criteria.salary.currency }),
+            period: criteria.salary.period,
+            unknownPolicy: criteria.salary.unknownPolicy,
+          },
+        }),
+    ...(criteria.postedWithinDays === null ? {} : { postedWithinDays: criteria.postedWithinDays }),
+    sort: criteria.sort,
+    limit: criteria.limit,
+  };
+}
+
+export function searchHrefFromCriteria(criteria: JobSearchCriteria): string {
+  const parameters = searchInputToSearchParams(criteriaToSearchInput(criteria));
+  return parameters.size === 0 ? "/jobs" : `/jobs?${parameters.toString()}`;
 }

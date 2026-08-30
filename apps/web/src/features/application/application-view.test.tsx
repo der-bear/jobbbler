@@ -59,7 +59,7 @@ const workspace: ApplicationWorkspace = {
   },
   purpose: "Submit this reviewed application to Northstar Systems.",
   noticeVersion: "privacy-2026-08-29",
-  legalBasis: "user_instruction",
+  legalBasis: "consent",
   review: null,
   dataGrant: null,
   delegationRequests: [],
@@ -87,7 +87,7 @@ const job = {
 } satisfies Job;
 
 describe("ApplicationView", () => {
-  it("presents progress, data permission, agent authority, and confirmation as separate controls", () => {
+  it("presents one document-like review instead of a four-step approval wizard", () => {
     const markup = renderToStaticMarkup(
       <ApplicationView
         busy={false}
@@ -101,16 +101,78 @@ describe("ApplicationView", () => {
       />,
     );
 
-    expect(markup).toContain("Your application, under your control.");
-    expect(markup).toContain("Profile facts");
-    expect(markup).toContain("Data permission");
-    expect(markup).toContain("Agent authority");
-    expect(markup).toContain("Final confirmation");
-    expect(markup).toContain('aria-current="step"');
-    expect(markup).toContain("Needs your acceptance");
+    expect(markup).toContain("Application for Senior Product Engineer");
+    expect(markup).toContain("Review your application");
+    expect(markup).toContain("2 of 2 details ready");
+    expect(markup).toContain("Agent suggestion");
     expect(markup).toContain("Northstar Systems");
+    expect(markup).toContain("Review and submit to Northstar Systems");
+    expect(markup).not.toContain("Step 1 of 4");
+    expect(markup).not.toContain("Permission</strong>");
+    expect(markup).not.toContain("Assistant access");
+    expect(markup).not.toContain("Final confirmation");
+    expect(markup).not.toContain("Needs your acceptance");
+    expect(markup).not.toContain("Continue to review");
     expect(markup).not.toContain(workspace.draft.ownerId);
     expect(markup).not.toContain("payloadHash");
+  });
+
+  it("describes agent-mediated decisions truthfully", () => {
+    const markup = renderToStaticMarkup(
+      <ApplicationView
+        busy={false}
+        confirmation={null}
+        error={null}
+        fieldValues={{ full_name: "Ada Lovelace", motivation: "Agent draft" }}
+        job={job}
+        onAction={() => undefined}
+        onFieldChange={() => undefined}
+        workspace={{
+          ...workspace,
+          delegationRequests: [
+            {
+              id: "delegation_550e8400-e29b-41d4-a716-446655440000",
+              agentSessionId: "agent_session_550e8400-e29b-41d4-a716-446655440000",
+              operations: ["read_application", "edit_application"],
+              purpose: "Prepare this application.",
+              status: "requested",
+              expiresAt: "2026-08-29T10:20:00.000Z",
+              approvedAt: null,
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(markup).toContain("only after your explicit decision for this exact application");
+    expect(markup).not.toContain("cannot approve sharing or submit for you");
+  });
+
+  it("shows missing questions without making the user inspect every complete field", () => {
+    const markup = renderToStaticMarkup(
+      <ApplicationView
+        busy={false}
+        confirmation={null}
+        error={null}
+        fieldValues={{ full_name: "Ada Lovelace", motivation: "" }}
+        job={job}
+        onAction={() => undefined}
+        onFieldChange={() => undefined}
+        workspace={{
+          ...workspace,
+          draft: {
+            ...workspace.draft,
+            answers: workspace.draft.answers.filter(({ fieldKey }) => fieldKey !== "motivation"),
+          },
+        }}
+      />,
+    );
+
+    expect(markup).toContain("1 detail needed");
+    expect(markup).toContain("Why this role");
+    expect(markup).toContain("Ask your agent or fill it in here");
+    expect(markup).toContain("disabled");
+    expect(markup).not.toContain("Approve and continue");
   });
 
   it("leaves an external application as an explicit source-link handoff", () => {
@@ -141,9 +203,42 @@ describe("ApplicationView", () => {
       />,
     );
 
-    expect(markup).toContain("Ready for external handoff");
+    expect(markup).toContain("Ready to continue on the employer&#x27;s website");
     expect(markup).toContain("Jobbbler did not submit this application");
     expect(markup).toContain(`href="${externalUrl}"`);
-    expect(markup).toContain("Open external application");
+    expect(markup).toContain("Back to applications");
+    expect(markup).toContain('href="/applications"');
+  });
+
+  it("shows a concise receipt instead of stale permission controls", () => {
+    const markup = renderToStaticMarkup(
+      <ApplicationView
+        busy={false}
+        confirmation={null}
+        error={null}
+        fieldValues={{}}
+        job={job}
+        onAction={() => undefined}
+        onFieldChange={() => undefined}
+        workspace={{
+          ...workspace,
+          draft: { ...workspace.draft, state: "submitted" },
+          receipt: {
+            id: "receipt_550e8400-e29b-41d4-a716-446655440000",
+            status: "submitted",
+            externalUrl: null,
+            createdAt: "2026-08-29T10:03:00.000Z",
+          },
+        }}
+      />,
+    );
+
+    expect(markup).toContain("Application submitted");
+    expect(markup).toContain("Submitted Aug 29, 2026");
+    expect(markup).toContain("Receipt details");
+    expect(markup).not.toContain("Not approved");
+    expect(markup).not.toContain("Assistant access");
+    expect(markup).not.toContain("Final confirmation");
+    expect(markup).not.toContain('<main class="');
   });
 });

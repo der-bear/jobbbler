@@ -66,6 +66,53 @@ describe("rankJob", () => {
     expect(below.eligible).toBe(false);
   });
 
+  it("compares salaries across currencies with pinned approximate rates", () => {
+    const criteria = normalizeJobSearchCriteria({
+      salary: {
+        minimum: 100_000,
+        currency: "EUR",
+        period: "year",
+        unknownPolicy: "include",
+      },
+    });
+
+    const usdMatch = rankJob(
+      job({
+        salary: { minimum: 130_000, maximum: 150_000, currency: "USD", period: "year" },
+      }),
+      criteria,
+      evaluation,
+    );
+    const usdBelow = rankJob(
+      job({
+        salary: { minimum: 60_000, maximum: 80_000, currency: "USD", period: "year" },
+      }),
+      criteria,
+      evaluation,
+    );
+    const unknownCurrency = rankJob(
+      job({
+        salary: { minimum: 130_000, maximum: 150_000, currency: "CHF", period: "year" },
+      }),
+      criteria,
+      evaluation,
+    );
+    const hourlyUsd = rankJob(
+      job({
+        salary: { minimum: 130_000, maximum: 150_000, currency: "USD", period: "hour" },
+      }),
+      criteria,
+      evaluation,
+    );
+
+    expect(usdMatch.dimensions.salary.status).toBe("match");
+    expect(usdMatch.dimensions.salary.matched[0]).toContain("converted from USD");
+    expect(usdBelow.dimensions.salary.status).toBe("below");
+    expect(usdBelow.eligible).toBe(false);
+    expect(unknownCurrency.dimensions.salary.status).toBe("unknown");
+    expect(hourlyUsd.dimensions.salary.status).toBe("unknown");
+  });
+
   it("can intentionally return only jobs with undisclosed compensation", () => {
     const criteria = normalizeJobSearchCriteria({
       salary: { unknownPolicy: "only" },

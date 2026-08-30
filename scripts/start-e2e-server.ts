@@ -31,7 +31,13 @@ const server = spawn(
   ],
   {
     cwd: projectRoot,
-    env: { ...process.env, SQLITE_DATABASE_PATH: databasePath },
+    env: {
+      ...process.env,
+      SQLITE_DATABASE_PATH: databasePath,
+      NOTIFICATION_DRIVER: "capture",
+      ALLOW_LOCAL_OTP_CAPTURE: "true",
+      PUBLIC_BASE_URL: "http://127.0.0.1:3100",
+    },
     stdio: "inherit",
   },
 );

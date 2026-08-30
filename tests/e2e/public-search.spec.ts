@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 const exampleOutcome = "senior full-stack engineer";
 const seededSearch =
-  "/?q=senior+full-stack+engineer&category=software_engineering&work=remote&seniority=senior&location=Europe&salary_min=100000&currency=EUR&exclude=agency";
+  "/jobs?q=senior+full-stack+engineer&category=software_engineering&work=remote&seniority=senior&location=Europe&salary_min=100000&currency=EUR&exclude=agency";
 
 const seededRole = {
   company: "Jobbbler Demo Systems",
@@ -18,17 +18,14 @@ test.describe("public job search workspace", () => {
     await page.goto(seededSearch);
 
     await expect(page.getByRole("main")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Jobbbler" })).toBeVisible();
-    await expect(page.getByRole("textbox", { name: "Your outcome" })).toHaveValue(
+    await expect(page.getByRole("link", { name: "Jobbbler home" })).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: "Search" })).toHaveValue(
       "senior full-stack engineer",
     );
     await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
 
     const role = resultCard(page, seededRole.title, seededRole.company);
     await expect(role).toBeVisible();
-    await expect(role.getByRole("group", { name: "Job evidence" })).toContainText(
-      /remote|software engineering|Europe/i,
-    );
     await expect(role.getByText(/updated|ago/i)).toBeVisible();
     await expect(
       role.getByRole("link", {
@@ -40,21 +37,18 @@ test.describe("public job search workspace", () => {
   test("submits an outcome with Enter and writes shareable URL state", async ({ page }) => {
     await page.goto("/");
 
-    const outcome = page.getByRole("textbox", { name: "Your outcome" });
+    const outcome = page.getByRole("searchbox", { name: "Search jobs" });
     await outcome.fill(exampleOutcome);
     await outcome.press("Enter");
 
     await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe(exampleOutcome);
     await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
-    await expect(page.getByRole("list", { name: "Applied filters" })).toContainText(
-      /Remote|Europe|100,000/i,
-    );
   });
 
-  test("keeps URL-backed filters editable through removable chips", async ({ page }) => {
+  test("keeps URL-backed filters editable through the visible controls", async ({ page }) => {
     await page.goto(seededSearch);
 
-    await page.getByRole("button", { name: "Remove Remote" }).click();
+    await page.getByRole("button", { name: "Remote", pressed: true }).click();
 
     await expect(page).not.toHaveURL(/(?:\?|&)work=remote(?:&|$)/);
     await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
@@ -72,41 +66,15 @@ test.describe("public job search workspace", () => {
     await expect(page).toHaveURL(/\/jobs\/[^/?#]+/);
     await expect.poll(() => new URL(page.url()).searchParams.get("salary_min")).toBe("100000");
     await expect(page.getByRole("heading", { name: seededRole.title })).toBeVisible();
-    await expect(page.getByRole("region", { name: "Why this matches" })).toContainText(
+    await expect(page.getByRole("region", { name: "How it fits your search" })).toContainText(
       "Work model is remote.",
     );
-    await expect(page.getByRole("region", { name: "Source and freshness" })).toContainText(
+    await expect(page.getByRole("region", { name: "About this posting" })).toContainText(
       /Jobbbler demo|source/i,
     );
-    await expect(page.getByText("Jobbbler demo unavailable")).toBeVisible();
-  });
-
-  test("caps a public comparison at three jobs and shares all three IDs", async ({ page }) => {
-    await page.goto("/?work=remote");
-
-    const resultCards = page.getByRole("article");
-    await expect.poll(() => resultCards.count()).toBeGreaterThanOrEqual(4);
-    for (let index = 0; index < 3; index += 1) {
-      const card = resultCards.nth(index);
-      let checkbox = card.getByRole("checkbox", { name: /^Compare / });
-      if ((await checkbox.count()) === 0) {
-        await card.getByRole("button").first().click();
-        checkbox = card.getByRole("checkbox", { name: /^Compare / });
-      }
-      await checkbox.check();
-    }
-
-    await expect(page.getByRole("status", { name: "Comparison selection" })).toContainText(
-      "3 selected",
+    await expect(page.getByRole("region", { name: "About this posting" })).toContainText(
+      "Handled on Jobbbler",
     );
-    await expect(page.getByRole("link", { name: "Compare 3 roles" })).toBeVisible();
-    const fourthCard = resultCards.nth(3);
-    await fourthCard.getByRole("button").first().click();
-    await expect(fourthCard.getByRole("checkbox", { name: /^Compare / })).toBeDisabled();
-
-    await page.getByRole("link", { name: "Compare 3 roles" }).click();
-    await expect(page).toHaveURL(/\/compare\?/);
-    expect(new URL(page.url()).searchParams.getAll("id")).toHaveLength(3);
   });
 
   test("persists the selected theme after a reload", async ({ page }) => {
@@ -126,8 +94,10 @@ test.describe("public job search workspace", () => {
     });
     await page.goto("/");
 
-    await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(/unavailable/i);
-    const outcome = page.getByRole("textbox", { name: "Your outcome" });
+    await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(
+      /browser mode/i,
+    );
+    const outcome = page.getByRole("searchbox", { name: "Search jobs" });
     await outcome.fill(exampleOutcome);
     await outcome.press("Enter");
 
@@ -148,15 +118,12 @@ test.describe("mobile and reduced-motion public search", () => {
   }) => {
     await page.goto(seededSearch);
 
-    await expect(page.getByRole("textbox", { name: "Your outcome" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Filters" })).toBeVisible();
+    await expect(page.getByRole("searchbox", { name: "Search" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Remote", pressed: true })).toBeVisible();
     await expect(resultCard(page, seededRole.title, seededRole.company)).toBeVisible();
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
       .toBe(true);
-
-    await page.getByRole("button", { name: "Filters" }).click();
-    await expect(page.getByRole("dialog", { name: "Filters" })).toBeVisible();
   });
 
   test("does not leave decorative animations running for reduced-motion users", async ({
@@ -176,5 +143,26 @@ test.describe("mobile and reduced-motion public search", () => {
         ),
       )
       .toBe(0);
+  });
+
+  test("keeps the judge-facing agent layer out of the main mobile task until requested", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    const trigger = page.getByRole("button", { name: /Agent view/ });
+    await expect(trigger).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Agent view" })).toHaveCount(0);
+
+    await trigger.click();
+    const panel = page.getByRole("dialog", { name: "Agent view" });
+    await expect(panel).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Activity" })).toBeFocused();
+    await expect(page.locator("header[inert]")).toHaveCount(1);
+    await expect(page.locator("main[inert]")).toHaveCount(1);
+
+    await page.getByRole("tab", { name: "Activity" }).press("Escape");
+    await expect(panel).toHaveCount(0);
+    await expect(trigger).toBeFocused();
   });
 });

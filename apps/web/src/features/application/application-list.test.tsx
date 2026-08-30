@@ -1,0 +1,53 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+
+import { ApplicationHistory } from "./application-list";
+
+const submitted = {
+  draftId: "application_550e8400-e29b-41d4-a716-446655440000",
+  state: "submitted" as const,
+  updatedAt: "2026-08-29T10:00:00.000Z",
+  job: {
+    id: "job_550e8400-e29b-41d4-a716-446655440000",
+    title: "Senior Product Engineer",
+    organizationName: "Northstar Labs",
+  },
+};
+
+describe("ApplicationHistory", () => {
+  it("presents applications as a simple, human-readable history", () => {
+    const markup = renderToStaticMarkup(
+      <ApplicationHistory
+        items={[
+          submitted,
+          {
+            ...submitted,
+            draftId: "application_7f568400-e29b-41d4-a716-446655440000",
+            state: "draft",
+            job: { ...submitted.job, title: "Platform Engineer" },
+          },
+        ]}
+      />,
+    );
+
+    expect(markup).toContain("Applications");
+    expect(markup).toContain("Track applications prepared for you");
+    expect(markup).toContain("Senior Product Engineer");
+    expect(markup).toContain("Northstar Labs");
+    expect(markup).toContain("Submitted");
+    expect(markup).toContain("Continue");
+    expect(markup).toContain("View receipt");
+    expect(markup).toContain(`/apply/${submitted.draftId}`);
+    expect(markup).not.toContain("handed_off");
+    expect(markup).not.toContain("External handoff");
+  });
+
+  it("gives an empty owner one obvious next step", () => {
+    const markup = renderToStaticMarkup(<ApplicationHistory items={[]} />);
+
+    expect(markup).toContain("No applications yet");
+    expect(markup).toContain("When an agent prepares one for you");
+    expect(markup).toContain("Browse jobs");
+    expect(markup).toContain('href="/jobs"');
+  });
+});

@@ -194,9 +194,22 @@ describe("SQLite application authorization persistence", () => {
       }),
     ).rejects.toBeDefined();
     await storage.delegations.insert(delegation);
-    await storage.delegations.approve(delegation.id, ownerId, now);
+    await storage.delegations.approve(delegation.id, ownerId, now, {
+      channel: "agent_client",
+      requestId: delegation.id,
+      action: "approved",
+      evidenceVersion: "agent-interaction-v1",
+    });
     await expect(storage.delegations.listByResource(ownerId, draftId)).resolves.toEqual([
-      { ...delegation, status: "active", approvedAt: now },
+      {
+        ...delegation,
+        status: "active",
+        approvedAt: now,
+        decisionChannel: "agent_client",
+        decisionRequestId: delegation.id,
+        decisionAction: "approved",
+        decisionEvidenceVersion: "agent-interaction-v1",
+      },
     ]);
     await expect(storage.delegations.listByResource(otherOwnerId, draftId)).resolves.toEqual([]);
 
@@ -281,11 +294,21 @@ describe("SQLite application authorization persistence", () => {
     ).resolves.toBeNull();
     await expect(storage.richDataGrants.getCurrent({ ...match, now: future })).resolves.toBeNull();
 
+    const withdrawalEvidence = {
+      channel: "agent_client" as const,
+      requestId: "interaction_71000000-0000-7000-8000-000000000001",
+      action: "withdrawn" as const,
+      evidenceVersion: "agent-interaction-v1" as const,
+    };
     await expect(
-      storage.richDataGrants.withdraw(grant.id, ownerId, draftId, now),
+      storage.richDataGrants.withdraw(grant.id, ownerId, draftId, now, withdrawalEvidence),
     ).resolves.toMatchObject({
       status: "withdrawn",
       version: 2,
+      withdrawalChannel: "agent_client",
+      withdrawalRequestId: withdrawalEvidence.requestId,
+      withdrawalAction: "withdrawn",
+      withdrawalEvidenceVersion: "agent-interaction-v1",
     });
     await expect(storage.richDataGrants.getCurrent(match)).resolves.toBeNull();
 
@@ -549,7 +572,13 @@ describe("SQLite application authorization persistence", () => {
     ).resolves.toMatchObject({
       status: "invalidated",
     });
-    await expect(storage.richDataGrants.getById(grant.id, ownerId, draftId)).resolves.toBeNull();
+    await expect(storage.richDataGrants.getById(grant.id, ownerId, draftId)).resolves.toMatchObject(
+      {
+        status: "withdrawn",
+        withdrawnAt: now,
+        version: 1,
+      },
+    );
     storage.close();
   });
 

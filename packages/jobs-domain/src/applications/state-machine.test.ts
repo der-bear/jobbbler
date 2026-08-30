@@ -6,6 +6,7 @@ import {
   handOffExternal,
   reviewApplication,
   setApplicationAnswer,
+  setApplicationAnswers,
   submitInternal,
   validateApplication,
   withdrawApplication,
@@ -17,6 +18,40 @@ const jobId = "job_00000001-0000-7000-8000-000000000001";
 const hash = (value: string) => `hash:${value}`;
 
 describe("application state machine", () => {
+  it("applies a validated answer batch as one atomic draft version", () => {
+    const draft = createApplicationDraft({
+      id: "draft_00000001-0000-7000-8000-000000000010",
+      ownerId,
+      jobId,
+      requiredFieldKeys: ["full_name", "email"],
+      now,
+    });
+    const updated = setApplicationAnswers(draft, {
+      ownerId,
+      expectedVersion: 0,
+      answers: [
+        {
+          fieldKey: "full_name",
+          value: "Ada Lovelace",
+          provenance: "agent_suggestion",
+          sensitive: true,
+          acceptedByHuman: false,
+        },
+        {
+          fieldKey: "email",
+          value: "ada@example.test",
+          provenance: "agent_suggestion",
+          sensitive: true,
+          acceptedByHuman: false,
+        },
+      ],
+      now,
+    }).draft;
+
+    expect(updated.version).toBe(1);
+    expect(updated.answers.map(({ fieldKey }) => fieldKey)).toEqual(["email", "full_name"]);
+  });
+
   it("validates required answers, binds an immutable review, and invalidates it after a material edit", () => {
     const draft = createApplicationDraft({
       id: "draft_00000001-0000-7000-8000-000000000001",

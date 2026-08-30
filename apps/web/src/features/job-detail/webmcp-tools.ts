@@ -16,9 +16,11 @@ import {
   type SafeWebMcpErrorResult,
 } from "@/lib/webmcp-tool-result";
 
+import { applicationCapabilityData, applicationCapabilitySummary } from "./application-capability";
+
 const jobIdProperty = {
   type: "string",
-  description: "A Jobbbler job ID visible on the current page.",
+  description: "A Jobbbler job ID returned by search_jobs or another Jobbbler tool.",
   pattern: "^job_[0-9a-f-]{36}$",
 } as const satisfies JsonSchema;
 
@@ -35,7 +37,7 @@ const comparisonInputJsonSchema = {
   properties: {
     jobIds: {
       type: "array",
-      description: "Two or three distinct job IDs, including the current role.",
+      description: "Two or three distinct job IDs returned by Jobbbler tools.",
       minItems: 2,
       maxItems: 3,
       uniqueItems: true,
@@ -46,7 +48,7 @@ const comparisonInputJsonSchema = {
 } as const satisfies JsonSchema;
 
 export interface JobDetailToolDependencies {
-  readonly currentJobId: string;
+  readonly currentJobId?: string;
   getJobDetails(
     input: JobDetailInput,
     options: Readonly<{ signal: AbortSignal }>,
@@ -117,17 +119,7 @@ function comparisonHref(jobIds: readonly string[], criteriaSearch: string): stri
 export function createJobDetailToolManifests(
   dependencies: JobDetailToolDependencies,
 ): readonly ToolManifest<unknown, JobDetailToolOutput>[] {
-  const currentDetailInput = z
-    .strictObject({ jobId: jobIdSchema })
-    .superRefine((input, context) => {
-      if (input.jobId !== dependencies.currentJobId) {
-        context.addIssue({
-          code: "custom",
-          path: ["jobId"],
-          message: "The requested job must be open on the current page.",
-        });
-      }
-    });
+  const currentDetailInput = z.strictObject({ jobId: jobIdSchema });
   const currentComparisonInput = z
     .strictObject({ jobIds: z.array(jobIdSchema).min(1).max(3) })
     .superRefine((input, context) => {
@@ -145,20 +137,13 @@ export function createJobDetailToolManifests(
           message: "Select another job before comparing.",
         });
       }
-      if (!input.jobIds.includes(dependencies.currentJobId)) {
-        context.addIssue({
-          code: "custom",
-          path: ["jobIds"],
-          message: "The comparison must include the current job.",
-        });
-      }
     });
 
   const getJobDetails: ToolManifest<unknown, JobDetailToolOutput> = {
     name: "get_job_details",
-    purpose: "Inspect the source-backed facts and fit evidence for the role open on this page.",
+    purpose: "Inspect source-backed facts and fit evidence for one explicitly identified role.",
     description:
-      "Read the current technology role, provenance, compensation, known unknowns, and fit evidence. Use only for the job open on this page; provide its visible Jobbbler ID.",
+      "Read one technology role's provenance, compensation, known unknowns, and fit evidence by Jobbbler ID. It works from any page and changes nothing.",
     inputSchema: detailInputJsonSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -167,7 +152,7 @@ export function createJobDetailToolManifests(
         const result = await dependencies.getJobDetails(parsed, { signal });
         await dependencies.onDetailCommitted(result);
         return completedWebMcpResult({
-          summary: "Read the current role and its source-backed fit evidence.",
+          summary: "Read the role and its source-backed fit evidence.",
           data: detailData(result),
           resources: [
             {
@@ -179,18 +164,18 @@ export function createJobDetailToolManifests(
           facts: [{ key: "match_score", value: result.fit.score }],
         });
       } catch (error) {
-        return safeWebMcpErrorResult(error, signal, "The current job request is invalid.");
+        return safeWebMcpErrorResult(error, signal, "Provide one valid Jobbbler job ID.");
       }
     },
   };
 
   const compareJobs: ToolManifest<unknown, JobDetailToolOutput> = {
     name: "compare_jobs",
-    purpose: "Compare the current role with one or two explicitly selected technology roles.",
+    purpose: "Compare two or three explicitly identified technology roles.",
     description:
-      "Compare two or three source-backed roles and open the visible comparison. Use only after the user identifies distinct job IDs, including the role on this page.",
+      "Compare source-backed roles only after two or three exact job IDs are known, then open the visible comparison. Never call it with one role; if a target is missing, search or ask which other role to compare first.",
     inputSchema: comparisonInputJsonSchema,
-    annotations: { readOnlyHint: true, untrustedContentHint: true },
+    annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
       try {
         const parsed = currentComparisonInput.parse(input);
@@ -214,5 +199,34 @@ export function createJobDetailToolManifests(
     },
   };
 
-  return [getJobDetails, compareJobs];
+  const getApplicationCapability: ToolManifest<unknown, JobDetailToolOutput> = {
+    name: "get_job_application_capability",
+    purpose: "Learn how one explicitly identified role accepts applications before starting one.",
+    description:
+      "Read one role's application capability by Jobbbler ID: whether Jobbbler can prepare it, which steps stay with the human, and whether an external handoff is required.",
+    inputSchema: detailInputJsonSchema,
+    annotations: { readOnlyHint: true, untrustedContentHint: true },
+    async execute(input, { signal }) {
+      try {
+        const parsed = currentDetailInput.parse(input);
+        const result = await dependencies.getJobDetails(parsed, { signal });
+        return completedWebMcpResult({
+          summary: applicationCapabilitySummary(result.job),
+          data: applicationCapabilityData(result.job),
+          resources: [
+            {
+              type: "job",
+              id: result.job.id,
+              label: short(`${result.job.title} at ${result.job.organizationName}`, 70),
+            },
+          ],
+          facts: [{ key: "apply_mode", value: result.job.applyMode }],
+        });
+      } catch (error) {
+        return safeWebMcpErrorResult(error, signal, "The capability request is invalid.");
+      }
+    },
+  };
+
+  return [getJobDetails, getApplicationCapability, compareJobs];
 }

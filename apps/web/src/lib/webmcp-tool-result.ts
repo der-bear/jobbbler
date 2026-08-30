@@ -56,6 +56,7 @@ export interface RequiresUserActionWebMcpResult {
   readonly status: "requires_user_action";
   readonly summary: string;
   readonly requestId: string;
+  readonly nextTool?: string;
   readonly userAction: {
     readonly kind:
       "agent_authorization" | "data_consent" | "action_confirmation" | "identity_verification";
@@ -104,6 +105,7 @@ export function requiresUserActionWebMcpResult(
     kind: RequiresUserActionWebMcpResult["userAction"]["kind"];
     surface: RequiresUserActionWebMcpResult["userAction"]["surface"];
     requestId?: string;
+    nextTool?: string;
     presentation?: UserActionPresentation;
   }>,
 ): RequiresUserActionWebMcpResult {
@@ -111,6 +113,7 @@ export function requiresUserActionWebMcpResult(
     status: "requires_user_action",
     summary: options.summary,
     requestId: options.requestId ?? requestId(),
+    ...(options.nextTool === undefined ? {} : { nextTool: options.nextTool }),
     userAction: { kind: options.kind, surface: options.surface },
     ...(options.presentation === undefined ? {} : { presentation: options.presentation }),
   });
@@ -120,7 +123,7 @@ function requestId(): string {
   return `req_${crypto.randomUUID()}`;
 }
 
-function failedResult(options: {
+export function failedWebMcpResult(options: {
   readonly code: ApiErrorCode;
   readonly message: string;
   readonly requestId?: string | null;
@@ -148,15 +151,24 @@ export function safeWebMcpErrorResult(
   }
 
   if (error instanceof ZodError) {
-    return failedResult({
+    const issues = error.issues
+      .slice(0, 3)
+      .map((issue) => {
+        const path = issue.path.map(String).join(".");
+        const message = issue.message.slice(0, 120);
+        return path.length === 0 ? message : `${path}: ${message}`;
+      })
+      .join(" · ")
+      .slice(0, 360);
+    return failedWebMcpResult({
       code: "VALIDATION",
-      message: validationMessage,
+      message: issues.length === 0 ? validationMessage : `${validationMessage} ${issues}`,
       retryable: false,
     });
   }
 
   if (error instanceof ApiClientError) {
-    return failedResult({
+    return failedWebMcpResult({
       code: error.code,
       message: error.message.slice(0, 500),
       requestId: error.requestId,
@@ -164,7 +176,7 @@ export function safeWebMcpErrorResult(
     });
   }
 
-  return failedResult({
+  return failedWebMcpResult({
     code: "INTERNAL",
     message: "The tool could not complete safely.",
     retryable: true,

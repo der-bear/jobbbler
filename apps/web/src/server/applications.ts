@@ -1,11 +1,13 @@
 import {
   applicationDataGrantSummarySchema,
   applicationDraftSchema,
+  applicationListSchema,
   applicationReceiptSummarySchema,
   applicationReviewSummarySchema,
   applicationWorkspaceSchema,
   reviewApplicationInputSchema,
   setApplicationAnswerInputSchema,
+  setApplicationAnswersInputSchema,
   startApplicationInputSchema,
   submitApplicationInputSchema,
   type ApplicationDraft,
@@ -18,6 +20,7 @@ import {
   createApplicationDraft,
   reviewApplication,
   setApplicationAnswer,
+  setApplicationAnswers,
   validateApplication,
   type ApplicationDraftRecord,
 } from "@jobbbler/jobs-domain";
@@ -46,7 +49,9 @@ import { getServerStorage } from "./context";
 import { getIdentityRouteDependencies } from "./identity";
 import { createOwnerActivityPublisher } from "./owner-activity-publisher";
 
-const answerBodySchema = setApplicationAnswerInputSchema.omit({ draftId: true });
+const answerBodySchema = setApplicationAnswerInputSchema
+  .omit({ draftId: true })
+  .or(setApplicationAnswersInputSchema.omit({ draftId: true }));
 const reviewBodySchema = reviewApplicationInputSchema.omit({ draftId: true });
 const submitBodySchema = submitApplicationInputSchema.omit({ draftId: true });
 const requiredFieldKeys = applicationPolicy.requirements
@@ -64,6 +69,7 @@ function persistableDraft(record: ApplicationDraftRecord): ApplicationDraft {
     jobId: record.jobId,
     state: record.state,
     version: record.version,
+    consentRevision: record.consentRevision,
     answers: record.answers,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
@@ -253,10 +259,31 @@ export function createApplicationRouteDependencies(
     confirmation: createConfirmationSecrets(),
     activity: createOwnerActivityPublisher(storage.ownerActivity),
     operations: {
+      async list(ownerId) {
+        const drafts = await storage.applications.listByOwner(ownerId);
+        const summaries = await Promise.all(
+          drafts.slice(0, 100).map(async (draft) => {
+            const job = await storage.jobs.getById(draft.jobId);
+            if (job === null) return null;
+            return {
+              draftId: draft.id,
+              state: draft.state,
+              updatedAt: draft.updatedAt,
+              job: {
+                id: job.id,
+                title: job.title,
+                organizationName: job.organizationName,
+              },
+            };
+          }),
+        );
+        return applicationListSchema.parse(summaries.filter((summary) => summary !== null));
+      },
+
       async start(ownerId, raw, now) {
         const { jobId } = startApplicationInputSchema.parse(raw);
         const existing = await storage.applications.getByOwnerAndJob(ownerId, jobId);
-        if (existing !== null) return existing;
+        if (existing !== null) return { draft: existing, disposition: "reopened" as const };
         const job = await requireJob(storage, jobId);
         if (job.status !== "open") {
           throw new DomainError({
@@ -264,7 +291,12 @@ export function createApplicationRouteDependencies(
             message: "This role is no longer open for applications.",
           });
         }
-        if (job.applyMode === "external") requireSafeExternalHandoffUrl(job);
+        if (job.applyMode === "external") {
+          throw new DomainError({
+            code: "CONFLICT",
+            message: "This role accepts applications on the employer's website.",
+          });
+        }
         const draft = createApplicationDraft({
           id: createEntityId("application"),
           ownerId,
@@ -272,7 +304,10 @@ export function createApplicationRouteDependencies(
           requiredFieldKeys,
           now,
         });
-        return storage.applications.insert(persistableDraft(draft));
+        return {
+          draft: await storage.applications.insert(persistableDraft(draft)),
+          disposition: "created" as const,
+        };
       },
 
       async get(ownerId, draftId, now) {
@@ -282,12 +317,22 @@ export function createApplicationRouteDependencies(
       async answer(actor: ApplicationActor, draftId, raw, now) {
         const input = answerBodySchema.parse(raw);
         const draft = await requireOwnedDraft(storage, actor.ownerId, draftId);
-        const result = setApplicationAnswer(domainDraft(draft), {
-          ownerId: actor.ownerId,
-          expectedVersion: input.expectedVersion,
-          answer: normalizeApplicationAnswer(input.answer, actor.kind),
-          now,
-        });
+        const result =
+          "answers" in input
+            ? setApplicationAnswers(domainDraft(draft), {
+                ownerId: actor.ownerId,
+                expectedVersion: input.expectedVersion,
+                answers: input.answers.map((answer) =>
+                  normalizeApplicationAnswer(answer, actor.kind),
+                ),
+                now,
+              })
+            : setApplicationAnswer(domainDraft(draft), {
+                ownerId: actor.ownerId,
+                expectedVersion: input.expectedVersion,
+                answer: normalizeApplicationAnswer(input.answer, actor.kind),
+                now,
+              });
         const next = persistableDraft(result.draft);
         if (next.version === draft.version) return draft;
         return storage.applications.applyMaterialEdit({

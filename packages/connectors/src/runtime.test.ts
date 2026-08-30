@@ -30,6 +30,7 @@ const policy: SourcePolicy = {
 describe("fetchBoundedJson", () => {
   it("sends descriptive and conditional headers and handles 304", async () => {
     const fetch = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      expect(init?.redirect).toBe("manual");
       const headers = new Headers(init?.headers);
       expect(headers.get("user-agent")).toBe(policy.userAgent);
       expect(headers.get("if-none-match")).toBe('"v1"');
@@ -51,6 +52,30 @@ describe("fetchBoundedJson", () => {
       etag: '"v1"',
       lastModified: null,
       bytes: 0,
+    });
+  });
+
+  it("refuses provider redirects instead of following them to an untrusted destination", async () => {
+    const fetch = vi.fn(
+      async () =>
+        new Response(null, {
+          status: 302,
+          headers: { location: "http://169.254.169.254/latest/meta-data" },
+        }),
+    );
+
+    await expect(
+      fetchBoundedJson(policy.sourceUrl, {
+        policy,
+        fetch,
+        signal: new AbortController().signal,
+        etag: null,
+        lastModified: null,
+      }),
+    ).rejects.toMatchObject({
+      code: "DEPENDENCY",
+      retryable: false,
+      message: "Source redirects are not allowed.",
     });
   });
 

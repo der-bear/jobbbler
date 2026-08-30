@@ -5,6 +5,7 @@ import type { ApplicationWorkspace } from "@jobbbler/contracts";
 import {
   applicationAgentState,
   applicationDisclosure,
+  applicationReadiness,
   applicationStage,
   visibleApplicationProgress,
 } from "./application-model";
@@ -56,7 +57,7 @@ const base: ApplicationWorkspace = {
   },
   purpose: "Submit this reviewed application to Northstar Systems.",
   noticeVersion: "privacy-2026-08-29",
-  legalBasis: "user_instruction",
+  legalBasis: "consent",
   review: null,
   dataGrant: null,
   delegationRequests: [],
@@ -112,7 +113,7 @@ describe("application presentation model", () => {
     });
   });
 
-  it("reports visible progress without treating an unaccepted agent suggestion as complete", () => {
+  it("treats a non-empty agent suggestion as ready for one final human review", () => {
     const workspace: ApplicationWorkspace = {
       ...base,
       draft: {
@@ -130,7 +131,22 @@ describe("application presentation model", () => {
       },
     };
 
-    expect(visibleApplicationProgress(workspace)).toEqual({ completed: 1, required: 2 });
+    expect(visibleApplicationProgress(workspace)).toEqual({ completed: 2, required: 2 });
+    expect(applicationReadiness(workspace)).toEqual({
+      completed: 2,
+      required: 2,
+      missingFieldKeys: [],
+      readyForReview: true,
+    });
+  });
+
+  it("reports only genuinely missing required fields", () => {
+    expect(applicationReadiness(base)).toEqual({
+      completed: 1,
+      required: 2,
+      missingFieldKeys: ["motivation"],
+      readyForReview: false,
+    });
   });
 
   it("gives agents only workflow state, never answers or owner identity", () => {

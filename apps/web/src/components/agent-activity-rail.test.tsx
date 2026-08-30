@@ -29,46 +29,78 @@ const activities: readonly ToolActivity[] = [
 ];
 
 describe("AgentActivityRail", () => {
-  it("keeps the agent layer secondary while surfacing active work", () => {
-    const markup = renderToStaticMarkup(
-      <AgentActivityRail activities={activities} registeredToolCount={4} webMcpAvailable />,
-    );
-
-    expect(markup).toContain("<details");
-    expect(markup).toContain('open=""');
-    expect(markup).toContain("Agent activity");
-    expect(markup).toContain("WebMCP available");
-    expect(markup).toContain("4 actions available on this page");
-    expect(markup).toContain('aria-live="polite"');
-    expect(markup).toContain('aria-busy="true"');
-    expect(markup).toContain("Approval needed");
-    expect(markup).toContain("Finding remote product roles in Europe.");
-    expect(markup).not.toContain("activity_550e8400");
-  });
-
-  it("collapses an idle agent layer behind plain-language disclosure", () => {
-    const markup = renderToStaticMarkup(
-      <AgentActivityRail activities={[]} registeredToolCount={0} webMcpAvailable={false} />,
-    );
-
-    expect(markup).toContain("Agent activity");
-    expect(markup).toContain("Browser mode");
-    expect(markup).toContain("WebMCP unavailable");
-    expect(markup).toContain("Nothing changed by an agent in this session.");
-    expect(markup).not.toContain('open=""');
-  });
-
-  it("can open immediately when rendered inside an explicit activity sheet", () => {
+  it("translates legacy application receipts into the current product language", () => {
     const markup = renderToStaticMarkup(
       <AgentActivityRail
-        activities={[]}
-        initiallyExpanded
-        registeredToolCount={2}
+        activities={[
+          {
+            id: "legacy-start",
+            toolName: "start_application",
+            status: "completed",
+            safeSummary: "Application workspace created.",
+            correlationId: "legacy-correlation",
+            startedAt: "2026-08-29T10:23:00.000Z",
+            completedAt: "2026-08-29T10:23:00.100Z",
+            affectedResourceIds: [],
+          },
+        ]}
         webMcpAvailable
       />,
     );
 
-    expect(markup).toContain('open=""');
-    expect(markup).toContain("2 actions available on this page");
+    expect(markup).toContain("Application prepared.");
+    expect(markup).toContain("prepare_application");
+    expect(markup).not.toContain("Application workspace created.");
+  });
+
+  it("keeps the agent layer secondary while surfacing active work", () => {
+    const markup = renderToStaticMarkup(
+      <AgentActivityRail activities={activities} webMcpAvailable />,
+    );
+
+    expect(markup).toContain("<section");
+    expect(markup).toContain('aria-label="Agent activity log"');
+    expect(markup).toContain('aria-live="polite"');
+    expect(markup).toContain('aria-busy="true"');
+    expect(markup).toContain("Approval needed");
+    expect(markup).toContain("Finding remote product roles in Europe.");
+    expect(markup).toContain("<code>search_jobs</code>");
+    expect(markup).not.toContain("activity_550e8400");
+  });
+
+  it("shows a plain-language browser fallback without nested disclosures", () => {
+    const markup = renderToStaticMarkup(
+      <AgentActivityRail activities={[]} webMcpAvailable={false} />,
+    );
+
+    expect(markup).toContain("No agent actions in this browser.");
+    expect(markup).toContain("The job portal still works normally.");
+    expect(markup).not.toContain("<details");
+  });
+
+  it("shows a useful empty receipt state when an agent is ready", () => {
+    const markup = renderToStaticMarkup(<AgentActivityRail activities={[]} webMcpAvailable />);
+
+    expect(markup).toContain("No agent activity yet");
+    expect(markup).toContain("Tool calls and visible results will appear here.");
+    expect(markup).not.toContain("Copy prompt");
+  });
+
+  it("groups repeated identical calls so the judge timeline stays readable", () => {
+    const repeated = Array.from({ length: 4 }, (_, index): ToolActivity => ({
+      ...activities[1]!,
+      id: `activity_${String(index)}-550e8400-e29b-41d4-a716-446655440000`,
+      toolName: "prepare_application",
+      status: "completed",
+      safeSummary: "Application workspace created.",
+      startedAt: `2026-08-29T10:23:0${String(index)}.000Z`,
+      completedAt: `2026-08-29T10:23:0${String(index)}.000Z`,
+    }));
+    const markup = renderToStaticMarkup(
+      <AgentActivityRail activities={repeated} webMcpAvailable />,
+    );
+
+    expect(markup).toContain("4 calls");
+    expect(markup).not.toContain("0 ms");
   });
 });

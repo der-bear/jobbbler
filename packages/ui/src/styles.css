@@ -307,7 +307,6 @@ button.jb-chip {
   align-items: flex-start;
   background: var(--jb-surface);
   border: 1px solid var(--jb-border-strong);
-  border-left: 3px solid var(--jb-signal);
   border-radius: var(--jb-radius-md);
   box-shadow: var(--jb-shadow-raised);
   display: grid;
@@ -316,10 +315,10 @@ button.jb-chip {
   padding: 0.875rem;
 }
 .jb-toast--warning {
-  border-left-color: var(--jb-warning);
+  border-color: color-mix(in srgb, var(--jb-warning) 45%, var(--jb-border-strong));
 }
 .jb-toast--danger {
-  border-left-color: var(--jb-danger);
+  border-color: color-mix(in srgb, var(--jb-danger) 45%, var(--jb-border-strong));
 }
 .jb-toast p {
   color: var(--jb-text-muted);
@@ -356,4 +355,182 @@ button.jb-chip {
     scroll-behavior: auto !important;
     transition-duration: 1ms !important;
   }
+}
+
+/* Multi-select dropdown */
+.jb-multiselect {
+  position: relative;
+}
+
+.jb-multiselect__control {
+  display: flex;
+  inline-size: 100%;
+  min-block-size: 36px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--jb-border-strong);
+  border-radius: var(--jb-radius-md);
+  background: var(--jb-surface);
+  color: var(--jb-text);
+  padding: 7px 10px;
+  font-size: 13px;
+  text-align: start;
+}
+
+.jb-multiselect__control svg {
+  flex: 0 0 auto;
+  color: var(--jb-text-muted);
+}
+
+.jb-multiselect__control[data-active="false"] > span {
+  color: var(--jb-text-muted);
+}
+
+.jb-multiselect__control:focus-visible {
+  border-color: var(--jb-signal);
+  outline: 0;
+}
+
+.jb-multiselect__popover {
+  position: absolute;
+  inset-block-start: calc(100% + 5px);
+  inset-inline: 0;
+  z-index: 30;
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--jb-border);
+  border-radius: var(--jb-radius-md);
+  background: var(--jb-surface);
+  box-shadow: var(--jb-shadow-raised);
+  padding: 8px;
+}
+
+.jb-multiselect .jb-multiselect__search {
+  inline-size: 100%;
+  min-block-size: 32px;
+  border: 1px solid var(--jb-border);
+  border-radius: var(--jb-radius-sm);
+  outline: 0;
+  background: var(--jb-canvas);
+  color: var(--jb-text);
+  padding: 6px 9px;
+  font-size: 12px;
+}
+
+.jb-multiselect__search:focus-visible {
+  border-color: var(--jb-signal);
+}
+
+.jb-multiselect__list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  max-block-size: 240px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.jb-multiselect__list label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-radius: var(--jb-radius-sm);
+  padding: 7px 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.jb-multiselect__list label:hover {
+  background: var(--jb-surface-muted);
+}
+
+.jb-multiselect .jb-multiselect__list input {
+  inline-size: 15px;
+  block-size: 15px;
+  min-block-size: 0;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  accent-color: var(--jb-signal);
+}
+
+.jb-multiselect__list label span {
+  flex: 1;
+  text-align: start;
+}
+
+.jb-multiselect__empty {
+  color: var(--jb-text-muted);
+  padding: 8px;
+  font-size: 12px;
+}
+
+.jb-multiselect__clear {
+  justify-self: start;
+  border: 0;
+  background: transparent;
+  color: var(--jb-signal-strong);
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Range slider */
+.jb-range {
+  inline-size: 100%;
+  block-size: 20px;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.jb-range::-webkit-slider-runnable-track {
+  block-size: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--jb-signal) 0%,
+    var(--jb-signal) var(--jb-range-progress, 0%),
+    var(--jb-border) var(--jb-range-progress, 0%),
+    var(--jb-border) 100%
+  );
+}
+
+.jb-range::-moz-range-track {
+  block-size: 4px;
+  border-radius: 999px;
+  background: var(--jb-border);
+}
+
+.jb-range::-moz-range-progress {
+  block-size: 4px;
+  border-radius: 999px;
+  background: var(--jb-signal);
+}
+
+.jb-range::-webkit-slider-thumb {
+  appearance: none;
+  inline-size: 16px;
+  block-size: 16px;
+  margin-block-start: -6px;
+  border: 2px solid var(--jb-surface);
+  border-radius: 999px;
+  background: var(--jb-signal);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
+}
+
+.jb-range::-moz-range-thumb {
+  inline-size: 12px;
+  block-size: 12px;
+  border: 2px solid var(--jb-surface);
+  border-radius: 999px;
+  background: var(--jb-signal);
+}
+
+.jb-range:focus-visible {
+  outline: 3px solid var(--jb-focus);
+  outline-offset: 4px;
+  border-radius: 999px;
 }

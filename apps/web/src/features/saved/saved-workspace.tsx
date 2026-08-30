@@ -43,6 +43,8 @@ import { ApiClientError, queryApi } from "@/lib/query-client";
 import { searchInputToSearchParams } from "@/lib/search-url";
 import { subscribeWebMcpScheduleCommit } from "@/lib/webmcp-ui-bridge";
 
+import { latestSearchRunSchema, type LatestSearchRun } from "@/lib/latest-run";
+
 import { OwnerPrivacyControls } from "./owner-privacy-controls";
 import styles from "./saved-workspace.module.css";
 
@@ -58,40 +60,6 @@ const previewSchema = z.strictObject({
     maskedDestination: z.string(),
   }),
 });
-const latestRunSchema = z.strictObject({
-  savedSearchId: z.string(),
-  evaluation: z
-    .strictObject({
-      id: z.string(),
-      createdAt: z.iso.datetime({ offset: true }),
-      catalogUpdatedAt: z.iso.datetime({ offset: true }).nullable(),
-      baselineCount: z.number().int().nonnegative(),
-      changes: z.strictObject({
-        total: z.number().int().nonnegative(),
-        truncated: z.boolean(),
-        items: z.array(
-          z.strictObject({
-            id: z.string(),
-            jobId: z.string(),
-            kind: z.enum(["new", "updated", "closed", "no_longer_matching"]),
-            createdAt: z.iso.datetime({ offset: true }),
-          }),
-        ),
-      }),
-    })
-    .nullable(),
-  delivery: z
-    .strictObject({
-      status: z.enum(["pending", "sending", "accepted", "failed", "dead", "cancelled"]),
-      attempt: z.number().int().nonnegative(),
-      errorCode: z.string().nullable(),
-      acceptedAt: z.iso.datetime({ offset: true }).nullable(),
-      lastAttemptAt: z.iso.datetime({ offset: true }).nullable(),
-      updatedAt: z.iso.datetime({ offset: true }),
-    })
-    .nullable(),
-});
-type LatestRun = z.infer<typeof latestRunSchema>;
 
 const weekdayOptions: readonly { readonly value: Weekday; readonly label: string }[] = [
   { value: "monday", label: "Mon" },
@@ -123,6 +91,23 @@ function displayInstant(value: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function deliveryLabel(status: string): string {
+  switch (status) {
+    case "pending":
+      return "Email queued";
+    case "sending":
+      return "Sending the email…";
+    case "accepted":
+      return "Email sent";
+    case "failed":
+      return "Email failed — retrying";
+    case "dead":
+      return "Email could not be delivered";
+    default:
+      return "Email cancelled";
+  }
 }
 
 function criteriaInput(criteria: JobSearchCriteria): JobSearchInput {
@@ -188,7 +173,7 @@ export function SavedWorkspace() {
   const [endpoints, setEndpoints] = useState<readonly VerificationEndpointSummary[]>([]);
   const [savedSearches, setSavedSearches] = useState<readonly SavedSearch[]>([]);
   const [schedules, setSchedules] = useState<readonly JobAlertSchedule[]>([]);
-  const [latestRuns, setLatestRuns] = useState<ReadonlyMap<string, LatestRun>>(new Map());
+  const [latestRuns, setLatestRuns] = useState<ReadonlyMap<string, LatestSearchRun>>(new Map());
   const [criteria, setCriteria] = useState<JobSearchCriteria | null>(null);
   const [email, setEmail] = useState("");
   const [challengeId, setChallengeId] = useState<string | null>(null);
@@ -213,21 +198,24 @@ export function SavedWorkspace() {
     setEndpoints(nextEndpoints);
     setSavedSearches(nextSaved);
     setSchedules(nextSchedules);
-    const runs = await Promise.all(
+    void Promise.all(
       nextSaved.map(async (saved) => {
         try {
           return await queryApi(
             `/api/v1/saved-searches/${encodeURIComponent(saved.id)}/latest-run`,
-            latestRunSchema,
+            latestSearchRunSchema,
           );
         } catch {
           return null;
         }
       }),
-    );
-    setLatestRuns(
-      new Map(
-        runs.filter((run): run is LatestRun => run !== null).map((run) => [run.savedSearchId, run]),
+    ).then((runs) =>
+      setLatestRuns(
+        new Map(
+          runs
+            .filter((run): run is LatestSearchRun => run !== null)
+            .map((run) => [run.savedSearchId, run]),
+        ),
       ),
     );
     const verified = nextEndpoints.find(
@@ -300,7 +288,7 @@ export function SavedWorkspace() {
         });
         toast.show({
           title: updated.enabled ? "Alert resumed by agent" : "Alert paused by agent",
-          description: "The visible workspace now matches the authoritative server state.",
+          description: "This page now shows your latest saved state.",
           tone: "success",
         });
       }),
@@ -311,18 +299,6 @@ export function SavedWorkspace() {
     () => endpoints.filter(({ status: endpointStatus }) => endpointStatus === "verified"),
     [endpoints],
   );
-
-  async function beginWorkspaceFromButton() {
-    setStatus("working");
-    setError(null);
-    try {
-      await startPrivateWorkspace();
-      setStatus("ready");
-    } catch (caught) {
-      setError(message(caught));
-      setStatus("error");
-    }
-  }
 
   async function revokeEndpoint(endpoint: VerificationEndpointSummary) {
     setStatus("working");
@@ -501,42 +477,29 @@ export function SavedWorkspace() {
     <div className={styles["workspace"]}>
       <section className={styles["intro"]}>
         <div>
-          <p className={styles["eyebrow"]}>Saved · monitoring</p>
-          <h1>A quiet watchlist for the roles worth your time.</h1>
+          <h1>Alerts</h1>
           <p className={styles["lede"]}>
-            Jobbbler checks explicit criteria in the background and only sends a digest when
-            something materially changes.
+            Save a search once. Jobbbler checks it for meaningful changes and emails you.
           </p>
         </div>
         <aside className={styles["identityCard"]} aria-label="Private workspace status">
           <div className={styles["identityHeading"]}>
             <ShieldCheckIcon aria-hidden="true" size={22} weight="fill" />
             <div>
-              <span>Private workspace</span>
+              <span>Your private space</span>
               <strong>
                 {owner === null
-                  ? "Not started"
+                  ? "Starts when you save something"
                   : owner.recoverable
-                    ? "Verified and recoverable"
-                    : "Private on this browser"}
+                    ? "Backed up to your email"
+                    : "Private to this browser"}
               </strong>
             </div>
           </div>
           <p>
-            Search stays public. Private state begins only when you save, and email is encrypted at
-            rest. Agent authority, data permission, and final confirmation remain separate.
+            No account needed. Saving creates a private space automatically, and your email is
+            stored encrypted. You approve anything important yourself.
           </p>
-          {owner === null && status !== "loading" ? (
-            <button
-              className={styles["secondaryButton"]}
-              disabled={status === "working"}
-              onClick={() => void beginWorkspaceFromButton()}
-              type="button"
-            >
-              <LockKeyIcon aria-hidden="true" size={16} />
-              Start private workspace
-            </button>
-          ) : null}
           {owner?.recoverable === true && verifiedEndpoints.length > 0 ? (
             <div className={styles["endpointList"]} aria-label="Verified delivery destinations">
               {verifiedEndpoints.map((endpoint) => (
@@ -619,8 +582,7 @@ export function SavedWorkspace() {
           <section className={styles["composer"]} aria-labelledby="composer-title">
             <div className={styles["sectionHeading"]}>
               <div>
-                <p className={styles["eyebrow"]}>New alert</p>
-                <h2 id="composer-title">Turn this search into a durable signal.</h2>
+                <h2 id="composer-title">Save this search as an email alert</h2>
               </div>
               <span className={styles["stepBadge"]}>
                 {verifiedEndpoints.length === 0
@@ -642,8 +604,9 @@ export function SavedWorkspace() {
                 <div className={styles["privacyNote"]}>
                   <LockKeyIcon aria-hidden="true" size={18} />
                   <p>
-                    Your email is used only to verify ownership and deliver this alert. It is not
-                    exposed to WebMCP, agent activity, or analytics, and you can revoke it later.
+                    Your email is used only to confirm it is yours and to send this alert. It is
+                    never shared with your browser agent or anyone else, and you can remove it
+                    later.
                   </p>
                 </div>
                 {challengeId === null ? (
@@ -750,7 +713,7 @@ export function SavedWorkspace() {
                   </p>
                 ) : null}
                 <label>
-                  <span>IANA time zone</span>
+                  <span>Time zone</span>
                   <input
                     onChange={(event) => setTimeZone(event.target.value)}
                     required
@@ -796,8 +759,8 @@ export function SavedWorkspace() {
                   <strong>Only material changes</strong>
                 </div>
                 <p>
-                  Activation authorizes scheduled evaluation and service email for this saved
-                  search. It does not authorize an agent to apply, disclose profile data, or submit
+                  Turning this on lets Jobbbler keep checking and email you about this saved search.
+                  It does not authorize an agent to apply, disclose profile data, or submit
                   anything.
                 </p>
                 <div className={styles["buttonRow"]}>
@@ -826,10 +789,9 @@ export function SavedWorkspace() {
         <section className={styles["library"]} aria-labelledby="library-title">
           <div className={styles["sectionHeading"]}>
             <div>
-              <p className={styles["eyebrow"]}>Watchlist</p>
-              <h2 id="library-title">Your saved signals</h2>
+              <h2 id="library-title">Your saved searches</h2>
             </div>
-            <Link className={styles["textLink"]} href="/">
+            <Link className={styles["textLink"]} href="/jobs">
               Find another search <ArrowRightIcon aria-hidden="true" size={14} />
             </Link>
           </div>
@@ -837,15 +799,15 @@ export function SavedWorkspace() {
           {owner === null ? (
             <div className={styles["empty"]}>
               <LockKeyIcon aria-hidden="true" size={25} />
-              <h3>No account wall, no public profile.</h3>
-              <p>Start a private workspace only when you are ready to save something.</p>
+              <h3>Nothing saved yet.</h3>
+              <p>Search for roles first, then choose Save alert. No account is required.</p>
             </div>
           ) : savedSearches.length === 0 ? (
             <div className={styles["empty"]}>
               <BellRingingIcon aria-hidden="true" size={25} />
               <h3>No saved searches yet.</h3>
-              <p>Shape a search first, then choose Save alert to preview its exact schedule.</p>
-              <Link className={styles["secondaryButton"]} href="/">
+              <p>Search for roles first, then choose Save alert to set up email updates.</p>
+              <Link className={styles["secondaryButton"]} href="/jobs">
                 Explore technology roles
               </Link>
             </div>
@@ -859,12 +821,11 @@ export function SavedWorkspace() {
                     <div className={styles["savedTopline"]}>
                       <span data-active={String(schedule?.enabled === true)}>
                         {schedule === undefined
-                          ? "Saved · not scheduled"
+                          ? "Saved"
                           : schedule.enabled
-                            ? "Monitoring"
+                            ? `Checking ${schedule.recurrence.frequency}`
                             : "Paused"}
                       </span>
-                      <small>v{saved.version}</small>
                     </div>
                     <h3>{saved.name}</h3>
                     <div className={styles["criteria"]}>
@@ -876,34 +837,30 @@ export function SavedWorkspace() {
                       <span>
                         <ClockIcon aria-hidden="true" size={14} />
                         {schedule === undefined
-                          ? "No background checks"
+                          ? "Not checking automatically"
                           : schedule.enabled
                             ? `Next ${displayInstant(schedule.nextRunAt)}`
                             : "Checks are stopped"}
                       </span>
                       <span>
                         <EnvelopeSimpleIcon aria-hidden="true" size={14} />
-                        {schedule === undefined ? "No delivery" : schedule.delivery.channel}
+                        {schedule === undefined ? "No email updates" : "Email updates"}
                       </span>
                     </div>
                     {schedule !== undefined ? (
                       <div className={styles["latestRun"]} aria-live="polite">
                         {latestRun?.evaluation === null || latestRun === undefined ? (
-                          <span>Latest run: waiting for the first completed check.</span>
+                          <span>Waiting for the first check.</span>
                         ) : (
                           <span>
-                            Latest run: {latestRun.evaluation.baselineCount} matching ·{" "}
-                            {latestRun.evaluation.changes.total} changes
-                            {latestRun.evaluation.changes.truncated ? " (details capped)" : ""}
+                            {latestRun.evaluation.changes.total === 0
+                              ? `No changes · ${String(latestRun.evaluation.baselineCount)} matching`
+                              : `${String(latestRun.evaluation.changes.total)} change${latestRun.evaluation.changes.total === 1 ? "" : "s"} since the last check · ${String(latestRun.evaluation.baselineCount)} matching`}
                           </span>
                         )}
                         {latestRun?.delivery === null || latestRun === undefined ? null : (
                           <span data-status={latestRun.delivery.status}>
-                            Delivery: {latestRun.delivery.status}
-                            {latestRun.delivery.status === "failed" ||
-                            latestRun.delivery.status === "sending"
-                              ? " · delivery is retrying safely"
-                              : ""}
+                            {deliveryLabel(latestRun.delivery.status)}
                           </span>
                         )}
                       </div>

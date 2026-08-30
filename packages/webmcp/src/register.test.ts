@@ -84,6 +84,34 @@ describe("WebMCP framework core", () => {
     expect(activities.snapshot()).toBe(snapshot);
   });
 
+  it("reconciles the server record with the nearest local run when request IDs differ", () => {
+    let now = new Date("2026-08-29T10:00:00.000Z");
+    const activities = new AgentActivityStore({ now: () => now });
+    const localId = activities.start("start_application", "Creating an application workspace.");
+    now = new Date("2026-08-29T10:00:01.000Z");
+    activities.finish(localId, "completed", "Application workspace created.");
+
+    activities.mergeCommitted([
+      {
+        id: "activity_550e8400-e29b-41d4-a716-446655440000",
+        toolName: "start_application",
+        status: "completed",
+        safeSummary: "Application workspace created.",
+        correlationId: "server_request_550e8400-e29b-41d4-a716-446655440000",
+        startedAt: "2026-08-29T10:00:00.200Z",
+        completedAt: "2026-08-29T10:00:01.000Z",
+        affectedResourceIds: [],
+      },
+    ]);
+
+    expect(activities.snapshot()).toHaveLength(1);
+    expect(activities.snapshot()[0]).toMatchObject({
+      id: "activity_550e8400-e29b-41d4-a716-446655440000",
+      toolName: "start_application",
+      correlationId: "server_request_550e8400-e29b-41d4-a716-446655440000",
+    });
+  });
+
   it("builds bounded, JSON-serializable object schemas", () => {
     expect(
       jsonObject({

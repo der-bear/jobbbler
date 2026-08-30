@@ -9,7 +9,7 @@ export type WebMcpRoute =
   | { readonly kind: "none" };
 
 export function resolveWebMcpRoute(pathname: string): WebMcpRoute {
-  if (pathname === "/") return { kind: "search" };
+  if (pathname === "/" || pathname === "/jobs") return { kind: "search" };
   if (pathname === "/compare") return { kind: "compare" };
   if (pathname === "/saved") return { kind: "saved" };
 

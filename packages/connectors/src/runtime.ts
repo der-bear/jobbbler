@@ -73,11 +73,18 @@ export async function fetchBoundedJson(
       headers.set("if-modified-since", options.lastModified);
     }
 
-    const response = await options.fetch(url, { headers, signal: controller.signal });
+    const response = await options.fetch(url, {
+      headers,
+      redirect: "manual",
+      signal: controller.signal,
+    });
     const etag = response.headers.get("etag");
     const lastModified = response.headers.get("last-modified");
     if (response.status === 304) {
       return { notModified: true, body: null, etag, lastModified, bytes: 0 };
+    }
+    if (response.status >= 300 && response.status < 400) {
+      throw dependencyError("Source redirects are not allowed.", false);
     }
     if (response.status === 429) {
       throw new DomainError({

@@ -66,6 +66,92 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
     await storage.close();
   });
 
+  it("does not overwrite a concurrent consent withdrawal with a stale application update", async () => {
+    const staleWriter = createPostgresStorage(databaseUrl!);
+    const withdrawalWriter = createPostgresStorage(databaseUrl!);
+    close = async () => {
+      await Promise.all([staleWriter.close(), withdrawalWriter.close()]);
+    };
+    await resetPostgresSchema(staleWriter.sql);
+    await migratePostgres(staleWriter.sql);
+
+    const now = "2026-08-29T10:00:00.000Z";
+    const ownerId = "owner-postgres-consent-race";
+    const draft: ApplicationDraft = {
+      id: "application-postgres-consent-race",
+      ownerId,
+      jobId: "job-postgres-consent-race",
+      state: "draft",
+      version: 0,
+      consentRevision: 0,
+      answers: [
+        {
+          fieldKey: "full_name",
+          value: "Ada Lovelace",
+          provenance: "agent_suggestion",
+          sensitive: true,
+          acceptedByHuman: true,
+        },
+      ],
+      createdAt: now,
+      updatedAt: now,
+    };
+    await staleWriter.owners.insert({
+      id: ownerId,
+      kind: "guest",
+      verified: true,
+      version: 1,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await staleWriter.applications.insert(draft);
+
+    const rowLocked = deferred();
+    const releaseWithdrawal = deferred();
+    const withdrawnDraft: ApplicationDraft = {
+      ...draft,
+      consentRevision: 1,
+      answers: draft.answers.map((answer) => ({ ...answer, acceptedByHuman: false })),
+      version: 1,
+      updatedAt: "2026-08-29T10:01:00.000Z",
+    };
+    const withdrawal = withdrawalWriter.sql.begin(async (transaction) => {
+      await transaction`
+        SELECT id FROM jobbbler.entity_records
+        WHERE kind = 'application' AND id = ${draft.id}
+        FOR UPDATE`;
+      rowLocked.resolve();
+      await releaseWithdrawal.promise;
+      await transaction`
+        UPDATE jobbbler.entity_records
+        SET body = ${transaction.json(withdrawnDraft)},
+            version = ${withdrawnDraft.version},
+            updated_at = ${withdrawnDraft.updatedAt}
+        WHERE kind = 'application' AND id = ${draft.id}`;
+    });
+    await rowLocked.promise;
+
+    const staleUpdate = staleWriter.applications.update(
+      {
+        ...draft,
+        state: "valid",
+        version: 1,
+        updatedAt: "2026-08-29T10:02:00.000Z",
+      },
+      0,
+    );
+    await waitForBlockedEntityWrite(withdrawalWriter.sql);
+    releaseWithdrawal.resolve();
+    await withdrawal;
+
+    await expect(staleUpdate).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(staleWriter.applications.getById(draft.id)).resolves.toMatchObject({
+      consentRevision: 1,
+      answers: [{ acceptedByHuman: false }],
+      version: 1,
+    });
+  });
+
   it.each(["renew", "complete", "fail"] as const)(
     "fences a stale %s after another worker reclaims the lease",
     async (transition) => {
@@ -262,7 +348,12 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
       revokedAt: null,
     };
     await storage.delegations.insert(delegation);
-    await storage.delegations.approve(delegation.id, ownerId, now);
+    await storage.delegations.approve(delegation.id, ownerId, now, {
+      channel: "agent_client",
+      requestId: delegation.id,
+      action: "approved",
+      evidenceVersion: "agent-interaction-v1",
+    });
 
     const expiredDelegation = {
       ...delegation,
@@ -285,7 +376,15 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
     await expect(storage.delegations.listByResource(ownerId, draftId)).resolves.toEqual([
       newerDelegation,
       expiredDelegation,
-      { ...delegation, status: "active", approvedAt: now },
+      {
+        ...delegation,
+        status: "active",
+        approvedAt: now,
+        decisionChannel: "agent_client",
+        decisionRequestId: delegation.id,
+        decisionAction: "approved",
+        decisionEvidenceVersion: "agent-interaction-v1",
+      },
     ]);
     await expect(storage.delegations.listByResource("other-owner", draftId)).resolves.toEqual([]);
 
@@ -312,9 +411,22 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
       { ...grant, version: 0 },
     ]);
     await expect(storage.richDataGrants.listByDraft("other-owner", draftId)).resolves.toEqual([]);
+    const withdrawalEvidence = {
+      channel: "agent_client" as const,
+      requestId: "interaction_71000000-0000-7000-8000-000000000001",
+      action: "withdrawn" as const,
+      evidenceVersion: "agent-interaction-v1" as const,
+    };
     await expect(
-      storage.richDataGrants.withdraw(grant.id, ownerId, draftId, now),
-    ).resolves.toMatchObject({ status: "withdrawn", version: 1 });
+      storage.richDataGrants.withdraw(grant.id, ownerId, draftId, now, withdrawalEvidence),
+    ).resolves.toMatchObject({
+      status: "withdrawn",
+      version: 1,
+      withdrawalChannel: "agent_client",
+      withdrawalRequestId: withdrawalEvidence.requestId,
+      withdrawalAction: "withdrawn",
+      withdrawalEvidenceVersion: "agent-interaction-v1",
+    });
     await expect(
       storage.richDataGrants.withdraw(grant.id, ownerId, draftId, now),
     ).resolves.toMatchObject({ status: "withdrawn", version: 1 });
@@ -417,6 +529,79 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
     ).resolves.toMatchObject({ receipt, inserted: false });
     await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toEqual(receipt);
     await storage.close();
+  });
+
+  it("never reactivates a delegation when approval and revocation race", async () => {
+    const storage = createPostgresStorage(databaseUrl!);
+    await resetPostgresSchema(storage.sql);
+    await migratePostgres(storage.sql);
+    close = async () => storage.close();
+
+    const now = "2026-08-29T10:00:00.000Z";
+    const ownerId = "owner-postgres-delegation-race";
+    const draftId = "application-postgres-delegation-race";
+    const sessionId = "agent-session-postgres-delegation-race";
+    await storage.owners.insert({
+      id: ownerId,
+      kind: "guest",
+      verified: true,
+      version: 1,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await storage.applications.insert({
+      id: draftId,
+      ownerId,
+      jobId: "job-postgres-delegation-race",
+      state: "draft",
+      version: 0,
+      answers: [],
+      createdAt: now,
+      updatedAt: now,
+    });
+    await storage.agentSessions.insert({
+      id: sessionId,
+      ownerId,
+      draftId,
+      tokenHash: "d".repeat(64),
+      expiresAt: "2026-08-29T11:00:00.000Z",
+      createdAt: now,
+      revokedAt: null,
+    });
+    const delegation = {
+      id: "delegation-postgres-race",
+      ownerId,
+      agentSessionId: sessionId,
+      resourceType: "application_draft" as const,
+      resourceId: draftId,
+      operations: ["edit_application"] as const,
+      purpose: "Prepare the selected application.",
+      status: "requested" as const,
+      expiresAt: "2026-08-29T11:00:00.000Z",
+      createdAt: now,
+      approvedAt: null,
+      revokedAt: null,
+    };
+    await storage.delegations.insert(delegation);
+
+    await Promise.allSettled([
+      storage.delegations.approve(delegation.id, ownerId, now, {
+        channel: "agent_client",
+        requestId: delegation.id,
+        action: "approved",
+        evidenceVersion: "agent-interaction-v1",
+      }),
+      storage.delegations.revoke(delegation.id, ownerId, now, {
+        channel: "agent_client",
+        requestId: delegation.id,
+        action: "declined",
+        evidenceVersion: "agent-interaction-v1",
+      }),
+    ]);
+
+    await expect(storage.delegations.getById(delegation.id, ownerId)).resolves.toMatchObject({
+      status: "revoked",
+    });
   });
 
   it("serializes verification and recovery consumption while rotating exactly one session", async () => {

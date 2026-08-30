@@ -23,3 +23,20 @@ export function compareApiUrl(jobIds: readonly string[], criteriaSearch = ""): s
   for (const jobId of jobIds) parameters.append("id", jobId);
   return `/api/v1/jobs/compare?${parameters.toString()}`;
 }
+
+export function comparisonRowVisibility(fits: readonly JobFit[]): Readonly<{
+  eligibility: boolean;
+  fit: boolean;
+  tradeOffs: boolean;
+  unknowns: boolean;
+}> {
+  return {
+    eligibility: fits.some(({ eligible }) => !eligible),
+    fit: fits.some(({ evidence }) => evidence.length > 0),
+    tradeOffs: fits.some(({ caveats, exclusions }) => caveats.length + exclusions.length > 0),
+    unknowns: fits.some(({ dimensions }) =>
+      Object.values(dimensions).some(({ status }) => status === "unknown"),
+    ),
+  };
+}
+import type { JobFit } from "@jobbbler/contracts";

@@ -2,7 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { AgentOperation, ApplicationAgentState } from "@jobbbler/contracts";
 
-import { createApplicationToolManifests } from "./webmcp-tools";
+import {
+  createApplicationToolManifests,
+  createStableApplicationToolManifests,
+  type ApplicationSubmissionReviewRequest,
+  type ApplicationToolDependencies,
+  type ApplicationToolReadiness,
+} from "./webmcp-tools";
 
 const base: ApplicationAgentState = {
   draftId: "application_550e8400-e29b-41d4-a716-446655440000",
@@ -11,7 +17,7 @@ const base: ApplicationAgentState = {
   stage: "profile",
   version: 1,
   requiredFields: 5,
-  completedRequiredFields: 1,
+  completedRequiredFields: 4,
   reviewStatus: "none",
   dataPermissionStatus: "none",
   agentAuthorityStatus: "none",
@@ -20,12 +26,33 @@ const base: ApplicationAgentState = {
 };
 
 const delegationRequestId = "delegation_650e8400-e29b-41d4-a716-446655440000";
-const consentRequestId = "grant_750e8400-e29b-41d4-a716-446655440000";
 const reviewRequestId = "review_850e8400-e29b-41d4-a716-446655440000";
 
-function dependencies(state: ApplicationAgentState, operations: readonly AgentOperation[] = []) {
+function readiness(state: ApplicationAgentState = base): ApplicationToolReadiness {
   return {
-    currentState: vi.fn(() => state),
+    state,
+    missingFieldKeys:
+      state.completedRequiredFields === state.requiredFields ? [] : ["work_authorization"],
+    missingFieldLabels:
+      state.completedRequiredFields === state.requiredFields ? [] : ["Work authorization"],
+    nextAction:
+      state.receiptStatus !== "none"
+        ? "complete"
+        : state.finalConfirmationReady
+          ? "submit"
+          : state.completedRequiredFields === state.requiredFields
+            ? "review"
+            : "prepare",
+  };
+}
+
+function dependencies(
+  state: ApplicationAgentState,
+  operations: readonly AgentOperation[] = [],
+): ApplicationToolDependencies {
+  let pendingReview: ApplicationSubmissionReviewRequest | null = null;
+  return {
+    currentReadiness: vi.fn(() => readiness(state)),
     hasAgentCredential: vi.fn(() => operations.length > 0),
     isOperationAuthorized: vi.fn((operation: AgentOperation) => operations.includes(operation)),
     requestAgentAccess: vi.fn(async (requestedOperations: readonly AgentOperation[]) => ({
@@ -37,50 +64,42 @@ function dependencies(state: ApplicationAgentState, operations: readonly AgentOp
         expiresAt: "2026-08-29T10:15:00.000Z",
       },
     })),
-    approveAgentAccess: vi.fn(async () => ({ ...state, agentAuthorityStatus: "active" as const })),
-    setAnswer: vi.fn(async () => ({ ...state, version: state.version + 1 })),
-    validate: vi.fn(async () => ({ ...state, state: "valid" as const, stage: "review" as const })),
-    review: vi.fn(async () => ({
-      ...state,
-      state: "reviewed" as const,
-      stage: "permission" as const,
-    })),
-    requestDataPermission: vi.fn(async () => ({
-      state,
-      request: {
-        id: consentRequestId,
-        recipient: "Northstar Systems",
-        purpose: "Submit this reviewed application.",
-        categories: ["identity", "application answers"],
-        fieldKeys: ["full name", "email", "motivation"],
-        noticeVersion: "privacy-2026-08",
-        expiresAt: "2026-08-29T10:15:00.000Z",
+    decideAgentAccess: vi.fn(async (_requestId: string, decision: "approved" | "declined") => ({
+      state: {
+        ...state,
+        agentAuthorityStatus: decision === "approved" ? ("active" as const) : ("revoked" as const),
       },
+      decision,
     })),
-    approveDataPermission: vi.fn(async () => ({
-      ...state,
-      dataPermissionStatus: "active" as const,
-    })),
-    finalConfirmationRequest: vi.fn(() => ({
-      id: reviewRequestId,
-      recipient: "Northstar Systems",
-      purpose: "Submit this reviewed application.",
-      categories: ["identity", "application answers"],
-      fieldKeys: ["full name", "email", "motivation"],
-      noticeVersion: "privacy-2026-08",
-    })),
-    confirmFinalApplication: vi.fn(async () => ({
-      ...state,
-      finalConfirmationReady: true,
-    })),
-    submit: vi.fn(async () => ({
-      ...state,
-      state: "submitted" as const,
-      stage: "complete" as const,
-      receiptStatus: "submitted" as const,
-    })),
+    proposeUpdates: vi.fn(async () => readiness({ ...state, version: state.version + 2 })),
+    currentSubmissionReview: vi.fn(() => pendingReview),
+    requestSubmissionReview: vi.fn(() => {
+      pendingReview = {
+        id: reviewRequestId,
+        draftId: state.draftId,
+        recipient: "Northstar Systems",
+        purpose: "Submit this reviewed application to Northstar Systems.",
+        fieldLabels: ["Full name", "Email", "Why this role", "Work authorization"],
+        noticeVersion: "privacy-2026-08",
+        draftVersion: state.version,
+        expiresAt: "2026-08-29T10:05:00.000Z",
+        href: `/apply/${state.draftId}`,
+      };
+      return pendingReview;
+    }),
+    decideSubmission: vi.fn(async (_expectedVersion: number, decision: "approved" | "declined") =>
+      readiness(
+        decision === "approved"
+          ? {
+              ...state,
+              state: "submitted",
+              stage: "complete",
+              receiptStatus: "submitted",
+            }
+          : state,
+      ),
+    ),
     allowsAgentSubmission: vi.fn(() => true),
-    fieldKeys: ["full_name", "email", "motivation"] as const,
   };
 }
 
@@ -88,200 +107,311 @@ function names(manifests: ReturnType<typeof createApplicationToolManifests>): st
   return manifests.map(({ name }) => name);
 }
 
-describe("application-route WebMCP tools", () => {
-  it("starts with a safe state reader and a least-privilege authority request", async () => {
+describe("application WebMCP outcomes", () => {
+  it("requests one bounded assistance decision and does not expose lifecycle internals", async () => {
     const deps = dependencies(base);
     const manifests = createApplicationToolManifests(deps);
-    expect(names(manifests)).toEqual(["get_application_state", "request_application_access"]);
-    expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([true, false]);
+    expect(names(manifests)).toEqual([
+      "get_application_readiness",
+      "request_application_assistance",
+    ]);
+    expect(names(manifests)).not.toEqual(
+      expect.arrayContaining([
+        "validate_application",
+        "review_application",
+        "request_data_permission",
+        "request_final_confirmation",
+      ]),
+    );
 
     const result = await manifests[1]!.execute({}, { signal: new AbortController().signal });
-    expect(deps.requestAgentAccess).toHaveBeenCalledWith(
-      ["read_application", "edit_application", "validate_application"],
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
-    );
     expect(result).toMatchObject({
       status: "requires_user_action",
+      summary: expect.stringContaining("agent client"),
       requestId: delegationRequestId,
-      userAction: { kind: "agent_authorization", surface: "application_authorization" },
+      nextTool: "decide_application_assistance",
       presentation: {
-        title: "Allow application assistance?",
-        confirmLabel: "Allow these actions",
+        title: "Let Jobbbler prepare this application?",
+        confirmLabel: "Allow once",
       },
     });
+    expect(deps.requestAgentAccess).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        "read_application",
+        "edit_application",
+        "validate_application",
+        "review_application",
+      ]),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
     expect(JSON.stringify(result)).not.toContain("token");
   });
 
-  it("records agent-mediated approval only after a pending authority request", async () => {
+  it("records the assistance decision from the agent client before exposing edits", async () => {
     const requested = { ...base, agentAuthorityStatus: "requested" as const };
-    const deps = dependencies(requested, ["read_application"]);
+    const deps = dependencies(requested);
     const manifests = createApplicationToolManifests(deps);
+    expect(names(manifests)).toEqual([
+      "get_application_readiness",
+      "decide_application_assistance",
+    ]);
 
-    expect(names(manifests)).toEqual(["get_application_state", "approve_application_access"]);
+    const signal = new AbortController().signal;
     const result = await manifests[1]!.execute(
-      { requestId: delegationRequestId, confirmed: true },
-      { signal: new AbortController().signal },
+      { requestId: delegationRequestId, decision: "approved" },
+      { signal },
     );
-
-    expect(deps.approveAgentAccess).toHaveBeenCalledWith(delegationRequestId, {
-      signal: expect.any(AbortSignal),
+    expect(deps.decideAgentAccess).toHaveBeenCalledWith(delegationRequestId, "approved", {
+      signal,
+      channel: "agent_client",
     });
-    expect(result).toMatchObject({ status: "completed", data: { agentAuthorityStatus: "active" } });
+    expect(result).toMatchObject({
+      status: "completed",
+      data: {
+        decision: "approved",
+        agentAuthorityStatus: "active",
+        nextTool: "get_application_readiness",
+      },
+    });
   });
 
-  it("exposes strict profile tools only after matching authority", async () => {
+  it("accepts a bounded batch of suggestions after assistance is active", async () => {
     const deps = dependencies(base, [
       "read_application",
       "edit_application",
       "validate_application",
+      "review_application",
+    ]);
+    const manifests = createApplicationToolManifests(deps);
+    expect(names(manifests)).toEqual(["get_application_readiness", "propose_application_updates"]);
+
+    const signal = new AbortController().signal;
+    const result = await manifests[1]!.execute(
+      {
+        patches: [
+          { fieldKey: "motivation", value: "A concise, role-specific answer." },
+          { fieldKey: "portfolio_url", value: "https://example.com/work" },
+        ],
+      },
+      { signal },
+    );
+    expect(deps.proposeUpdates).toHaveBeenCalledWith(
+      [
+        { fieldKey: "motivation", value: "A concise, role-specific answer." },
+        { fieldKey: "portfolio_url", value: "https://example.com/work" },
+      ],
+      { signal },
+    );
+    expect(result).toMatchObject({ status: "completed", data: { version: 3 } });
+
+    const duplicate = await manifests[1]!.execute(
+      {
+        patches: [
+          { fieldKey: "motivation", value: "First" },
+          { fieldKey: "motivation", value: "Second" },
+        ],
+      },
+      { signal },
+    );
+    expect(duplicate).toMatchObject({ status: "failed", error: { code: "VALIDATION" } });
+  });
+
+  it("asks for one exact review in the agent client when the draft is complete", async () => {
+    const ready = { ...base, completedRequiredFields: 5 };
+    const deps = dependencies(ready, [
+      "read_application",
+      "edit_application",
+      "submit_application",
     ]);
     const manifests = createApplicationToolManifests(deps);
     expect(names(manifests)).toEqual([
-      "get_application_state",
-      "set_application_answer",
-      "validate_application",
+      "get_application_readiness",
+      "propose_application_updates",
+      "request_submission_review",
     ]);
 
-    const signal = new AbortController().signal;
-    const updated = await manifests[1]!.execute(
-      { fieldKey: "motivation", value: "A concise suggestion." },
-      { signal },
-    );
-    expect(deps.setAnswer).toHaveBeenCalledWith(
-      { fieldKey: "motivation", value: "A concise suggestion." },
-      { signal },
-    );
-    expect(updated).toMatchObject({ status: "completed", data: { version: 2 } });
-
-    const invalid = await manifests[1]!.execute(
-      { fieldKey: "motivation", value: "Suggestion", acceptedByHuman: true },
-      { signal },
-    );
-    expect(invalid).toMatchObject({ status: "failed", error: { code: "VALIDATION" } });
-    expect(deps.setAnswer).toHaveBeenCalledOnce();
-  });
-
-  it("returns explicit user-action envelopes for data permission and final confirmation", async () => {
-    const permission = {
-      ...base,
-      state: "reviewed" as const,
-      stage: "permission" as const,
-      reviewStatus: "active" as const,
-    };
-    const permissionDeps = dependencies(permission, ["read_application", "request_data_consent"]);
-    const permissionTools = createApplicationToolManifests(permissionDeps);
-    expect(names(permissionTools)).toEqual(["get_application_state", "request_data_permission"]);
-    const permissionResult = await permissionTools[1]!.execute(
-      {},
-      { signal: new AbortController().signal },
-    );
-    expect(permissionResult).toMatchObject({
+    const result = await manifests[2]!.execute({}, { signal: new AbortController().signal });
+    expect(result).toMatchObject({
       status: "requires_user_action",
-      requestId: consentRequestId,
-      userAction: { kind: "data_consent", surface: "data_consent" },
+      summary: expect.stringContaining("agent client"),
+      requestId: reviewRequestId,
+      nextTool: "decide_application_submission",
+      userAction: { kind: "action_confirmation", surface: "application_review" },
       presentation: {
-        title: "Share this reviewed application?",
-        confirmLabel: "Approve this disclosure",
+        title: "Review and submit this application?",
+        confirmLabel: "Submit this application",
         facts: expect.arrayContaining([
           { key: "Recipient", value: "Northstar Systems" },
-          { key: "Notice", value: "privacy-2026-08" },
+          { key: "Privacy notice", value: "privacy-2026-08" },
+          { key: "Draft version", value: ready.version },
         ]),
       },
     });
-
-    const requestedPermission = {
-      ...permission,
-      dataPermissionStatus: "requested" as const,
-    };
-    const requestedPermissionDeps = dependencies(requestedPermission, [
-      "read_application",
-      "request_data_consent",
+    expect(names(createApplicationToolManifests(deps))).toEqual([
+      "get_application_readiness",
+      "propose_application_updates",
+      "decide_application_submission",
     ]);
-    const requestedPermissionTools = createApplicationToolManifests(requestedPermissionDeps);
-    expect(names(requestedPermissionTools)).toEqual([
-      "get_application_state",
-      "approve_application_data_permission",
-    ]);
-    const approvedPermission = await requestedPermissionTools[1]!.execute(
-      { requestId: consentRequestId, confirmed: true },
-      { signal: new AbortController().signal },
-    );
-    expect(requestedPermissionDeps.approveDataPermission).toHaveBeenCalledWith(consentRequestId, {
-      signal: expect.any(AbortSignal),
-    });
-    expect(approvedPermission).toMatchObject({
-      status: "completed",
-      data: { dataPermissionStatus: "active" },
-    });
-
-    const confirmation = {
-      ...permission,
-      stage: "confirmation" as const,
-      dataPermissionStatus: "active" as const,
-    };
-    const confirmationDeps = dependencies(confirmation, [
-      "read_application",
-      "request_confirmation",
-      "submit_application",
-    ]);
-    const confirmationTools = createApplicationToolManifests(confirmationDeps);
-    expect(names(confirmationTools)).toEqual([
-      "get_application_state",
-      "request_final_confirmation",
-      "confirm_reviewed_application",
-    ]);
-    const confirmationResult = await confirmationTools[1]!.execute(
-      {},
-      { signal: new AbortController().signal },
-    );
-    expect(confirmationResult).toMatchObject({
-      status: "requires_user_action",
-      requestId: reviewRequestId,
-      userAction: { kind: "action_confirmation", surface: "application_review" },
-      presentation: {
-        title: "Confirm this exact application?",
-        confirmLabel: "Confirm reviewed application",
-      },
-    });
-    const confirmed = await confirmationTools[2]!.execute(
-      { requestId: reviewRequestId, confirmed: true },
-      { signal: new AbortController().signal },
-    );
-    expect(confirmationDeps.confirmFinalApplication).toHaveBeenCalledWith(reviewRequestId, {
-      signal: expect.any(AbortSignal),
-    });
-    expect(confirmed).toMatchObject({
-      status: "completed",
-      data: { finalConfirmationReady: true },
-    });
-    expect(
-      new TextEncoder().encode(JSON.stringify(confirmationResult)).byteLength,
-    ).toBeLessThanOrEqual(1_500);
   });
 
-  it("never exposes an external handoff as an agent submission or navigation", async () => {
-    const confirmation = {
+  it("records the exact submission decision in one outcome tool", async () => {
+    const ready = {
       ...base,
-      state: "reviewed" as const,
-      stage: "confirmation" as const,
-      reviewStatus: "active" as const,
-      dataPermissionStatus: "active" as const,
-      finalConfirmationReady: true,
+      completedRequiredFields: 5,
     };
-    const deps = {
-      ...dependencies(confirmation, ["read_application", "request_confirmation"]),
-      allowsAgentSubmission: vi.fn(() => false),
-    };
+    const operations: AgentOperation[] = [
+      "read_application",
+      "edit_application",
+      "validate_application",
+      "review_application",
+      "request_data_consent",
+      "request_confirmation",
+      "submit_application",
+    ];
+    const deps = dependencies(ready, operations);
+    const initial = createApplicationToolManifests(deps);
+    expect(names(initial)).toEqual([
+      "get_application_readiness",
+      "propose_application_updates",
+      "request_submission_review",
+    ]);
+    const signal = new AbortController().signal;
+    await initial[2]!.execute({}, { signal });
     const manifests = createApplicationToolManifests(deps);
-
-    expect(names(manifests)).toEqual(["get_application_state", "prepare_external_handoff"]);
-    expect(names(manifests)).not.toContain("submit_application");
-    const result = await manifests[1]!.execute({}, { signal: new AbortController().signal });
-    expect(result).toMatchObject({
-      status: "requires_user_action",
-      userAction: { kind: "action_confirmation", surface: "application_review" },
+    expect(names(manifests)).toEqual([
+      "get_application_readiness",
+      "propose_application_updates",
+      "decide_application_submission",
+    ]);
+    const result = await manifests[2]!.execute(
+      { requestId: reviewRequestId, draftVersion: ready.version, decision: "approved" },
+      { signal },
+    );
+    expect(deps.decideSubmission).toHaveBeenCalledWith(ready.version, "approved", {
+      signal,
+      channel: "agent_client",
     });
-    expect(deps.submit).not.toHaveBeenCalled();
-    expect(JSON.stringify(result)).toContain("visible workspace");
+    expect(result).toMatchObject({ status: "completed", data: { receiptStatus: "submitted" } });
+  });
+});
+
+describe("site-wide application tools", () => {
+  const stableNames = [
+    "get_application_readiness",
+    "request_application_assistance",
+    "decide_application_assistance",
+    "propose_application_updates",
+    "request_submission_review",
+    "decide_application_submission",
+    "withdraw_application_consent",
+  ];
+
+  it("keeps the reduced outcome inventory discoverable on every page", () => {
+    const manifests = createStableApplicationToolManifests({
+      currentSurface: () => dependencies(base),
+      readApplication: vi.fn(async () => readiness(base)),
+      withdrawConsent: vi.fn(),
+      onNavigate: vi.fn(),
+    });
+    expect(names(manifests)).toEqual(stableNames);
+    expect(manifests[2]!.description).toContain("Never infer or approve this decision");
+    expect(manifests[5]!.description).toContain("exact requestId and draftVersion");
+    expect(manifests[6]!.description).toContain("immediately");
+  });
+
+  it("reads readiness without navigating or mounting a private page", async () => {
+    const onNavigate = vi.fn();
+    const readApplication = vi.fn(async () => readiness(base));
+    const manifests = createStableApplicationToolManifests({
+      currentSurface: () => null,
+      readApplication,
+      withdrawConsent: vi.fn(),
+      onNavigate,
+    });
+    const signal = new AbortController().signal;
+    const result = await manifests[0]!.execute({ draftId: base.draftId }, { signal });
+
+    expect(readApplication).toHaveBeenCalledWith(base.draftId, { signal });
+    expect(onNavigate).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      status: "completed",
+      data: {
+        draftId: base.draftId,
+        missingCount: 1,
+        nextAction: "prepare",
+        nextTool: "request_application_assistance",
+      },
+    });
+  });
+
+  it("validates ownership before an action navigates and returns structured NOT_FOUND", async () => {
+    const onNavigate = vi.fn();
+    const manifests = createStableApplicationToolManifests({
+      currentSurface: () => null,
+      readApplication: vi.fn(async () => null),
+      withdrawConsent: vi.fn(),
+      onNavigate,
+    });
+    const result = await manifests[1]!.execute(
+      { draftId: base.draftId },
+      { signal: new AbortController().signal },
+    );
+    expect(result).toMatchObject({
+      status: "failed",
+      error: { code: "NOT_FOUND", retryable: false },
+    });
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
+  it("opens a verified draft for an action and returns an actionable conflict", async () => {
+    const onNavigate = vi.fn();
+    const surface = dependencies(base);
+    const manifests = createStableApplicationToolManifests({
+      currentSurface: () => null,
+      readApplication: vi.fn(async () => readiness(base)),
+      withdrawConsent: vi.fn(),
+      onNavigate,
+      waitForSurface: vi.fn(async () => surface),
+    });
+    const result = await manifests[4]!.execute(
+      { draftId: base.draftId },
+      { signal: new AbortController().signal },
+    );
+    expect(onNavigate).toHaveBeenCalledWith(`/apply/${base.draftId}`);
+    expect(result).toMatchObject({
+      status: "failed",
+      error: { code: "CONFLICT", retryable: false },
+    });
+  });
+
+  it("withdraws consent directly without navigating to the application page", async () => {
+    const onNavigate = vi.fn();
+    const withdrawConsent = vi.fn(async () => ({
+      draftId: base.draftId,
+      withdrawnGrantIds: ["grant_550e8400-e29b-41d4-a716-446655440000"],
+      withdrawnAt: "2026-08-29T10:05:00.000Z",
+      futureConsentProcessingStopped: true as const,
+      pastSubmissionUnaffected: false,
+    }));
+    const manifests = createStableApplicationToolManifests({
+      currentSurface: () => null,
+      readApplication: vi.fn(async () => readiness(base)),
+      withdrawConsent,
+      onNavigate,
+    });
+
+    const result = await manifests[6]!.execute(
+      { draftId: base.draftId },
+      { signal: new AbortController().signal },
+    );
+
+    expect(withdrawConsent).toHaveBeenCalledWith(base.draftId, {
+      signal: expect.any(AbortSignal),
+    });
+    expect(onNavigate).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      status: "completed",
+      data: { futureConsentProcessingStopped: true },
+    });
   });
 });

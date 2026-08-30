@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { jobSearchInputSchema } from "./search.js";
+import { jobSearchInputSchema, locationSuggestionsResultSchema } from "./search.js";
 
 describe("jobSearchInputSchema", () => {
   it("normalizes bounded human search input", () => {
@@ -36,5 +36,16 @@ describe("jobSearchInputSchema", () => {
 
     expect(() => jobSearchInputSchema.parse({ limit: 51 })).toThrow();
     expect(() => jobSearchInputSchema.parse({ query: "x".repeat(501) })).toThrow();
+  });
+});
+
+describe("locationSuggestionsResultSchema", () => {
+  it("keeps a bounded ordered list of human-readable locations", () => {
+    expect(
+      locationSuggestionsResultSchema.parse({ locations: ["Berlin, Germany", "Europe"] }),
+    ).toEqual({ locations: ["Berlin, Germany", "Europe"] });
+    expect(() =>
+      locationSuggestionsResultSchema.parse({ locations: Array(21).fill("Europe") }),
+    ).toThrow();
   });
 });

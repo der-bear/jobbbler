@@ -1,7 +1,60 @@
 .shell {
   min-block-size: 100dvh;
-  background: var(--color-canvas);
+  background:
+    radial-gradient(
+      circle at 44% 2%,
+      color-mix(in srgb, var(--jb-signal) 7%, transparent),
+      transparent 30rem
+    ),
+    var(--color-canvas);
   color: var(--color-ink);
+}
+
+.contentFrame {
+  min-inline-size: 0;
+}
+
+.contentFrame > main {
+  min-inline-size: 0;
+}
+
+.siteFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-block-size: 68px;
+  border-block-start: 1px solid var(--color-line);
+  padding-inline: clamp(20px, 3vw, 48px);
+  color: var(--color-ink-subtle);
+  font-size: 11px;
+}
+
+.siteFooter nav {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.siteFooter a {
+  color: var(--color-ink-muted);
+  text-decoration: none;
+}
+
+.siteFooter a:hover {
+  color: var(--color-ink);
+}
+
+.siteFooter a:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 3px solid var(--jb-focus);
+  outline-offset: 3px;
+}
+
+.contentFrame[data-agent-open="true"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--agent-panel-size, 380px);
+  align-items: start;
 }
 
 .skipLink {
@@ -36,23 +89,14 @@
 }
 
 .wordmark {
-  display: inline-flex;
-  align-items: baseline;
   justify-self: start;
-  gap: 12px;
-  color: var(--color-ink);
+  background: linear-gradient(118deg, var(--color-ink) 35%, var(--color-signal-strong));
+  background-clip: text;
+  color: transparent;
   font-size: 22px;
   font-weight: 750;
   letter-spacing: -0.045em;
   text-decoration: none;
-}
-
-.wordmark span {
-  color: var(--color-ink-subtle);
-  font-size: 11px;
-  font-weight: 520;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .navigation {
@@ -89,14 +133,37 @@
   gap: 8px;
 }
 
-.webmcpLink {
+.agentView {
+  display: inline-flex;
+  min-block-size: 38px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-surface) 84%, transparent);
   color: var(--color-ink-muted);
+  padding-inline: 12px;
   font-size: 12px;
-  text-decoration: none;
+  font-weight: 620;
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    background var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
 }
 
-.webmcpLink:hover {
+.agentView:hover,
+.agentView[aria-expanded="true"] {
+  border-color: var(--color-line-strong);
+  background: var(--color-surface-subtle);
+  color: var(--color-ink);
+}
+
+.agentView[data-status="ready"] > svg {
   color: var(--color-signal-strong);
+}
+
+.agentView[data-status="error"] > svg {
+  color: var(--jb-danger);
 }
 
 .avatar {
@@ -120,8 +187,6 @@
     backdrop-filter: none;
   }
 
-  .wordmark span,
-  .webmcpLink,
   .avatar {
     display: none;
   }
@@ -150,5 +215,36 @@
 
   .actions {
     grid-column: 2;
+  }
+
+  .siteFooter {
+    min-block-size: 110px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    padding-block-end: 72px;
+  }
+
+  .agentView {
+    min-block-size: 36px;
+    padding-inline: 10px;
+  }
+}
+
+@media (max-width: 420px) {
+  .agentView span:not(.sr-only) {
+    display: none;
+  }
+
+  .agentView {
+    inline-size: 36px;
+    justify-content: center;
+    padding: 0;
+  }
+}
+
+@media (max-width: 1080px) {
+  .contentFrame[data-agent-open="true"] {
+    display: block;
   }
 }

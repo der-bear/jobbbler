@@ -1,12 +1,19 @@
 import { z } from "zod";
 
 import {
+  entityIdSchema,
+  jobCategorySchema,
   jobSearchInputSchema,
+  salaryPeriodSchema,
+  searchSortSchema,
+  senioritySchema,
+  unknownSalaryPolicySchema,
+  workModelSchema,
   type JobSearchCriteria,
   type JobSearchInput,
   type SearchJobsResult,
 } from "@jobbbler/contracts";
-import { normalizeJobSearchCriteria } from "@jobbbler/jobs-domain";
+import { comparableCurrencies, normalizeJobSearchCriteria } from "@jobbbler/jobs-domain";
 import type { JsonSchema, JsonValue, ToolManifest } from "@jobbbler/webmcp";
 
 import { searchInputToSearchParams } from "@/lib/search-url";
@@ -136,6 +143,21 @@ export interface SearchWebMcpState {
   readonly total: number | null;
 }
 
+const openJobInputSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    jobId: {
+      type: "string",
+      description: "A job ID returned by search_jobs.",
+      pattern: "^job_[0-9a-f-]{36}$",
+    },
+  },
+  required: ["jobId"],
+} as const satisfies JsonSchema;
+
+const openJobInput = z.strictObject({ jobId: entityIdSchema });
+
 export interface SearchToolDependencies {
   searchJobs(
     input: JobSearchInput,
@@ -144,6 +166,7 @@ export interface SearchToolDependencies {
   getSearchState(): JobSearchInput | SearchWebMcpState | null;
   onSearchCommitted(input: JobSearchInput, result: SearchJobsResult): Promise<void> | void;
   onNavigate(href: string): Promise<void> | void;
+  getCriteriaSearch?(): string;
 }
 
 type SearchToolOutput = CompletedWebMcpResult<JsonValue> | SafeWebMcpErrorResult;
@@ -153,6 +176,27 @@ function short(value: string, maximum = 80): string {
 }
 
 function compactCriteria(criteria: JobSearchCriteria): JsonValue {
+  const omitted = {
+    categories: Math.max(0, criteria.categories.length - 2),
+    workModels: Math.max(0, criteria.workModels.length - 2),
+    seniorities: Math.max(0, criteria.seniorities.length - 2),
+    locations: Math.max(0, criteria.locations.length - 2),
+    skills: Math.max(0, criteria.skills.length - 1),
+    excludeKeywords: Math.max(0, criteria.excludeKeywords.length - 1),
+    unresolvedAssumptions: Math.max(0, criteria.unresolvedAssumptions.length - 1),
+  };
+  const shortened: string[] = [];
+  if (criteria.query !== null && criteria.query.length > 80) shortened.push("query");
+  if (criteria.locations.some((value) => value.length > 32)) shortened.push("locations");
+  if (criteria.skills.some((value) => value.length > 30)) shortened.push("skills");
+  if (criteria.excludeKeywords.some((value) => value.length > 30)) {
+    shortened.push("excludeKeywords");
+  }
+  if (criteria.unresolvedAssumptions.some((value) => value.length > 80)) {
+    shortened.push("unresolvedAssumptions");
+  }
+  const complete = Object.values(omitted).every((count) => count === 0) && shortened.length === 0;
+
   return {
     query: criteria.query === null ? null : short(criteria.query, 80),
     categories: criteria.categories.slice(0, 2),
@@ -161,10 +205,19 @@ function compactCriteria(criteria: JobSearchCriteria): JsonValue {
     locations: criteria.locations.slice(0, 2).map((value) => short(value, 32)),
     skills: criteria.skills.slice(0, 1).map((value) => short(value, 30)),
     excludeKeywords: criteria.excludeKeywords.slice(0, 1).map((value) => short(value, 30)),
+    unresolvedAssumptions: criteria.unresolvedAssumptions
+      .slice(0, 1)
+      .map((value) => short(value, 80)),
     salaryMinimum: criteria.salary?.minimum ?? null,
+    salaryMaximum: criteria.salary?.maximum ?? null,
     salaryCurrency: criteria.salary?.currency ?? null,
+    salaryPeriod: criteria.salary?.period ?? null,
+    unknownSalaryPolicy: criteria.salary?.unknownPolicy ?? null,
     postedWithinDays: criteria.postedWithinDays,
     sort: criteria.sort,
+    limit: criteria.limit,
+    cursorActive: criteria.cursor !== null,
+    truncation: { complete, omitted, shortened },
   };
 }
 
@@ -192,15 +245,15 @@ export function createSearchToolManifests(
     name: "search_jobs",
     purpose: "Search the public technology-job catalog and synchronize the visible results.",
     description:
-      "Search Jobbbler's source-backed technology roles. Use for a new or refined job search. Applies validated criteria to the visible page and returns compact matches with IDs.",
+      "Search Jobbbler's source-backed technology roles with the preferences the person supplied. Ask for one useful preference when the request gives no role, skill, location, work model, or other search criterion. Applies validated criteria to the visible page and returns compact matches with IDs.",
     inputSchema: searchInputJsonSchema,
-    annotations: { readOnlyHint: true, untrustedContentHint: true },
+    annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
       try {
         const parsed = publicJobSearchInput.parse(input);
         const result = await dependencies.searchJobs(parsed, { signal });
         const parameters = searchInputToSearchParams(parsed);
-        const href = parameters.size === 0 ? "/" : `/?${parameters.toString()}`;
+        const href = parameters.size === 0 ? "/jobs" : `/jobs?${parameters.toString()}`;
         await dependencies.onNavigate(href);
         await dependencies.onSearchCommitted(parsed, result);
         return completedWebMcpResult({
@@ -225,9 +278,9 @@ export function createSearchToolManifests(
   const getSearchState: ToolManifest<unknown, SearchToolOutput> = {
     name: "get_search_state",
     purpose:
-      "Read the current visible search constraints and result count without rerunning search.",
+      "Read a bounded summary of the visible search constraints and result count without rerunning search.",
     description:
-      "Read the exact filters and result count currently visible on Jobbbler. Use before refining an existing search or explaining active constraints. This does not run a new search.",
+      "Read the visible filters and result count currently shown on Jobbbler. The bounded response explicitly reports any shortened or omitted criteria. Use before refining an existing search or explaining active constraints. This does not run a new search.",
     inputSchema: emptyInputSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -259,5 +312,65 @@ export function createSearchToolManifests(
     },
   };
 
-  return [searchJobs, getSearchState];
+  const getSearchFilters: ToolManifest<unknown, SearchToolOutput> = {
+    name: "get_search_filters",
+    purpose: "Read every filter value this site accepts before composing a search.",
+    description:
+      "Read Jobbbler's exact search vocabulary: accepted categories, work models, seniorities, salary options, and sort orders. Use instead of guessing enum values before calling search_jobs.",
+    inputSchema: emptyInputSchema,
+    annotations: { readOnlyHint: true, untrustedContentHint: false },
+    async execute(input, { signal }) {
+      try {
+        emptyInput.parse(input);
+        return completedWebMcpResult({
+          summary: "Read the accepted search filter vocabulary.",
+          data: {
+            categories: [...jobCategorySchema.options],
+            workModels: [...workModelSchema.options],
+            seniorities: [...senioritySchema.options],
+            salary: {
+              periods: [...salaryPeriodSchema.options],
+              unknownPolicies: [...unknownSalaryPolicySchema.options],
+              currency: "Any ISO 4217 code; cross-currency ranking supports these.",
+              comparableCurrencies: [...comparableCurrencies],
+            },
+            sort: [...searchSortSchema.options],
+            locations: "Free text: countries, regions, or cities.",
+            skills: "Free text, matched against role skills.",
+            postedWithinDays: { minimum: 1, maximum: 365 },
+            limit: { minimum: 1, maximum: 50, default: 20 },
+          },
+        });
+      } catch (error) {
+        return safeWebMcpErrorResult(error, signal, "Search filters accept no arguments.");
+      }
+    },
+  };
+
+  const openJobDetails: ToolManifest<unknown, SearchToolOutput> = {
+    name: "open_job_details",
+    purpose: "Open one explicitly identified role while keeping the global toolset available.",
+    description:
+      "Navigate to a role returned by search_jobs while preserving the current criteria. Every Jobbbler tool stays registered across the navigation.",
+    inputSchema: openJobInputSchema,
+    annotations: { readOnlyHint: false, untrustedContentHint: true },
+    async execute(input, { signal }) {
+      try {
+        const parsed = openJobInput.parse(input);
+        const criteriaSearch = dependencies.getCriteriaSearch?.() ?? "";
+        await dependencies.onNavigate(
+          `/jobs/${encodeURIComponent(parsed.jobId)}${criteriaSearch.length === 0 ? "" : `?${criteriaSearch}`}`,
+        );
+        return completedWebMcpResult({
+          summary: "Opened the role page and kept the global Jobbbler toolset available.",
+          data: { jobId: parsed.jobId, route: "/jobs/:jobId" },
+          resources: [{ type: "job", id: parsed.jobId, label: "Opened role" }],
+        });
+      } catch (error) {
+        return safeWebMcpErrorResult(error, signal, "Provide one job ID from search_jobs.");
+      }
+    },
+  };
+
+  return [searchJobs, getSearchState, getSearchFilters, openJobDetails];
 }

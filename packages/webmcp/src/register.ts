@@ -22,12 +22,18 @@ function terminalActivity(
   return { status, summary: summary.trim().slice(0, 240) || status };
 }
 
+function toolTitle(name: string): string {
+  const words = name.split("_").join(" ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 function registeredTool<I, O>(
   manifest: ToolManifest<I, O>,
   activities: AgentActivityStore | undefined,
 ): RegisteredTool {
   return {
     name: manifest.name,
+    title: toolTitle(manifest.name),
     description: manifest.description,
     inputSchema: manifest.inputSchema,
     annotations: manifest.annotations,

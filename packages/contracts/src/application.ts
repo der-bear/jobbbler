@@ -44,10 +44,30 @@ export const applicationDraftSchema = z.strictObject({
   jobId: entityIdSchema,
   state: applicationStateSchema,
   version: z.number().int().nonnegative(),
+  /** Advances whenever consent is withdrawn so earlier decision evidence cannot be replayed. */
+  consentRevision: z.number().int().nonnegative().optional(),
   answers: z.array(applicationAnswerSchema),
   createdAt: isoInstantSchema,
   updatedAt: isoInstantSchema,
 });
+
+export const applicationStartResultSchema = z.strictObject({
+  draft: applicationDraftSchema,
+  disposition: z.enum(["created", "reopened"]),
+});
+
+export const applicationListItemSchema = z.strictObject({
+  draftId: entityIdSchema,
+  state: applicationStateSchema,
+  updatedAt: isoInstantSchema,
+  job: z.strictObject({
+    id: entityIdSchema,
+    title: z.string().trim().min(1).max(200),
+    organizationName: z.string().trim().min(1).max(160),
+  }),
+});
+
+export const applicationListSchema = z.array(applicationListItemSchema).max(100);
 
 export const agentOperationSchema = z.enum([
   "read_application",
@@ -114,6 +134,35 @@ export const applicationDataGrantSummarySchema = z.strictObject({
   id: entityIdSchema,
   status: z.enum(["requested", "active", "withdrawn"]),
   expiresAt: isoInstantSchema,
+});
+
+export const applicationConsentWithdrawalSchema = z.strictObject({
+  draftId: entityIdSchema,
+  withdrawnGrantIds: z.array(entityIdSchema).max(20),
+  withdrawnAt: isoInstantSchema,
+  futureConsentProcessingStopped: z.literal(true),
+  pastSubmissionUnaffected: z.boolean(),
+});
+
+export const applicationSubmissionReviewRequestSchema = z.strictObject({
+  id: entityIdSchema.refine((value) => value.startsWith("interaction_")),
+  draftId: entityIdSchema,
+  draftVersion: z.number().int().nonnegative(),
+  recipient: z.string().trim().min(1).max(160),
+  purpose: z.string().trim().min(1).max(240),
+  fieldLabels: z.array(z.string().trim().min(1).max(80)).min(1).max(24),
+  noticeVersion: z.string().trim().min(1).max(40),
+  expiresAt: isoInstantSchema,
+});
+
+export const applicationSubmissionDecisionReceiptSchema = z.strictObject({
+  requestId: entityIdSchema.refine((value) => value.startsWith("interaction_")),
+  draftId: entityIdSchema,
+  decision: z.enum(["approved", "declined"]),
+  acceptedDraftVersion: z.number().int().nonnegative(),
+  decidedAt: isoInstantSchema,
+  channel: z.literal("agent_client"),
+  evidenceVersion: z.literal("agent-interaction-v1"),
 });
 
 export const applicationDelegationSummarySchema = z.strictObject({
@@ -198,6 +247,30 @@ export const setApplicationAnswerInputSchema = z.strictObject({
   answer: applicationAnswerSchema,
 });
 
+const applicationAnswerBatchSchema = z
+  .array(applicationAnswerSchema)
+  .min(1)
+  .max(24)
+  .superRefine((answers, context) => {
+    const seen = new Set<string>();
+    answers.forEach((answer, index) => {
+      if (seen.has(answer.fieldKey)) {
+        context.addIssue({
+          code: "custom",
+          path: [index, "fieldKey"],
+          message: "Each application field may appear only once per batch.",
+        });
+      }
+      seen.add(answer.fieldKey);
+    });
+  });
+
+export const setApplicationAnswersInputSchema = z.strictObject({
+  draftId: entityIdSchema,
+  expectedVersion: z.number().int().nonnegative(),
+  answers: applicationAnswerBatchSchema,
+});
+
 export const reviewApplicationInputSchema = z.strictObject({
   draftId: entityIdSchema,
   expectedVersion: z.number().int().nonnegative(),
@@ -213,12 +286,21 @@ export const submitApplicationInputSchema = z.strictObject({
 export type ApplicationState = z.infer<typeof applicationStateSchema>;
 export type ApplicationAnswer = z.infer<typeof applicationAnswerSchema>;
 export type ApplicationDraft = z.infer<typeof applicationDraftSchema>;
+export type ApplicationStartResult = z.infer<typeof applicationStartResultSchema>;
+export type ApplicationListItem = z.infer<typeof applicationListItemSchema>;
 export type AgentOperation = z.infer<typeof agentOperationSchema>;
 export type DataCategory = z.infer<typeof dataCategorySchema>;
 export type LegalBasis = z.infer<typeof legalBasisSchema>;
 export type ApplicationFieldDefinition = z.infer<typeof applicationFieldDefinitionSchema>;
 export type ApplicationReviewSummary = z.infer<typeof applicationReviewSummarySchema>;
 export type ApplicationDataGrantSummary = z.infer<typeof applicationDataGrantSummarySchema>;
+export type ApplicationConsentWithdrawal = z.infer<typeof applicationConsentWithdrawalSchema>;
+export type ApplicationSubmissionReviewRequest = z.infer<
+  typeof applicationSubmissionReviewRequestSchema
+>;
+export type ApplicationSubmissionDecisionReceipt = z.infer<
+  typeof applicationSubmissionDecisionReceiptSchema
+>;
 export type ApplicationDelegationSummary = z.infer<typeof applicationDelegationSummarySchema>;
 export type ApplicationReceiptSummary = z.infer<typeof applicationReceiptSummarySchema>;
 export type ApplicationWorkspace = z.infer<typeof applicationWorkspaceSchema>;

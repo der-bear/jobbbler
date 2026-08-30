@@ -1,3 +1,4 @@
+import { convertSalaryAmount } from "./currency.js";
 import type { JobSearchCriteria } from "@jobbbler/contracts";
 
 import { getJobSearchDocument, type Job } from "./job.js";
@@ -128,7 +129,7 @@ function rankSalary(job: Job, criteria: JobSearchCriteria): RankDimension {
     };
   }
 
-  if (job.salary.currency !== requested.currency || job.salary.period !== requested.period) {
+  if (job.salary.period !== requested.period) {
     return {
       status: "unknown",
       score: requested.unknownPolicy === "exclude" ? 0 : 0.4,
@@ -137,12 +138,25 @@ function rankSalary(job: Job, criteria: JobSearchCriteria): RankDimension {
     };
   }
 
-  const jobLow = job.salary.minimum;
-  const jobHigh = job.salary.maximum ?? jobLow;
+  const requestedCurrency = requested.currency;
+  const jobCurrency = job.salary.currency ?? requestedCurrency;
+  const converted = jobCurrency !== requestedCurrency;
+  const convert = (amount: number | null): number | null =>
+    amount === null ? null : convertSalaryAmount(amount, jobCurrency, requestedCurrency);
+  const jobLow = convert(job.salary.minimum);
+  const jobHigh = convert(job.salary.maximum) ?? jobLow;
+  if (converted && jobLow === null && jobHigh === null) {
+    return {
+      status: "unknown",
+      score: requested.unknownPolicy === "exclude" ? 0 : 0.4,
+      matched: [],
+      missing: ["comparable salary"],
+    };
+  }
 
   const lacksRequiredBound =
     (requested.minimum !== null && jobLow === null) ||
-    (requested.maximum !== null && job.salary.maximum === null);
+    (requested.maximum !== null && convert(job.salary.maximum) === null);
   if (lacksRequiredBound) {
     return {
       status: "unknown",
@@ -176,7 +190,7 @@ function rankSalary(job: Job, criteria: JobSearchCriteria): RankDimension {
   return {
     status: partiallyOverlapsMinimum ? "partial" : "match",
     score: partiallyOverlapsMinimum ? 0.7 : 1,
-    matched: ["salary"],
+    matched: [converted ? `salary (≈ converted from ${jobCurrency})` : "salary"],
     missing: [],
   };
 }

@@ -4,8 +4,10 @@ import {
   entityIdSchema,
   type AgentOperation,
   type ApplicationDraft,
+  type ApplicationListItem,
   type ApplicationReceiptSummary,
   type ApplicationReviewSummary,
+  type ApplicationStartResult,
   type ApplicationWorkspace,
 } from "@jobbbler/contracts";
 import { DomainError } from "@jobbbler/core-domain";
@@ -39,7 +41,8 @@ export interface ConfirmationSecrets {
 }
 
 export interface ApplicationOperations {
-  start(ownerId: string, raw: unknown, now: string): Promise<ApplicationDraft>;
+  list(ownerId: string, now: string): Promise<readonly ApplicationListItem[]>;
+  start(ownerId: string, raw: unknown, now: string): Promise<ApplicationStartResult>;
   get(ownerId: string, draftId: string, now: string): Promise<ApplicationWorkspace>;
   answer(
     actor: ApplicationActor,
@@ -158,10 +161,15 @@ export async function handleRequestConfirmation(
   const requestId = createRequestId();
   try {
     assertTrustedMutationOrigin(request, dependencies.identity.environment);
-    const actor = await requireHumanActor(request, dependencies);
     const params = await context.params;
     const draftId = parseEntityId(params.draftId);
     const reviewId = parseEntityId(params.reviewId);
+    const actor = await requireApplicationActor(
+      request,
+      draftId,
+      "request_confirmation",
+      dependencies,
+    );
     const raw = dependencies.confirmation.create();
     const now = dependencies.identity.now();
     const result = await dependencies.operations.requestConfirmation(
@@ -180,7 +188,7 @@ export async function handleRequestConfirmation(
         key: "request_final_confirmation",
         status: "requires_user_action",
         safeSummary: "Final confirmation is ready for the candidate.",
-        actorKind: "human",
+        actorKind: actor.kind,
         aggregate: { type: "application_draft", version: workspace.draft.version },
         occurredAt: now,
         effects: [
@@ -222,18 +230,40 @@ export async function handleStartApplication(
       ownerId: actor.ownerId,
       correlationId: requestId,
       kind: "application",
-      key: "start_application",
+      key: "prepare_application",
       status: "completed",
-      safeSummary: "Application workspace created.",
+      safeSummary:
+        result.disposition === "created"
+          ? "Application draft created."
+          : "Application draft reopened.",
       actorKind: "human",
-      aggregate: { type: "application_draft", version: result.version },
+      aggregate: { type: "application_draft", version: result.draft.version },
       occurredAt: now,
       effects: [
         { target: "application", kind: "refresh" },
         { target: "agent_activity", kind: "announce" },
       ],
     });
-    return apiSuccessResponse(result, { requestId, status: 201 });
+    return apiSuccessResponse(result, {
+      requestId,
+      status: result.disposition === "created" ? 201 : 200,
+    });
+  } catch (error) {
+    return apiErrorResponse(error, { requestId });
+  }
+}
+
+export async function handleListApplications(
+  request: Request,
+  dependencies: ApplicationRouteDependencies,
+): Promise<Response> {
+  const requestId = createRequestId();
+  try {
+    const owner = await requireOwnerSession(request, dependencies.identity);
+    return apiSuccessResponse(
+      await dependencies.operations.list(owner.owner.id, dependencies.identity.now()),
+      { requestId },
+    );
   } catch (error) {
     return apiErrorResponse(error, { requestId });
   }

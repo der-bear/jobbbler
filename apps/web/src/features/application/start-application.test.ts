@@ -17,10 +17,17 @@ const draft = {
 
 describe("startApplication", () => {
   it("opens an existing owner-bound draft", async () => {
-    const request = vi.fn().mockResolvedValue(draft);
+    const request = vi.fn().mockResolvedValue({ draft, disposition: "reopened" });
     const navigate = vi.fn();
-    await startApplication(draft.jobId, { request, navigate });
+    const signal = new AbortController().signal;
+    const result = await startApplication(draft.jobId, { request, navigate }, { signal });
+    expect(result).toEqual({ draft, disposition: "reopened" });
     expect(request).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledWith(
+      "/api/v1/applications",
+      expect.anything(),
+      expect.objectContaining({ signal }),
+    );
     expect(navigate).toHaveBeenCalledWith(`/apply/${draft.id}`);
   });
 
@@ -36,7 +43,7 @@ describe("startApplication", () => {
         }),
       )
       .mockResolvedValueOnce({ owner: { id: "owner", kind: "ephemeral" }, expiresAt: "later" })
-      .mockResolvedValueOnce(draft);
+      .mockResolvedValueOnce({ draft, disposition: "created" });
     const navigate = vi.fn();
     await startApplication(draft.jobId, { request, navigate });
     expect(request.mock.calls.map(([url]) => url)).toEqual([

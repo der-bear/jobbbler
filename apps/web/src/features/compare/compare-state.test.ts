@@ -1,6 +1,32 @@
 import { describe, expect, it } from "vitest";
 
-import { compareApiUrl, resolveCompareSelection } from "./compare-state";
+import type { JobFit } from "@jobbbler/contracts";
+
+import { compareApiUrl, comparisonRowVisibility, resolveCompareSelection } from "./compare-state";
+
+const rank: JobFit["dimensions"]["text"] = {
+  status: "not_requested",
+  score: 0,
+  matched: [],
+  missing: [],
+};
+const neutralFit: JobFit = {
+  eligible: true,
+  score: 0,
+  evidence: [],
+  caveats: [],
+  exclusions: [],
+  dimensions: {
+    text: rank,
+    categories: rank,
+    workModel: rank,
+    seniority: rank,
+    locations: rank,
+    skills: rank,
+    salary: rank,
+    freshness: rank,
+  },
+};
 
 describe("shareable comparison state", () => {
   it("keeps one to three distinct job IDs in their URL order", () => {
@@ -29,5 +55,30 @@ describe("shareable comparison state", () => {
     expect(compareApiUrl(["job_alpha"], "work=remote&salary_min=100000&currency=EUR")).toBe(
       "/api/v1/jobs/compare?work=remote&salary_min=100000&currency=EUR&id=job_alpha",
     );
+  });
+
+  it("hides comparison rows that repeat no decision-useful information", () => {
+    expect(comparisonRowVisibility([neutralFit, neutralFit])).toEqual({
+      eligibility: false,
+      fit: false,
+      tradeOffs: false,
+      unknowns: false,
+    });
+
+    expect(
+      comparisonRowVisibility([
+        neutralFit,
+        {
+          ...neutralFit,
+          eligible: false,
+          evidence: ["Remote work matches."],
+          caveats: ["Salary is not stated."],
+          dimensions: {
+            ...neutralFit.dimensions,
+            salary: { ...rank, status: "unknown" },
+          },
+        },
+      ]),
+    ).toEqual({ eligibility: true, fit: true, tradeOffs: true, unknowns: true });
   });
 });

@@ -1,4 +1,25 @@
+import type { JobDetailResult } from "@jobbbler/contracts";
+
 import { JobDetail } from "@/features/job-detail/job-detail";
+import { searchParamsToInput } from "@/lib/search-url";
+import { getDiscoveryRouteDependencies } from "@/server/commands";
+import { createPublicCommandContext, createRequestId } from "@/server/context";
+
+async function loadInitialResult(
+  jobId: string,
+  criteriaSearch: string,
+): Promise<JobDetailResult | undefined> {
+  try {
+    const dependencies = getDiscoveryRouteDependencies();
+    const criteria = searchParamsToInput(new URLSearchParams(criteriaSearch));
+    return await dependencies.commands.getJob.execute(
+      createPublicCommandContext(createRequestId()),
+      { jobId, criteria },
+    );
+  } catch {
+    return undefined;
+  }
+}
 
 export default async function JobDetailPage({
   params,
@@ -17,5 +38,6 @@ export default async function JobDetailPage({
     }
   }
   const criteriaSearch = serialized.size === 0 ? "" : `?${serialized.toString()}`;
-  return <JobDetail criteriaSearch={criteriaSearch} jobId={jobId} />;
+  const initialResult = await loadInitialResult(jobId, criteriaSearch);
+  return <JobDetail criteriaSearch={criteriaSearch} initialResult={initialResult} jobId={jobId} />;
 }

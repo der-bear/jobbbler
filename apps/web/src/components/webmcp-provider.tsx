@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -13,6 +13,8 @@ import {
 } from "react";
 
 import {
+  applicationConsentWithdrawalSchema,
+  applicationWorkspaceSchema,
   compareJobsResultSchema,
   jobAlertScheduleSchema,
   jobDetailResultSchema,
@@ -28,18 +30,28 @@ import {
 } from "@jobbbler/webmcp";
 
 import { createCompareToolManifests } from "@/features/compare/webmcp-tools";
-import { createApplicationToolManifests } from "@/features/application/webmcp-tools";
+import { startApplication } from "@/features/application/start-application";
+import { createStableApplicationToolManifests } from "@/features/application/webmcp-tools";
+import {
+  applicationAgentState,
+  applicationReadiness,
+} from "@/features/application/application-model";
 import {
   readApplicationWebMcpSurface,
-  subscribeApplicationWebMcpSurface,
+  waitForApplicationWebMcpSurface,
 } from "@/features/application/webmcp-surface";
 import { compareApiUrl } from "@/features/compare/compare-state";
 import { createJobDetailToolManifests } from "@/features/job-detail/webmcp-tools";
 import { createSearchToolManifests } from "@/features/search/webmcp-tools";
 import { createSavedToolManifests } from "@/features/saved/webmcp-tools";
-import { queryApi } from "@/lib/query-client";
+import { createSiteWideToolManifests } from "@/features/site-wide-webmcp-tools";
+import { ApiClientError, queryApi } from "@/lib/query-client";
 import { startOwnerActivityFeed } from "@/lib/owner-activity-feed";
-import { searchInputToSearchParams, searchParamsToInput } from "@/lib/search-url";
+import {
+  searchHrefFromCriteria,
+  searchInputToSearchParams,
+  searchParamsToInput,
+} from "@/lib/search-url";
 import { subscribeToConfiguredSupabaseActivityWakeups } from "@/lib/supabase-activity-wakeup";
 import {
   commitWebMcpJobDetail,
@@ -48,22 +60,44 @@ import {
   readSearchSurfaceState,
 } from "@/lib/webmcp-ui-bridge";
 
+import { latestSearchRunSchema } from "@/lib/latest-run";
+import { createWorkflowPlannerTool } from "@/features/webmcp-workflows";
+
 import { resolveWebMcpRoute, type WebMcpRoute } from "./webmcp-route";
+import { composeStableWebMcpManifests, stableWebMcpCoreNames } from "./webmcp-registration";
+
+function routeLabel(route: WebMcpRoute, pathname: string): string {
+  if (route.kind === "search") return pathname === "/" ? "/" : "/jobs";
+  if (route.kind === "detail") return "/jobs/:jobId";
+  if (route.kind === "compare") return "/compare";
+  if (route.kind === "saved") return "/saved";
+  if (route.kind === "application") return "/apply/:draftId";
+  return pathname;
+}
 
 export type WebMcpRegistrationStatus = "checking" | "unsupported" | "preparing" | "ready" | "error";
+
+export interface RegisteredToolSummary {
+  readonly name: string;
+  readonly purpose: string;
+  readonly readOnly: boolean;
+}
 
 interface WebMcpContextValue {
   readonly activities: readonly ToolActivity[];
   readonly registeredToolCount: number;
+  readonly registeredTools: readonly RegisteredToolSummary[];
   readonly retry: () => void;
   readonly status: WebMcpRegistrationStatus;
   readonly supported: boolean;
 }
 
 const emptyActivities: readonly ToolActivity[] = Object.freeze([]);
+const emptyTools: readonly RegisteredToolSummary[] = Object.freeze([]);
 const fallbackContext: WebMcpContextValue = {
   activities: emptyActivities,
   registeredToolCount: 0,
+  registeredTools: emptyTools,
   retry: () => undefined,
   status: "checking",
   supported: false,
@@ -97,95 +131,94 @@ function detailUrl(jobId: string): string {
   }`;
 }
 
-function routeManifests(
-  route: WebMcpRoute,
+function searchManifests(
   navigate: (href: string) => void,
 ): readonly ToolManifest<unknown, unknown>[] {
-  if (route.kind === "search") {
-    return createSearchToolManifests({
-      searchJobs: (input, { signal }) =>
-        queryApi(searchUrl(input), searchJobsResultSchema, { signal }),
-      getSearchState: readSearchSurfaceState,
-      onSearchCommitted: commitWebMcpSearch,
-      onNavigate: navigate,
-    });
-  }
+  return createSearchToolManifests({
+    searchJobs: (input, { signal }) =>
+      queryApi(searchUrl(input), searchJobsResultSchema, { signal }),
+    getSearchState: readSearchSurfaceState,
+    onSearchCommitted: commitWebMcpSearch,
+    onNavigate: navigate,
+    getCriteriaSearch: currentCriteriaSearch,
+  });
+}
 
-  if (route.kind === "detail") {
-    return createJobDetailToolManifests({
-      currentJobId: route.jobId,
-      getJobDetails: (input, { signal }) =>
-        queryApi(detailUrl(input.jobId), jobDetailResultSchema, { signal }),
-      compareJobs: (input, { signal }) =>
-        queryApi(compareApiUrl(input.jobIds, currentCriteriaSearch()), compareJobsResultSchema, {
-          signal,
-        }),
-      onDetailCommitted: commitWebMcpJobDetail,
-      onNavigate: navigate,
-      getCriteriaSearch: currentCriteriaSearch,
-    });
-  }
+function detailManifests(
+  currentJobId: string | undefined,
+  navigate: (href: string) => void,
+): readonly ToolManifest<unknown, unknown>[] {
+  return createJobDetailToolManifests({
+    ...(currentJobId === undefined ? {} : { currentJobId }),
+    getJobDetails: (input, { signal }) =>
+      queryApi(detailUrl(input.jobId), jobDetailResultSchema, { signal }),
+    compareJobs: (input, { signal }) =>
+      queryApi(compareApiUrl(input.jobIds, currentCriteriaSearch()), compareJobsResultSchema, {
+        signal,
+      }),
+    onDetailCommitted: commitWebMcpJobDetail,
+    onNavigate: navigate,
+    getCriteriaSearch: currentCriteriaSearch,
+  });
+}
 
-  if (route.kind === "compare") {
-    return createCompareToolManifests({
-      selectedJobIds: selectedComparisonIds,
-      getComparison: ({ signal }) =>
-        queryApi(
-          compareApiUrl(selectedComparisonIds(), currentCriteriaSearch()),
-          compareJobsResultSchema,
-          { signal },
-        ),
-      removeJobFromComparison: (jobId, { signal }) => {
-        if (signal.aborted) return Promise.reject(new DOMException("Cancelled.", "AbortError"));
-        return Promise.resolve({
-          jobIds: selectedComparisonIds().filter((selectedId) => selectedId !== jobId),
-        });
-      },
-      onComparisonCommitted: () => undefined,
-      onNavigate: navigate,
-      getCriteriaSearch: currentCriteriaSearch,
-    });
-  }
+function comparisonManifests(
+  navigate: (href: string) => void,
+): readonly ToolManifest<unknown, unknown>[] {
+  return createCompareToolManifests({
+    selectedJobIds: selectedComparisonIds,
+    getComparison: ({ signal }) =>
+      queryApi(
+        compareApiUrl(selectedComparisonIds(), currentCriteriaSearch()),
+        compareJobsResultSchema,
+        { signal },
+      ),
+    removeJobFromComparison: (jobId, { signal }) => {
+      if (signal.aborted) return Promise.reject(new DOMException("Cancelled.", "AbortError"));
+      return Promise.resolve({
+        jobIds: selectedComparisonIds().filter((selectedId) => selectedId !== jobId),
+      });
+    },
+    onComparisonCommitted: () => undefined,
+    onNavigate: navigate,
+    getCriteriaSearch: currentCriteriaSearch,
+  });
+}
 
-  if (route.kind === "saved") {
-    return createSavedToolManifests({
-      listSavedSearches: ({ signal }) =>
-        queryApi("/api/v1/saved-searches", savedSearchSchema.array(), { signal }),
-      listSchedules: ({ signal }) =>
-        queryApi("/api/v1/schedules", jobAlertScheduleSchema.array(), { signal }),
-      setScheduleEnabled: (scheduleId, input, { signal }) =>
-        queryApi(`/api/v1/schedules/${encodeURIComponent(scheduleId)}`, jobAlertScheduleSchema, {
-          method: "PATCH",
-          body: input,
-          signal,
-        }),
-      onScheduleCommitted: commitWebMcpSchedule,
-    });
-  }
-
-  if (route.kind === "application") {
-    const surface = readApplicationWebMcpSurface();
-    if (surface === null || surface.currentState().draftId !== route.draftId) return [];
-    return createApplicationToolManifests(surface);
-  }
-
-  return [];
+function savedManifests(
+  navigate: (href: string) => void,
+): readonly ToolManifest<unknown, unknown>[] {
+  return createSavedToolManifests({
+    listSavedSearches: ({ signal }) =>
+      queryApi("/api/v1/saved-searches", savedSearchSchema.array(), { signal }),
+    listSchedules: ({ signal }) =>
+      queryApi("/api/v1/schedules", jobAlertScheduleSchema.array(), { signal }),
+    setScheduleEnabled: (scheduleId, input, { signal }) =>
+      queryApi(`/api/v1/schedules/${encodeURIComponent(scheduleId)}`, jobAlertScheduleSchema, {
+        method: "PATCH",
+        body: input,
+        signal,
+      }),
+    onScheduleCommitted: commitWebMcpSchedule,
+    savedSearchHref: (savedSearch) => searchHrefFromCriteria(savedSearch.criteria),
+    onNavigate: navigate,
+    getLatestRun: (savedSearchId, { signal }) =>
+      queryApi(
+        `/api/v1/saved-searches/${encodeURIComponent(savedSearchId)}/latest-run`,
+        latestSearchRunSchema,
+        { signal },
+      ),
+  });
 }
 
 export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) {
-  const pathname = usePathname();
   const router = useRouter();
   const [activitiesStore] = useState(() => new AgentActivityStore());
   const [status, setStatus] = useState<WebMcpRegistrationStatus>("checking");
-  const [registeredToolCount, setRegisteredToolCount] = useState(0);
+  const [registeredTools, setRegisteredTools] =
+    useState<readonly RegisteredToolSummary[]>(emptyTools);
   const [registrationRevision, setRegistrationRevision] = useState(0);
   const retry = useCallback(() => setRegistrationRevision((revision) => revision + 1), []);
-
-  useEffect(
-    () =>
-      subscribeApplicationWebMcpSurface(() => setRegistrationRevision((revision) => revision + 1)),
-    [],
-  );
 
   const subscribe = useCallback(
     (listener: () => void) => activitiesStore.subscribe(listener),
@@ -204,30 +237,117 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
 
   useEffect(() => {
     setStatus("checking");
-    setRegisteredToolCount(0);
+    setRegisteredTools(emptyTools);
     let modelContext: unknown;
     try {
       modelContext = (document as Document & { modelContext?: unknown }).modelContext;
       if (!isModelContextAvailable(modelContext)) throw new Error("WebMCP is unavailable.");
     } catch {
       setStatus("unsupported");
-      setRegisteredToolCount(0);
+      setRegisteredTools(emptyTools);
       return;
     }
 
-    const route = resolveWebMcpRoute(pathname);
-    const manifests = routeManifests(route, (href) => router.push(href, { scroll: false }));
-    if (manifests.length === 0) {
-      setStatus("ready");
-      setRegisteredToolCount(0);
-      return;
-    }
+    const navigate = (href: string) => router.push(href, { scroll: false });
+    const publicSearchTools = searchManifests(navigate);
+    const publicDetailTools = detailManifests(undefined, navigate);
+    const publicComparisonTools = comparisonManifests(navigate);
+    const privateSavedTools = savedManifests(navigate);
+    const privateApplicationTools = createStableApplicationToolManifests({
+      currentSurface: readApplicationWebMcpSurface,
+      async readApplication(draftId, { signal }) {
+        try {
+          const workspace = await queryApi(
+            `/api/v1/applications/${encodeURIComponent(draftId)}`,
+            applicationWorkspaceSchema,
+            { signal },
+          );
+          const progress = applicationReadiness(workspace);
+          const state = applicationAgentState(workspace, false);
+          return {
+            state,
+            missingFieldKeys: progress.missingFieldKeys,
+            missingFieldLabels: progress.missingFieldKeys.map(
+              (fieldKey) =>
+                workspace.requirements.find((field) => field.fieldKey === fieldKey)?.label ??
+                fieldKey,
+            ),
+            nextAction:
+              state.receiptStatus !== "none"
+                ? "complete"
+                : progress.readyForReview
+                  ? "review"
+                  : "prepare",
+          };
+        } catch (error) {
+          if (error instanceof ApiClientError && error.code === "NOT_FOUND") {
+            return null;
+          }
+          throw error;
+        }
+      },
+      async withdrawConsent(draftId, { signal }) {
+        return queryApi(
+          `/api/v1/applications/${encodeURIComponent(draftId)}/consent`,
+          applicationConsentWithdrawalSchema,
+          {
+            method: "DELETE",
+            body: {
+              interaction: {
+                channel: "agent_client",
+                requestId: `interaction_${crypto.randomUUID()}`,
+                affirmation: "withdrawn",
+                evidenceVersion: "agent-interaction-v1",
+              },
+            },
+            signal,
+          },
+        );
+      },
+      onNavigate: navigate,
+      waitForSurface: waitForApplicationWebMcpSurface,
+    });
+    const siteWideManifests = createSiteWideToolManifests({
+      onNavigate: navigate,
+      startApplication: async (jobId, { signal }) => {
+        const result = await startApplication(jobId, { request: queryApi, navigate }, { signal });
+        return {
+          draftId: result.draft.id,
+          href: `/apply/${encodeURIComponent(result.draft.id)}`,
+          disposition: result.disposition,
+          nextTool: "get_application_readiness" as const,
+        };
+      },
+    });
+    let manifests: readonly ToolManifest<unknown, unknown>[] = [];
+    const planner = createWorkflowPlannerTool({
+      route: () => {
+        const currentPathname = window.location.pathname;
+        return routeLabel(resolveWebMcpRoute(currentPathname), currentPathname);
+      },
+      availableTools: () => manifests.map(({ name }) => name),
+    });
+    const candidates = [planner, ...siteWideManifests, ...publicSearchTools];
+    const candidateByName = new Map(candidates.map((manifest) => [manifest.name, manifest]));
+    const coreManifests = stableWebMcpCoreNames.map((name) => {
+      const manifest = candidateByName.get(name);
+      if (manifest === undefined) throw new Error(`Missing stable WebMCP core tool: ${name}`);
+      return manifest;
+    });
+    manifests = composeStableWebMcpManifests({
+      core: coreManifests,
+      search: publicSearchTools,
+      detail: publicDetailTools,
+      comparison: publicComparisonTools,
+      saved: privateSavedTools,
+      application: privateApplicationTools,
+    });
 
     let disposed = false;
     let unregister: (() => void) | undefined;
     const registrationController = new AbortController();
     setStatus("preparing");
-    setRegisteredToolCount(0);
+    setRegisteredTools(emptyTools);
 
     void registerToolSet(manifests, {
       modelContext,
@@ -240,12 +360,18 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
           return;
         }
         unregister = cleanup;
-        setRegisteredToolCount(manifests.length);
+        setRegisteredTools(
+          manifests.map((manifest) => ({
+            name: manifest.name,
+            purpose: manifest.purpose,
+            readOnly: manifest.annotations.readOnlyHint,
+          })),
+        );
         setStatus("ready");
       })
       .catch(() => {
         if (disposed) return;
-        setRegisteredToolCount(0);
+        setRegisteredTools(emptyTools);
         setStatus("error");
       });
 
@@ -254,17 +380,18 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
       registrationController.abort();
       unregister?.();
     };
-  }, [activitiesStore, pathname, registrationRevision, router]);
+  }, [activitiesStore, registrationRevision, router]);
 
   const value = useMemo<WebMcpContextValue>(
     () => ({
       activities,
-      registeredToolCount,
+      registeredToolCount: registeredTools.length,
+      registeredTools,
       retry,
       status,
       supported: status !== "checking" && status !== "unsupported",
     }),
-    [activities, registeredToolCount, retry, status],
+    [activities, registeredTools, retry, status],
   );
 
   return <WebMcpContext.Provider value={value}>{children}</WebMcpContext.Provider>;

@@ -11,7 +11,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(process.env["PUBLIC_BASE_URL"] ?? "http://localhost:3000"),
   title: {
-    default: "Jobbbler — Signal over noise",
+    default: "Jobbbler — Find once. Stay updated. Apply with control.",
     template: "%s · Jobbbler",
   },
   description:
@@ -22,7 +22,7 @@ const themeBootstrap = `(()=>{try{const s=localStorage.getItem("jobbbler-theme")
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html data-scroll-behavior="smooth" lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       </head>

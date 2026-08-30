@@ -1,8 +1,11 @@
+import { createHash } from "node:crypto";
+
 import { DomainError, type createSavedSearchService } from "@jobbbler/core-domain";
 import type {
   AlertChangeRecord,
   AlertDeliveryRecord,
   AlertEvaluationRecord,
+  IdempotencyRepository,
 } from "@jobbbler/storage";
 
 import { apiErrorResponse, apiSuccessResponse } from "./api-response";
@@ -17,6 +20,7 @@ export type SavedSearchOperations = ReturnType<typeof createSavedSearchService>;
 export interface SavedSearchRouteDependencies {
   readonly identity: IdentityRouteDependencies;
   readonly service: SavedSearchOperations;
+  readonly idempotency: Pick<IdempotencyRepository, "get" | "putIfAbsent">;
   readonly latestRun?: {
     readonly getEvaluation: (savedSearchId: string) => Promise<AlertEvaluationRecord | null>;
     readonly listChanges: (evaluationId: string) => Promise<readonly AlertChangeRecord[]>;
@@ -33,7 +37,34 @@ export interface LatestRunRouteContext {
   readonly params: Promise<{ readonly savedSearchId: string }>;
 }
 
+export interface SavedSearchRouteContext {
+  readonly params: Promise<{ readonly savedSearchId: string }>;
+}
+
 const MAX_LATEST_RUN_CHANGES = 25;
+const IDEMPOTENCY_KEY_HEADER = "idempotency-key";
+const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9_.:-]{1,128}$/;
+const IDEMPOTENCY_RECORD_TTL_MS = 24 * 60 * 60 * 1_000;
+
+function readIdempotencyKey(request: Request): string | null {
+  const header = request.headers.get(IDEMPOTENCY_KEY_HEADER);
+  if (header === null) return null;
+  const key = header.trim();
+  if (!IDEMPOTENCY_KEY_PATTERN.test(key)) {
+    throw new DomainError({
+      code: "VALIDATION",
+      message: "Idempotency-Key must be 1-128 characters of letters, digits, '_', '.', ':' or '-'.",
+    });
+  }
+  return key;
+}
+
+function savedSearchCreateRequestHash(body: unknown): string {
+  return createHash("sha256")
+    .update("jobbbler:saved-search-create:v1\u0000")
+    .update(JSON.stringify(body) ?? "")
+    .digest("hex");
+}
 
 async function privateMutation(
   request: Request,
@@ -51,8 +82,49 @@ export async function handleCreateSavedSearchRequest(
   const requestId = createRequestId();
   try {
     const command = await privateMutation(request, dependencies);
+    const idempotencyKey = readIdempotencyKey(request);
+    const scope = `saved_search.create:${command.ownerId}`;
     const now = dependencies.identity.now();
+    if (idempotencyKey !== null) {
+      const replay = await dependencies.idempotency.get(scope, idempotencyKey);
+      if (replay !== null) {
+        if (replay.requestHash !== savedSearchCreateRequestHash(command.body)) {
+          throw new DomainError({
+            code: "CONFLICT",
+            message: "The idempotency key is already bound to a different request.",
+          });
+        }
+        return apiSuccessResponse(replay.responseBody, {
+          requestId,
+          status: replay.responseStatus,
+        });
+      }
+    }
     const saved = await dependencies.service.createSavedSearch(command.ownerId, command.body, now);
+    if (idempotencyKey !== null) {
+      let put;
+      try {
+        put = await dependencies.idempotency.putIfAbsent({
+          scope,
+          key: idempotencyKey,
+          requestHash: savedSearchCreateRequestHash(command.body),
+          responseStatus: 201,
+          responseBody: saved,
+          createdAt: now,
+          expiresAt: new Date(Date.parse(now) + IDEMPOTENCY_RECORD_TTL_MS).toISOString(),
+        });
+      } catch (error) {
+        await dependencies.service.deleteSavedSearch(command.ownerId, saved.id);
+        throw error;
+      }
+      if (!put.inserted) {
+        await dependencies.service.deleteSavedSearch(command.ownerId, saved.id);
+        return apiSuccessResponse(put.record.responseBody, {
+          requestId,
+          status: put.record.responseStatus,
+        });
+      }
+    }
     await dependencies.activity?.publish({
       ownerId: command.ownerId,
       correlationId: requestId,
@@ -247,6 +319,73 @@ export async function handleListSchedulesRequest(
   }
 }
 
+interface ScheduleMutationCommand {
+  readonly ownerId: string;
+  readonly body: unknown;
+}
+
+async function respondWithScheduleEnabled(
+  command: ScheduleMutationCommand,
+  scheduleId: string,
+  dependencies: SavedSearchRouteDependencies,
+  requestId: string,
+): Promise<Response> {
+  const now = dependencies.identity.now();
+  const schedule = await dependencies.service.setScheduleEnabled(
+    command.ownerId,
+    scheduleId,
+    command.body,
+    now,
+  );
+  await dependencies.activity?.publish({
+    ownerId: command.ownerId,
+    correlationId: requestId,
+    kind: "schedule",
+    key: "set_job_alert_state",
+    status: "completed",
+    safeSummary: schedule.enabled ? "Job alert resumed." : "Job alert paused.",
+    actorKind: "human",
+    aggregate: { type: "schedule", version: schedule.version },
+    occurredAt: now,
+    effects: [
+      { target: "saved_searches", kind: "refresh" },
+      { target: "agent_activity", kind: "announce" },
+    ],
+  });
+  return apiSuccessResponse(schedule, { requestId });
+}
+
+async function respondWithScheduleUpdate(
+  command: ScheduleMutationCommand,
+  scheduleId: string,
+  dependencies: SavedSearchRouteDependencies,
+  requestId: string,
+): Promise<Response> {
+  const now = dependencies.identity.now();
+  const schedule = await dependencies.service.updateSchedule(
+    command.ownerId,
+    scheduleId,
+    command.body,
+    now,
+  );
+  await dependencies.activity?.publish({
+    ownerId: command.ownerId,
+    correlationId: requestId,
+    kind: "schedule",
+    key: "update_job_alert",
+    status: "completed",
+    safeSummary: "Job alert schedule updated.",
+    actorKind: "human",
+    aggregate: { type: "schedule", version: schedule.version },
+    occurredAt: now,
+    effects: [
+      { target: "saved_searches", kind: "refresh" },
+      { target: "agent_activity", kind: "announce" },
+    ],
+  });
+  return apiSuccessResponse(schedule, { requestId });
+}
+
 export async function handleSetScheduleEnabledRequest(
   request: Request,
   routeContext: ScheduleRouteContext,
@@ -256,29 +395,69 @@ export async function handleSetScheduleEnabledRequest(
   try {
     const command = await privateMutation(request, dependencies);
     const { scheduleId } = await routeContext.params;
+    return await respondWithScheduleEnabled(command, scheduleId, dependencies, requestId);
+  } catch (error) {
+    return apiErrorResponse(error, { requestId });
+  }
+}
+
+export async function handleUpdateScheduleRequest(
+  request: Request,
+  routeContext: ScheduleRouteContext,
+  dependencies: SavedSearchRouteDependencies,
+): Promise<Response> {
+  const requestId = createRequestId();
+  try {
+    const command = await privateMutation(request, dependencies);
+    const { scheduleId } = await routeContext.params;
+    const togglesEnabled =
+      typeof command.body === "object" && command.body !== null && "enabled" in command.body;
+    return await (togglesEnabled
+      ? respondWithScheduleEnabled(command, scheduleId, dependencies, requestId)
+      : respondWithScheduleUpdate(command, scheduleId, dependencies, requestId));
+  } catch (error) {
+    return apiErrorResponse(error, { requestId });
+  }
+}
+
+export async function handleDeleteSavedSearchRequest(
+  request: Request,
+  routeContext: SavedSearchRouteContext,
+  dependencies: SavedSearchRouteDependencies,
+): Promise<Response> {
+  const requestId = createRequestId();
+  try {
+    assertTrustedMutationOrigin(request, dependencies.identity.environment);
+    const current = await requireOwnerSession(request, dependencies.identity);
+    const { savedSearchId } = await routeContext.params;
     const now = dependencies.identity.now();
-    const schedule = await dependencies.service.setScheduleEnabled(
-      command.ownerId,
-      scheduleId,
-      command.body,
-      now,
-    );
+    const removed = await dependencies.service.deleteSavedSearch(current.owner.id, savedSearchId);
     await dependencies.activity?.publish({
-      ownerId: command.ownerId,
+      ownerId: current.owner.id,
       correlationId: requestId,
-      kind: "schedule",
-      key: "set_job_alert_state",
+      kind: "saved_search",
+      key: "delete_saved_search",
       status: "completed",
-      safeSummary: schedule.enabled ? "Job alert resumed." : "Job alert paused.",
+      safeSummary:
+        removed.schedule === null
+          ? "Saved search removed from the private workspace."
+          : "Saved search and its job alert were removed.",
       actorKind: "human",
-      aggregate: { type: "schedule", version: schedule.version },
+      aggregate: { type: "saved_search", version: removed.savedSearch.version },
       occurredAt: now,
       effects: [
         { target: "saved_searches", kind: "refresh" },
         { target: "agent_activity", kind: "announce" },
       ],
     });
-    return apiSuccessResponse(schedule, { requestId });
+    return apiSuccessResponse(
+      {
+        savedSearchId: removed.savedSearch.id,
+        scheduleId: removed.schedule === null ? null : removed.schedule.id,
+        deleted: true,
+      },
+      { requestId },
+    );
   } catch (error) {
     return apiErrorResponse(error, { requestId });
   }

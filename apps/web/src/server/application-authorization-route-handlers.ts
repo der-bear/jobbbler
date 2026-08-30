@@ -3,9 +3,14 @@ import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 
 import {
+  applicationConsentWithdrawalSchema,
   applicationDataGrantSummarySchema,
   applicationDelegationSummarySchema,
+  applicationSubmissionDecisionReceiptSchema,
+  applicationSubmissionReviewRequestSchema,
+  dataCategorySchema,
   entityIdSchema,
+  legalBasisSchema,
   requestAgentDelegationSchema,
   requestDataGrantSchema,
   type AgentOperation,
@@ -27,6 +32,7 @@ import type {
   AgentSessionRepository,
   ApplicationRepository,
   DelegationRepository,
+  IdempotencyRepository,
   RichDataGrantMatchInput,
   RichDataGrantApprovalGuard,
   RichDataGrantRecord,
@@ -52,7 +58,24 @@ const createDelegationBodySchema = requestAgentDelegationSchema.omit({
   agentSessionId: true,
   draftId: true,
 });
+const delegationApprovalInteractionSchema = z.strictObject({
+  interaction: z.strictObject({
+    channel: z.enum(["first_party_ui", "agent_client"]),
+    requestId: entityIdSchema,
+    affirmation: z.literal("approved"),
+    evidenceVersion: z.literal("agent-interaction-v1"),
+  }),
+});
+const delegationRevocationInteractionSchema = z.strictObject({
+  interaction: z.strictObject({
+    channel: z.enum(["first_party_ui", "agent_client"]),
+    requestId: entityIdSchema,
+    affirmation: z.enum(["declined", "revoked"]),
+    evidenceVersion: z.literal("agent-interaction-v1"),
+  }),
+});
 const createDataGrantBodySchema = requestDataGrantSchema.omit({ draftId: true }).extend({
+  consentRequestId: entityIdSchema.optional(),
   requestedTtlSeconds: requestedTtlSecondsSchema.default(DEFAULT_CAPABILITY_TTL_SECONDS),
 });
 const grantApprovalInteractionSchema = z.strictObject({
@@ -63,6 +86,54 @@ const grantApprovalInteractionSchema = z.strictObject({
     evidenceVersion: z.literal("agent-interaction-v1"),
   }),
 });
+const grantWithdrawalInteractionSchema = z.strictObject({
+  interaction: z.strictObject({
+    channel: z.enum(["first_party_ui", "agent_client"]),
+    requestId: entityIdSchema,
+    affirmation: z.literal("withdrawn"),
+    evidenceVersion: z.literal("agent-interaction-v1"),
+  }),
+});
+const submissionDecisionBodySchema = z.strictObject({
+  expectedVersion: z.number().int().nonnegative(),
+  decision: z.enum(["approved", "declined"]),
+  interaction: z.strictObject({
+    channel: z.literal("agent_client"),
+    requestId: entityIdSchema,
+    affirmation: z.enum(["approved", "declined"]),
+    evidenceVersion: z.literal("agent-interaction-v1"),
+  }),
+});
+const pendingConsentRecordSchema = applicationSubmissionReviewRequestSchema.extend({
+  ownerId: entityIdSchema,
+  recipientId: entityIdSchema,
+  categories: z.array(dataCategorySchema).min(1).max(10),
+  fieldKeys: z
+    .array(z.string().regex(/^[a-z][a-z0-9_]{0,63}$/))
+    .min(1)
+    .max(24),
+  documentIds: z.array(entityIdSchema).max(10),
+  legalBasis: legalBasisSchema,
+  valuesHash: z.string().regex(/^[a-f0-9]{64}$/),
+  createdAt: z.iso.datetime({ offset: true }),
+});
+const consentDecisionRecordSchema = applicationSubmissionDecisionReceiptSchema.extend({
+  ownerId: entityIdSchema,
+  recipientId: entityIdSchema,
+  purpose: z.string().trim().min(1).max(240),
+  categories: z.array(dataCategorySchema).min(1).max(10),
+  fieldKeys: z
+    .array(z.string().regex(/^[a-z][a-z0-9_]{0,63}$/))
+    .min(1)
+    .max(24),
+  documentIds: z.array(entityIdSchema).max(10),
+  noticeVersion: z.string().trim().min(1).max(40),
+  legalBasis: legalBasisSchema,
+  valuesHash: z.string().regex(/^[a-f0-9]{64}$/),
+});
+
+const CONSENT_REQUEST_SCOPE = "application.consent_request";
+const CONSENT_DECISION_SCOPE = "application.consent_decision";
 
 export interface AgentSessionTokenSecrets {
   create(): string;
@@ -73,9 +144,25 @@ export interface ApplicationAuthorizationIds {
   agentSession(): string;
   delegation(): string;
   dataGrant(): string;
+  interaction(): string;
 }
 
 export interface ApplicationDataGrantAuthorizationPolicy {
+  consentPresentation(
+    ownerId: string,
+    draftId: string,
+  ): Promise<{
+    readonly recipientId: string;
+    readonly recipientName: string;
+    readonly purpose: string;
+    readonly categories: readonly z.infer<typeof dataCategorySchema>[];
+    readonly fieldKeys: readonly string[];
+    readonly fieldLabels: readonly string[];
+    readonly documentIds: readonly string[];
+    readonly noticeVersion: string;
+    readonly legalBasis: z.infer<typeof legalBasisSchema>;
+    readonly valuesHash: string;
+  }>;
   assertDataGrantRequest(
     input: Readonly<{
       ownerId: string;
@@ -88,10 +175,14 @@ export interface ApplicationDataGrantAuthorizationPolicy {
 
 export interface ApplicationAuthorizationRouteDependencies {
   readonly identity: IdentityRouteDependencies;
-  readonly applications: Pick<ApplicationRepository, "getById" | "getByOwner">;
+  readonly applications: Pick<
+    ApplicationRepository,
+    "getById" | "getByOwner" | "applyMaterialEdit"
+  >;
   readonly agentSessions: AgentSessionRepository;
   readonly delegations: DelegationRepository;
   readonly richDataGrants: RichDataGrantRepository;
+  readonly idempotency: IdempotencyRepository;
   readonly dataGrantPolicy: ApplicationDataGrantAuthorizationPolicy;
   readonly ids: ApplicationAuthorizationIds;
   readonly agentTokens: AgentSessionTokenSecrets;
@@ -112,6 +203,10 @@ export interface DelegationRouteContext {
 
 export interface DataGrantRouteContext {
   readonly params: Promise<{ readonly draftId: string; readonly grantId: string }>;
+}
+
+export interface ConsentDecisionRouteContext {
+  readonly params: Promise<{ readonly draftId: string; readonly requestId: string }>;
 }
 
 export interface ResolvedApplicationAgent {
@@ -161,7 +256,19 @@ export function createApplicationAuthorizationIds(): ApplicationAuthorizationIds
     agentSession: () => createEntityId("agent_session"),
     delegation: () => createEntityId("delegation"),
     dataGrant: () => createEntityId("grant"),
+    interaction: () => createEntityId("interaction"),
   };
+}
+
+function recordHash(value: unknown): string {
+  return createHash("sha256")
+    .update("jobbbler:consent-record:v1\u0000")
+    .update(JSON.stringify(value))
+    .digest("hex");
+}
+
+function equalList(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function parseEntityId(value: string): string {
@@ -350,6 +457,18 @@ function dataGrantSummary(record: RichDataGrantRecord): ApplicationDataGrantSumm
   });
 }
 
+function submissionDecisionReceipt(record: z.infer<typeof consentDecisionRecordSchema>) {
+  return applicationSubmissionDecisionReceiptSchema.parse({
+    requestId: record.requestId,
+    draftId: record.draftId,
+    decision: record.decision,
+    acceptedDraftVersion: record.acceptedDraftVersion,
+    decidedAt: record.decidedAt,
+    channel: record.channel,
+    evidenceVersion: record.evidenceVersion,
+  });
+}
+
 async function publishAuthorizationActivity(
   dependencies: ApplicationAuthorizationRouteDependencies,
   input: Readonly<{
@@ -522,14 +641,31 @@ export async function handleApproveDelegationRequest(
     if (requested === null || requested.resourceId !== draftId) {
       throw new DomainError({ code: "NOT_FOUND", message: "Delegation request was not found." });
     }
+    const { interaction } = delegationApprovalInteractionSchema.parse(
+      await readSmallJsonBody(request),
+    );
+    if (interaction.requestId !== delegationId) {
+      throw new DomainError({
+        code: "VALIDATION",
+        message: "The assistance decision is not bound to this exact request.",
+      });
+    }
     const now = dependencies.identity.now();
-    const stored = await dependencies.delegations.approve(delegationId, human.ownerId, now);
+    const stored = await dependencies.delegations.approve(delegationId, human.ownerId, now, {
+      channel: interaction.channel,
+      requestId: interaction.requestId,
+      action: interaction.affirmation,
+      evidenceVersion: interaction.evidenceVersion,
+    });
     await publishAuthorizationActivity(dependencies, {
       ownerId: human.ownerId,
       requestId,
       key: "approve_agent_access",
       status: "completed",
-      safeSummary: "Scoped agent access approved.",
+      safeSummary:
+        interaction.channel === "agent_client"
+          ? "Scoped application assistance approved through the agent client."
+          : "Scoped application assistance approved in the private workspace.",
       actorKind: "human",
       draftVersion: human.draft.version,
       occurredAt: now,
@@ -555,19 +691,262 @@ export async function handleRevokeDelegationRequest(
     if (existing === null || existing.resourceId !== draftId) {
       throw new DomainError({ code: "NOT_FOUND", message: "Delegation request was not found." });
     }
+    const { interaction } = delegationRevocationInteractionSchema.parse(
+      await readSmallJsonBody(request),
+    );
+    if (interaction.requestId !== delegationId) {
+      throw new DomainError({
+        code: "VALIDATION",
+        message: "The assistance decision is not bound to this exact request.",
+      });
+    }
+    const expectedAction = existing.status === "requested" ? "declined" : "revoked";
+    if (existing.status !== "revoked" && interaction.affirmation !== expectedAction) {
+      throw new DomainError({
+        code: "VALIDATION",
+        message: `This assistance request must be ${expectedAction}.`,
+      });
+    }
     const now = dependencies.identity.now();
-    const stored = await dependencies.delegations.revoke(delegationId, human.ownerId, now);
+    const stored = await dependencies.delegations.revoke(delegationId, human.ownerId, now, {
+      channel: interaction.channel,
+      requestId: interaction.requestId,
+      action: interaction.affirmation,
+      evidenceVersion: interaction.evidenceVersion,
+    });
     await publishAuthorizationActivity(dependencies, {
       ownerId: human.ownerId,
       requestId,
       key: "revoke_agent_access",
       status: "completed",
-      safeSummary: "Scoped agent access revoked.",
+      safeSummary:
+        interaction.affirmation === "declined"
+          ? "Scoped application assistance declined."
+          : "Scoped application assistance revoked.",
       actorKind: "human",
       draftVersion: human.draft.version,
       occurredAt: now,
     });
     return apiSuccessResponse(delegationSummary(stored), { requestId });
+  } catch (error) {
+    return authorizationErrorResponse(error, requestId);
+  }
+}
+
+export async function handleCreateSubmissionReviewRequest(
+  request: Request,
+  context: DraftRouteContext,
+  dependencies: ApplicationAuthorizationRouteDependencies,
+): Promise<Response> {
+  const requestId = createRequestId();
+  try {
+    const { draftId: rawDraftId } = await context.params;
+    const draftId = parseEntityId(rawDraftId);
+    const actor = request.headers.has("authorization")
+      ? await requireAgentOperation(request, draftId, "request_data_consent", dependencies)
+      : await requireHumanDraft(request, draftId, "request-submission-review", dependencies);
+    const ownerId = actor.draft.ownerId;
+    const draft = actor.draft;
+    const presentation = await dependencies.dataGrantPolicy.consentPresentation(ownerId, draftId);
+    const now = dependencies.identity.now();
+    const id = dependencies.ids.interaction();
+    const record = pendingConsentRecordSchema.parse({
+      id,
+      draftId,
+      draftVersion: draft.version,
+      recipient: presentation.recipientName,
+      purpose: presentation.purpose,
+      fieldLabels: presentation.fieldLabels,
+      noticeVersion: presentation.noticeVersion,
+      expiresAt: new Date(Date.parse(now) + 5 * 60_000).toISOString(),
+      ownerId,
+      recipientId: presentation.recipientId,
+      categories: presentation.categories,
+      fieldKeys: presentation.fieldKeys,
+      documentIds: presentation.documentIds,
+      legalBasis: presentation.legalBasis,
+      valuesHash: presentation.valuesHash,
+      createdAt: now,
+    });
+    await dependencies.idempotency.putIfAbsent({
+      scope: CONSENT_REQUEST_SCOPE,
+      key: id,
+      requestHash: recordHash(record),
+      responseStatus: 201,
+      responseBody: record,
+      createdAt: now,
+      expiresAt: record.expiresAt,
+    });
+    return apiSuccessResponse(
+      applicationSubmissionReviewRequestSchema.parse({
+        id: record.id,
+        draftId: record.draftId,
+        draftVersion: record.draftVersion,
+        recipient: record.recipient,
+        purpose: record.purpose,
+        fieldLabels: record.fieldLabels,
+        noticeVersion: record.noticeVersion,
+        expiresAt: record.expiresAt,
+      }),
+      {
+        requestId,
+        status: 201,
+      },
+    );
+  } catch (error) {
+    return authorizationErrorResponse(error, requestId);
+  }
+}
+
+export async function handleDecideSubmissionReviewRequest(
+  request: Request,
+  context: ConsentDecisionRouteContext,
+  dependencies: ApplicationAuthorizationRouteDependencies,
+): Promise<Response> {
+  const requestId = createRequestId();
+  try {
+    const params = await context.params;
+    const draftId = parseEntityId(params.draftId);
+    const interactionRequestId = parseEntityId(params.requestId);
+    const human = await requireHumanDraft(
+      request,
+      draftId,
+      "decide-submission-review",
+      dependencies,
+    );
+    const parsed = submissionDecisionBodySchema.parse(await readSmallJsonBody(request));
+    if (
+      parsed.interaction.requestId !== interactionRequestId ||
+      parsed.interaction.affirmation !== parsed.decision
+    ) {
+      throw new DomainError({
+        code: "VALIDATION",
+        message: "The decision must match the exact pending interaction request.",
+      });
+    }
+    const storedRequest = await dependencies.idempotency.get(
+      CONSENT_REQUEST_SCOPE,
+      interactionRequestId,
+    );
+    if (storedRequest === null) {
+      throw new DomainError({ code: "NOT_FOUND", message: "Consent request was not found." });
+    }
+    const pending = pendingConsentRecordSchema.parse(storedRequest.responseBody);
+    const now = dependencies.identity.now();
+    if (
+      pending.ownerId !== human.ownerId ||
+      pending.draftId !== draftId ||
+      pending.draftVersion !== parsed.expectedVersion ||
+      pending.expiresAt <= now
+    ) {
+      throw new DomainError({
+        code: "CONFLICT",
+        message: "The consent request is stale, expired, or belongs to another application.",
+      });
+    }
+    const presentation = await dependencies.dataGrantPolicy.consentPresentation(
+      human.ownerId,
+      draftId,
+    );
+    if (
+      presentation.valuesHash !== pending.valuesHash ||
+      presentation.recipientId !== pending.recipientId ||
+      presentation.purpose !== pending.purpose ||
+      presentation.noticeVersion !== pending.noticeVersion ||
+      presentation.legalBasis !== pending.legalBasis ||
+      !equalList(presentation.fieldKeys, pending.fieldKeys) ||
+      !equalList(presentation.categories, pending.categories)
+    ) {
+      throw new DomainError({
+        code: "CONFLICT",
+        message: "The application changed after the consent request was presented.",
+      });
+    }
+    const previousDecision = await dependencies.idempotency.get(
+      CONSENT_DECISION_SCOPE,
+      interactionRequestId,
+    );
+    if (previousDecision !== null) {
+      const previous = consentDecisionRecordSchema.parse(previousDecision.responseBody);
+      if (previous.decision !== parsed.decision) {
+        throw new DomainError({
+          code: "CONFLICT",
+          message: "This consent request already has a different decision.",
+        });
+      }
+      return apiSuccessResponse(submissionDecisionReceipt(previous), {
+        requestId,
+      });
+    }
+
+    let acceptedDraftVersion = human.draft.version;
+    if (parsed.decision === "approved") {
+      const coveredFields = new Set(pending.fieldKeys);
+      const acceptedAnswers = human.draft.answers.map((answer) =>
+        coveredFields.has(answer.fieldKey) ? { ...answer, acceptedByHuman: true } : answer,
+      );
+      const materiallyChanged = human.draft.answers.some(
+        (answer) => coveredFields.has(answer.fieldKey) && !answer.acceptedByHuman,
+      );
+      if (materiallyChanged) {
+        const accepted = await dependencies.applications.applyMaterialEdit({
+          ownerId: human.ownerId,
+          expectedVersion: human.draft.version,
+          draft: {
+            ...human.draft,
+            answers: acceptedAnswers,
+            state: "draft",
+            version: human.draft.version + 1,
+            updatedAt: now,
+          },
+          now,
+        });
+        acceptedDraftVersion = accepted.version;
+      }
+    }
+    const decision = consentDecisionRecordSchema.parse({
+      requestId: interactionRequestId,
+      draftId,
+      decision: parsed.decision,
+      acceptedDraftVersion,
+      decidedAt: now,
+      channel: parsed.interaction.channel,
+      evidenceVersion: parsed.interaction.evidenceVersion,
+      ownerId: human.ownerId,
+      recipientId: pending.recipientId,
+      purpose: pending.purpose,
+      categories: pending.categories,
+      fieldKeys: pending.fieldKeys,
+      documentIds: pending.documentIds,
+      noticeVersion: pending.noticeVersion,
+      legalBasis: pending.legalBasis,
+      valuesHash: pending.valuesHash,
+    });
+    await dependencies.idempotency.putIfAbsent({
+      scope: CONSENT_DECISION_SCOPE,
+      key: interactionRequestId,
+      requestHash: recordHash(decision),
+      responseStatus: 200,
+      responseBody: decision,
+      createdAt: now,
+      expiresAt: new Date(Date.parse(now) + 365 * 24 * 60 * 60_000).toISOString(),
+    });
+    await publishAuthorizationActivity(dependencies, {
+      ownerId: human.ownerId,
+      requestId,
+      key: "decide_application_submission",
+      status: "completed",
+      safeSummary:
+        parsed.decision === "approved"
+          ? "Exact application disclosure approved through the agent client."
+          : "Application disclosure declined through the agent client.",
+      actorKind: "human",
+      draftVersion: acceptedDraftVersion,
+      occurredAt: now,
+    });
+    return apiSuccessResponse(submissionDecisionReceipt(decision), {
+      requestId,
+    });
   } catch (error) {
     return authorizationErrorResponse(error, requestId);
   }
@@ -633,6 +1012,54 @@ export async function handleCreateDataGrantRequest(
       draftId,
       request: policyRequest,
     });
+    if (
+      requester.actorKind === "agent" &&
+      policyRequest.legalBasis === "consent" &&
+      parsed.consentRequestId === undefined
+    ) {
+      throw new DomainError({
+        code: "FORBIDDEN",
+        message: "Agent-client disclosure requires an approved server consent request.",
+      });
+    }
+    if (parsed.consentRequestId !== undefined) {
+      const storedDecision = await dependencies.idempotency.get(
+        CONSENT_DECISION_SCOPE,
+        parsed.consentRequestId,
+      );
+      if (storedDecision === null) {
+        throw new DomainError({
+          code: "FORBIDDEN",
+          message: "The server has no approved decision for this consent request.",
+        });
+      }
+      const decision = consentDecisionRecordSchema.parse(storedDecision.responseBody);
+      const presentation = await dependencies.dataGrantPolicy.consentPresentation(
+        requester.ownerId,
+        draftId,
+      );
+      if (
+        decision.ownerId !== requester.ownerId ||
+        decision.draftId !== draftId ||
+        decision.decision !== "approved" ||
+        decision.recipientId !== policyRequest.recipientId ||
+        decision.purpose !== policyRequest.purpose ||
+        decision.noticeVersion !== policyRequest.noticeVersion ||
+        decision.legalBasis !== policyRequest.legalBasis ||
+        decision.valuesHash !== presentation.valuesHash ||
+        !equalList(decision.fieldKeys, policyRequest.fieldKeys) ||
+        !equalList(decision.categories, policyRequest.categories) ||
+        !equalList(decision.documentIds, policyRequest.documentIds) ||
+        !equalList(presentation.fieldKeys, decision.fieldKeys) ||
+        !equalList(presentation.categories, decision.categories) ||
+        !equalList(presentation.documentIds, decision.documentIds)
+      ) {
+        throw new DomainError({
+          code: "CONFLICT",
+          message: "The approved consent request does not match this reviewed disclosure.",
+        });
+      }
+    }
     const requested = requestDataGrant({
       id: dependencies.ids.dataGrant(),
       ownerId: requester.ownerId,
@@ -673,6 +1100,9 @@ export async function handleCreateDataGrantRequest(
       createdAt: requested.requestedAt,
       approvedAt: requested.approvedAt,
       withdrawnAt: requested.withdrawnAt,
+      ...(parsed.consentRequestId === undefined
+        ? {}
+        : { approvalRequestId: parsed.consentRequestId }),
     });
     return apiSuccessResponse(dataGrantSummary(stored), { requestId, status: 201 });
   } catch (error) {
@@ -697,10 +1127,16 @@ export async function handleApproveDataGrantRequest(
     }
     const guard = await dependencies.dataGrantPolicy.assertStoredDataGrantCurrent(requested);
     const { interaction } = grantApprovalInteractionSchema.parse(await readSmallJsonBody(request));
-    if (interaction.requestId !== grantId) {
+    const isBoundToApproval =
+      interaction.channel === "first_party_ui"
+        ? interaction.requestId === grantId
+        : requested.approvalRequestId !== null &&
+          requested.approvalRequestId !== undefined &&
+          interaction.requestId === requested.approvalRequestId;
+    if (!isBoundToApproval) {
       throw new DomainError({
         code: "VALIDATION",
-        message: "The approval action is not bound to the pending data permission request.",
+        message: "The approval action is not bound to the reviewed permission request.",
       });
     }
     const now = dependencies.identity.now();
@@ -724,8 +1160,8 @@ export async function handleApproveDataGrantRequest(
       status: "completed",
       safeSummary:
         interaction.channel === "agent_client"
-          ? "Exact reviewed data permission approved through an agent-mediated interaction."
-          : "Exact reviewed data permission approved.",
+          ? "Exact reviewed data permission approved through the agent client."
+          : "Exact reviewed data permission approved in the private workspace.",
       actorKind: "human",
       draftVersion: human.draft.version,
       occurredAt: now,
@@ -764,6 +1200,84 @@ export async function handleWithdrawDataGrantRequest(
       occurredAt: now,
     });
     return apiSuccessResponse(dataGrantSummary(stored), { requestId });
+  } catch (error) {
+    return authorizationErrorResponse(error, requestId);
+  }
+}
+
+export async function handleWithdrawApplicationConsentRequest(
+  request: Request,
+  context: DraftRouteContext,
+  dependencies: ApplicationAuthorizationRouteDependencies,
+): Promise<Response> {
+  const requestId = createRequestId();
+  try {
+    const { draftId: rawDraftId } = await context.params;
+    const draftId = parseEntityId(rawDraftId);
+    const human = await requireHumanDraft(request, draftId, "withdraw-consent", dependencies);
+    const { interaction } = grantWithdrawalInteractionSchema.parse(
+      await readSmallJsonBody(request),
+    );
+    const now = dependencies.identity.now();
+    const grants = await dependencies.richDataGrants.listByDraft(human.ownerId, draftId);
+    const liveConsentGrants = grants.filter(
+      (grant) =>
+        grant.legalBasis === "consent" &&
+        (grant.status === "requested" || grant.status === "active"),
+    );
+    const withdrawn = [];
+    for (const grant of liveConsentGrants) {
+      withdrawn.push(
+        await dependencies.richDataGrants.withdraw(grant.id, human.ownerId, draftId, now, {
+          channel: interaction.channel,
+          requestId: interaction.requestId,
+          action: interaction.affirmation,
+          evidenceVersion: interaction.evidenceVersion,
+        }),
+      );
+    }
+    const boundaryDraft =
+      human.draft.state === "submitted" || human.draft.state === "handed_off"
+        ? human.draft
+        : await dependencies.applications.applyMaterialEdit({
+            ownerId: human.ownerId,
+            expectedVersion: human.draft.version,
+            draft: {
+              ...human.draft,
+              state: "draft",
+              version: human.draft.version + 1,
+              consentRevision: (human.draft.consentRevision ?? 0) + 1,
+              answers: human.draft.answers.map((answer) => ({
+                ...answer,
+                acceptedByHuman: false,
+              })),
+              updatedAt: now,
+            },
+            now,
+          });
+    await publishAuthorizationActivity(dependencies, {
+      ownerId: human.ownerId,
+      requestId,
+      key: "withdraw_application_consent",
+      status: "completed",
+      safeSummary:
+        withdrawn.length === 0
+          ? "No active application consent remained to withdraw."
+          : "Application consent withdrawn; future consent-based processing stopped.",
+      actorKind: interaction.channel === "agent_client" ? "agent" : "human",
+      draftVersion: boundaryDraft.version,
+      occurredAt: now,
+    });
+    return apiSuccessResponse(
+      applicationConsentWithdrawalSchema.parse({
+        draftId,
+        withdrawnGrantIds: withdrawn.map(({ id }) => id),
+        withdrawnAt: now,
+        futureConsentProcessingStopped: true,
+        pastSubmissionUnaffected: true,
+      }),
+      { requestId },
+    );
   } catch (error) {
     return authorizationErrorResponse(error, requestId);
   }
