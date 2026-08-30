@@ -367,18 +367,18 @@ export async function searchPostgresJobs(
       FROM ranked
       CROSS JOIN input
       WHERE input.cursor_id IS NULL
-        OR (criteria->>'sort' <> 'newest' AND primary_sort < input.cursor_primary)
+        OR (ranked.criteria->>'sort' <> 'newest' AND primary_sort < input.cursor_primary)
         OR (
-          (criteria->>'sort' = 'newest' OR primary_sort = input.cursor_primary)
+          (ranked.criteria->>'sort' = 'newest' OR primary_sort = input.cursor_primary)
           AND published_at < input.cursor_published_at
         )
         OR (
-          (criteria->>'sort' = 'newest' OR primary_sort = input.cursor_primary)
+          (ranked.criteria->>'sort' = 'newest' OR primary_sort = input.cursor_primary)
           AND published_at = input.cursor_published_at
           AND job_id > input.cursor_id
         )
       ORDER BY
-        CASE WHEN criteria->>'sort' <> 'newest' THEN primary_sort END DESC,
+        CASE WHEN ranked.criteria->>'sort' <> 'newest' THEN primary_sort END DESC,
         published_at DESC,
         job_id
       LIMIT (SELECT page_limit FROM input)
