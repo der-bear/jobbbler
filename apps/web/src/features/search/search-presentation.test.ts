@@ -29,6 +29,21 @@ describe("locationSuggestions", () => {
     ]);
   });
 
+  it("puts the exact canonical location first without collapsing distinct stored values", () => {
+    expect(
+      locationSuggestions(
+        ["Remote Europe", "Remote - Europe", "Remote - Global", "Remote Worldwide"],
+        "Remote",
+      ),
+    ).toEqual([
+      "Remote",
+      "Remote Europe",
+      "Remote - Europe",
+      "Remote - Global",
+      "Remote Worldwide",
+    ]);
+  });
+
   it("requests a small encoded suggestion page instead of loading the whole catalog", async () => {
     const signal = new AbortController().signal;
     const request = vi.fn(async () => ({ locations: ["Kyiv, Ukraine"] }));

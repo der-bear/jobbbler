@@ -35,14 +35,27 @@ function uniqueLocations(values: readonly string[]): readonly string[] {
   return result;
 }
 
+function locationMatchPriority(option: string, normalizedQuery: string): number {
+  const normalizedOption = option.toLocaleLowerCase("en");
+  if (normalizedOption === normalizedQuery) return 0;
+  if (normalizedOption.startsWith(normalizedQuery)) return 1;
+  return 2;
+}
+
 export function locationSuggestions(options: readonly string[], query: string): readonly string[] {
   const normalizedQuery = query.trim().toLocaleLowerCase("en");
   const ordered =
     normalizedQuery.length === 0
       ? uniqueLocations([...featuredLocations, ...options])
-      : uniqueLocations([...options, ...featuredLocations]).filter((option) =>
-          option.toLocaleLowerCase("en").includes(normalizedQuery),
-        );
+      : uniqueLocations([...options, ...featuredLocations])
+          .map((option, index) => ({ option, index }))
+          .filter(({ option }) => option.toLocaleLowerCase("en").includes(normalizedQuery))
+          .sort(
+            (left, right) =>
+              locationMatchPriority(left.option, normalizedQuery) -
+                locationMatchPriority(right.option, normalizedQuery) || left.index - right.index,
+          )
+          .map(({ option }) => option);
   if (normalizedQuery.length > 0 && ordered.length === 0) return [query.trim()];
   return ordered.slice(0, 7);
 }
