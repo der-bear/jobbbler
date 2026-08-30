@@ -44,7 +44,7 @@ WebSocket delivery, tool registration, a public resource identifier, and an appr
 
 ## Persistent data model
 
-The shared base contains principals, agent sessions, delegations, data grants, audit events, outbox events, source records, saved searches, schedules, work items, and idempotency records. The jobs extension contains canonical jobs and versions, search evidence, candidate profiles, application drafts, immutable reviews, confirmations, submissions, and receipts.
+The shared base contains principals, agent sessions, delegations, data grants, audit events, outbox events, source records, saved searches, schedules, work items, and idempotency records. The jobs extension contains canonical jobs and versions, search evidence, application drafts, immutable reviews, confirmations, submissions, and receipts.
 
 Application-generated sortable IDs and UTC timestamps cross database boundaries unchanged. Mutable aggregates have integer versions. SQLite enables foreign keys and WAL on every connection. PostgreSQL uses deny-by-default RLS for every browser-accessible private table.
 
@@ -60,4 +60,8 @@ Application-generated sortable IDs and UTC timestamps cross database boundaries 
 - [Operations](../operations.md)
 - [Sources and availability](../sources.md)
 
-Kickoff material is design input, not permanent public architecture. These documents and the tested code are the durable source of truth for the implemented product.
+The original [kickoff specification](../kickoff/webmcp_universal_discovery_action_platform_spec.md)
+and captured [challenge rules](../rules/rules.md) are preserved as source
+material. They record the input and constraints, not a claim that every
+explored capability shipped. These architecture documents and the tested code
+are the durable source of truth for the implemented product.

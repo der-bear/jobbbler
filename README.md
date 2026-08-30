@@ -29,8 +29,6 @@ workflow-specific actions enforce IDs, ownership, and state when executed.
 
 Built for the OpenAI WebMCP Challenge.
 
-![Jobbbler search workspace](docs/design/qa-portal-filtered.png)
-
 ## Why it is different
 
 - **Explainable discovery.** Structured criteria, source provenance, freshness,
@@ -78,8 +76,6 @@ Built for the OpenAI WebMCP Challenge.
 | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | Search and live filters — chips, multi-selects, and a minimum-salary selector — with every result opening as a readable role page. | Save the exact query, preview the timing, verify your email, and see only what changed. | Review one exact document-like draft on the visible owner surface; the sealed payload submits exactly once after the bound decision.   |
 | Evidence, trade-offs, and source freshness stay on the role page.                                                                  | Pause or resume checking without exposing an address or credential to WebMCP.           | Agent-prepared answers keep their provenance; assisted drafts are read-only on the site and revised through the external agent client. |
-
-![A role page reads like an article](docs/design/qa-role-article.png)
 
 ## WebMCP surface
 
@@ -171,6 +167,15 @@ More detail: [architecture index](docs/architecture/README.md),
 [realtime activity](docs/architecture/realtime-agent-activity.md), and
 [SQLite-to-PostgreSQL migration runbook](docs/operations/postgres-cutover-and-rollback.md).
 
+## Documentation
+
+The [documentation index](docs/README.md) separates implemented architecture,
+security and operations, challenge evidence, submission materials, and the
+preserved source specification and rules. Useful starting points are the
+[WebMCP evaluation evidence](docs/architecture/webmcp-evals.md),
+[challenge compliance map](docs/hackathon-compliance.md), and
+[design and accessibility QA contract](docs/design/qa.md).
+
 ## Run locally
 
 Requirements: Node.js 24 and pnpm 11.19.0.
@@ -216,13 +221,9 @@ The release gate covers formatting/lint, strict TypeScript, domain and storage
 invariants, authorization races, connector policy, worker idempotency, API
 bounds, WebMCP registration/lifecycle/output budgets, security headers, and
 production builds. Browser QA evidence is recorded in
-[design-qa.md](design-qa.md).
-
-The current release candidate passes `pnpm verify`: 104 test files passed and
-1 skipped, 476 tests passed and 29 skipped, and both production builds
-completed. The PostgreSQL 16 contract passes 35/35, including concurrent
-authorization and indexed location-discovery cases. The final published build
-is smoke-tested again before submission.
+[docs/design/qa.md](docs/design/qa.md). Exact counts and production smoke
+evidence are recorded only for the final published revision so this overview
+does not drift while the release candidate changes.
 
 ## Security and privacy
 

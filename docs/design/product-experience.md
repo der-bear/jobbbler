@@ -66,11 +66,13 @@ becoming agent-controlled.**
 The human interface and WebMCP tools are two adapters over the same server
 commands and policies.
 
-- A person can search, compare, save, monitor, and complete a manual internal
-  application through the visible interface without WebMCP. When they choose
-  the agent-assisted application path, its draft is read-only on the site and
-  its revisions, assistance decisions, and submission decisions stay in the
-  external agent client. Active assistance remains request-bound and revocable.
+- A person can search, inspect role and agent-assisted comparison results,
+  save, monitor, and complete a manual internal application through the visible
+  interface without WebMCP. The current human search and role-detail surfaces
+  do not initiate comparisons. When the person chooses the agent-assisted
+  application path, its draft is read-only on the site and its revisions,
+  assistance decisions, and submission decisions stay in the external agent
+  client. Active assistance remains request-bound and revocable.
 - A compatible browser agent can start on any page with the complete 26-tool
   set and execute structured actions without simulating DOM clicks. Six are
   clear entry points; the rest validate their prerequisites when called. The
@@ -81,11 +83,13 @@ commands and policies.
 - The conversation belongs to the external agent client. Jobbbler does not
   embed a second chat surface.
 - A bounded structured `requires_user_action` response gives the external agent
-  client every exact reviewed value, its sensitivity marker, and a server
-  request ID. The person decides in that agent client; Jobbbler binds the
-  decision to the exact request and stores a values hash and versioned
-  server-side consent record without retaining those raw values or claiming
-  cryptographic identity.
+  client a compact request-bound reference, counts, sensitivity categories,
+  and the owner-review URL. Exact values and their field-level sensitivity
+  markers remain on that visible owner review surface, which a compatible
+  client may show or observe. The person decides in the agent client; Jobbbler
+  binds the decision to the exact request and stores a values hash and
+  versioned server-side consent record without retaining those raw values or
+  claiming cryptographic identity.
 
 ## Route experience
 
@@ -96,9 +100,9 @@ execution.
 | Route                         | Primary human task                      | Agent tools                                                                                                                                                                                                                                                             | Visible trust feedback                                                                                                                                        |
 | ----------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Every page `*`                | One obvious task per screen             | Entry tools: `plan_job_workflow` (advisory only), `get_search_filters`, `search_jobs`, `open_job_details`, `prepare_application`, `open_jobbbler_page`                                                                                                                  | The global Agent layer starts with Activity, then Tools and Guide                                                                                             |
-| Search `/`                    | Express an outcome and inspect matches  | Contextual `get_search_state`, which includes an explicit truncation summary for bounded criteria                                                                                                                                                                       | URL, filters, result count, and Agent activity receipts update together                                                                                       |
+| Search `/`                    | Express an outcome and inspect matches  | Search-area tool `get_search_state`, globally registered like the rest of the catalog and relevant when readable search state exists; its bounded result includes an explicit truncation summary                                                                        | URL, filters, result count, and Agent activity receipts update together                                                                                       |
 | Role `/jobs/:jobId`           | Understand one opportunity              | `get_job_details`, `get_job_application_capability` (whether Jobbbler may prepare it, which decisions stay human, or whether the person continues on the employer site), `compare_jobs`                                                                                 | Provenance, freshness, evidence, “What to verify”, and a clear next action                                                                                    |
-| Compare `/compare`            | Resolve a shortlist                     | `get_comparison`, `add_job_to_comparison`, `remove_job_from_comparison`                                                                                                                                                                                                 | One evidence table with differences and missing facts                                                                                                         |
+| Compare `/compare`            | Inspect an agent-assisted shortlist     | `get_comparison`, `add_job_to_comparison`, `remove_job_from_comparison`                                                                                                                                                                                                 | One readable evidence table with differences and missing facts                                                                                                |
 | Saved `/saved`                | Stay updated on an explicit search      | `get_saved_alerts`, `set_job_alert_state`, `open_saved_search`, `get_latest_search_update` (only what changed since the last check)                                                                                                                                     | Plain-language status (“Checking daily”, “Paused”), next run, “N changes since the last check”, and a masked destination only                                 |
 | Application `/apply/:draftId` | Prepare one managed internal disclosure | Seven outcome tools: readiness, one assistance decision, bounded answer preparation, one exact review, one submission decision, and one-call consent withdrawal. They stay discoverable but enforce owner and stage checks when called. External roles create no draft. | The agent client owns assisted-flow questions and decisions; Jobbbler stores bounded consent evidence and a receipt only for an approved internal application |
 
