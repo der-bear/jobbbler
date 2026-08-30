@@ -100,7 +100,8 @@ describe("AgentActivityRail", () => {
       <AgentActivityRail activities={repeated} webMcpAvailable />,
     );
 
-    expect(markup).toContain("4 calls");
+    expect(markup).toContain("4 similar calls grouped");
+    expect(markup).not.toContain("1 similar calls grouped");
     expect(markup).not.toContain("0 ms");
   });
 });

@@ -24,12 +24,13 @@
 }
 
 .button[data-compact="true"] {
-  inline-size: 30px;
   min-block-size: 30px;
   justify-content: center;
+  gap: 5px;
   border-color: var(--color-line);
   border-radius: var(--radius-sm);
-  padding: 0;
+  padding: 4px 8px;
+  font-size: 11px;
 }
 
 .button:focus-visible {

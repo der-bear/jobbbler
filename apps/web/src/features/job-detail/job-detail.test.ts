@@ -1,8 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
 
-import type { Job } from "@jobbbler/contracts";
+import type { Job, JobFit } from "@jobbbler/contracts";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
+vi.mock("@jobbbler/ui", () => ({
+  useToast: () => ({ show: vi.fn() }),
+}));
 
 import {
+  JobDetail,
   applicationActionLabel,
   backToSearchHref,
   externalApplicationUrl,
@@ -34,6 +45,31 @@ const job = {
   updatedAt: "2026-08-29T10:00:00.000Z",
   status: "open",
 } satisfies Job;
+
+const notRequestedDimension: JobFit["dimensions"]["text"] = {
+  status: "not_requested",
+  score: 0,
+  matched: [],
+  missing: [],
+};
+
+const noEvidenceFit: JobFit = {
+  eligible: false,
+  score: 0,
+  evidence: [],
+  caveats: [],
+  exclusions: [],
+  dimensions: {
+    text: notRequestedDimension,
+    categories: notRequestedDimension,
+    workModel: notRequestedDimension,
+    seniority: notRequestedDimension,
+    locations: notRequestedDimension,
+    skills: notRequestedDimension,
+    salary: notRequestedDimension,
+    freshness: notRequestedDimension,
+  },
+};
 
 describe("job-detail application entry", () => {
   it("keeps external postings out of Jobbbler's internal application workspace", () => {
@@ -134,5 +170,37 @@ describe("job-detail fit explanation", () => {
     expect(hasMeaningfulSearchCriteria("?sort=relevance")).toBe(false);
     expect(hasMeaningfulSearchCriteria("?q=platform&sort=relevance")).toBe(true);
     expect(hasMeaningfulSearchCriteria("?location=Europe")).toBe(true);
+  });
+
+  it("uses one concise explanation when active filters exclude a role without evidence", () => {
+    const markup = renderToStaticMarkup(
+      createElement(JobDetail, {
+        jobId: job.id,
+        criteriaSearch: "?work=remote",
+        initialResult: { job, fit: noEvidenceFit },
+      }),
+    );
+
+    expect(markup.match(/Outside your current filters\./g)).toHaveLength(1);
+    expect(markup).not.toContain("No direct match evidence was available.");
+    expect(markup).not.toContain(">Matches<");
+    expect(markup).not.toContain("This role does not meet your current criteria.");
+  });
+
+  it("does not repeat the outside-filter explanation when exclusion evidence is available", () => {
+    const markup = renderToStaticMarkup(
+      createElement(JobDetail, {
+        jobId: job.id,
+        criteriaSearch: "?work=remote",
+        initialResult: {
+          job,
+          fit: { ...noEvidenceFit, exclusions: ["Work model is on-site."] },
+        },
+      }),
+    );
+
+    expect(markup.match(/Outside your (?:current )?filters/g)).toHaveLength(1);
+    expect(markup).toContain("Outside your current filters");
+    expect(markup).toContain("Work model is on-site.");
   });
 });

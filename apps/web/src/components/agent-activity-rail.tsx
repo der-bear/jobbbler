@@ -143,7 +143,7 @@ export function AgentActivityRail({
                   <code>{activity.toolName}</code>
                   <div className={styles["meta"]}>
                     <span>{presentation.label}</span>
-                    {count > 1 ? <span>{String(count)} calls</span> : null}
+                    {count > 1 ? <span>{String(count)} similar calls grouped</span> : null}
                     {duration === null ? null : <span>{duration}</span>}
                   </div>
                 </div>

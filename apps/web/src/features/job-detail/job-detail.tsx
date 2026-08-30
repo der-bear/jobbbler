@@ -183,38 +183,50 @@ function JobIdentity({
 function FitEvidence({ criteriaSearch, fit }: Readonly<{ criteriaSearch: string; fit: JobFit }>) {
   if (!hasMeaningfulSearchCriteria(criteriaSearch)) return null;
 
-  const hasSignal =
-    fit.evidence.length > 0 || fit.caveats.length > 0 || fit.exclusions.length > 0 || !fit.eligible;
+  const hasEvidence =
+    fit.evidence.length > 0 || fit.caveats.length > 0 || fit.exclusions.length > 0;
   const unknownDimensions = Object.entries(fit.dimensions)
     .filter(([, dimension]) => dimension.status === "unknown")
     .map(([key]) => dimensionLabels[key as keyof JobFit["dimensions"]]);
 
-  if (!hasSignal) return null;
+  if (!hasEvidence) {
+    if (fit.eligible) return null;
+    return (
+      <section aria-labelledby="how-it-fits" className={styles["evidenceSection"]}>
+        <div className={styles["sectionHeading"]}>
+          <div>
+            <h2 id="how-it-fits">How it fits your search</h2>
+            <p className={styles["ineligibleNote"]}>Outside your current filters.</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section aria-labelledby="how-it-fits" className={styles["evidenceSection"]}>
       <div className={styles["sectionHeading"]}>
         <div>
           <h2 id="how-it-fits">How it fits your search</h2>
-          {fit.eligible ? null : (
-            <p className={styles["ineligibleNote"]}>
-              This role does not meet your current criteria.
-            </p>
+          {fit.eligible || fit.exclusions.length > 0 ? null : (
+            <p className={styles["ineligibleNote"]}>Outside your current filters.</p>
           )}
         </div>
       </div>
       <div className={styles["evidenceGrid"]}>
-        <div>
-          <h3>Matches</h3>
-          <ListOrUnknown empty="No direct match evidence was available." items={fit.evidence} />
-        </div>
+        {fit.evidence.length > 0 ? (
+          <div>
+            <h3>Matches</h3>
+            <ListOrUnknown empty="" items={fit.evidence} />
+          </div>
+        ) : null}
         {fit.caveats.length > 0 || fit.exclusions.length > 0 ? (
           <div>
             <h3>Keep in mind</h3>
             <ListOrUnknown empty="" items={fit.caveats} tone="caution" />
             {fit.exclusions.length > 0 ? (
               <>
-                <h3 className={styles["subheading"]}>Outside your filters</h3>
+                <h3 className={styles["subheading"]}>Outside your current filters</h3>
                 <ListOrUnknown empty="" items={fit.exclusions} tone="caution" />
               </>
             ) : null}

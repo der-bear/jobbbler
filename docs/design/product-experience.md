@@ -118,6 +118,14 @@ document than a dashboard made of cards.
 - Light and dark themes preserve the same reading order and contrast.
 - Every screen has one obvious task and one primary next step.
 
+Dark-theme token contrast was rechecked on the canvas (`#191919`), raised
+surface (`#1f1f1f`), and muted surface (`#262625`). Muted text (`#a3a29e`)
+measures 6.88:1, 6.45:1, and 5.93:1 respectively. Strong control borders
+(`#6f6f6b`) measure 3.48:1, 3.27:1, and 3.00:1. Those tokens already meet the
+intended AA text and non-text thresholds, so visual review alone is not a
+reason to brighten them. The lower-contrast base border remains a decorative
+separator rather than the only affordance for a control.
+
 An element earns space only when it helps a person read, decide, act,
 understand state, or understand risk. Anything else is removed or placed in an
 explicit disclosure.

@@ -41,7 +41,7 @@ export function CopyPromptButton({
       ) : (
         <CopyIcon aria-hidden="true" size={14} />
       )}
-      {compact ? null : copied ? "Copied" : "Copy prompt"}
+      {copied ? "Copied" : "Copy prompt"}
     </button>
   );
 }

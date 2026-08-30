@@ -80,6 +80,16 @@
   gap: 14px;
 }
 
+.promptLabel {
+  margin: 0 0 10px;
+  color: var(--color-ink-muted);
+  font-family: var(--jb-font-mono);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .prompt {
   border-inline-start: 2px solid var(--jb-signal);
   padding-inline-start: 15px;

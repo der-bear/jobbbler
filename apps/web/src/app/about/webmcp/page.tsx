@@ -47,7 +47,7 @@ export default function WebMcpAboutPage() {
     <article className={styles["page"]}>
       <header className={styles["hero"]}>
         <p className={styles["eyebrow"]}>How Jobbbler works with agents</p>
-        <h1>Ask for an outcome. Jobbbler handles the website.</h1>
+        <h1>Tell your agent the outcome. It handles the steps.</h1>
         <p>
           The conversation stays in your agent client. Jobbbler is the familiar job portal
           underneath, with structured actions a browser agent can discover automatically. No
@@ -61,6 +61,7 @@ export default function WebMcpAboutPage() {
           <h2 id="one-request">One request, a complete workflow</h2>
         </div>
         <div>
+          <p className={styles["promptLabel"]}>Full demo prompt</p>
           <AgentExamplePrompt
             className={styles["promptBlock"]}
             promptClassName={styles["prompt"]}
@@ -92,7 +93,7 @@ export default function WebMcpAboutPage() {
           <div className={styles["proof"]}>
             <EyeIcon aria-hidden="true" size={21} />
             <div>
-              <strong>Proof you can see</strong>
+              <strong>See the agent at work.</strong>
               <p>
                 Open Agent view to see active browser-registered tools and a bounded summary of each
                 call. It keeps the technical proof visible without changing the job portal.
