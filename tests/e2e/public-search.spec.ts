@@ -14,6 +14,53 @@ function resultCard(page: Page, title: string, company: string) {
 }
 
 test.describe("public job search workspace", () => {
+  test("server-renders the Home preview without a browser search", async ({ page }) => {
+    const browserSearchRequests: string[] = [];
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname === "/api/v1/jobs/search") {
+        browserSearchRequests.push(request.url());
+      }
+    });
+
+    await page.goto("/");
+
+    await expect(resultCard(page, seededRole.title, seededRole.company)).toBeVisible();
+    expect(browserSearchRequests).toEqual([]);
+  });
+
+  test("hydrates the first result without repeating the search from the browser", async ({
+    page,
+  }) => {
+    const browserSearchRequests: string[] = [];
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname === "/api/v1/jobs/search") {
+        browserSearchRequests.push(request.url());
+      }
+    });
+
+    await page.goto(seededSearch);
+
+    await expect(resultCard(page, seededRole.title, seededRole.company)).toBeVisible();
+    expect(browserSearchRequests).toEqual([]);
+  });
+
+  test("keeps invalid search parameters recoverable without issuing a search", async ({ page }) => {
+    const browserSearchRequests: string[] = [];
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname === "/api/v1/jobs/search") {
+        browserSearchRequests.push(request.url());
+      }
+    });
+
+    await page.goto("/jobs?limit=999");
+
+    await expect(
+      page.getByRole("region", { name: "All technology roles" }).getByRole("alert"),
+    ).toContainText("search filters are invalid");
+    await expect(page.getByRole("searchbox", { name: "Search" })).toBeEditable();
+    expect(browserSearchRequests).toEqual([]);
+  });
+
   test("shows signed-out users explainable, sourced search results", async ({ page }) => {
     await page.goto(seededSearch);
 
@@ -119,6 +166,7 @@ test.describe("mobile and reduced-motion public search", () => {
     await page.goto(seededSearch);
 
     await expect(page.getByRole("searchbox", { name: "Search" })).toBeVisible();
+    await page.getByRole("button", { name: /More filters/ }).click();
     await expect(page.getByRole("button", { name: "Remote", pressed: true })).toBeVisible();
     await expect(resultCard(page, seededRole.title, seededRole.company)).toBeVisible();
     await expect

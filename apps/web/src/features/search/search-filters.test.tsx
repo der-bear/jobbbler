@@ -3,6 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 
 import { SearchWorkspace } from "./search-workspace";
 
+const initialSearch = {
+  input: { sort: "newest" as const, limit: 20 },
+  result: null,
+  error: null,
+};
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
@@ -13,7 +19,9 @@ vi.mock("@/components/webmcp-provider", () => ({
 
 describe("SearchFilters", () => {
   it("keeps search and location visible while grouping optional filters for small screens", () => {
-    const markup = renderToStaticMarkup(<SearchWorkspace mode="catalog" />);
+    const markup = renderToStaticMarkup(
+      <SearchWorkspace initialSearch={initialSearch} mode="catalog" />,
+    );
 
     const searchIndex = markup.indexOf("Role, skill or company");
     const locationIndex = markup.indexOf("City, country, or remote");

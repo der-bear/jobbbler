@@ -1,5 +1,10 @@
 import { SearchWorkspace } from "@/features/search/search-workspace";
+import type { PageSearchParams } from "@/features/search/initial-search-state";
+import { loadInitialSearch } from "@/server/initial-search";
 
-export default function JobsPage() {
-  return <SearchWorkspace mode="catalog" />;
+export default async function JobsPage({
+  searchParams,
+}: Readonly<{ searchParams: Promise<PageSearchParams> }>) {
+  const initialSearch = await loadInitialSearch(await searchParams);
+  return <SearchWorkspace initialSearch={initialSearch} mode="catalog" />;
 }

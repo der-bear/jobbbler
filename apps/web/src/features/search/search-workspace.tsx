@@ -43,14 +43,10 @@ import { searchInputToSearchParams, searchParamsToInput } from "@/lib/search-url
 import { publishSearchSurfaceState, subscribeWebMcpSearchCommit } from "@/lib/webmcp-ui-bridge";
 
 import { CurrencySelector, isDisplayCurrency, type DisplayCurrency } from "./currency-selector";
+import { defaultSearch, type InitialSearchState } from "./initial-search-state";
 import { LocationCombobox } from "./location-combobox";
 
 import styles from "./search-workspace.module.css";
-
-const defaultSearch: JobSearchInput = {
-  sort: "newest",
-  limit: 20,
-};
 
 const salaryThresholds = [
   40_000, 60_000, 80_000, 100_000, 120_000, 150_000, 200_000, 250_000,
@@ -442,14 +438,19 @@ function JobResult({
   );
 }
 
-export function SearchWorkspace({ mode }: Readonly<{ mode: "home" | "catalog" }>) {
+export function SearchWorkspace({
+  initialSearch,
+  mode,
+}: Readonly<{ initialSearch: InitialSearchState; mode: "home" | "catalog" }>) {
   const router = useRouter();
   const webMcp = useWebMcp();
-  const [applied, setApplied] = useState<JobSearchInput>(defaultSearch);
-  const [draft, setDraft] = useState<SearchDraft>(() => draftFromInput(defaultSearch));
-  const [result, setResult] = useState<SearchJobsResult | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
-  const [error, setError] = useState<string | null>(null);
+  const [applied, setApplied] = useState<JobSearchInput>(initialSearch.input);
+  const [draft, setDraft] = useState<SearchDraft>(() => draftFromInput(initialSearch.input));
+  const [result, setResult] = useState<SearchJobsResult | null>(initialSearch.result);
+  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">(
+    initialSearch.error === null ? "ready" : "error",
+  );
+  const [error, setError] = useState<string | null>(initialSearch.error);
   const activityCount = webMcp.activities.length;
   const seenActivityCount = useRef(0);
 
@@ -505,16 +506,18 @@ export function SearchWorkspace({ mode }: Readonly<{ mode: "home" | "catalog" }>
   useEffect(() => () => activeSearch.current?.abort(), []);
 
   useEffect(() => {
-    const initial = searchFromLocation();
-    setApplied(initial);
-    setDraft(draftFromInput(initial));
-    void runSearch(initial, "replace");
-
     const restore = () => {
-      const restored = searchFromLocation();
-      setApplied(restored);
-      setDraft(draftFromInput(restored));
-      void runSearch(restored, "replace");
+      try {
+        const restored = searchFromLocation();
+        setApplied(restored);
+        setDraft(draftFromInput(restored));
+        void runSearch(restored, "replace");
+      } catch {
+        activeSearch.current?.abort();
+        requestSequence.current += 1;
+        setError("Some search filters are invalid. Adjust them and search again.");
+        setStatus("error");
+      }
     };
     window.addEventListener("popstate", restore);
     return () => window.removeEventListener("popstate", restore);
