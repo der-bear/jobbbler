@@ -14,6 +14,16 @@ import { seedDemoCatalog } from "./seed.js";
 
 const fixturePath = fileURLToPath(new URL("../../../fixtures/demo-catalog.json", import.meta.url));
 
+/*
+ * The demo catalog grows with the product, so the recovery contract is checked
+ * against the fixture itself rather than a copied count that silently rots.
+ */
+async function fixtureCounts(): Promise<{ organizations: number; jobs: number }> {
+  const catalog: unknown = JSON.parse(await readFile(fixturePath, "utf8"));
+  const record = catalog as { organizations: unknown[]; jobs: unknown[] };
+  return { organizations: record.organizations.length, jobs: record.jobs.length };
+}
+
 describe("SQLite recovery", () => {
   let directory: string | undefined;
 
@@ -27,16 +37,14 @@ describe("SQLite recovery", () => {
     const backupPath = join(directory, "backup.sqlite");
     const restoredPath = join(directory, "restored.sqlite");
 
-    await expect(seedDemoCatalog(sourcePath, fixturePath)).resolves.toEqual({
-      organizations: 12,
-      jobs: 36,
-    });
+    const expected = await fixtureCounts();
+    await expect(seedDemoCatalog(sourcePath, fixturePath)).resolves.toEqual(expected);
     const source = inspectSqliteDatabase(sourcePath);
     expect(source).toMatchObject({
       migrations: 22,
-      organizations: 12,
-      jobs: 36,
-      searchableJobs: 36,
+      organizations: expected.organizations,
+      jobs: expected.jobs,
+      searchableJobs: expected.jobs,
     });
     expect(source.canonicalChecksum).toMatch(/^[a-f0-9]{64}$/);
 
