@@ -2,7 +2,7 @@
 
 import { ArrowLeftIcon } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   applicationDelegationSummarySchema,
@@ -31,7 +31,10 @@ import {
   applicationAgentState,
   applicationNextAction,
   applicationReadiness,
+  bindApplicationServerClock,
   isAgentAssistedApplication,
+  mountApplicationExpiryClock,
+  type BoundApplicationServerClock,
 } from "./application-model";
 import type { ApplicationSubmissionReviewRequest, ApplicationToolReadiness } from "./webmcp-tools";
 import { publishApplicationWebMcpSurface } from "./webmcp-surface";
@@ -75,9 +78,10 @@ function fieldValues(workspace: ApplicationWorkspaceState): Record<string, strin
 function toolReadiness(
   workspace: ApplicationWorkspaceState,
   finalConfirmationReady = false,
+  now = workspace.serverNow,
 ): ApplicationToolReadiness {
   const progress = applicationReadiness(workspace);
-  const state = applicationAgentState(workspace, finalConfirmationReady, workspace.serverNow);
+  const state = applicationAgentState(workspace, finalConfirmationReady, now);
   return {
     state,
     missingFieldKeys: progress.missingFieldKeys,
@@ -85,8 +89,64 @@ function toolReadiness(
       (fieldKey) =>
         workspace.requirements.find((field) => field.fieldKey === fieldKey)?.label ?? fieldKey,
     ),
-    nextAction: applicationNextAction(workspace, finalConfirmationReady),
+    nextAction: applicationNextAction(workspace, now, finalConfirmationReady),
   };
+}
+
+function laterServerTime(left: string, right: string): string {
+  return Date.parse(left) >= Date.parse(right) ? left : right;
+}
+
+function useApplicationServerClock(workspace: ApplicationWorkspaceState | null): Readonly<{
+  now: string | null;
+  current(): string;
+}> {
+  const clock = useRef<BoundApplicationServerClock | null>(null);
+  const [snapshot, setSnapshot] = useState<Readonly<{
+    draftId: string;
+    now: string;
+  }> | null>(null);
+
+  useEffect(() => {
+    if (workspace === null) return;
+    const binding = bindApplicationServerClock(clock.current, workspace);
+    clock.current = binding;
+    const synchronized = binding.clock.now();
+    setSnapshot((current) => ({
+      draftId: workspace.draft.id,
+      now:
+        current?.draftId === workspace.draft.id
+          ? laterServerTime(current.now, synchronized)
+          : synchronized,
+    }));
+    return mountApplicationExpiryClock({
+      workspace,
+      clock: binding.clock,
+      onTick: (now) =>
+        setSnapshot((current) => ({
+          draftId: workspace.draft.id,
+          now: current?.draftId === workspace.draft.id ? laterServerTime(current.now, now) : now,
+        })),
+    });
+  }, [workspace]);
+
+  const fallback = workspace?.serverNow ?? "1970-01-01T00:00:00.000Z";
+  const draftId = workspace?.draft.id ?? null;
+  const current = useCallback(
+    () =>
+      laterServerTime(
+        clock.current?.draftId === draftId ? clock.current.clock.now() : fallback,
+        fallback,
+      ),
+    [draftId, fallback],
+  );
+  const now =
+    workspace === null
+      ? null
+      : snapshot?.draftId === workspace.draft.id
+        ? laterServerTime(workspace.serverNow, snapshot.now)
+        : workspace.serverNow;
+  return useMemo(() => ({ now, current }), [current, now]);
 }
 
 export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>) {
@@ -99,6 +159,9 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
     useState<ApplicationSubmissionReviewRequest | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const applicationClock = useApplicationServerClock(
+    state.kind === "ready" ? state.workspace : null,
+  );
 
   const load = useCallback(
     async (signal?: AbortSignal): Promise<ApplicationWorkspaceState> => {
@@ -129,14 +192,14 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
 
   useEffect(() => {
     if (confirmation === null) return;
-    const remaining = Date.parse(confirmation.expiresAt) - Date.now();
+    const remaining = Date.parse(confirmation.expiresAt) - Date.parse(applicationClock.current());
     if (remaining <= 0) {
       setConfirmation(null);
       return;
     }
     const timeout = window.setTimeout(() => setConfirmation(null), remaining);
     return () => window.clearTimeout(timeout);
-  }, [confirmation]);
+  }, [applicationClock, confirmation]);
 
   useEffect(() => {
     if (state.kind !== "ready") {
@@ -146,10 +209,9 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
 
     const workspace = state.workspace;
     const job = state.job;
+    const now = applicationClock.now ?? workspace.serverNow;
     const credential =
-      agentCredential !== null && agentCredential.expiresAt > new Date().toISOString()
-        ? agentCredential
-        : null;
+      agentCredential !== null && agentCredential.expiresAt > now ? agentCredential : null;
     const authorizedOperations = new Set<AgentOperation>(
       credential === null
         ? []
@@ -158,7 +220,7 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
               (delegation) =>
                 delegation.agentSessionId === credential.sessionId &&
                 delegation.status === "active" &&
-                delegation.expiresAt > new Date().toISOString(),
+                delegation.expiresAt > now,
             )
             .flatMap(({ operations }) => operations),
     );
@@ -169,10 +231,14 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
     const reloadReadiness = async (
       signal: AbortSignal,
       confirmationReady = confirmation !== null,
-    ) => toolReadiness(await load(signal), confirmationReady);
+    ) => {
+      const reloaded = await load(signal);
+      return toolReadiness(reloaded, confirmationReady, reloaded.serverNow);
+    };
 
     publishApplicationWebMcpSurface({
-      currentReadiness: () => toolReadiness(workspace, confirmation !== null),
+      currentReadiness: () =>
+        toolReadiness(workspace, confirmation !== null, applicationClock.current()),
       allowsAgentSubmission: () => job.applyMode === "internal",
       hasAgentCredential: () => credential !== null,
       isOperationAuthorized: (operation) => authorizedOperations.has(operation),
@@ -287,7 +353,7 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
       currentSubmissionReview() {
         return submissionReview !== null &&
           submissionReview.draftVersion === workspace.draft.version &&
-          submissionReview.expiresAt > new Date().toISOString()
+          submissionReview.expiresAt > applicationClock.current()
           ? submissionReview
           : null;
       },
@@ -296,7 +362,7 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
         const current =
           submissionReview !== null &&
           submissionReview.draftVersion === workspace.draft.version &&
-          submissionReview.expiresAt > new Date().toISOString()
+          submissionReview.expiresAt > applicationClock.current()
             ? submissionReview
             : null;
         if (current !== null) return current;
@@ -328,7 +394,7 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
         if (
           submissionReview === null ||
           submissionReview.draftVersion !== expectedVersion ||
-          submissionReview.expiresAt <= new Date().toISOString()
+          submissionReview.expiresAt <= applicationClock.current()
         ) {
           throw new ApiClientError({
             code: "CONFLICT",
@@ -375,12 +441,12 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
     });
 
     return () => publishApplicationWebMcpSurface(null);
-  }, [agentCredential, confirmation, draftId, load, state, submissionReview]);
+  }, [agentCredential, applicationClock, confirmation, draftId, load, state, submissionReview]);
 
   async function perform(action: ApplicationAction) {
     if (state.kind !== "ready" || busy) return;
     const current = state.workspace;
-    if (isAgentAssistedApplication(current, current.serverNow)) {
+    if (isAgentAssistedApplication(current, applicationClock.current())) {
       setActionError(
         action === "review_and_submit"
           ? "Complete the exact submission decision in your external agent client for this agent-assisted draft."
@@ -461,9 +527,10 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
       error={actionError}
       fieldValues={values}
       job={state.job}
+      now={applicationClock.now ?? state.workspace.serverNow}
       onAction={(action) => void perform(action)}
       onFieldChange={(fieldKey, value) => {
-        if (!isAgentAssistedApplication(state.workspace, state.workspace.serverNow)) {
+        if (!isAgentAssistedApplication(state.workspace, applicationClock.current())) {
           setValues((current) => ({ ...current, [fieldKey]: value }));
         }
       }}

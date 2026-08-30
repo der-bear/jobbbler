@@ -100,6 +100,7 @@ describe("ApplicationView", () => {
           motivation: "A candidate-authored motivation note.",
         }}
         job={job}
+        now={workspace.serverNow}
         onAction={() => undefined}
         onFieldChange={() => undefined}
         workspace={workspace}
@@ -180,6 +181,7 @@ describe("ApplicationView", () => {
         error={null}
         fieldValues={{ full_name: "Ada Lovelace", motivation: "Candidate facts" }}
         job={job}
+        now={assistedWorkspace.serverNow}
         onAction={() => undefined}
         onFieldChange={() => undefined}
         workspace={assistedWorkspace}
@@ -205,6 +207,7 @@ describe("ApplicationView", () => {
           error={null}
           fieldValues={{ full_name: "Ada Lovelace", motivation: "Candidate facts" }}
           job={job}
+          now={workspace.serverNow}
           onAction={() => undefined}
           onFieldChange={() => undefined}
           workspace={{
@@ -226,9 +229,44 @@ describe("ApplicationView", () => {
 
       expect(markup).toContain("Review and submit to Northstar Systems");
       expect(markup).not.toContain("read-only for this agent-assisted draft");
+      expect(markup).not.toContain("Your agent requested preparation access");
       expect(markup).not.toContain('readOnly=""');
     },
   );
+
+  it("reclassifies an expiring request when the mounted server clock advances", () => {
+    const expiring: ApplicationWorkspace = {
+      ...workspace,
+      delegationRequests: [
+        {
+          id: "delegation_550e8400-e29b-41d4-a716-446655440000",
+          agentSessionId: "agent_session_550e8400-e29b-41d4-a716-446655440000",
+          operations: ["read_application", "edit_application"],
+          purpose: "Prepare this application.",
+          status: "requested",
+          expiresAt: "2026-08-29T10:00:01.000Z",
+          approvedAt: null,
+        },
+      ],
+    };
+    const markup = renderToStaticMarkup(
+      <ApplicationView
+        busy={false}
+        confirmation={null}
+        error={null}
+        fieldValues={{ full_name: "Ada Lovelace", motivation: "Candidate facts" }}
+        job={job}
+        now="2026-08-29T10:00:01.000Z"
+        onAction={() => undefined}
+        onFieldChange={() => undefined}
+        workspace={expiring}
+      />,
+    );
+
+    expect(markup).toContain("Review and submit to Northstar Systems");
+    expect(markup).not.toContain("Your agent requested preparation access");
+    expect(markup).not.toContain("read-only for this agent-assisted draft");
+  });
 
   it("shows missing questions without making the user inspect every complete field", () => {
     const markup = renderToStaticMarkup(
@@ -238,6 +276,7 @@ describe("ApplicationView", () => {
         error={null}
         fieldValues={{ full_name: "Ada Lovelace", motivation: "" }}
         job={job}
+        now={workspace.serverNow}
         onAction={() => undefined}
         onFieldChange={() => undefined}
         workspace={{
@@ -270,6 +309,7 @@ describe("ApplicationView", () => {
           applyMode: "external",
           source: { key: "external_source", label: "External source", url: externalUrl },
         }}
+        now={workspace.serverNow}
         onAction={() => undefined}
         onFieldChange={() => undefined}
         workspace={{
@@ -300,6 +340,7 @@ describe("ApplicationView", () => {
         error={null}
         fieldValues={{ full_name: "Ada Lovelace", motivation: "Legacy answer" }}
         job={{ ...job, applyMode: "external" }}
+        now={workspace.serverNow}
         onAction={() => undefined}
         onFieldChange={() => undefined}
         workspace={{
@@ -338,6 +379,7 @@ describe("ApplicationView", () => {
           applyMode: "external",
           source: { key: "external_source", label: "External source", url: unsafeUrl },
         }}
+        now={workspace.serverNow}
         onAction={() => undefined}
         onFieldChange={() => undefined}
         workspace={{ ...workspace, applyMode: "external" }}
@@ -357,6 +399,7 @@ describe("ApplicationView", () => {
         error={null}
         fieldValues={{}}
         job={job}
+        now={workspace.serverNow}
         onAction={() => undefined}
         onFieldChange={() => undefined}
         workspace={{

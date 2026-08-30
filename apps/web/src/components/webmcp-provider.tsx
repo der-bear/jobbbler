@@ -273,7 +273,7 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
                 workspace.requirements.find((field) => field.fieldKey === fieldKey)?.label ??
                 fieldKey,
             ),
-            nextAction: applicationNextAction(workspace),
+            nextAction: applicationNextAction(workspace, workspace.serverNow),
           };
         } catch (error) {
           if (error instanceof ApiClientError && error.code === "NOT_FOUND") {

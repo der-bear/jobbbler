@@ -11,21 +11,144 @@ export type ApplicationStage =
 export type ApplicationNextAction =
   "prepare" | "review" | "submit" | "withdraw" | "read_only" | "complete";
 
-function isLiveAssistance(
+function instantMilliseconds(value: string): number {
+  return Date.parse(value);
+}
+
+function laterInstant(left: string, right: string): string {
+  return instantMilliseconds(left) >= instantMilliseconds(right) ? left : right;
+}
+
+export function isLiveApplicationAssistance(
   delegation: ApplicationWorkspace["delegationRequests"][number],
   now: string,
 ): boolean {
   return (
     (delegation.status === "requested" || delegation.status === "active") &&
-    delegation.expiresAt > now
+    instantMilliseconds(delegation.expiresAt) > instantMilliseconds(now)
+  );
+}
+
+export function isLiveApplicationDataGrant(
+  grant: ApplicationWorkspace["dataGrant"],
+  now: string,
+): grant is NonNullable<ApplicationWorkspace["dataGrant"]> {
+  return (
+    grant !== null &&
+    (grant.status === "requested" || grant.status === "active") &&
+    instantMilliseconds(grant.expiresAt) > instantMilliseconds(now)
   );
 }
 
 export function isAgentAssistedApplication(workspace: ApplicationWorkspace, now: string): boolean {
   return (
-    workspace.delegationRequests.some((delegation) => isLiveAssistance(delegation, now)) ||
-    workspace.draft.answers.some(({ provenance }) => provenance === "agent_suggestion")
+    workspace.delegationRequests.some((delegation) =>
+      isLiveApplicationAssistance(delegation, now),
+    ) || workspace.draft.answers.some(({ provenance }) => provenance === "agent_suggestion")
   );
+}
+
+export interface ApplicationServerClock {
+  now(): string;
+  synchronize(serverNow: string): string;
+}
+
+export function createServerDerivedApplicationClock(
+  serverNow: string,
+  monotonicNow: () => number = () => globalThis.performance.now(),
+): ApplicationServerClock {
+  let monotonicAnchor = monotonicNow();
+  let serverAnchor = instantMilliseconds(serverNow);
+  let latest = serverAnchor;
+
+  const currentMilliseconds = (): number => {
+    const elapsed = Math.max(0, monotonicNow() - monotonicAnchor);
+    latest = Math.max(latest, serverAnchor + elapsed);
+    return latest;
+  };
+
+  return {
+    now: () => new Date(currentMilliseconds()).toISOString(),
+    synchronize(nextServerNow) {
+      const current = currentMilliseconds();
+      monotonicAnchor = monotonicNow();
+      serverAnchor = Math.max(current, instantMilliseconds(nextServerNow));
+      latest = serverAnchor;
+      return new Date(latest).toISOString();
+    },
+  };
+}
+
+export interface BoundApplicationServerClock {
+  readonly draftId: string;
+  readonly clock: ApplicationServerClock;
+}
+
+export function bindApplicationServerClock(
+  current: BoundApplicationServerClock | null,
+  workspace: Pick<ApplicationWorkspace, "draft" | "serverNow">,
+  monotonicNow?: () => number,
+): BoundApplicationServerClock {
+  if (current?.draftId === workspace.draft.id) {
+    current.clock.synchronize(workspace.serverNow);
+    return current;
+  }
+  return {
+    draftId: workspace.draft.id,
+    clock: createServerDerivedApplicationClock(workspace.serverNow, monotonicNow),
+  };
+}
+
+export function nextApplicationAuthorizationExpiry(
+  workspace: ApplicationWorkspace,
+  now: string,
+): string | null {
+  const current = instantMilliseconds(now);
+  const expiries = workspace.delegationRequests
+    .filter(
+      ({ status, expiresAt }) =>
+        (status === "requested" || status === "active") && instantMilliseconds(expiresAt) > current,
+    )
+    .map(({ expiresAt }) => expiresAt);
+  if (isLiveApplicationDataGrant(workspace.dataGrant, now)) {
+    expiries.push(workspace.dataGrant.expiresAt);
+  }
+  if (expiries.length === 0) return null;
+  return expiries.reduce((earliest, candidate) =>
+    instantMilliseconds(candidate) < instantMilliseconds(earliest) ? candidate : earliest,
+  );
+}
+
+export function mountApplicationExpiryClock(
+  input: Readonly<{
+    workspace: ApplicationWorkspace;
+    clock: Pick<ApplicationServerClock, "now">;
+    onTick(now: string): void;
+  }>,
+): () => void {
+  let stopped = false;
+  let current = input.clock.now();
+  let timer: ReturnType<typeof globalThis.setTimeout> | null = null;
+
+  const schedule = (): void => {
+    const nextExpiry = nextApplicationAuthorizationExpiry(input.workspace, current);
+    if (nextExpiry === null || stopped) return;
+    const delay = Math.max(
+      0,
+      instantMilliseconds(nextExpiry) - instantMilliseconds(input.clock.now()),
+    );
+    timer = globalThis.setTimeout(() => {
+      current = laterInstant(current, laterInstant(nextExpiry, input.clock.now()));
+      input.onTick(current);
+      schedule();
+    }, Math.ceil(delay));
+  };
+
+  schedule();
+  return () => {
+    stopped = true;
+    if (timer !== null) globalThis.clearTimeout(timer);
+  };
 }
 
 function isCompletedAnswer(answer: ApplicationAnswer | undefined): boolean {
@@ -80,7 +203,7 @@ export function applicationDisclosure(workspace: ApplicationWorkspace): Readonly
   };
 }
 
-export function applicationStage(workspace: ApplicationWorkspace): ApplicationStage {
+export function applicationStage(workspace: ApplicationWorkspace, now: string): ApplicationStage {
   if (
     workspace.receipt !== null ||
     workspace.draft.state === "submitted" ||
@@ -91,7 +214,10 @@ export function applicationStage(workspace: ApplicationWorkspace): ApplicationSt
   if (workspace.applyMode === "external") return "legacy_external";
   if (workspace.draft.state === "valid") return "review";
   if (workspace.draft.state === "reviewed" || workspace.draft.state === "awaiting_confirmation") {
-    return workspace.dataGrant?.status === "active" ? "confirmation" : "permission";
+    return isLiveApplicationDataGrant(workspace.dataGrant, now) &&
+      workspace.dataGrant.status === "active"
+      ? "confirmation"
+      : "permission";
   }
   return "profile";
 }
@@ -103,7 +229,7 @@ export function applicationAgentState(
 ): ApplicationAgentState {
   const progress = visibleApplicationProgress(workspace);
   const liveDelegation = workspace.delegationRequests.find((delegation) =>
-    isLiveAssistance(delegation, now),
+    isLiveApplicationAssistance(delegation, now),
   );
   const latestRevokedDelegation = workspace.delegationRequests.find(
     ({ status }) => status === "revoked",
@@ -113,12 +239,14 @@ export function applicationAgentState(
     jobId: workspace.draft.jobId,
     applyMode: workspace.applyMode,
     state: workspace.draft.state,
-    stage: applicationStage(workspace),
+    stage: applicationStage(workspace, now),
     version: workspace.draft.version,
     requiredFields: progress.required,
     completedRequiredFields: progress.completed,
     reviewStatus: workspace.review?.status ?? "none",
-    dataPermissionStatus: workspace.dataGrant?.status ?? "none",
+    dataPermissionStatus: isLiveApplicationDataGrant(workspace.dataGrant, now)
+      ? workspace.dataGrant.status
+      : "none",
     agentAuthorityStatus: liveDelegation?.status ?? latestRevokedDelegation?.status ?? "none",
     finalConfirmationReady,
     receiptStatus: workspace.receipt?.status ?? "none",
@@ -127,6 +255,7 @@ export function applicationAgentState(
 
 export function applicationNextAction(
   workspace: ApplicationWorkspace,
+  now: string,
   finalConfirmationReady = false,
 ): ApplicationNextAction {
   if (
@@ -137,7 +266,10 @@ export function applicationNextAction(
     return "complete";
   }
   if (workspace.applyMode === "external") {
-    return workspace.dataGrant?.status === "active" ? "withdraw" : "read_only";
+    return isLiveApplicationDataGrant(workspace.dataGrant, now) &&
+      workspace.dataGrant.status === "active"
+      ? "withdraw"
+      : "read_only";
   }
   if (finalConfirmationReady) return "submit";
   return applicationReadiness(workspace).readyForReview ? "review" : "prepare";

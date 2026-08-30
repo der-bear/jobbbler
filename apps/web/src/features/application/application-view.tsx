@@ -16,6 +16,8 @@ import {
   applicationDisclosure,
   applicationReadiness,
   isAgentAssistedApplication,
+  isLiveApplicationAssistance,
+  isLiveApplicationDataGrant,
 } from "./application-model";
 import styles from "./application-view.module.css";
 
@@ -33,6 +35,7 @@ export interface ApplicationViewProps {
   readonly confirmation: ApplicationConfirmationView | null;
   readonly busy: boolean;
   readonly error: string | null;
+  readonly now: string;
   onFieldChange(fieldKey: string, value: string): void;
   onAction(action: ApplicationAction): void;
 }
@@ -120,8 +123,14 @@ function ApplicationField({
   );
 }
 
-function AgentAssistanceRequest({ workspace }: Pick<ApplicationViewProps, "workspace">) {
-  const requested = workspace.delegationRequests.find(({ status }) => status === "requested");
+function AgentAssistanceRequest({
+  workspace,
+  now,
+}: Pick<ApplicationViewProps, "workspace" | "now">) {
+  const requested = workspace.delegationRequests.find(
+    (delegation) =>
+      delegation.status === "requested" && isLiveApplicationAssistance(delegation, now),
+  );
   if (requested === undefined) return null;
   return (
     <section aria-labelledby="agent-assistance-heading" className={styles["assistance"]}>
@@ -141,15 +150,16 @@ function ReviewDocument({
   workspace,
   fieldValues,
   busy,
+  now,
   onFieldChange,
   onAction,
 }: Pick<
   ApplicationViewProps,
-  "workspace" | "fieldValues" | "busy" | "onFieldChange" | "onAction"
+  "workspace" | "fieldValues" | "busy" | "now" | "onFieldChange" | "onAction"
 >) {
   const readiness = applicationReadiness(workspace);
   const disclosure = applicationDisclosure(workspace);
-  const agentAssisted = isAgentAssistedApplication(workspace, workspace.serverNow);
+  const agentAssisted = isAgentAssistedApplication(workspace, now);
   const missingFields = readiness.missingFieldKeys
     .map((fieldKey) => workspace.requirements.find((field) => field.fieldKey === fieldKey))
     .filter((field) => field !== undefined);
@@ -166,7 +176,7 @@ function ReviewDocument({
 
   return (
     <>
-      <AgentAssistanceRequest workspace={workspace} />
+      <AgentAssistanceRequest now={now} workspace={workspace} />
       <section aria-labelledby="review-heading" className={styles["stagePanel"]}>
         <div className={styles["sectionHeading"]}>
           <div>
@@ -332,8 +342,10 @@ function CompletePanel({ workspace }: Readonly<{ workspace: ApplicationWorkspace
 function LegacyExternalPanel({
   workspace,
   job,
-}: Readonly<{ workspace: ApplicationWorkspace; job: Job }>) {
-  const activeConsent = workspace.dataGrant?.status === "active";
+  now,
+}: Readonly<{ workspace: ApplicationWorkspace; job: Job; now: string }>) {
+  const activeConsent =
+    isLiveApplicationDataGrant(workspace.dataGrant, now) && workspace.dataGrant.status === "active";
   const employerUrl = externalApplicationUrl(job);
   return (
     <section aria-labelledby="legacy-external-heading" className={styles["stagePanel"]}>
@@ -366,6 +378,7 @@ export function ApplicationView({
   fieldValues,
   busy,
   error,
+  now,
   onFieldChange,
   onAction,
 }: ApplicationViewProps) {
@@ -404,11 +417,12 @@ export function ApplicationView({
         {complete ? (
           <CompletePanel workspace={workspace} />
         ) : legacyExternalDraft ? (
-          <LegacyExternalPanel job={job} workspace={workspace} />
+          <LegacyExternalPanel job={job} now={now} workspace={workspace} />
         ) : (
           <ReviewDocument
             busy={busy}
             fieldValues={fieldValues}
+            now={now}
             onAction={onAction}
             onFieldChange={onFieldChange}
             workspace={workspace}

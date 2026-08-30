@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ApplicationWorkspace } from "@jobbbler/contracts";
 
@@ -8,7 +8,10 @@ import {
   applicationNextAction,
   applicationReadiness,
   applicationStage,
+  bindApplicationServerClock,
+  createServerDerivedApplicationClock,
   isAgentAssistedApplication,
+  mountApplicationExpiryClock,
   visibleApplicationProgress,
 } from "./application-model";
 
@@ -70,8 +73,10 @@ const base: ApplicationWorkspace = {
 
 describe("application presentation model", () => {
   it("keeps profile, review, permission, confirmation, and completion visibly separate", () => {
-    expect(applicationStage(base)).toBe("profile");
-    expect(applicationStage({ ...base, draft: { ...base.draft, state: "valid" } })).toBe("review");
+    expect(applicationStage(base, base.serverNow)).toBe("profile");
+    expect(
+      applicationStage({ ...base, draft: { ...base.draft, state: "valid" } }, base.serverNow),
+    ).toBe("review");
     const reviewed = {
       ...base,
       draft: { ...base.draft, state: "reviewed" as const },
@@ -84,27 +89,33 @@ describe("application presentation model", () => {
         createdAt: "2026-08-29T10:02:00.000Z",
       },
     };
-    expect(applicationStage(reviewed)).toBe("permission");
+    expect(applicationStage(reviewed, base.serverNow)).toBe("permission");
     expect(
-      applicationStage({
-        ...reviewed,
-        dataGrant: {
-          id: "grant_550e8400-e29b-41d4-a716-446655440000",
-          status: "active",
-          expiresAt: "2026-08-29T10:32:00.000Z",
+      applicationStage(
+        {
+          ...reviewed,
+          dataGrant: {
+            id: "grant_550e8400-e29b-41d4-a716-446655440000",
+            status: "active",
+            expiresAt: "2026-08-29T10:32:00.000Z",
+          },
         },
-      }),
+        base.serverNow,
+      ),
     ).toBe("confirmation");
     expect(
-      applicationStage({
-        ...reviewed,
-        receipt: {
-          id: "receipt_550e8400-e29b-41d4-a716-446655440000",
-          status: "submitted",
-          externalUrl: null,
-          createdAt: "2026-08-29T10:03:00.000Z",
+      applicationStage(
+        {
+          ...reviewed,
+          receipt: {
+            id: "receipt_550e8400-e29b-41d4-a716-446655440000",
+            status: "submitted",
+            externalUrl: null,
+            createdAt: "2026-08-29T10:03:00.000Z",
+          },
         },
-      }),
+        base.serverNow,
+      ),
     ).toBe("complete");
   });
 
@@ -194,18 +205,21 @@ describe("application presentation model", () => {
 
   it("makes a legacy external draft read-only and recommends only active consent withdrawal", () => {
     const external: ApplicationWorkspace = { ...base, applyMode: "external" };
-    expect(applicationStage(external)).toBe("legacy_external");
+    expect(applicationStage(external, external.serverNow)).toBe("legacy_external");
     expect(applicationAgentState(external, false, external.serverNow).applyMode).toBe("external");
-    expect(applicationNextAction(external)).toBe("read_only");
+    expect(applicationNextAction(external, external.serverNow)).toBe("read_only");
     expect(
-      applicationNextAction({
-        ...external,
-        dataGrant: {
-          id: "grant_550e8400-e29b-41d4-a716-446655440000",
-          status: "active",
-          expiresAt: "2026-08-29T10:34:00.000Z",
+      applicationNextAction(
+        {
+          ...external,
+          dataGrant: {
+            id: "grant_550e8400-e29b-41d4-a716-446655440000",
+            status: "active",
+            expiresAt: "2026-08-29T10:34:00.000Z",
+          },
         },
-      }),
+        external.serverNow,
+      ),
     ).toBe("withdraw");
   });
 
@@ -227,7 +241,105 @@ describe("application presentation model", () => {
       },
     };
 
-    expect(applicationStage(completedExternal)).toBe("complete");
-    expect(applicationNextAction(completedExternal)).toBe("complete");
+    expect(applicationStage(completedExternal, completedExternal.serverNow)).toBe("complete");
+    expect(applicationNextAction(completedExternal, completedExternal.serverNow)).toBe("complete");
+  });
+});
+
+describe("mounted application authorization clock", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("derives advancing time from the server anchor and monotonic elapsed time", () => {
+    let monotonicMilliseconds = 100;
+    vi.setSystemTime("2040-01-01T00:00:00.000Z");
+    const clock = createServerDerivedApplicationClock(base.serverNow, () => monotonicMilliseconds);
+
+    expect(clock.now()).toBe("2026-08-29T10:02:00.000Z");
+    vi.setSystemTime("1990-01-01T00:00:00.000Z");
+    monotonicMilliseconds = 1_100;
+    expect(clock.now()).toBe("2026-08-29T10:02:01.000Z");
+    monotonicMilliseconds = 600;
+    expect(clock.now()).toBe("2026-08-29T10:02:01.000Z");
+  });
+
+  it("starts a new server anchor when the mounted draft changes", () => {
+    let monotonicMilliseconds = 0;
+    const first = bindApplicationServerClock(null, base, () => monotonicMilliseconds);
+    monotonicMilliseconds = 60_000;
+    expect(first.clock.now()).toBe("2026-08-29T10:03:00.000Z");
+    const second = bindApplicationServerClock(
+      first,
+      {
+        ...base,
+        serverNow: "2026-08-29T09:00:00.000Z",
+        draft: { ...base.draft, id: "draft_650e8400-e29b-41d4-a716-446655440000" },
+      },
+      () => monotonicMilliseconds,
+    );
+
+    expect(second.draftId).toBe("draft_650e8400-e29b-41d4-a716-446655440000");
+    expect(second.clock.now()).toBe("2026-08-29T09:00:00.000Z");
+  });
+
+  it("reclassifies mounted readiness at each delegation and grant expiry", () => {
+    let monotonicMilliseconds = 0;
+    const expiring: ApplicationWorkspace = {
+      ...base,
+      draft: { ...base.draft, state: "reviewed" },
+      review: {
+        id: "review_550e8400-e29b-41d4-a716-446655440000",
+        draftId: base.draft.id,
+        draftVersion: base.draft.version,
+        payloadHash: "a".repeat(64),
+        status: "active",
+        createdAt: base.serverNow,
+      },
+      dataGrant: {
+        id: "grant_550e8400-e29b-41d4-a716-446655440000",
+        status: "active",
+        expiresAt: "2026-08-29T10:02:02.000Z",
+      },
+      delegationRequests: [
+        {
+          id: "delegation_550e8400-e29b-41d4-a716-446655440000",
+          agentSessionId: "agent_session_550e8400-e29b-41d4-a716-446655440000",
+          operations: ["edit_application"],
+          purpose: "Prepare this application.",
+          status: "requested",
+          expiresAt: "2026-08-29T10:02:01.000Z",
+          approvedAt: null,
+        },
+      ],
+    };
+    const clock = createServerDerivedApplicationClock(
+      expiring.serverNow,
+      () => monotonicMilliseconds,
+    );
+    const observedStates = [applicationAgentState(expiring, false, clock.now())];
+    const stop = mountApplicationExpiryClock({
+      workspace: expiring,
+      clock,
+      onTick: (now) => observedStates.push(applicationAgentState(expiring, false, now)),
+    });
+
+    monotonicMilliseconds = 999;
+    vi.advanceTimersByTime(999);
+    expect(observedStates).toHaveLength(1);
+    monotonicMilliseconds = 1_000;
+    vi.advanceTimersByTime(1);
+    expect(observedStates.at(-1)).toMatchObject({
+      agentAuthorityStatus: "none",
+      dataPermissionStatus: "active",
+      stage: "confirmation",
+    });
+    monotonicMilliseconds = 2_000;
+    vi.advanceTimersByTime(1_000);
+    expect(observedStates.at(-1)).toMatchObject({
+      agentAuthorityStatus: "none",
+      dataPermissionStatus: "none",
+      stage: "permission",
+    });
+    stop();
   });
 });
