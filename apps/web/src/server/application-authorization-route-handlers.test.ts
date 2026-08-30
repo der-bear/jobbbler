@@ -288,6 +288,7 @@ function dependencies(): ApplicationAuthorizationRouteDependencies {
       create: () => rawAgentToken,
       hash: () => tokenHash,
     },
+    activity: { publish: vi.fn(async () => true) },
   };
   return current;
 }
@@ -308,6 +309,40 @@ function request(
       ...(body === undefined ? {} : { "content-type": "application/json" }),
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+}
+
+function expectPublishedActivity(
+  current: ApplicationAuthorizationRouteDependencies,
+  response: Response,
+  expected: Readonly<{
+    kind: "authorization" | "consent";
+    key: string;
+    safeSummary: string;
+    actorKind: "human" | "agent";
+    draftVersion: number;
+  }>,
+): void {
+  const publish = current.activity?.publish;
+  if (publish === undefined) throw new Error("Activity publisher is required by this test.");
+  const correlationId = response.headers.get("x-request-id");
+  if (correlationId === null) throw new Error("Activity response must expose its request ID.");
+
+  expect(publish).toHaveBeenCalledTimes(1);
+  expect(publish).toHaveBeenCalledWith({
+    ownerId,
+    correlationId,
+    kind: expected.kind,
+    key: expected.key,
+    status: "completed",
+    safeSummary: expected.safeSummary,
+    actorKind: expected.actorKind,
+    aggregate: { type: "application_draft", version: expected.draftVersion },
+    occurredAt: now,
+    effects: [
+      { target: "application", kind: "refresh" },
+      { target: "agent_activity", kind: "announce" },
+    ],
   });
 }
 
@@ -763,7 +798,65 @@ describe("application authorization route handlers", () => {
       },
       ...approvalGuard,
     });
+    expectPublishedActivity(current, response, {
+      kind: "consent",
+      key: "approve_data_grant",
+      safeSummary: "Exact reviewed data permission approved through the agent client.",
+      actorKind: "agent",
+      draftVersion: draft.version,
+    });
   });
+
+  it.each([
+    {
+      decision: "approved",
+      safeSummary: "Exact application disclosure approved through the agent client.",
+    },
+    {
+      decision: "declined",
+      safeSummary: "Application disclosure declined through the agent client.",
+    },
+  ] as const)(
+    "attributes the exact $decision submission decision to the agent-client invocation channel",
+    async ({ decision, safeSummary }) => {
+      const current = dependencies();
+      const review = await handleCreateSubmissionReviewRequest(
+        request(`/api/v1/applications/${draftId}/consent`, "POST", undefined, { agent: true }),
+        draftContext,
+        current,
+      );
+      expect(review.status).toBe(201);
+
+      const response = await handleDecideSubmissionReviewRequest(
+        request(
+          `/api/v1/applications/${draftId}/consent/${consentRequestId}`,
+          "POST",
+          {
+            expectedVersion: draft.version,
+            decision,
+            interaction: {
+              channel: "agent_client",
+              requestId: consentRequestId,
+              affirmation: decision,
+              evidenceVersion: "agent-interaction-v1",
+            },
+          },
+          { human: true },
+        ),
+        { params: Promise.resolve({ draftId, requestId: consentRequestId }) },
+        current,
+      );
+
+      expect(response.status).toBe(200);
+      expectPublishedActivity(current, response, {
+        kind: "authorization",
+        key: "decide_application_submission",
+        safeSummary,
+        actorKind: "agent",
+        draftVersion: draft.version,
+      });
+    },
+  );
 
   it("rejects agent-client consent evidence that is not bound to an interaction request", async () => {
     const current = dependencies();
@@ -848,6 +941,13 @@ describe("application authorization route handlers", () => {
         withdrawnGrantIds: [grantId],
         futureConsentProcessingStopped: true,
       },
+    });
+    expectPublishedActivity(current, response, {
+      kind: "consent",
+      key: "withdraw_application_consent",
+      safeSummary: "Application consent withdrawn; future consent-based processing stopped.",
+      actorKind: "agent",
+      draftVersion: draft.version + 1,
     });
   });
 
@@ -1022,6 +1122,13 @@ describe("application authorization route handlers", () => {
       action: "approved",
       evidenceVersion: "agent-interaction-v1",
     });
+    expectPublishedActivity(current, approved, {
+      kind: "authorization",
+      key: "approve_agent_access",
+      safeSummary: "Scoped application assistance approved through the agent client.",
+      actorKind: "agent",
+      draftVersion: draft.version,
+    });
 
     const declinedDependencies = dependencies();
     const declined = await handleRevokeDelegationRequest(
@@ -1054,6 +1161,13 @@ describe("application authorization route handlers", () => {
         evidenceVersion: "agent-interaction-v1",
       },
     );
+    expectPublishedActivity(declinedDependencies, declined, {
+      kind: "authorization",
+      key: "revoke_agent_access",
+      safeSummary: "Scoped application assistance declined.",
+      actorKind: "agent",
+      draftVersion: draft.version,
+    });
 
     const withdrawalDependencies = dependencies();
     withdrawalDependencies.delegations.getById = vi.fn(async () => ({
@@ -1091,6 +1205,13 @@ describe("application authorization route handlers", () => {
         evidenceVersion: "agent-interaction-v1",
       },
     );
+    expectPublishedActivity(withdrawalDependencies, withdrawn, {
+      kind: "authorization",
+      key: "revoke_agent_access",
+      safeSummary: "Scoped application assistance revoked.",
+      actorKind: "agent",
+      draftVersion: draft.version,
+    });
   });
 
   it("rejects first-party approval or decline of an assistance request", async () => {
@@ -1161,6 +1282,13 @@ describe("application authorization route handlers", () => {
 
     expect(response.status).toBe(200);
     expect(current.richDataGrants.approveCurrent).toHaveBeenCalled();
+    expectPublishedActivity(current, response, {
+      kind: "consent",
+      key: "approve_data_grant",
+      safeSummary: "Exact reviewed data permission approved in the private workspace.",
+      actorKind: "human",
+      draftVersion: draft.version,
+    });
   });
 
   it.each(["requested", "active"] as const)(

@@ -139,7 +139,13 @@ const consentDecisionRecordSchema = applicationSubmissionDecisionReceiptSchema.e
 const CONSENT_REQUEST_SCOPE = "application.consent_request";
 const CONSENT_DECISION_SCOPE = "application.consent_decision";
 
-function requireAgentClientDecisionChannel(channel: "first_party_ui" | "agent_client"): void {
+type AuthorizationInteractionChannel = "first_party_ui" | "agent_client";
+
+function activityActorKind(channel: AuthorizationInteractionChannel): "human" | "agent" {
+  return channel === "agent_client" ? "agent" : "human";
+}
+
+function requireAgentClientDecisionChannel(channel: AuthorizationInteractionChannel): void {
   if (channel !== "agent_client") {
     throw new DomainError({
       code: "FORBIDDEN",
@@ -719,7 +725,7 @@ export async function handleApproveDelegationRequest(
         interaction.channel === "agent_client"
           ? "Scoped application assistance approved through the agent client."
           : "Scoped application assistance approved in the private workspace.",
-      actorKind: "human",
+      actorKind: activityActorKind(interaction.channel),
       draftVersion: human.draft.version,
       occurredAt: now,
     });
@@ -777,7 +783,7 @@ export async function handleRevokeDelegationRequest(
         interaction.affirmation === "declined"
           ? "Scoped application assistance declined."
           : "Scoped application assistance revoked.",
-      actorKind: "human",
+      actorKind: activityActorKind(interaction.channel),
       draftVersion: human.draft.version,
       occurredAt: now,
     });
@@ -995,7 +1001,7 @@ export async function handleDecideSubmissionReviewRequest(
         parsed.decision === "approved"
           ? "Exact application disclosure approved through the agent client."
           : "Application disclosure declined through the agent client.",
-      actorKind: "human",
+      actorKind: activityActorKind(parsed.interaction.channel),
       draftVersion: acceptedDraftVersion,
       occurredAt: now,
     });
@@ -1236,7 +1242,7 @@ export async function handleApproveDataGrantRequest(
         interaction.channel === "agent_client"
           ? "Exact reviewed data permission approved through the agent client."
           : "Exact reviewed data permission approved in the private workspace.",
-      actorKind: "human",
+      actorKind: activityActorKind(interaction.channel),
       draftVersion: human.draft.version,
       occurredAt: now,
     });
@@ -1341,7 +1347,7 @@ export async function handleWithdrawApplicationConsentRequest(
         withdrawn.length === 0
           ? "No active application consent remained to withdraw."
           : "Application consent withdrawn; future consent-based processing stopped.",
-      actorKind: interaction.channel === "agent_client" ? "agent" : "human",
+      actorKind: activityActorKind(interaction.channel),
       draftVersion: boundaryDraft.version,
       occurredAt: now,
     });
