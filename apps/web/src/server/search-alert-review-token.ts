@@ -13,7 +13,7 @@ const MAX_TOKEN_LIFETIME_MS = 15 * 60 * 1_000;
 const ENCODED_PAYLOAD_MAX_LENGTH = 3_000;
 const TOKEN_PATTERN = /^([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]{43})$/u;
 
-const searchAlertReviewPayloadSchema = z.strictObject({
+export const searchAlertReviewPayloadSchema = z.strictObject({
   version: z.literal(1),
   purpose: z.literal("search_alert_activation"),
   ownerId: entityIdSchema,
