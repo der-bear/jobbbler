@@ -70,6 +70,7 @@ export async function finalizeApplication(
     workspace.review?.status === "active" && workspace.review.draftVersion === draft.version
       ? workspace.review
       : null;
+  let grant = workspace.dataGrant;
 
   const answers = workspace.requirements.flatMap((field) => {
     const value = values[field.fieldKey]?.trim() ?? "";
@@ -116,6 +117,7 @@ export async function finalizeApplication(
       },
     );
     review = null;
+    grant = null;
   }
 
   if (draft.state === "draft") {
@@ -143,7 +145,6 @@ export async function finalizeApplication(
   const includedFields = workspace.requirements.filter(
     (field) => (values[field.fieldKey]?.trim() ?? "").length > 0,
   );
-  let grant = workspace.dataGrant;
   if (
     grant?.status === "requested" &&
     (grant.decisionChannel !== interactionChannel ||

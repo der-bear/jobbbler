@@ -317,6 +317,21 @@ function stableHash(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
+function sameRichDataGrantScope(left: RichDataGrantRecord, right: RichDataGrantRecord): boolean {
+  return (
+    left.ownerId === right.ownerId &&
+    left.draftId === right.draftId &&
+    left.recipientId === right.recipientId &&
+    left.purpose === right.purpose &&
+    left.payloadHash === right.payloadHash &&
+    left.noticeVersion === right.noticeVersion &&
+    left.legalBasis === right.legalBasis &&
+    stableHash(left.categories) === stableHash(right.categories) &&
+    stableHash(left.fieldKeys) === stableHash(right.fieldKeys) &&
+    stableHash(left.documentIds) === stableHash(right.documentIds)
+  );
+}
+
 function ensureUnique<T>(items: readonly T[], key: (item: T) => string, label: string): void {
   const values = new Set<string>();
   for (const item of items) {
@@ -1401,7 +1416,7 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
               "resourceId",
               input.draftId,
             );
-            if (requiresAgentClientSubmissionDecision(draft, delegations)) {
+            if (requiresAgentClientSubmissionDecision(draft, delegations, input.now)) {
               throw domain(
                 "FORBIDDEN",
                 "Complete consent and submission decisions for this agent-assisted draft in the external agent client.",
@@ -1649,10 +1664,55 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
       },
     },
     richDataGrants: {
-      async insert(record: RichDataGrantRecord) {
-        await assertDraftOwnership(sql, record.ownerId, record.draftId);
-        const stored = { ...record, version: 0 };
-        return insert(sql, "rich_data_grant", stored, stored.ownerId);
+      async insert(record: RichDataGrantRecord, now: string) {
+        return sql.begin(async (transaction) => {
+          const tx = transaction as PostgresExecutor;
+          await assertDraftOwnership(tx, record.ownerId, record.draftId);
+          const expired = (
+            await listByOwnerDraft<RichDataGrantRecord>(
+              tx,
+              "rich_data_grant",
+              record.ownerId,
+              "draftId",
+              record.draftId,
+            )
+          )
+            .filter(
+              (candidate) =>
+                (candidate.status === "requested" || candidate.status === "active") &&
+                candidate.expiresAt <= now &&
+                sameRichDataGrantScope(candidate, record),
+            )
+            .sort((left, right) => left.id.localeCompare(right.id));
+          let retired = false;
+          for (const candidate of expired) {
+            const current = await getForUpdate<RichDataGrantRecord>(
+              tx,
+              "rich_data_grant",
+              candidate.id,
+            );
+            if (
+              current !== null &&
+              (current.status === "requested" || current.status === "active") &&
+              current.expiresAt <= now &&
+              sameRichDataGrantScope(current, record)
+            ) {
+              const next = {
+                ...current,
+                status: "withdrawn" as const,
+                withdrawnAt: now,
+                version: (current.version ?? 0) + 1,
+              };
+              await write(tx, "rich_data_grant", next, record.ownerId, next.version);
+              retired = true;
+            }
+          }
+          if (retired) {
+            await tx`UPDATE jobbbler.entity_records SET body = jsonb_set(body, '{status}', '"invalidated"'::jsonb), updated_at = now() WHERE kind = 'application_confirmation' AND owner_id = ${record.ownerId} AND body->>'draftId' = ${record.draftId} AND body->>'status' = 'active'`;
+          }
+          const stored = { ...record, version: 0 };
+          return insert(tx, "rich_data_grant", stored, stored.ownerId);
+        });
       },
       async getById(id, ownerId, draftId) {
         const record = await get<RichDataGrantRecord>(sql, "rich_data_grant", id);

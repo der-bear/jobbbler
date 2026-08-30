@@ -264,7 +264,7 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
             { signal },
           );
           const progress = applicationReadiness(workspace);
-          const state = applicationAgentState(workspace, false);
+          const state = applicationAgentState(workspace, false, workspace.serverNow);
           return {
             state,
             missingFieldKeys: progress.missingFieldKeys,

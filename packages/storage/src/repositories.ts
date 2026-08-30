@@ -178,7 +178,7 @@ export interface AgentSessionRepository {
   ): Promise<AgentSessionRecord>;
 }
 export interface RichDataGrantRepository {
-  insert(record: RichDataGrantRecord): Promise<RichDataGrantRecord>;
+  insert(record: RichDataGrantRecord, now: string): Promise<RichDataGrantRecord>;
   getById(id: string, ownerId: string, draftId: string): Promise<RichDataGrantRecord | null>;
   listByDraft(ownerId: string, draftId: string): Promise<RichDataGrantRecord[]>;
   getCurrent(input: RichDataGrantMatchInput): Promise<RichDataGrantRecord | null>;

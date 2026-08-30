@@ -77,7 +77,7 @@ function toolReadiness(
   finalConfirmationReady = false,
 ): ApplicationToolReadiness {
   const progress = applicationReadiness(workspace);
-  const state = applicationAgentState(workspace, finalConfirmationReady);
+  const state = applicationAgentState(workspace, finalConfirmationReady, workspace.serverNow);
   return {
     state,
     missingFieldKeys: progress.missingFieldKeys,
@@ -380,7 +380,7 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
   async function perform(action: ApplicationAction) {
     if (state.kind !== "ready" || busy) return;
     const current = state.workspace;
-    if (isAgentAssistedApplication(current)) {
+    if (isAgentAssistedApplication(current, current.serverNow)) {
       setActionError(
         action === "review_and_submit"
           ? "Complete the exact submission decision in your external agent client for this agent-assisted draft."
@@ -425,7 +425,15 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
       }
       await load();
     } catch (error) {
-      setActionError(errorMessage(error));
+      const message = errorMessage(error);
+      if (action === "review_and_submit") {
+        try {
+          await load();
+        } catch {
+          // Keep the original finalization failure visible. A later page reload can recover.
+        }
+      }
+      setActionError(message);
     } finally {
       setBusy(false);
     }
@@ -455,7 +463,7 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
       job={state.job}
       onAction={(action) => void perform(action)}
       onFieldChange={(fieldKey, value) => {
-        if (!isAgentAssistedApplication(state.workspace)) {
+        if (!isAgentAssistedApplication(state.workspace, state.workspace.serverNow)) {
           setValues((current) => ({ ...current, [fieldKey]: value }));
         }
       }}

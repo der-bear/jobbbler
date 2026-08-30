@@ -116,18 +116,21 @@ async function legacyExternalSubmissionFixture() {
   };
   await current.storage.applications.insertReview(review);
   const scope = applicationDataGrantScope({ draft: reviewed, review, job: externalJob });
-  const grant = await current.storage.richDataGrants.insert({
-    id: "grant_81000000-0000-7000-8000-000000000099",
-    ownerId,
-    draftId: reviewed.id,
-    ...scope,
-    status: "active",
-    expiresAt: future,
-    createdAt: now,
-    approvedAt: now,
-    withdrawnAt: null,
-    version: 0,
-  });
+  const grant = await current.storage.richDataGrants.insert(
+    {
+      id: "grant_81000000-0000-7000-8000-000000000099",
+      ownerId,
+      draftId: reviewed.id,
+      ...scope,
+      status: "active",
+      expiresAt: future,
+      createdAt: now,
+      approvedAt: now,
+      withdrawnAt: null,
+      version: 0,
+    },
+    now,
+  );
   const confirmation = {
     id: "confirmation_81000000-0000-7000-8000-000000000099",
     ownerId,
@@ -262,18 +265,21 @@ describe("application operations with SQLite", () => {
     if (reviewedDraft === null || review === null)
       throw new Error("Missing sealed review fixture.");
     const scope = applicationDataGrantScope({ draft: reviewedDraft, review, job });
-    const requested = await storage.richDataGrants.insert({
-      id: "grant_81000000-0000-7000-8000-000000000001",
-      ownerId,
-      draftId: draft.id,
-      ...scope,
-      status: "requested",
-      expiresAt: future,
-      createdAt: now,
-      approvedAt: null,
-      withdrawnAt: null,
-      version: 0,
-    });
+    const requested = await storage.richDataGrants.insert(
+      {
+        id: "grant_81000000-0000-7000-8000-000000000001",
+        ownerId,
+        draftId: draft.id,
+        ...scope,
+        status: "requested",
+        expiresAt: future,
+        createdAt: now,
+        approvedAt: null,
+        withdrawnAt: null,
+        version: 0,
+      },
+      now,
+    );
     const approvalGuard =
       await createApplicationDataGrantAuthorizationPolicy(storage).assertStoredDataGrantCurrent(
         requested,

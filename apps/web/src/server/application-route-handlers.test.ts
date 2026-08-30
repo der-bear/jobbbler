@@ -17,7 +17,10 @@ const draftId = "application_550e8400-e29b-41d4-a716-446655440000";
 const reviewId = "review_550e8400-e29b-41d4-a716-446655440000";
 const confirmationId = "confirmation_550e8400-e29b-41d4-a716-446655440000";
 
-function storedDelegation(status: "requested" | "active"): AgentDelegationRecord {
+function storedDelegation(
+  status: "requested" | "active",
+  expiresAt = "2026-08-29T10:15:00.000Z",
+): AgentDelegationRecord {
   return {
     id: "delegation_550e8400-e29b-41d4-a716-446655440000",
     ownerId: "owner_550e8400-e29b-41d4-a716-446655440000",
@@ -27,7 +30,7 @@ function storedDelegation(status: "requested" | "active"): AgentDelegationRecord
     operations: ["request_confirmation"],
     purpose: "Prepare this application.",
     status,
-    expiresAt: "2026-08-29T10:15:00.000Z",
+    expiresAt,
     createdAt: "2026-08-29T09:55:00.000Z",
     approvedAt: status === "active" ? "2026-08-29T09:56:00.000Z" : null,
     revokedAt: null,
@@ -41,6 +44,7 @@ function workspace(
   }> = {},
 ): ApplicationWorkspace {
   return {
+    serverNow: "2026-08-29T10:00:00.000Z",
     applyMode: "internal",
     draft: {
       id: draftId,
@@ -341,6 +345,26 @@ describe("application confirmation route", () => {
     expect(response.status).toBe(403);
     expect(current.operations.answer).not.toHaveBeenCalled();
   });
+
+  it.each(["requested", "active"] as const)(
+    "keeps first-party answer edits available after %s assistance expires",
+    async (status) => {
+      const current = dependencies();
+      vi.mocked(current.authorization.delegations.listByResource).mockResolvedValue([
+        storedDelegation(status, "2026-08-29T09:59:59.999Z"),
+      ]);
+
+      const response = await handleApplicationCommand(
+        answerRequest(),
+        { params: Promise.resolve({ draftId }) },
+        current,
+        "answer",
+      );
+
+      expect(response.status, JSON.stringify(await response.clone().json())).toBe(200);
+      expect(current.operations.answer).toHaveBeenCalled();
+    },
+  );
 
   it("keeps first-party confirmation and submission for a purely manual draft", async () => {
     const confirmationDependencies = dependencies();

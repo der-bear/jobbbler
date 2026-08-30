@@ -221,6 +221,7 @@ export const applicationReceiptSummarySchema = z.strictObject({
 });
 
 export const applicationWorkspaceSchema = z.strictObject({
+  serverNow: isoInstantSchema,
   applyMode: z.enum(["internal", "external"]),
   draft: applicationDraftSchema,
   requirements: z.array(applicationFieldDefinitionSchema).min(1).max(24),

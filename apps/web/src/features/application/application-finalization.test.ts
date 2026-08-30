@@ -6,6 +6,7 @@ import { finalizeApplication } from "./application-finalization";
 
 const draftId = "application_550e8400-e29b-41d4-a716-446655440000";
 const reviewId = "review_550e8400-e29b-41d4-a716-446655440000";
+const replacementReviewId = "review_650e8400-e29b-41d4-a716-446655440000";
 const grantId = "grant_550e8400-e29b-41d4-a716-446655440000";
 const replacementGrantId = "grant_650e8400-e29b-41d4-a716-446655440000";
 const confirmationId = "confirmation_550e8400-e29b-41d4-a716-446655440000";
@@ -14,6 +15,7 @@ const staleInteractionRequestId = "interaction_650e8400-e29b-41d4-a716-446655440
 const agentAuthorization = `Bearer ${"A".repeat(43)}`;
 
 const workspace: ApplicationWorkspace = {
+  serverNow: "2026-08-29T10:00:00.000Z",
   applyMode: "internal",
   draft: {
     id: draftId,
@@ -286,6 +288,91 @@ describe("finalizeApplication", () => {
       `/api/v1/applications/${draftId}`,
     ]);
   });
+
+  it.each(["requested", "active"] as const)(
+    "does not reuse a pre-edit %s grant after a material manual edit",
+    async (status) => {
+      const pending = reviewedWorkspace({
+        id: grantId,
+        status,
+        expiresAt: "2026-08-29T10:31:00.000Z",
+        decisionChannel: "first_party_ui",
+        decisionRequestId: grantId,
+      });
+      const editedDraft = {
+        ...pending.draft,
+        state: "draft" as const,
+        version: 5,
+        answers: pending.draft.answers.map((answer) =>
+          answer.fieldKey === "motivation"
+            ? { ...answer, value: "Materially updated candidate note" }
+            : answer,
+        ),
+      };
+      const request = vi
+        .fn()
+        .mockResolvedValueOnce(editedDraft)
+        .mockResolvedValueOnce({ ...editedDraft, state: "valid", version: 6 })
+        .mockResolvedValueOnce({
+          id: replacementReviewId,
+          draftId,
+          draftVersion: 7,
+          payloadHash: "b".repeat(64),
+          status: "active",
+          createdAt: "2026-08-29T10:03:00.000Z",
+        })
+        .mockResolvedValueOnce({
+          id: replacementGrantId,
+          status: "requested",
+          expiresAt: "2026-08-29T10:33:00.000Z",
+          decisionChannel: "first_party_ui",
+          decisionRequestId: replacementGrantId,
+        })
+        .mockResolvedValueOnce({
+          id: replacementGrantId,
+          status: "active",
+          expiresAt: "2026-08-29T10:33:00.000Z",
+          decisionChannel: "first_party_ui",
+          decisionRequestId: replacementGrantId,
+        })
+        .mockResolvedValueOnce({
+          confirmationId,
+          expiresAt: "2026-08-29T10:08:00.000Z",
+        })
+        .mockResolvedValueOnce({
+          id: "receipt_550e8400-e29b-41d4-a716-446655440000",
+          status: "submitted",
+          externalUrl: null,
+          createdAt: "2026-08-29T10:04:00.000Z",
+        });
+
+      await finalizeApplication({
+        workspace: pending,
+        values: {
+          full_name: "Ada Lovelace",
+          motivation: "Materially updated candidate note",
+        },
+        request,
+        idempotencyKey: "550e8400-e29b-41d4-a716-446655440000",
+      });
+
+      expect(request.mock.calls.map(([url]) => url)).toEqual([
+        `/api/v1/applications/${draftId}/answer`,
+        `/api/v1/applications/${draftId}/validate`,
+        `/api/v1/applications/${draftId}/review`,
+        `/api/v1/applications/${draftId}/data-grants`,
+        `/api/v1/applications/${draftId}/data-grants/${replacementGrantId}/approve`,
+        `/api/v1/applications/${draftId}/reviews/${replacementReviewId}/confirm`,
+        `/api/v1/applications/${draftId}`,
+      ]);
+      expect(request.mock.calls.map(([url]) => url)).not.toContain(
+        `/api/v1/applications/${draftId}/data-grants/${grantId}/approve`,
+      );
+      expect(request.mock.calls[3]?.[2]).toMatchObject({
+        body: { payloadHash: "b".repeat(64) },
+      });
+    },
+  );
 
   it("turns one human decision into accepted values, exact permission, confirmation, and submission", async () => {
     const request = vi

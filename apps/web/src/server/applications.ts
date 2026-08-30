@@ -201,6 +201,7 @@ export async function buildApplicationWorkspace(
   }
 
   return applicationWorkspaceSchema.parse({
+    serverNow: now,
     applyMode: job.applyMode,
     draft,
     requirements: applicationPolicy.requirements,

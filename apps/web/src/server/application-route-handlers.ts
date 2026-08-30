@@ -160,11 +160,12 @@ async function requireFirstPartyApplicationDecisionAllowed(
   dependencies: ApplicationRouteDependencies,
 ): Promise<ApplicationWorkspace | null> {
   if (actor.kind !== "human") return null;
+  const now = dependencies.identity.now();
   const [workspace, delegations] = await Promise.all([
-    dependencies.operations.get(actor.ownerId, draftId, dependencies.identity.now()),
+    dependencies.operations.get(actor.ownerId, draftId, now),
     dependencies.authorization.delegations.listByResource(actor.ownerId, draftId),
   ]);
-  if (requiresAgentClientApplicationDecision(workspace.draft, delegations)) {
+  if (requiresAgentClientApplicationDecision(workspace.draft, delegations, now)) {
     throw new DomainError({
       code: "FORBIDDEN",
       message:

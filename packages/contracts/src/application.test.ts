@@ -175,6 +175,7 @@ describe("application authorization contracts", () => {
 
   it("describes the visible application, exact disclosure, and current authorization state without secrets", () => {
     const workspace = {
+      serverNow: "2026-08-29T10:05:00.000Z",
       applyMode: "internal",
       draft: {
         id: draftId,

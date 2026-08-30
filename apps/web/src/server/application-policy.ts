@@ -90,9 +90,13 @@ const requirements = applicationFieldDefinitionSchema.array().parse([
 
 export function requiresAgentClientApplicationDecision(
   draft: Pick<ApplicationDraft, "answers">,
-  delegations: readonly Readonly<{ status: "requested" | "active" | "revoked" }>[],
+  delegations: readonly Readonly<{
+    status: "requested" | "active" | "revoked";
+    expiresAt: string;
+  }>[],
+  now: string,
 ): boolean {
-  return requiresAgentClientSubmissionDecision(draft, delegations);
+  return requiresAgentClientSubmissionDecision(draft, delegations, now);
 }
 
 export const applicationPolicy: Readonly<{

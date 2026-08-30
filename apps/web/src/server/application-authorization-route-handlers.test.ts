@@ -594,10 +594,13 @@ describe("application authorization route handlers", () => {
         legalBasis: grant.legalBasis,
       },
     });
-    expect(current.richDataGrants.insert).toHaveBeenCalledWith({
-      ...grant,
-      approvalRequestId: consentRequestId,
-    });
+    expect(current.richDataGrants.insert).toHaveBeenCalledWith(
+      {
+        ...grant,
+        approvalRequestId: consentRequestId,
+      },
+      now,
+    );
     const createdPayload = (await created.json()) as { readonly data: unknown };
     expect(createdPayload.data).toEqual({
       id: grantId,
@@ -1145,6 +1148,42 @@ describe("application authorization route handlers", () => {
     expect(response.status).toBe(200);
     expect(current.richDataGrants.approveCurrent).toHaveBeenCalled();
   });
+
+  it.each(["requested", "active"] as const)(
+    "keeps first-party data approval available after %s assistance expires",
+    async (status) => {
+      const current = dependencies();
+      current.delegations.listByResource = vi.fn(async () => [
+        {
+          ...delegation,
+          status,
+          expiresAt: "2026-08-29T09:59:59.999Z",
+          approvedAt: status === "active" ? "2026-08-29T09:55:00.000Z" : null,
+        },
+      ]);
+
+      const response = await handleApproveDataGrantRequest(
+        request(
+          `/api/v1/applications/${draftId}/data-grants/${grantId}/approve`,
+          "POST",
+          {
+            interaction: {
+              channel: "first_party_ui",
+              requestId: grantId,
+              affirmation: "confirmed",
+              evidenceVersion: "agent-interaction-v1",
+            },
+          },
+          { human: true },
+        ),
+        { params: Promise.resolve({ draftId, grantId }) },
+        current,
+      );
+
+      expect(response.status).toBe(200);
+      expect(current.richDataGrants.approveCurrent).toHaveBeenCalled();
+    },
+  );
 
   it.each([
     {

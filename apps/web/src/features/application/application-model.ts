@@ -11,11 +11,20 @@ export type ApplicationStage =
 export type ApplicationNextAction =
   "prepare" | "review" | "submit" | "withdraw" | "read_only" | "complete";
 
-export function isAgentAssistedApplication(workspace: ApplicationWorkspace): boolean {
+function isLiveAssistance(
+  delegation: ApplicationWorkspace["delegationRequests"][number],
+  now: string,
+): boolean {
   return (
-    workspace.delegationRequests.some(
-      ({ status }) => status === "requested" || status === "active",
-    ) || workspace.draft.answers.some(({ provenance }) => provenance === "agent_suggestion")
+    (delegation.status === "requested" || delegation.status === "active") &&
+    delegation.expiresAt > now
+  );
+}
+
+export function isAgentAssistedApplication(workspace: ApplicationWorkspace, now: string): boolean {
+  return (
+    workspace.delegationRequests.some((delegation) => isLiveAssistance(delegation, now)) ||
+    workspace.draft.answers.some(({ provenance }) => provenance === "agent_suggestion")
   );
 }
 
@@ -90,9 +99,15 @@ export function applicationStage(workspace: ApplicationWorkspace): ApplicationSt
 export function applicationAgentState(
   workspace: ApplicationWorkspace,
   finalConfirmationReady: boolean,
+  now: string,
 ): ApplicationAgentState {
   const progress = visibleApplicationProgress(workspace);
-  const latestDelegation = workspace.delegationRequests[0];
+  const liveDelegation = workspace.delegationRequests.find((delegation) =>
+    isLiveAssistance(delegation, now),
+  );
+  const latestRevokedDelegation = workspace.delegationRequests.find(
+    ({ status }) => status === "revoked",
+  );
   return {
     draftId: workspace.draft.id,
     jobId: workspace.draft.jobId,
@@ -104,7 +119,7 @@ export function applicationAgentState(
     completedRequiredFields: progress.completed,
     reviewStatus: workspace.review?.status ?? "none",
     dataPermissionStatus: workspace.dataGrant?.status ?? "none",
-    agentAuthorityStatus: latestDelegation?.status ?? "none",
+    agentAuthorityStatus: liveDelegation?.status ?? latestRevokedDelegation?.status ?? "none",
     finalConfirmationReady,
     receiptStatus: workspace.receipt?.status ?? "none",
   };

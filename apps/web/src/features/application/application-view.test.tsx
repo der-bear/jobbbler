@@ -6,6 +6,7 @@ import type { ApplicationWorkspace, Job } from "@jobbbler/contracts";
 import { ApplicationView } from "./application-view";
 
 const workspace: ApplicationWorkspace = {
+  serverNow: "2026-08-29T10:00:00.000Z",
   applyMode: "internal",
   draft: {
     id: "draft_550e8400-e29b-41d4-a716-446655440000",
@@ -193,6 +194,41 @@ describe("ApplicationView", () => {
     expect(markup).not.toContain("Allow preparation");
     expect(markup).not.toContain("Review and submit to Northstar Systems");
   });
+
+  it.each(["requested", "active"] as const)(
+    "keeps a draft editable after %s assistance expires",
+    (status) => {
+      const markup = renderToStaticMarkup(
+        <ApplicationView
+          busy={false}
+          confirmation={null}
+          error={null}
+          fieldValues={{ full_name: "Ada Lovelace", motivation: "Candidate facts" }}
+          job={job}
+          onAction={() => undefined}
+          onFieldChange={() => undefined}
+          workspace={{
+            ...workspace,
+            delegationRequests: [
+              {
+                id: "delegation_550e8400-e29b-41d4-a716-446655440000",
+                agentSessionId: "agent_session_550e8400-e29b-41d4-a716-446655440000",
+                operations: ["read_application", "edit_application"],
+                purpose: "Prepare this application.",
+                status,
+                expiresAt: "2026-08-29T09:59:59.999Z",
+                approvedAt: status === "active" ? "2026-08-29T09:55:00.000Z" : null,
+              },
+            ],
+          }}
+        />,
+      );
+
+      expect(markup).toContain("Review and submit to Northstar Systems");
+      expect(markup).not.toContain("read-only for this agent-assisted draft");
+      expect(markup).not.toContain('readOnly=""');
+    },
+  );
 
   it("shows missing questions without making the user inspect every complete field", () => {
     const markup = renderToStaticMarkup(

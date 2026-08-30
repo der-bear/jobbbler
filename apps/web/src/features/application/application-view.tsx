@@ -149,7 +149,7 @@ function ReviewDocument({
 >) {
   const readiness = applicationReadiness(workspace);
   const disclosure = applicationDisclosure(workspace);
-  const agentAssisted = isAgentAssistedApplication(workspace);
+  const agentAssisted = isAgentAssistedApplication(workspace, workspace.serverNow);
   const missingFields = readiness.missingFieldKeys
     .map((fieldKey) => workspace.requirements.find((field) => field.fieldKey === fieldKey))
     .filter((field) => field !== undefined);

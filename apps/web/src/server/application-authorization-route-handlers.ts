@@ -1140,27 +1140,30 @@ export async function handleCreateDataGrantRequest(
       draftVersion: requester.draftVersion,
       occurredAt: now,
     });
-    const stored = await dependencies.richDataGrants.insert({
-      id: requested.id,
-      ownerId: requested.ownerId,
-      draftId: requested.draftId,
-      recipientId: requested.recipientId,
-      purpose: requested.purpose,
-      payloadHash: requested.payloadHash,
-      categories: requested.categories,
-      fieldKeys: requested.fieldKeys,
-      documentIds: requested.documentIds,
-      noticeVersion: policyRequest.noticeVersion,
-      legalBasis: policyRequest.legalBasis,
-      status: requested.status,
-      expiresAt: requested.expiresAt,
-      createdAt: requested.requestedAt,
-      approvedAt: requested.approvedAt,
-      withdrawnAt: requested.withdrawnAt,
-      ...(parsed.consentRequestId === undefined
-        ? {}
-        : { approvalRequestId: parsed.consentRequestId }),
-    });
+    const stored = await dependencies.richDataGrants.insert(
+      {
+        id: requested.id,
+        ownerId: requested.ownerId,
+        draftId: requested.draftId,
+        recipientId: requested.recipientId,
+        purpose: requested.purpose,
+        payloadHash: requested.payloadHash,
+        categories: requested.categories,
+        fieldKeys: requested.fieldKeys,
+        documentIds: requested.documentIds,
+        noticeVersion: policyRequest.noticeVersion,
+        legalBasis: policyRequest.legalBasis,
+        status: requested.status,
+        expiresAt: requested.expiresAt,
+        createdAt: requested.requestedAt,
+        approvedAt: requested.approvedAt,
+        withdrawnAt: requested.withdrawnAt,
+        ...(parsed.consentRequestId === undefined
+          ? {}
+          : { approvalRequestId: parsed.consentRequestId }),
+      },
+      now,
+    );
     return apiSuccessResponse(dataGrantSummary(stored), { requestId, status: 201 });
   } catch (error) {
     return authorizationErrorResponse(error, requestId);
@@ -1185,12 +1188,13 @@ export async function handleApproveDataGrantRequest(
     }
     const guard = await dependencies.dataGrantPolicy.assertStoredDataGrantCurrent(requested);
     const { interaction } = grantApprovalInteractionSchema.parse(await readSmallJsonBody(request));
+    const now = dependencies.identity.now();
     const delegations = await dependencies.delegations.listByResource(human.ownerId, draftId);
     if (
       interaction.channel === "first_party_ui" &&
       (requested.approvalRequestId !== null && requested.approvalRequestId !== undefined
         ? true
-        : requiresAgentClientApplicationDecision(human.draft, delegations))
+        : requiresAgentClientApplicationDecision(human.draft, delegations, now))
     ) {
       throw new DomainError({
         code: "FORBIDDEN",
@@ -1210,7 +1214,6 @@ export async function handleApproveDataGrantRequest(
         message: "The approval action is not bound to the reviewed permission request.",
       });
     }
-    const now = dependencies.identity.now();
     const stored = await dependencies.richDataGrants.approveCurrent({
       id: grantId,
       ownerId: human.ownerId,

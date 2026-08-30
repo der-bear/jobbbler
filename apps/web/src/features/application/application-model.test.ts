@@ -8,10 +8,12 @@ import {
   applicationNextAction,
   applicationReadiness,
   applicationStage,
+  isAgentAssistedApplication,
   visibleApplicationProgress,
 } from "./application-model";
 
 const base: ApplicationWorkspace = {
+  serverNow: "2026-08-29T10:02:00.000Z",
   applyMode: "internal",
   draft: {
     id: "draft_550e8400-e29b-41d4-a716-446655440000",
@@ -152,7 +154,7 @@ describe("application presentation model", () => {
   });
 
   it("gives agents only workflow state, never answers or owner identity", () => {
-    const state = applicationAgentState(base, false);
+    const state = applicationAgentState(base, false, base.serverNow);
     expect(state).toMatchObject({
       draftId: base.draft.id,
       stage: "profile",
@@ -164,10 +166,36 @@ describe("application presentation model", () => {
     expect(JSON.stringify(state)).not.toContain(base.draft.ownerId);
   });
 
+  it.each(["requested", "active"] as const)(
+    "treats an expired %s delegation as manual in the UI model",
+    (status) => {
+      const expiredWorkspace: ApplicationWorkspace = {
+        ...base,
+        delegationRequests: [
+          {
+            id: "delegation_550e8400-e29b-41d4-a716-446655440000",
+            agentSessionId: "agent_session_550e8400-e29b-41d4-a716-446655440000",
+            operations: ["edit_application"],
+            purpose: "Prepare this application.",
+            status,
+            expiresAt: "2026-08-29T10:01:59.999Z",
+            approvedAt: status === "active" ? "2026-08-29T10:01:00.000Z" : null,
+          },
+        ],
+      };
+
+      expect(isAgentAssistedApplication(expiredWorkspace, expiredWorkspace.serverNow)).toBe(false);
+      expect(
+        applicationAgentState(expiredWorkspace, false, expiredWorkspace.serverNow)
+          .agentAuthorityStatus,
+      ).toBe("none");
+    },
+  );
+
   it("makes a legacy external draft read-only and recommends only active consent withdrawal", () => {
     const external: ApplicationWorkspace = { ...base, applyMode: "external" };
     expect(applicationStage(external)).toBe("legacy_external");
-    expect(applicationAgentState(external, false).applyMode).toBe("external");
+    expect(applicationAgentState(external, false, external.serverNow).applyMode).toBe("external");
     expect(applicationNextAction(external)).toBe("read_only");
     expect(
       applicationNextAction({

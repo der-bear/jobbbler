@@ -553,7 +553,10 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
       approvedAt: null,
       withdrawnAt: null,
     };
-    await expect(storage.richDataGrants.insert(grant)).resolves.toEqual({ ...grant, version: 0 });
+    await expect(storage.richDataGrants.insert(grant, now)).resolves.toEqual({
+      ...grant,
+      version: 0,
+    });
     await expect(storage.richDataGrants.listByDraft(ownerId, draftId)).resolves.toEqual([
       { ...grant, version: 0 },
     ]);
@@ -643,7 +646,7 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
       createdAt: now,
     };
     await storage.applications.insertConfirmation(confirmation);
-    await storage.richDataGrants.insert(submissionGrant);
+    await storage.richDataGrants.insert(submissionGrant, now);
     await expect(
       storage.applications.completeSubmission({
         ownerId,
@@ -683,6 +686,35 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
       revokedAt: null,
       createdAt: now,
     });
+    for (const status of ["requested", "active"] as const) {
+      await storage.delegations.insert({
+        ...delegation,
+        id: `delegation-postgres-expired-${status}`,
+        agentSessionId: submissionSessionId,
+        purpose: `Expired ${status} assistance must not block a manual submission.`,
+        status,
+        expiresAt: "2026-08-29T09:59:59.999Z",
+        createdAt: "2026-08-29T09:55:00.000Z",
+        approvedAt: status === "active" ? "2026-08-29T09:56:00.000Z" : null,
+        revokedAt: null,
+      });
+    }
+    await expect(
+      storage.applications.completeSubmission({
+        ownerId,
+        draftId,
+        expectedDraftVersion: 1,
+        reviewId: review.id,
+        reviewPayloadHash: review.payloadHash,
+        confirmationId: confirmation.id,
+        confirmationHash: confirmation.confirmationHash,
+        grant: { ...submissionGrant, categories: ["contact"] },
+        decisionChannel: "first_party_ui",
+        receipt,
+        now,
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+
     const lateAssistance = {
       ...delegation,
       id: "delegation-postgres-late-assistance",
@@ -755,6 +787,74 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
     await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toEqual(receipt);
     await storage.close();
   });
+
+  it.each(["requested", "active"] as const)(
+    "atomically retires an expired %s grant before inserting its replacement",
+    async (status) => {
+      const storage = createPostgresStorage(databaseUrl!);
+      await resetPostgresSchema(storage.sql);
+      await migratePostgres(storage.sql);
+      close = async () => storage.close();
+
+      const now = "2026-08-29T10:00:00.000Z";
+      const ownerId = `owner-postgres-expired-grant-${status}`;
+      const draftId = `application-postgres-expired-grant-${status}`;
+      await storage.owners.insert({
+        id: ownerId,
+        kind: "guest",
+        verified: true,
+        version: 1,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await storage.applications.insert({
+        id: draftId,
+        ownerId,
+        jobId: `job-postgres-expired-grant-${status}`,
+        state: "draft",
+        version: 0,
+        answers: [],
+        createdAt: now,
+        updatedAt: now,
+      });
+      const expiredGrant = {
+        id: `grant-postgres-expired-${status}`,
+        ownerId,
+        draftId,
+        recipientId: `organization-postgres-expired-${status}`,
+        purpose: `Replace expired ${status} permission.`,
+        payloadHash: (status === "requested" ? "6" : "7").repeat(64),
+        categories: ["identity"] as const,
+        fieldKeys: ["full_name"] as const,
+        documentIds: [] as const,
+        noticeVersion: "privacy-2026-08",
+        legalBasis: "consent" as const,
+        status,
+        expiresAt: "2026-08-29T09:00:00.000Z",
+        createdAt: "2026-08-29T08:00:00.000Z",
+        approvedAt: status === "active" ? "2026-08-29T08:05:00.000Z" : null,
+        withdrawnAt: null,
+      };
+      await storage.richDataGrants.insert(expiredGrant, "2026-08-29T08:00:00.000Z");
+      const replacement = {
+        ...expiredGrant,
+        id: `grant-postgres-replacement-${status}`,
+        status: "requested" as const,
+        expiresAt: "2026-08-29T11:00:00.000Z",
+        createdAt: now,
+        approvedAt: null,
+      };
+
+      await expect(storage.richDataGrants.insert(replacement, now)).resolves.toMatchObject({
+        id: replacement.id,
+        status: "requested",
+        version: 0,
+      });
+      await expect(
+        storage.richDataGrants.getById(expiredGrant.id, ownerId, draftId),
+      ).resolves.toMatchObject({ status: "withdrawn", withdrawnAt: now, version: 1 });
+    },
+  );
 
   it("never reactivates a delegation when approval and revocation race", async () => {
     const storage = createPostgresStorage(databaseUrl!);

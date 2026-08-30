@@ -1375,13 +1375,20 @@ function createRepositories(
           if (input.decisionChannel === "first_party_ui") {
             const delegations = database
               .prepare(
-                `SELECT status FROM application_delegation_records
+                `SELECT status, expires_at AS expiresAt FROM application_delegation_records
                  WHERE owner_id=? AND resource_type='application_draft' AND resource_id=?`,
               )
               .all(input.ownerId, input.draftId) as {
               readonly status: AgentDelegationRecord["status"];
+              readonly expiresAt: string;
             }[];
-            if (requiresAgentClientSubmissionDecision(applicationFromRow(draftRow), delegations)) {
+            if (
+              requiresAgentClientSubmissionDecision(
+                applicationFromRow(draftRow),
+                delegations,
+                input.now,
+              )
+            ) {
               throw new DomainError({
                 code: "FORBIDDEN",
                 message:
@@ -1743,8 +1750,42 @@ function createRepositories(
       },
     },
     richDataGrants: {
-      async insert(record: RichDataGrantRecord) {
-        try {
+      async insert(record: RichDataGrantRecord, now: string) {
+        const categoriesJson = json(record.categories);
+        const fieldKeysJson = json(record.fieldKeys);
+        const documentIdsJson = json(record.documentIds);
+        const insertGrant = database.transaction(() => {
+          const retired = database
+            .prepare(
+              `UPDATE application_data_grant_bindings
+               SET status='withdrawn', withdrawn_at=@now, version=version+1
+               WHERE owner_id=@ownerId
+                 AND draft_id=@draftId
+                 AND recipient_id=@recipientId
+                 AND purpose=@purpose
+                 AND payload_hash=@payloadHash
+                 AND categories_json=@categoriesJson
+                 AND field_keys_json=@fieldKeysJson
+                 AND document_ids_json=@documentIdsJson
+                 AND notice_version=@noticeVersion
+                 AND legal_basis=@legalBasis
+                 AND status IN ('requested','active')
+                 AND expires_at<=@now`,
+            )
+            .run({
+              ...record,
+              now,
+              categoriesJson,
+              fieldKeysJson,
+              documentIdsJson,
+            });
+          if (retired.changes > 0) {
+            database
+              .prepare(
+                "UPDATE application_confirmation_records SET status='invalidated' WHERE owner_id=? AND draft_id=? AND status='active'",
+              )
+              .run(record.ownerId, record.draftId);
+          }
           database
             .prepare(
               `INSERT INTO application_data_grant_bindings(
@@ -1765,9 +1806,9 @@ function createRepositories(
             )
             .run({
               ...record,
-              categoriesJson: json(record.categories),
-              fieldKeysJson: json(record.fieldKeys),
-              documentIdsJson: json(record.documentIds),
+              categoriesJson,
+              fieldKeysJson,
+              documentIdsJson,
               approvalChannel: record.approvalChannel ?? null,
               approvalRequestId: record.approvalRequestId ?? null,
               affirmativeAction: record.affirmativeAction ?? null,
@@ -1778,6 +1819,10 @@ function createRepositories(
               withdrawalEvidenceVersion: record.withdrawalEvidenceVersion ?? null,
               version: 0,
             });
+          return { ...record, version: 0 };
+        });
+        try {
+          return insertGrant.immediate();
         } catch (error) {
           if (isUniqueConstraint(error)) {
             throw new DomainError({
@@ -1787,7 +1832,6 @@ function createRepositories(
           }
           throw error;
         }
-        return { ...record, version: 0 };
       },
       async getById(id, ownerId, draftId) {
         const row = database

@@ -258,7 +258,10 @@ describe("SQLite application authorization persistence", () => {
       approvedAt: null,
       withdrawnAt: null,
     };
-    await expect(storage.richDataGrants.insert(grant)).resolves.toEqual({ ...grant, version: 0 });
+    await expect(storage.richDataGrants.insert(grant, now)).resolves.toEqual({
+      ...grant,
+      version: 0,
+    });
     await expect(storage.richDataGrants.getById(grant.id, ownerId, draftId)).resolves.toEqual({
       ...grant,
       version: 0,
@@ -319,44 +322,98 @@ describe("SQLite application authorization persistence", () => {
       approvedAt: null,
       withdrawnAt: null,
     };
-    await expect(storage.richDataGrants.insert(renewed)).resolves.toMatchObject(renewed);
+    await expect(storage.richDataGrants.insert(renewed, now)).resolves.toMatchObject(renewed);
     await expect(
-      storage.richDataGrants.insert({
-        ...renewed,
-        id: "grant_71000000-0000-7000-8000-000000000004",
-      }),
+      storage.richDataGrants.insert(
+        {
+          ...renewed,
+          id: "grant_71000000-0000-7000-8000-000000000004",
+        },
+        now,
+      ),
     ).rejects.toMatchObject({ code: "CONFLICT" });
     await expect(
-      storage.richDataGrants.insert({
-        ...renewed,
-        id: "grant_71000000-0000-7000-8000-000000000005",
-        noticeVersion: "privacy-2026-09",
-      }),
+      storage.richDataGrants.insert(
+        {
+          ...renewed,
+          id: "grant_71000000-0000-7000-8000-000000000005",
+          noticeVersion: "privacy-2026-09",
+        },
+        now,
+      ),
     ).resolves.toMatchObject({ noticeVersion: "privacy-2026-09" });
     storage.close();
   });
 
-  it("rejects a data grant whose owner does not own the bound draft", async () => {
-    const { storage } = await createFixture();
-    await expect(
-      storage.richDataGrants.insert({
-        id: "grant_71000000-0000-7000-8000-000000000002",
+  it.each(["requested", "active"] as const)(
+    "atomically retires an expired %s grant before inserting its replacement",
+    async (status) => {
+      const { storage } = await createFixture();
+      const suffix = status === "requested" ? "061" : "062";
+      const expiredGrant = {
+        id: `grant_71000000-0000-7000-8000-000000000${suffix}`,
         ownerId,
-        draftId: otherDraftId,
+        draftId,
         recipientId: agentSessionId,
-        purpose: "Cross-owner disclosure must fail.",
-        payloadHash: "e".repeat(64),
-        categories: ["identity"],
-        fieldKeys: ["full_name"],
-        documentIds: [],
+        purpose: `Replace expired ${status} permission.`,
+        payloadHash: (status === "requested" ? "6" : "7").repeat(64),
+        categories: ["identity"] as const,
+        fieldKeys: ["full_name"] as const,
+        documentIds: [] as const,
         noticeVersion: "privacy-2026-08",
-        legalBasis: "consent",
-        status: "requested",
+        legalBasis: "consent" as const,
+        status,
+        expiresAt: expired,
+        createdAt: "2026-08-29T08:00:00.000Z",
+        approvedAt: status === "active" ? "2026-08-29T08:05:00.000Z" : null,
+        withdrawnAt: null,
+      };
+      await storage.richDataGrants.insert(expiredGrant, "2026-08-29T08:00:00.000Z");
+
+      const replacement = {
+        ...expiredGrant,
+        id: `grant_71000000-0000-7000-8000-000000000${status === "requested" ? "071" : "072"}`,
+        status: "requested" as const,
         expiresAt: future,
         createdAt: now,
         approvedAt: null,
-        withdrawnAt: null,
-      }),
+      };
+      await expect(storage.richDataGrants.insert(replacement, now)).resolves.toMatchObject({
+        id: replacement.id,
+        status: "requested",
+        version: 0,
+      });
+      await expect(
+        storage.richDataGrants.getById(expiredGrant.id, ownerId, draftId),
+      ).resolves.toMatchObject({ status: "withdrawn", withdrawnAt: now, version: 1 });
+      storage.close();
+    },
+  );
+
+  it("rejects a data grant whose owner does not own the bound draft", async () => {
+    const { storage } = await createFixture();
+    await expect(
+      storage.richDataGrants.insert(
+        {
+          id: "grant_71000000-0000-7000-8000-000000000002",
+          ownerId,
+          draftId: otherDraftId,
+          recipientId: agentSessionId,
+          purpose: "Cross-owner disclosure must fail.",
+          payloadHash: "e".repeat(64),
+          categories: ["identity"],
+          fieldKeys: ["full_name"],
+          documentIds: [],
+          noticeVersion: "privacy-2026-08",
+          legalBasis: "consent",
+          status: "requested",
+          expiresAt: future,
+          createdAt: now,
+          approvedAt: null,
+          withdrawnAt: null,
+        },
+        now,
+      ),
     ).rejects.toBeDefined();
     storage.close();
   });
@@ -384,24 +441,27 @@ describe("SQLite application authorization persistence", () => {
       invalidatedAt: null,
     };
     await storage.applications.insertReview(review);
-    const grant = await storage.richDataGrants.insert({
-      id: "grant_71000000-0000-7000-8000-000000000031",
-      ownerId,
-      draftId,
-      recipientId: "org_71000000-0000-7000-8000-000000000001",
-      purpose: "Submit this reviewed application to Authorization Lab.",
-      payloadHash: review.payloadHash,
-      categories: ["identity"],
-      fieldKeys: ["full_name"],
-      documentIds: [],
-      noticeVersion: "privacy-2026-08",
-      legalBasis: "user_instruction",
-      status: "requested",
-      expiresAt: future,
-      createdAt: now,
-      approvedAt: null,
-      withdrawnAt: null,
-    });
+    const grant = await storage.richDataGrants.insert(
+      {
+        id: "grant_71000000-0000-7000-8000-000000000031",
+        ownerId,
+        draftId,
+        recipientId: "org_71000000-0000-7000-8000-000000000001",
+        purpose: "Submit this reviewed application to Authorization Lab.",
+        payloadHash: review.payloadHash,
+        categories: ["identity"],
+        fieldKeys: ["full_name"],
+        documentIds: [],
+        noticeVersion: "privacy-2026-08",
+        legalBasis: "user_instruction",
+        status: "requested",
+        expiresAt: future,
+        createdAt: now,
+        approvedAt: null,
+        withdrawnAt: null,
+      },
+      now,
+    );
     const guard = {
       expectedGrantVersion: grant.version ?? 0,
       expectedDraftVersion: reviewed.version,
@@ -532,7 +592,7 @@ describe("SQLite application authorization persistence", () => {
     };
     await storage.applications.insertReview(review);
     await storage.applications.insertConfirmation(confirmation);
-    await storage.richDataGrants.insert(grant);
+    await storage.richDataGrants.insert(grant, now);
 
     await expect(storage.applications.getLatestReview(draftId, ownerId)).resolves.toEqual(review);
     await expect(
@@ -542,7 +602,10 @@ describe("SQLite application authorization persistence", () => {
       storage.applications.getConfirmation(confirmation.id, ownerId),
     ).resolves.toMatchObject({ status: "invalidated" });
     await expect(
-      storage.richDataGrants.insert({ ...grant, id: "grant_71000000-0000-7000-8000-000000000019" }),
+      storage.richDataGrants.insert(
+        { ...grant, id: "grant_71000000-0000-7000-8000-000000000019" },
+        now,
+      ),
     ).resolves.toMatchObject({ version: 0 });
     await expect(
       storage.applications.applyMaterialEdit({
@@ -674,7 +737,7 @@ describe("SQLite application authorization persistence", () => {
     };
     await storage.applications.insertReview(review);
     await storage.applications.insertConfirmation(confirmation);
-    await storage.richDataGrants.insert(grant);
+    await storage.richDataGrants.insert(grant, now);
 
     await expect(
       storage.applications.completeSubmission({
@@ -731,6 +794,38 @@ describe("SQLite application authorization persistence", () => {
       revokedAt: null,
       createdAt: now,
     });
+    for (const status of ["requested", "active"] as const) {
+      await storage.delegations.insert({
+        id: `delegation_71000000-0000-7000-8000-00000000001${status === "requested" ? "3" : "4"}`,
+        ownerId,
+        agentSessionId,
+        resourceType: "application_draft",
+        resourceId: draftId,
+        operations: ["read_application"],
+        purpose: `Expired ${status} assistance must not block a manual submission.`,
+        status,
+        expiresAt: expired,
+        createdAt: expired,
+        approvedAt: status === "active" ? expired : null,
+        revokedAt: null,
+      });
+    }
+    await expect(
+      storage.applications.completeSubmission({
+        ownerId,
+        draftId,
+        expectedDraftVersion: reviewed.version,
+        reviewId: review.id,
+        reviewPayloadHash: review.payloadHash,
+        confirmationId: confirmation.id,
+        confirmationHash: confirmation.confirmationHash,
+        grant: { ...grant, version: 0, categories: ["contact"] },
+        decisionChannel: "first_party_ui",
+        receipt,
+        now,
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+
     const lateAssistance = {
       id: "delegation_71000000-0000-7000-8000-000000000011",
       ownerId,
