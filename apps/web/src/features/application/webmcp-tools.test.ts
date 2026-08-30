@@ -455,6 +455,9 @@ describe("site-wide application tools", () => {
     });
     expect(names(manifests)).toEqual(stableNames);
     expect(manifests[2]!.description).toContain("revoke active assistance");
+    expect(manifests[2]!.description).toContain(
+      "tell the person to decide in the external agent client",
+    );
     expect(manifests[5]!.description).toContain("exact requestId and draftVersion");
     expect(manifests[6]!.description).toContain("immediately");
   });

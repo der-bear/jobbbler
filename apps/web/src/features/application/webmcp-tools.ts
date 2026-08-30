@@ -340,7 +340,7 @@ function assistanceDecisionTool(
     name: "decide_application_assistance",
     purpose: "Record the person's assistance decision from the agent client.",
     description:
-      "Use the exact requestId returned by request_application_assistance and the person's explicit decision: approved, declined, or withdraw. Use withdraw only to revoke active assistance bound to that request. Never infer or approve this decision on the person's behalf. Approval is short-lived and draft-bound; it never shares data or submits an application.",
+      "Use the exact requestId returned by request_application_assistance and the person's explicit decision: approved, declined, or withdraw. Use withdraw only to revoke active assistance bound to that request. Never infer or approve this decision on the person's behalf; when no explicit decision is present, stop and tell the person to decide in the external agent client. Approval is short-lived and draft-bound; it never shares data or submits an application.",
     inputSchema: assistanceDecisionInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -647,7 +647,7 @@ const stableApplicationToolDefinitions: readonly StableApplicationToolDefinition
     name: "decide_application_assistance",
     purpose: "Record the person's assistance decision from the agent client.",
     description:
-      "Use the exact requestId returned by request_application_assistance and the person's explicit decision: approved, declined, or withdraw. Use withdraw to revoke active assistance bound to that request. Never infer or approve this decision on the person's behalf. Approval is short-lived and limited to one private application.",
+      "Use the exact requestId returned by request_application_assistance and the person's explicit decision: approved, declined, or withdraw. Use withdraw to revoke active assistance bound to that request. Never infer or approve this decision on the person's behalf; when no explicit decision is present, stop and tell the person to decide in the external agent client. Approval is short-lived and limited to one private application.",
     readOnly: false,
     input: "assistance_decision",
   },
