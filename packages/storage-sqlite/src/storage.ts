@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from "node:util";
+
 import {
   applicationDraftSchema,
   jobSchema,
@@ -32,6 +34,10 @@ import {
   type OwnerActivityEventRecord,
   type OwnerRecord,
   type SavedSearchRecord,
+  type SearchAlertActivationInput,
+  type SearchAlertActivationResult,
+  type SearchAlertPreparationSagaBody,
+  type SearchAlertPreparationSagaRecord,
   type ScheduleRecord,
   type Storage,
   type WorkItemRecord,
@@ -522,6 +528,601 @@ function idempotencyFromRow(row: IdempotencyRow): IdempotencyRecord {
   };
 }
 
+interface SearchAlertReviewEvidenceBody {
+  readonly purpose: "search_alert_activation";
+  readonly ownerId: string;
+  readonly requestId: string;
+  readonly savedSearchId: string;
+  readonly savedSearchVersion: number;
+  readonly criteria: JobSearchCriteria;
+  readonly endpointId: string;
+  readonly challengeId: string;
+  readonly scheduleId: string;
+  readonly recurrence: ScheduleRecord["recurrence"];
+  readonly firstRunAt: string;
+  readonly privacyNoticeVersion: string;
+  readonly issuedAt: string;
+  readonly expiresAt: string;
+}
+
+interface SearchAlertDecisionIntentBody {
+  readonly version: 1;
+  readonly status: "deciding";
+  readonly requestId: string;
+  readonly reviewBinding: string;
+  readonly decision: "approved" | "declined";
+  readonly recordedAt: string;
+}
+
+interface SearchAlertChallengeRow {
+  readonly id: string;
+  readonly owner_id: string;
+  readonly endpoint_id: string;
+  readonly purpose: string;
+}
+
+const searchAlertDecisionIntentMaximumLifetimeMs = 24 * 60 * 60 * 1_000;
+
+function searchAlertConflict(message: string): never {
+  throw new DomainError({ code: "CONFLICT", message });
+}
+
+function timestampMs(value: string, label: string): number {
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) {
+    return searchAlertConflict(`The search-alert ${label} timestamp is invalid.`);
+  }
+  return parsed;
+}
+
+function objectBody(value: unknown, label: string): Readonly<Record<string, unknown>> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return searchAlertConflict(`The search-alert ${label} envelope is invalid.`);
+  }
+  return value as Readonly<Record<string, unknown>>;
+}
+
+function getIdempotencyRecord(
+  database: SqliteDatabase,
+  scope: string,
+  key: string,
+): IdempotencyRecord | null {
+  const row = database
+    .prepare("SELECT * FROM idempotency_records WHERE scope = ? AND key = ?")
+    .get(scope, key) as IdempotencyRow | undefined;
+  return row === undefined ? null : idempotencyFromRow(row);
+}
+
+function putExactIdempotencyRecord(
+  database: SqliteDatabase,
+  record: IdempotencyRecord,
+): { readonly inserted: boolean; readonly record: IdempotencyRecord } {
+  const stored = getIdempotencyRecord(database, record.scope, record.key);
+  if (stored !== null) {
+    if (!isDeepStrictEqual(stored, record)) {
+      return searchAlertConflict(
+        "The search-alert lifecycle record is already bound to a different envelope.",
+      );
+    }
+    return { inserted: false, record: stored };
+  }
+  database
+    .prepare(
+      `INSERT INTO idempotency_records(
+         scope, key, request_hash, response_status, response_body_json, created_at, expires_at
+       ) VALUES (
+         @scope, @key, @requestHash, @responseStatus, @responseBodyJson, @createdAt, @expiresAt
+       )`,
+    )
+    .run({ ...record, responseBodyJson: json(record.responseBody) });
+  return { inserted: true, record };
+}
+
+function parseSearchAlertSaga(record: IdempotencyRecord): SearchAlertPreparationSagaRecord {
+  const responseBody = objectBody(record.responseBody, "preparation saga");
+  const requiredStrings = [
+    "ownerId",
+    "requestId",
+    "savedSearchId",
+    "endpointId",
+    "challengeId",
+    "scheduleId",
+    "issuedAt",
+  ] as const;
+  if (
+    responseBody["version"] !== 1 ||
+    responseBody["status"] !== "preparing" ||
+    requiredStrings.some(
+      (key) => typeof responseBody[key] !== "string" || responseBody[key].length === 0,
+    )
+  ) {
+    return searchAlertConflict("The search-alert preparation saga identity is invalid.");
+  }
+  const body = responseBody as unknown as SearchAlertPreparationSagaBody;
+  if (
+    record.scope !== `search_alert.request_saga:${body.ownerId}` ||
+    record.createdAt !== body.issuedAt
+  ) {
+    return searchAlertConflict("The search-alert preparation saga binding is invalid.");
+  }
+  timestampMs(body.issuedAt, "preparation issuance");
+  timestampMs(record.expiresAt, "preparation expiry");
+  return { ...record, responseBody: body };
+}
+
+function findSearchAlertSaga(
+  database: SqliteDatabase,
+  ownerId: string,
+  requestId: string,
+): SearchAlertPreparationSagaRecord | null {
+  const rows = database
+    .prepare(
+      `SELECT * FROM idempotency_records
+       WHERE scope = ?
+         AND json_extract(response_body_json, '$.ownerId') = ?
+         AND json_extract(response_body_json, '$.requestId') = ?
+       ORDER BY key`,
+    )
+    .all(`search_alert.request_saga:${ownerId}`, ownerId, requestId) as IdempotencyRow[];
+  if (rows.length > 1) {
+    return searchAlertConflict("The search-alert request is bound to multiple preparation sagas.");
+  }
+  return rows[0] === undefined ? null : parseSearchAlertSaga(idempotencyFromRow(rows[0]));
+}
+
+function searchAlertEvidence(
+  database: SqliteDatabase,
+  saga: SearchAlertPreparationSagaRecord,
+  reviewEvidenceHash: string,
+  options: { readonly liveAt?: string } = {},
+): { readonly record: IdempotencyRecord; readonly body: SearchAlertReviewEvidenceBody } {
+  const body = saga.responseBody;
+  const record = getIdempotencyRecord(
+    database,
+    `search_alert.request:${body.ownerId}`,
+    body.requestId,
+  );
+  if (record === null || record.requestHash !== reviewEvidenceHash) {
+    return searchAlertConflict("The search-alert review evidence is missing or has drifted.");
+  }
+  const responseBody = objectBody(record.responseBody, "review evidence");
+  if (
+    responseBody["purpose"] !== "search_alert_activation" ||
+    responseBody["ownerId"] !== body.ownerId ||
+    responseBody["requestId"] !== body.requestId ||
+    responseBody["savedSearchId"] !== body.savedSearchId ||
+    responseBody["savedSearchVersion"] !== 0 ||
+    typeof responseBody["criteria"] !== "object" ||
+    responseBody["criteria"] === null ||
+    typeof responseBody["endpointId"] !== "string" ||
+    responseBody["challengeId"] !== body.challengeId ||
+    responseBody["scheduleId"] !== body.scheduleId ||
+    typeof responseBody["recurrence"] !== "object" ||
+    responseBody["recurrence"] === null ||
+    typeof responseBody["firstRunAt"] !== "string" ||
+    typeof responseBody["privacyNoticeVersion"] !== "string" ||
+    responseBody["issuedAt"] !== body.issuedAt ||
+    responseBody["expiresAt"] !== record.expiresAt
+  ) {
+    return searchAlertConflict("The search-alert review evidence binding is invalid.");
+  }
+  timestampMs(responseBody["firstRunAt"] as string, "first run");
+  if (
+    options.liveAt !== undefined &&
+    timestampMs(record.expiresAt, "review expiry") <= timestampMs(options.liveAt, "current")
+  ) {
+    return searchAlertConflict("The search-alert review evidence has expired.");
+  }
+  return {
+    record,
+    body: responseBody as unknown as SearchAlertReviewEvidenceBody,
+  };
+}
+
+function assertSearchAlertSagaLive(saga: SearchAlertPreparationSagaRecord, now: string): void {
+  if (timestampMs(saga.expiresAt, "preparation expiry") <= timestampMs(now, "current")) {
+    searchAlertConflict("The search-alert preparation saga has expired.");
+  }
+}
+
+function assertSearchAlertIntent(
+  intent: IdempotencyRecord,
+  ownerId: string,
+  requestId: string,
+  decision: "approved" | "declined",
+): SearchAlertDecisionIntentBody {
+  const responseBody = objectBody(intent.responseBody, "decision intent");
+  if (
+    intent.scope !== `search_alert.decision_intent:${ownerId}` ||
+    intent.key !== requestId ||
+    intent.responseStatus !== 202 ||
+    responseBody["version"] !== 1 ||
+    responseBody["status"] !== "deciding" ||
+    responseBody["requestId"] !== requestId ||
+    responseBody["decision"] !== decision ||
+    responseBody["reviewBinding"] !== intent.requestHash ||
+    responseBody["recordedAt"] !== intent.createdAt
+  ) {
+    searchAlertConflict("The search-alert decision intent binding is invalid.");
+  }
+  timestampMs(intent.createdAt, "decision intent recording");
+  return responseBody as unknown as SearchAlertDecisionIntentBody;
+}
+
+function assertSearchAlertIntentLive(intent: IdempotencyRecord, now: string): void {
+  const createdAt = timestampMs(intent.createdAt, "decision intent recording");
+  const expiresAt = timestampMs(intent.expiresAt, "decision intent expiry");
+  if (
+    expiresAt <= timestampMs(now, "current") ||
+    expiresAt <= createdAt ||
+    expiresAt > createdAt + searchAlertDecisionIntentMaximumLifetimeMs
+  ) {
+    searchAlertConflict("The search-alert decision intent lifetime is invalid or expired.");
+  }
+}
+
+function assertSearchAlertDecision(
+  decisionRecord: IdempotencyRecord,
+  saga: SearchAlertPreparationSagaRecord,
+  review: SearchAlertReviewEvidenceBody,
+  intent: IdempotencyRecord,
+  decision: "approved" | "declined",
+  schedule: ScheduleRecord | null,
+): void {
+  const intentBody = assertSearchAlertIntent(
+    intent,
+    saga.responseBody.ownerId,
+    saga.responseBody.requestId,
+    decision,
+  );
+  const responseBody = objectBody(decisionRecord.responseBody, "decision");
+  const receipt = objectBody(responseBody["receipt"], "decision receipt");
+  const evidence = objectBody(responseBody["evidence"], "decision evidence");
+  const sagaBody = saga.responseBody;
+  const sharedMismatch =
+    decisionRecord.scope !== `search_alert.decision:${sagaBody.ownerId}` ||
+    decisionRecord.key !== sagaBody.requestId ||
+    decisionRecord.requestHash !== intent.requestHash ||
+    decisionRecord.createdAt !== intentBody.recordedAt ||
+    responseBody["version"] !== 1 ||
+    responseBody["status"] !== "completed" ||
+    receipt["status"] !== "completed" ||
+    receipt["requestId"] !== sagaBody.requestId ||
+    receipt["decision"] !== decision ||
+    receipt["channel"] !== "agent_client" ||
+    receipt["savedSearchId"] !== review.savedSearchId ||
+    receipt["decidedAt"] !== intentBody.recordedAt ||
+    typeof receipt["summary"] !== "string" ||
+    evidence["reviewBinding"] !== intent.requestHash ||
+    evidence["savedSearchId"] !== review.savedSearchId ||
+    evidence["savedSearchVersion"] !== review.savedSearchVersion ||
+    evidence["endpointId"] !== review.endpointId ||
+    !isDeepStrictEqual(evidence["criteria"], review.criteria) ||
+    !isDeepStrictEqual(evidence["recurrence"], review.recurrence) ||
+    evidence["firstRunAt"] !== review.firstRunAt ||
+    evidence["privacyNoticeVersion"] !== review.privacyNoticeVersion ||
+    evidence["channel"] !== "agent_client" ||
+    evidence["decidedAt"] !== intentBody.recordedAt;
+  const decisionMismatch =
+    decision === "approved"
+      ? schedule === null ||
+        schedule.ownerId !== sagaBody.ownerId ||
+        schedule.id !== sagaBody.scheduleId ||
+        schedule.savedSearchId !== review.savedSearchId ||
+        schedule.deliveryEndpointId !== review.endpointId ||
+        !isDeepStrictEqual(schedule.recurrence, review.recurrence) ||
+        schedule.nextRunAt !== review.firstRunAt ||
+        schedule.createdAt !== intentBody.recordedAt ||
+        schedule.updatedAt !== intentBody.recordedAt ||
+        receipt["scheduleId"] !== schedule.id ||
+        receipt["nextRunAt"] !== schedule.nextRunAt
+      : schedule !== null || receipt["scheduleId"] !== null || receipt["nextRunAt"] !== null;
+  if (sharedMismatch || decisionMismatch) {
+    searchAlertConflict("The search-alert decision envelope binding is invalid.");
+  }
+}
+
+function exactCommittedSearchAlertApproval(
+  database: SqliteDatabase,
+  saga: SearchAlertPreparationSagaRecord,
+): boolean {
+  const body = saga.responseBody;
+  const decision = getIdempotencyRecord(
+    database,
+    `search_alert.decision:${body.ownerId}`,
+    body.requestId,
+  );
+  if (decision === null) return false;
+  const envelope = objectBody(decision.responseBody, "decision");
+  const receipt = objectBody(envelope["receipt"], "decision receipt");
+  const evidence = objectBody(envelope["evidence"], "decision evidence");
+  if (
+    receipt["requestId"] !== body.requestId ||
+    evidence["savedSearchId"] !== body.savedSearchId ||
+    evidence["reviewBinding"] !== decision.requestHash
+  ) {
+    return searchAlertConflict("The durable search-alert decision has drifted from its saga.");
+  }
+  if (receipt["decision"] === "declined") {
+    if (receipt["scheduleId"] !== null || receipt["nextRunAt"] !== null) {
+      return searchAlertConflict("The durable search-alert decline is invalid.");
+    }
+    return false;
+  }
+  if (receipt["decision"] !== "approved") {
+    return searchAlertConflict("The durable search-alert decision is invalid.");
+  }
+  const schedule = database.prepare("SELECT * FROM schedules WHERE id = ?").get(body.scheduleId) as
+    ScheduleRow | undefined;
+  if (
+    receipt["scheduleId"] !== body.scheduleId ||
+    schedule === undefined ||
+    schedule.owner_id !== body.ownerId ||
+    schedule.saved_search_id !== body.savedSearchId
+  ) {
+    return searchAlertConflict("The durable search-alert approval has drifted from its saga.");
+  }
+  return true;
+}
+
+function liveApprovedSearchAlertIntent(
+  database: SqliteDatabase,
+  saga: SearchAlertPreparationSagaRecord,
+  now: string,
+): boolean {
+  const body = saga.responseBody;
+  const intent = getIdempotencyRecord(
+    database,
+    `search_alert.decision_intent:${body.ownerId}`,
+    body.requestId,
+  );
+  if (intent === null) return false;
+  const responseBody = objectBody(intent.responseBody, "decision intent");
+  if (
+    intent.scope !== `search_alert.decision_intent:${body.ownerId}` ||
+    intent.key !== body.requestId ||
+    intent.responseStatus !== 202 ||
+    responseBody["version"] !== 1 ||
+    responseBody["status"] !== "deciding" ||
+    responseBody["requestId"] !== body.requestId ||
+    responseBody["reviewBinding"] !== intent.requestHash ||
+    responseBody["recordedAt"] !== intent.createdAt ||
+    (responseBody["decision"] !== "approved" && responseBody["decision"] !== "declined")
+  ) {
+    return searchAlertConflict("The stored search-alert decision intent has drifted.");
+  }
+  const createdAt = timestampMs(intent.createdAt, "decision intent recording");
+  const expiresAt = timestampMs(intent.expiresAt, "decision intent expiry");
+  if (
+    expiresAt <= timestampMs(now, "current") ||
+    expiresAt <= createdAt ||
+    expiresAt > createdAt + searchAlertDecisionIntentMaximumLifetimeMs
+  ) {
+    return false;
+  }
+  return responseBody["decision"] === "approved";
+}
+
+function optionalSearchAlertEvidence(
+  database: SqliteDatabase,
+  saga: SearchAlertPreparationSagaRecord,
+): { readonly record: IdempotencyRecord; readonly body: SearchAlertReviewEvidenceBody } | null {
+  const body = saga.responseBody;
+  const record = getIdempotencyRecord(
+    database,
+    `search_alert.request:${body.ownerId}`,
+    body.requestId,
+  );
+  return record === null ? null : searchAlertEvidence(database, saga, record.requestHash);
+}
+
+function finalizeSearchAlertPreparation(
+  database: SqliteDatabase,
+  saga: SearchAlertPreparationSagaRecord,
+  evidence: { readonly body: SearchAlertReviewEvidenceBody } | null,
+): boolean {
+  const body = saga.responseBody;
+  const storedSaga = getIdempotencyRecord(database, saga.scope, saga.key);
+  if (storedSaga === null) return false;
+  if (!isDeepStrictEqual(storedSaga, saga)) {
+    return searchAlertConflict("The search-alert preparation saga changed before cleanup.");
+  }
+
+  const challenge = database
+    .prepare(
+      `SELECT id, owner_id, endpoint_id, purpose
+       FROM verification_challenges
+       WHERE id = ?`,
+    )
+    .get(body.challengeId) as SearchAlertChallengeRow | undefined;
+  if (
+    challenge !== undefined &&
+    (challenge.owner_id !== body.ownerId ||
+      challenge.purpose !== "search_alert_review" ||
+      (evidence !== null && challenge.endpoint_id !== evidence.body.endpointId))
+  ) {
+    return searchAlertConflict("The search-alert review challenge changed before cleanup.");
+  }
+
+  database
+    .prepare(
+      `DELETE FROM saved_searches
+       WHERE id = ?
+         AND owner_id = ?
+         AND version = 0
+         AND created_at = ?
+         AND NOT EXISTS (
+           SELECT 1 FROM schedules WHERE saved_search_id = saved_searches.id
+         )`,
+    )
+    .run(body.savedSearchId, body.ownerId, body.issuedAt);
+
+  if (challenge !== undefined) {
+    const deletedChallenge = database
+      .prepare(
+        `DELETE FROM verification_challenges
+         WHERE id = ? AND owner_id = ? AND purpose = ? AND endpoint_id = ?`,
+      )
+      .run(challenge.id, body.ownerId, "search_alert_review", challenge.endpoint_id);
+    if (deletedChallenge.changes !== 1) {
+      return searchAlertConflict("The search-alert review challenge changed during cleanup.");
+    }
+    database
+      .prepare(
+        `DELETE FROM verification_endpoints
+         WHERE id = ?
+           AND owner_id = ?
+           AND status = 'pending'
+           AND NOT EXISTS (
+             SELECT 1 FROM verification_challenges WHERE endpoint_id = verification_endpoints.id
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM owner_recovery_challenges
+             WHERE endpoint_id = verification_endpoints.id
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM schedules WHERE delivery_endpoint_id = verification_endpoints.id
+           )`,
+      )
+      .run(challenge.endpoint_id, body.ownerId);
+  }
+
+  const removeShortRecord = database.prepare(
+    "DELETE FROM idempotency_records WHERE scope = ? AND key = ?",
+  );
+  for (const [scope, key] of [
+    [`search_alert.request_claim:${body.ownerId}`, saga.key],
+    [`search_alert.request_result:${body.ownerId}`, saga.key],
+    [`search_alert.request:${body.ownerId}`, body.requestId],
+    [`search_alert.decision_claim:${body.ownerId}`, body.requestId],
+    [`search_alert.decision_intent:${body.ownerId}`, body.requestId],
+  ] as const) {
+    removeShortRecord.run(scope, key);
+  }
+
+  const deletedSaga = database
+    .prepare(
+      `DELETE FROM idempotency_records
+       WHERE scope = ? AND key = ? AND request_hash = ? AND response_status = ?
+         AND response_body_json = ? AND created_at = ? AND expires_at = ?`,
+    )
+    .run(
+      saga.scope,
+      saga.key,
+      saga.requestHash,
+      saga.responseStatus,
+      json(saga.responseBody),
+      saga.createdAt,
+      saga.expiresAt,
+    );
+  if (deletedSaga.changes !== 1) {
+    return searchAlertConflict("The search-alert preparation saga changed during cleanup.");
+  }
+  return true;
+}
+
+function commitApprovedSearchAlertSqlite(
+  database: SqliteDatabase,
+  input: SearchAlertActivationInput,
+): SearchAlertActivationResult {
+  if (
+    input.schedule.deliveryEndpointId !== input.verifiedEndpointId ||
+    input.decision.scope !== `search_alert.decision:${input.schedule.ownerId}`
+  ) {
+    return searchAlertConflict(
+      "Search-alert activation is not bound to the reviewed owner and endpoint.",
+    );
+  }
+
+  const scheduleRows = database
+    .prepare(
+      `SELECT * FROM schedules
+       WHERE id = ? OR (owner_id = ? AND saved_search_id = ?)
+       ORDER BY CASE WHEN id = ? THEN 0 ELSE 1 END`,
+    )
+    .all(
+      input.schedule.id,
+      input.schedule.ownerId,
+      input.schedule.savedSearchId,
+      input.schedule.id,
+    ) as ScheduleRow[];
+  const storedSchedule =
+    scheduleRows[0]?.id === undefined ? null : scheduleFromRow(scheduleRows[0]);
+  if (
+    scheduleRows.length > 1 ||
+    (storedSchedule !== null && !isDeepStrictEqual(storedSchedule, input.schedule))
+  ) {
+    return searchAlertConflict("The reviewed search-alert schedule conflicts with stored state.");
+  }
+
+  const storedDecision = getIdempotencyRecord(database, input.decision.scope, input.decision.key);
+  if (storedDecision !== null && !isDeepStrictEqual(storedDecision, input.decision)) {
+    return searchAlertConflict("The search-alert decision receipt conflicts with stored state.");
+  }
+  if (storedSchedule === null && storedDecision !== null) {
+    return searchAlertConflict(
+      "A search-alert decision receipt exists without its exact schedule.",
+    );
+  }
+  if (storedSchedule !== null && storedDecision !== null) {
+    return { inserted: false, schedule: storedSchedule, decision: storedDecision };
+  }
+
+  const ownerRow = database
+    .prepare("SELECT * FROM owners WHERE id = ?")
+    .get(input.schedule.ownerId) as OwnerRow | undefined;
+  if (ownerRow === undefined || ownerRow.verified !== 1) {
+    return searchAlertConflict("The search-alert owner is no longer verified.");
+  }
+  const savedSearchRow = database
+    .prepare("SELECT * FROM saved_searches WHERE id = ?")
+    .get(input.schedule.savedSearchId) as SavedSearchRow | undefined;
+  if (
+    savedSearchRow === undefined ||
+    savedSearchRow.owner_id !== input.schedule.ownerId ||
+    savedSearchRow.version !== input.expectedSavedSearchVersion
+  ) {
+    return searchAlertConflict("The reviewed saved search changed before alert activation.");
+  }
+  const endpointRow = database
+    .prepare("SELECT owner_id, status FROM verification_endpoints WHERE id = ?")
+    .get(input.verifiedEndpointId) as
+    { readonly owner_id: string; readonly status: string } | undefined;
+  if (
+    endpointRow === undefined ||
+    endpointRow.owner_id !== input.schedule.ownerId ||
+    endpointRow.status !== "verified"
+  ) {
+    return searchAlertConflict("The reviewed delivery endpoint is no longer verified.");
+  }
+
+  if (storedSchedule === null) {
+    database
+      .prepare(
+        `INSERT INTO schedules(
+           id, owner_id, saved_search_id, recurrence_json, delivery_channel,
+           delivery_endpoint_id, enabled, next_run_at, version, created_at, updated_at
+         ) VALUES (
+           @id, @ownerId, @savedSearchId, @recurrenceJson, @deliveryChannel,
+           @deliveryEndpointId, @enabled, @nextRunAt, @version, @createdAt, @updatedAt
+         )`,
+      )
+      .run({
+        ...input.schedule,
+        recurrenceJson: json(input.schedule.recurrence),
+        enabled: input.schedule.enabled ? 1 : 0,
+      });
+  }
+  if (storedDecision === null) {
+    putExactIdempotencyRecord(database, input.decision);
+  }
+  return {
+    inserted: storedDecision === null,
+    schedule: storedSchedule ?? input.schedule,
+    decision: storedDecision ?? input.decision,
+  };
+}
+
 function notFound(entity: string): DomainError {
   return new DomainError({ code: "NOT_FOUND", message: `${entity} was not found.` });
 }
@@ -1008,6 +1609,218 @@ function createRepositories(
           ScheduleRow | undefined;
         if (row === undefined) throw notFound("Schedule");
         return scheduleFromRow(row);
+      },
+    },
+    searchAlertActivation: {
+      async commitApproved(input) {
+        const commit = database.transaction(() => commitApprovedSearchAlertSqlite(database, input));
+        return commit.immediate();
+      },
+    },
+    searchAlertPreparation: {
+      async beginApproved(input) {
+        const begin = database.transaction(() => {
+          const saga = findSearchAlertSaga(database, input.ownerId, input.requestId);
+          if (saga === null) {
+            return searchAlertConflict("The search-alert preparation saga was not found.");
+          }
+          assertSearchAlertSagaLive(saga, input.now);
+          searchAlertEvidence(database, saga, input.reviewEvidenceHash, { liveAt: input.now });
+          assertSearchAlertIntent(input.intent, input.ownerId, input.requestId, "approved");
+          assertSearchAlertIntentLive(input.intent, input.now);
+          return putExactIdempotencyRecord(database, input.intent);
+        });
+        return begin.immediate();
+      },
+      async commitApproved(input) {
+        const commit = database.transaction(() => {
+          const saga = findSearchAlertSaga(database, input.ownerId, input.requestId);
+          if (saga === null) {
+            return searchAlertConflict("The search-alert preparation saga was not found.");
+          }
+          const evidence = searchAlertEvidence(database, saga, input.reviewEvidenceHash);
+          assertSearchAlertIntent(input.intent, input.ownerId, input.requestId, "approved");
+          const storedIntent = getIdempotencyRecord(database, input.intent.scope, input.intent.key);
+          if (storedIntent === null || !isDeepStrictEqual(storedIntent, input.intent)) {
+            return searchAlertConflict("The exact approved search-alert intent was not recorded.");
+          }
+          assertSearchAlertIntentLive(storedIntent, input.now);
+          assertSearchAlertDecision(
+            input.decision,
+            saga,
+            evidence.body,
+            input.intent,
+            "approved",
+            input.schedule,
+          );
+          if (
+            input.schedule.ownerId !== saga.responseBody.ownerId ||
+            input.schedule.id !== saga.responseBody.scheduleId ||
+            input.schedule.savedSearchId !== saga.responseBody.savedSearchId ||
+            input.schedule.deliveryEndpointId !== evidence.body.endpointId ||
+            input.verifiedEndpointId !== evidence.body.endpointId ||
+            input.expectedSavedSearchVersion !== evidence.body.savedSearchVersion
+          ) {
+            return searchAlertConflict("The approved search-alert activation has drifted.");
+          }
+          const result = commitApprovedSearchAlertSqlite(database, input);
+          if (!finalizeSearchAlertPreparation(database, saga, evidence)) {
+            return searchAlertConflict("The search-alert preparation cleanup did not complete.");
+          }
+          return result;
+        });
+        return commit.immediate();
+      },
+      async decline(input) {
+        const decline = database.transaction(() => {
+          const saga = findSearchAlertSaga(database, input.ownerId, input.requestId);
+          if (saga === null) {
+            return searchAlertConflict("The search-alert preparation saga was not found.");
+          }
+          assertSearchAlertSagaLive(saga, input.now);
+          const evidence = searchAlertEvidence(database, saga, input.reviewEvidenceHash, {
+            liveAt: input.now,
+          });
+          assertSearchAlertIntent(input.intent, input.ownerId, input.requestId, "declined");
+          assertSearchAlertIntentLive(input.intent, input.now);
+          assertSearchAlertDecision(
+            input.decision,
+            saga,
+            evidence.body,
+            input.intent,
+            "declined",
+            null,
+          );
+          putExactIdempotencyRecord(database, input.intent);
+          const result = putExactIdempotencyRecord(database, input.decision);
+          if (!finalizeSearchAlertPreparation(database, saga, evidence)) {
+            return searchAlertConflict("The search-alert preparation cleanup did not complete.");
+          }
+          return result;
+        });
+        return decline.immediate();
+      },
+      async expire(input) {
+        if (
+          timestampMs(input.reviewExpiresAt, "review expiry") > timestampMs(input.now, "current")
+        ) {
+          return searchAlertConflict("The search-alert review has not expired.");
+        }
+        const expire = database.transaction(() => {
+          const saga = findSearchAlertSaga(database, input.ownerId, input.requestId);
+          if (saga === null) return false;
+          const storedEvidence = getIdempotencyRecord(
+            database,
+            `search_alert.request:${input.ownerId}`,
+            input.requestId,
+          );
+          const evidence =
+            storedEvidence === null
+              ? null
+              : searchAlertEvidence(database, saga, input.reviewEvidenceHash);
+          if (evidence !== null && evidence.record.expiresAt !== input.reviewExpiresAt) {
+            return searchAlertConflict("The search-alert review expiry has drifted.");
+          }
+          if (exactCommittedSearchAlertApproval(database, saga)) return false;
+          if (liveApprovedSearchAlertIntent(database, saga, input.now)) {
+            return false;
+          }
+          return finalizeSearchAlertPreparation(database, saga, evidence);
+        });
+        return expire.immediate();
+      },
+      async compensate(input) {
+        const compensate = database.transaction(() => {
+          const stored = getIdempotencyRecord(database, input.saga.scope, input.saga.key);
+          if (stored === null) return false;
+          const saga = parseSearchAlertSaga(stored);
+          if (!isDeepStrictEqual(saga, input.saga)) {
+            return searchAlertConflict("The search-alert preparation saga identity has drifted.");
+          }
+          const evidence = optionalSearchAlertEvidence(database, saga);
+          if (exactCommittedSearchAlertApproval(database, saga)) return false;
+          if (liveApprovedSearchAlertIntent(database, saga, input.now)) {
+            return false;
+          }
+          return finalizeSearchAlertPreparation(database, saga, evidence);
+        });
+        return compensate.immediate();
+      },
+      async purgeExpired(input) {
+        if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 1_000) {
+          throw new TypeError("Search-alert preparation purge limit must be between 1 and 1000.");
+        }
+        const purge = database.transaction(() => {
+          const rows = database
+            .prepare(
+              `SELECT saga.* FROM idempotency_records AS saga
+               WHERE substr(saga.scope, 1, ?) = ?
+                 AND saga.expires_at <= ?
+                 AND NOT EXISTS (
+                   SELECT 1
+                   FROM idempotency_records AS intent
+                   WHERE intent.scope =
+                       'search_alert.decision_intent:' ||
+                       json_extract(saga.response_body_json, '$.ownerId')
+                     AND intent.key = json_extract(saga.response_body_json, '$.requestId')
+                     AND intent.response_status = 202
+                     AND intent.request_hash =
+                       json_extract(intent.response_body_json, '$.reviewBinding')
+                     AND json_extract(intent.response_body_json, '$.version') = 1
+                     AND json_extract(intent.response_body_json, '$.status') = 'deciding'
+                     AND json_extract(intent.response_body_json, '$.requestId') =
+                       json_extract(saga.response_body_json, '$.requestId')
+                     AND json_extract(intent.response_body_json, '$.decision') = 'approved'
+                     AND json_extract(intent.response_body_json, '$.recordedAt') = intent.created_at
+                     AND intent.expires_at > ?
+                     AND julianday(intent.expires_at) > julianday(intent.created_at)
+                     AND julianday(intent.expires_at) <= julianday(intent.created_at) + 1.0
+                 )
+                 AND NOT EXISTS (
+                   SELECT 1
+                   FROM idempotency_records AS decision
+                   JOIN schedules AS schedule
+                     ON schedule.id = json_extract(saga.response_body_json, '$.scheduleId')
+                   WHERE decision.scope =
+                       'search_alert.decision:' ||
+                       json_extract(saga.response_body_json, '$.ownerId')
+                     AND decision.key = json_extract(saga.response_body_json, '$.requestId')
+                     AND decision.request_hash =
+                       json_extract(decision.response_body_json, '$.evidence.reviewBinding')
+                     AND json_extract(decision.response_body_json, '$.receipt.requestId') =
+                       json_extract(saga.response_body_json, '$.requestId')
+                     AND json_extract(decision.response_body_json, '$.receipt.decision') = 'approved'
+                     AND json_extract(decision.response_body_json, '$.receipt.scheduleId') =
+                       json_extract(saga.response_body_json, '$.scheduleId')
+                     AND json_extract(decision.response_body_json, '$.evidence.savedSearchId') =
+                       json_extract(saga.response_body_json, '$.savedSearchId')
+                     AND schedule.owner_id = json_extract(saga.response_body_json, '$.ownerId')
+                     AND schedule.saved_search_id =
+                       json_extract(saga.response_body_json, '$.savedSearchId')
+                 )
+               ORDER BY saga.expires_at, saga.scope, saga.key
+               LIMIT ?`,
+            )
+            .all(
+              "search_alert.request_saga:".length,
+              "search_alert.request_saga:",
+              input.now,
+              input.now,
+              input.limit,
+            ) as IdempotencyRow[];
+          let removed = 0;
+          for (const row of rows) {
+            const saga = parseSearchAlertSaga(idempotencyFromRow(row));
+            const evidence = optionalSearchAlertEvidence(database, saga);
+            if (exactCommittedSearchAlertApproval(database, saga)) continue;
+            if (liveApprovedSearchAlertIntent(database, saga, input.now)) {
+              continue;
+            }
+            if (finalizeSearchAlertPreparation(database, saga, evidence)) removed += 1;
+          }
+          return removed;
+        });
+        return purge.immediate();
       },
     },
     applications: {
@@ -2310,6 +3123,60 @@ function createRepositories(
           .prepare("SELECT * FROM idempotency_records WHERE scope = ? AND key = ?")
           .get(scope, key) as IdempotencyRow | undefined;
         return row === undefined ? null : idempotencyFromRow(row);
+      },
+      async deleteExact(input) {
+        const deleted = database
+          .prepare(
+            `DELETE FROM idempotency_records
+             WHERE scope = ? AND key = ? AND request_hash = ? AND response_body_json = ?`,
+          )
+          .run(input.scope, input.key, input.requestHash, json(input.responseBody));
+        return deleted.changes === 1;
+      },
+      async purgeExpired(input) {
+        if (
+          input.scopePrefix.length === 0 ||
+          input.scopePrefix.length > 128 ||
+          !Number.isSafeInteger(input.limit) ||
+          input.limit < 1 ||
+          input.limit > 1_000
+        ) {
+          throw new TypeError(
+            "Idempotency purge requires a scope prefix and limit from 1 to 1000.",
+          );
+        }
+        const purge = database.transaction(() => {
+          const expired = database
+            .prepare(
+              `SELECT scope, key
+               FROM idempotency_records
+               WHERE substr(scope, 1, ?) = ? AND expires_at <= ?
+                 AND substr(scope, 1, length('search_alert.request_saga:'))
+                   <> 'search_alert.request_saga:'
+                 AND substr(scope, 1, length('search_alert.request:'))
+                   <> 'search_alert.request:'
+                 AND substr(scope, 1, length('search_alert.request_result:'))
+                   <> 'search_alert.request_result:'
+                 AND substr(scope, 1, length('search_alert.decision_intent:'))
+                   <> 'search_alert.decision_intent:'
+               ORDER BY expires_at, scope, key
+               LIMIT ?`,
+            )
+            .all(input.scopePrefix.length, input.scopePrefix, input.now, input.limit) as {
+            readonly scope: string;
+            readonly key: string;
+          }[];
+          const remove = database.prepare(
+            `DELETE FROM idempotency_records
+             WHERE scope = ? AND key = ? AND expires_at <= ?`,
+          );
+          let removed = 0;
+          for (const record of expired) {
+            removed += remove.run(record.scope, record.key, input.now).changes;
+          }
+          return removed;
+        });
+        return purge.immediate();
       },
     },
   };

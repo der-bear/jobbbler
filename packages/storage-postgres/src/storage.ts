@@ -1,4 +1,7 @@
 import { createHash } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
+
+import type postgres from "postgres";
 
 import {
   DomainError,
@@ -35,6 +38,10 @@ import type {
   RateLimitCheckInput,
   RateLimitDecision,
   SavedSearchRecord,
+  SearchAlertActivationInput,
+  SearchAlertActivationResult,
+  SearchAlertPreparationSagaBody,
+  SearchAlertPreparationSagaRecord,
   ScheduleRecord,
   SourceRunRecord,
   SourceStateInput,
@@ -162,6 +169,35 @@ async function list<T>(sql: PostgresExecutor, kind: string, ownerId?: string): P
           EntityRow[]
         >`SELECT id, owner_id, body, version FROM jobbbler.entity_records WHERE kind = ${kind} AND owner_id = ${ownerId} ORDER BY updated_at DESC, id`;
   return rows.map(body<T>);
+}
+
+async function deletePendingOrphanVerificationEndpoint(
+  sql: PostgresExecutor,
+  ownerId: string,
+  endpointId: string,
+): Promise<void> {
+  const endpoint = await getForUpdate<VerificationEndpointRecord>(
+    sql,
+    "verification_endpoint",
+    endpointId,
+  );
+  if (endpoint?.ownerId !== ownerId || endpoint.status !== "pending") return;
+  const references = await sql<{ readonly referenced: boolean }[]>`
+    SELECT EXISTS (
+      SELECT 1
+      FROM jobbbler.entity_records
+      WHERE owner_id = ${ownerId}
+        AND (
+          (kind IN ('verification_challenge', 'owner_recovery_challenge')
+            AND body->>'endpointId' = ${endpointId})
+          OR
+          (kind = 'schedule' AND body->>'deliveryEndpointId' = ${endpointId})
+        )
+    ) AS referenced`;
+  if (references[0]?.referenced === true) return;
+  await sql`
+    DELETE FROM jobbbler.entity_records
+    WHERE kind = 'verification_endpoint' AND id = ${endpointId} AND owner_id = ${ownerId}`;
 }
 
 export async function findOwnerSessionByTokenHash(
@@ -347,6 +383,590 @@ function validateKinds(kinds: ClaimWorkItemsInput["kinds"]): readonly string[] {
   return [...unique];
 }
 
+interface SearchAlertReviewEvidenceBody {
+  readonly purpose: "search_alert_activation";
+  readonly ownerId: string;
+  readonly requestId: string;
+  readonly savedSearchId: string;
+  readonly savedSearchVersion: number;
+  readonly criteria: unknown;
+  readonly endpointId: string;
+  readonly challengeId: string;
+  readonly scheduleId: string;
+  readonly recurrence: ScheduleRecord["recurrence"];
+  readonly firstRunAt: string;
+  readonly privacyNoticeVersion: string;
+  readonly issuedAt: string;
+  readonly expiresAt: string;
+}
+
+interface SearchAlertDecisionIntentBody {
+  readonly version: 1;
+  readonly status: "deciding";
+  readonly requestId: string;
+  readonly reviewBinding: string;
+  readonly decision: "approved" | "declined";
+  readonly recordedAt: string;
+}
+
+const searchAlertDecisionIntentMaximumLifetimeMs = 24 * 60 * 60 * 1_000;
+
+function searchAlertConflict(message: string): never {
+  throw domain("CONFLICT", message);
+}
+
+function searchAlertTimestampMs(value: string, label: string): number {
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) {
+    return searchAlertConflict(`The search-alert ${label} timestamp is invalid.`);
+  }
+  return parsed;
+}
+
+function searchAlertObjectBody(value: unknown, label: string): Readonly<Record<string, unknown>> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return searchAlertConflict(`The search-alert ${label} envelope is invalid.`);
+  }
+  return value as Readonly<Record<string, unknown>>;
+}
+
+function idempotencyFromEntity(row: EntityRow): IdempotencyRecord {
+  const stored = body<IdempotencyRecord & { readonly id: string }>(row);
+  const { id: _id, ...record } = stored;
+  return record;
+}
+
+async function getIdempotencyForUpdate(
+  sql: PostgresExecutor,
+  scope: string,
+  key: string,
+): Promise<IdempotencyRecord | null> {
+  const rows = await sql<EntityRow[]>`
+    SELECT id, owner_id, body, version
+    FROM jobbbler.entity_records
+    WHERE kind = 'idempotency' AND id = ${`${scope}:${key}`}
+    FOR UPDATE`;
+  return rows[0] === undefined ? null : idempotencyFromEntity(rows[0]);
+}
+
+async function putExactIdempotencyRecord(
+  sql: PostgresExecutor,
+  record: IdempotencyRecord,
+): Promise<{ readonly inserted: boolean; readonly record: IdempotencyRecord }> {
+  const current = await getIdempotencyForUpdate(sql, record.scope, record.key);
+  if (current !== null) {
+    if (!isDeepStrictEqual(current, record)) {
+      return searchAlertConflict(
+        "The search-alert lifecycle record is already bound to a different envelope.",
+      );
+    }
+    return { inserted: false, record: current };
+  }
+  const id = `${record.scope}:${record.key}`;
+  const candidate = { ...record, id };
+  await sql`
+    INSERT INTO jobbbler.entity_records(
+      kind, id, owner_id, body, version, created_at, updated_at
+    ) VALUES (
+      'idempotency', ${id}, NULL,
+      ${sql.json(candidate as postgres.JSONValue)}, 0,
+      ${record.createdAt}, ${record.createdAt}
+    )`;
+  return { inserted: true, record };
+}
+
+function parseSearchAlertSaga(record: IdempotencyRecord): SearchAlertPreparationSagaRecord {
+  const responseBody = searchAlertObjectBody(record.responseBody, "preparation saga");
+  const requiredStrings = [
+    "ownerId",
+    "requestId",
+    "savedSearchId",
+    "endpointId",
+    "challengeId",
+    "scheduleId",
+    "issuedAt",
+  ] as const;
+  if (
+    responseBody["version"] !== 1 ||
+    responseBody["status"] !== "preparing" ||
+    requiredStrings.some(
+      (key) => typeof responseBody[key] !== "string" || responseBody[key].length === 0,
+    )
+  ) {
+    return searchAlertConflict("The search-alert preparation saga identity is invalid.");
+  }
+  const sagaBody = responseBody as unknown as SearchAlertPreparationSagaBody;
+  if (
+    record.scope !== `search_alert.request_saga:${sagaBody.ownerId}` ||
+    record.createdAt !== sagaBody.issuedAt
+  ) {
+    return searchAlertConflict("The search-alert preparation saga binding is invalid.");
+  }
+  searchAlertTimestampMs(sagaBody.issuedAt, "preparation issuance");
+  searchAlertTimestampMs(record.expiresAt, "preparation expiry");
+  return { ...record, responseBody: sagaBody };
+}
+
+async function findSearchAlertSagaForUpdate(
+  sql: PostgresExecutor,
+  ownerId: string,
+  requestId: string,
+): Promise<SearchAlertPreparationSagaRecord | null> {
+  const rows = await sql<EntityRow[]>`
+    SELECT id, owner_id, body, version
+    FROM jobbbler.entity_records
+    WHERE kind = 'idempotency'
+      AND body->>'scope' = ${`search_alert.request_saga:${ownerId}`}
+      AND body->'responseBody'->>'ownerId' = ${ownerId}
+      AND body->'responseBody'->>'requestId' = ${requestId}
+    ORDER BY id
+    FOR UPDATE`;
+  if (rows.length > 1) {
+    return searchAlertConflict("The search-alert request is bound to multiple preparation sagas.");
+  }
+  return rows[0] === undefined ? null : parseSearchAlertSaga(idempotencyFromEntity(rows[0]));
+}
+
+function assertSearchAlertSagaLive(saga: SearchAlertPreparationSagaRecord, now: string): void {
+  if (
+    searchAlertTimestampMs(saga.expiresAt, "preparation expiry") <=
+    searchAlertTimestampMs(now, "current")
+  ) {
+    searchAlertConflict("The search-alert preparation saga has expired.");
+  }
+}
+
+async function searchAlertEvidenceForUpdate(
+  sql: PostgresExecutor,
+  saga: SearchAlertPreparationSagaRecord,
+  reviewEvidenceHash: string,
+  options: { readonly liveAt?: string } = {},
+): Promise<{ readonly record: IdempotencyRecord; readonly body: SearchAlertReviewEvidenceBody }> {
+  const sagaBody = saga.responseBody;
+  const record = await getIdempotencyForUpdate(
+    sql,
+    `search_alert.request:${sagaBody.ownerId}`,
+    sagaBody.requestId,
+  );
+  if (record === null || record.requestHash !== reviewEvidenceHash) {
+    return searchAlertConflict("The search-alert review evidence is missing or has drifted.");
+  }
+  const responseBody = searchAlertObjectBody(record.responseBody, "review evidence");
+  if (
+    responseBody["purpose"] !== "search_alert_activation" ||
+    responseBody["ownerId"] !== sagaBody.ownerId ||
+    responseBody["requestId"] !== sagaBody.requestId ||
+    responseBody["savedSearchId"] !== sagaBody.savedSearchId ||
+    responseBody["savedSearchVersion"] !== 0 ||
+    typeof responseBody["criteria"] !== "object" ||
+    responseBody["criteria"] === null ||
+    typeof responseBody["endpointId"] !== "string" ||
+    responseBody["challengeId"] !== sagaBody.challengeId ||
+    responseBody["scheduleId"] !== sagaBody.scheduleId ||
+    typeof responseBody["recurrence"] !== "object" ||
+    responseBody["recurrence"] === null ||
+    typeof responseBody["firstRunAt"] !== "string" ||
+    typeof responseBody["privacyNoticeVersion"] !== "string" ||
+    responseBody["issuedAt"] !== sagaBody.issuedAt ||
+    responseBody["expiresAt"] !== record.expiresAt
+  ) {
+    return searchAlertConflict("The search-alert review evidence binding is invalid.");
+  }
+  searchAlertTimestampMs(responseBody["firstRunAt"] as string, "first run");
+  if (
+    options.liveAt !== undefined &&
+    searchAlertTimestampMs(record.expiresAt, "review expiry") <=
+      searchAlertTimestampMs(options.liveAt, "current")
+  ) {
+    return searchAlertConflict("The search-alert review evidence has expired.");
+  }
+  return {
+    record,
+    body: responseBody as unknown as SearchAlertReviewEvidenceBody,
+  };
+}
+
+async function optionalSearchAlertEvidenceForUpdate(
+  sql: PostgresExecutor,
+  saga: SearchAlertPreparationSagaRecord,
+): Promise<{
+  readonly record: IdempotencyRecord;
+  readonly body: SearchAlertReviewEvidenceBody;
+} | null> {
+  const sagaBody = saga.responseBody;
+  const record = await getIdempotencyForUpdate(
+    sql,
+    `search_alert.request:${sagaBody.ownerId}`,
+    sagaBody.requestId,
+  );
+  return record === null ? null : searchAlertEvidenceForUpdate(sql, saga, record.requestHash);
+}
+
+function assertSearchAlertIntent(
+  intent: IdempotencyRecord,
+  ownerId: string,
+  requestId: string,
+  decision: "approved" | "declined",
+): SearchAlertDecisionIntentBody {
+  const responseBody = searchAlertObjectBody(intent.responseBody, "decision intent");
+  if (
+    intent.scope !== `search_alert.decision_intent:${ownerId}` ||
+    intent.key !== requestId ||
+    intent.responseStatus !== 202 ||
+    responseBody["version"] !== 1 ||
+    responseBody["status"] !== "deciding" ||
+    responseBody["requestId"] !== requestId ||
+    responseBody["decision"] !== decision ||
+    responseBody["reviewBinding"] !== intent.requestHash ||
+    responseBody["recordedAt"] !== intent.createdAt
+  ) {
+    searchAlertConflict("The search-alert decision intent binding is invalid.");
+  }
+  searchAlertTimestampMs(intent.createdAt, "decision intent recording");
+  return responseBody as unknown as SearchAlertDecisionIntentBody;
+}
+
+function assertSearchAlertIntentLive(intent: IdempotencyRecord, now: string): void {
+  const createdAt = searchAlertTimestampMs(intent.createdAt, "decision intent recording");
+  const expiresAt = searchAlertTimestampMs(intent.expiresAt, "decision intent expiry");
+  if (
+    expiresAt <= searchAlertTimestampMs(now, "current") ||
+    expiresAt <= createdAt ||
+    expiresAt > createdAt + searchAlertDecisionIntentMaximumLifetimeMs
+  ) {
+    searchAlertConflict("The search-alert decision intent lifetime is invalid or expired.");
+  }
+}
+
+function assertSearchAlertDecision(
+  decisionRecord: IdempotencyRecord,
+  saga: SearchAlertPreparationSagaRecord,
+  review: SearchAlertReviewEvidenceBody,
+  intent: IdempotencyRecord,
+  decision: "approved" | "declined",
+  schedule: ScheduleRecord | null,
+): void {
+  const intentBody = assertSearchAlertIntent(
+    intent,
+    saga.responseBody.ownerId,
+    saga.responseBody.requestId,
+    decision,
+  );
+  const responseBody = searchAlertObjectBody(decisionRecord.responseBody, "decision");
+  const receipt = searchAlertObjectBody(responseBody["receipt"], "decision receipt");
+  const evidence = searchAlertObjectBody(responseBody["evidence"], "decision evidence");
+  const sagaBody = saga.responseBody;
+  const sharedMismatch =
+    decisionRecord.scope !== `search_alert.decision:${sagaBody.ownerId}` ||
+    decisionRecord.key !== sagaBody.requestId ||
+    decisionRecord.requestHash !== intent.requestHash ||
+    decisionRecord.createdAt !== intentBody.recordedAt ||
+    responseBody["version"] !== 1 ||
+    responseBody["status"] !== "completed" ||
+    receipt["status"] !== "completed" ||
+    receipt["requestId"] !== sagaBody.requestId ||
+    receipt["decision"] !== decision ||
+    receipt["channel"] !== "agent_client" ||
+    receipt["savedSearchId"] !== review.savedSearchId ||
+    receipt["decidedAt"] !== intentBody.recordedAt ||
+    typeof receipt["summary"] !== "string" ||
+    evidence["reviewBinding"] !== intent.requestHash ||
+    evidence["savedSearchId"] !== review.savedSearchId ||
+    evidence["savedSearchVersion"] !== review.savedSearchVersion ||
+    evidence["endpointId"] !== review.endpointId ||
+    !isDeepStrictEqual(evidence["criteria"], review.criteria) ||
+    !isDeepStrictEqual(evidence["recurrence"], review.recurrence) ||
+    evidence["firstRunAt"] !== review.firstRunAt ||
+    evidence["privacyNoticeVersion"] !== review.privacyNoticeVersion ||
+    evidence["channel"] !== "agent_client" ||
+    evidence["decidedAt"] !== intentBody.recordedAt;
+  const decisionMismatch =
+    decision === "approved"
+      ? schedule === null ||
+        schedule.ownerId !== sagaBody.ownerId ||
+        schedule.id !== sagaBody.scheduleId ||
+        schedule.savedSearchId !== review.savedSearchId ||
+        schedule.deliveryEndpointId !== review.endpointId ||
+        !isDeepStrictEqual(schedule.recurrence, review.recurrence) ||
+        schedule.nextRunAt !== review.firstRunAt ||
+        schedule.createdAt !== intentBody.recordedAt ||
+        schedule.updatedAt !== intentBody.recordedAt ||
+        receipt["scheduleId"] !== schedule.id ||
+        receipt["nextRunAt"] !== schedule.nextRunAt
+      : schedule !== null || receipt["scheduleId"] !== null || receipt["nextRunAt"] !== null;
+  if (sharedMismatch || decisionMismatch) {
+    searchAlertConflict("The search-alert decision envelope binding is invalid.");
+  }
+}
+
+async function liveApprovedSearchAlertIntent(
+  sql: PostgresExecutor,
+  saga: SearchAlertPreparationSagaRecord,
+  now: string,
+): Promise<boolean> {
+  const sagaBody = saga.responseBody;
+  const intent = await getIdempotencyForUpdate(
+    sql,
+    `search_alert.decision_intent:${sagaBody.ownerId}`,
+    sagaBody.requestId,
+  );
+  if (intent === null) return false;
+  const responseBody = searchAlertObjectBody(intent.responseBody, "decision intent");
+  if (
+    intent.scope !== `search_alert.decision_intent:${sagaBody.ownerId}` ||
+    intent.key !== sagaBody.requestId ||
+    intent.responseStatus !== 202 ||
+    responseBody["version"] !== 1 ||
+    responseBody["status"] !== "deciding" ||
+    responseBody["requestId"] !== sagaBody.requestId ||
+    responseBody["reviewBinding"] !== intent.requestHash ||
+    responseBody["recordedAt"] !== intent.createdAt ||
+    (responseBody["decision"] !== "approved" && responseBody["decision"] !== "declined")
+  ) {
+    return searchAlertConflict("The stored search-alert decision intent has drifted.");
+  }
+  const createdAt = searchAlertTimestampMs(intent.createdAt, "decision intent recording");
+  const expiresAt = searchAlertTimestampMs(intent.expiresAt, "decision intent expiry");
+  if (
+    expiresAt <= searchAlertTimestampMs(now, "current") ||
+    expiresAt <= createdAt ||
+    expiresAt > createdAt + searchAlertDecisionIntentMaximumLifetimeMs
+  ) {
+    return false;
+  }
+  return responseBody["decision"] === "approved";
+}
+
+async function exactCommittedSearchAlertApproval(
+  sql: PostgresExecutor,
+  saga: SearchAlertPreparationSagaRecord,
+): Promise<boolean> {
+  const sagaBody = saga.responseBody;
+  const schedule = await getForUpdate<ScheduleRecord>(sql, "schedule", sagaBody.scheduleId);
+  const decision = await getIdempotencyForUpdate(
+    sql,
+    `search_alert.decision:${sagaBody.ownerId}`,
+    sagaBody.requestId,
+  );
+  if (decision === null) return false;
+  const envelope = searchAlertObjectBody(decision.responseBody, "decision");
+  const receipt = searchAlertObjectBody(envelope["receipt"], "decision receipt");
+  const evidence = searchAlertObjectBody(envelope["evidence"], "decision evidence");
+  if (
+    receipt["requestId"] !== sagaBody.requestId ||
+    receipt["scheduleId"] !== sagaBody.scheduleId ||
+    evidence["savedSearchId"] !== sagaBody.savedSearchId ||
+    evidence["reviewBinding"] !== decision.requestHash
+  ) {
+    return searchAlertConflict("The durable search-alert decision has drifted from its saga.");
+  }
+  if (receipt["decision"] === "declined") {
+    if (receipt["scheduleId"] !== null || receipt["nextRunAt"] !== null) {
+      return searchAlertConflict("The durable search-alert decline is invalid.");
+    }
+    return false;
+  }
+  if (receipt["decision"] !== "approved") {
+    return searchAlertConflict("The durable search-alert decision is invalid.");
+  }
+  if (
+    schedule === null ||
+    schedule.ownerId !== sagaBody.ownerId ||
+    schedule.savedSearchId !== sagaBody.savedSearchId
+  ) {
+    return searchAlertConflict("The durable search-alert approval has drifted from its schedule.");
+  }
+  return true;
+}
+
+async function finalizeSearchAlertPreparation(
+  sql: PostgresExecutor,
+  saga: SearchAlertPreparationSagaRecord,
+  evidence: { readonly body: SearchAlertReviewEvidenceBody } | null,
+): Promise<boolean> {
+  const sagaBody = saga.responseBody;
+  const storedSaga = await getIdempotencyForUpdate(sql, saga.scope, saga.key);
+  if (storedSaga === null) return false;
+  if (!isDeepStrictEqual(storedSaga, saga)) {
+    return searchAlertConflict("The search-alert preparation saga changed before cleanup.");
+  }
+
+  const challenge = await getForUpdate<VerificationChallengeRecord>(
+    sql,
+    "verification_challenge",
+    sagaBody.challengeId,
+  );
+  if (
+    challenge !== null &&
+    (challenge.ownerId !== sagaBody.ownerId ||
+      (challenge.purpose ?? "owner_email_verification") !== "search_alert_review" ||
+      (evidence !== null && challenge.endpointId !== evidence.body.endpointId))
+  ) {
+    return searchAlertConflict("The search-alert review challenge changed before cleanup.");
+  }
+
+  await sql`
+    DELETE FROM jobbbler.entity_records AS saved_search
+    WHERE saved_search.kind = 'saved_search'
+      AND saved_search.id = ${sagaBody.savedSearchId}
+      AND saved_search.owner_id = ${sagaBody.ownerId}
+      AND saved_search.body->>'version' = '0'
+      AND saved_search.body->>'createdAt' = ${sagaBody.issuedAt}
+      AND NOT EXISTS (
+        SELECT 1
+        FROM jobbbler.entity_records AS schedule
+        WHERE schedule.kind = 'schedule'
+          AND schedule.body->>'savedSearchId' = saved_search.id
+      )`;
+
+  if (challenge !== null) {
+    const deletedChallenge = await sql<{ readonly id: string }[]>`
+      DELETE FROM jobbbler.entity_records
+      WHERE kind = 'verification_challenge'
+        AND id = ${challenge.id}
+        AND owner_id = ${sagaBody.ownerId}
+        AND COALESCE(body->>'purpose', 'owner_email_verification') = 'search_alert_review'
+        AND body->>'endpointId' = ${challenge.endpointId}
+      RETURNING id`;
+    if (deletedChallenge[0] === undefined) {
+      return searchAlertConflict("The search-alert review challenge changed during cleanup.");
+    }
+    await deletePendingOrphanVerificationEndpoint(sql, sagaBody.ownerId, challenge.endpointId);
+  }
+
+  for (const [scope, key] of [
+    [`search_alert.request_claim:${sagaBody.ownerId}`, saga.key],
+    [`search_alert.request_result:${sagaBody.ownerId}`, saga.key],
+    [`search_alert.request:${sagaBody.ownerId}`, sagaBody.requestId],
+    [`search_alert.decision_claim:${sagaBody.ownerId}`, sagaBody.requestId],
+    [`search_alert.decision_intent:${sagaBody.ownerId}`, sagaBody.requestId],
+  ] as const) {
+    await sql`
+      DELETE FROM jobbbler.entity_records
+      WHERE kind = 'idempotency' AND id = ${`${scope}:${key}`}`;
+  }
+
+  const sagaWithId = { ...saga, id: `${saga.scope}:${saga.key}` };
+  const deletedSaga = await sql<{ readonly id: string }[]>`
+    DELETE FROM jobbbler.entity_records
+    WHERE kind = 'idempotency'
+      AND id = ${sagaWithId.id}
+      AND body = ${sql.json(sagaWithId as unknown as postgres.JSONValue)}
+    RETURNING id`;
+  if (deletedSaga[0] === undefined) {
+    return searchAlertConflict("The search-alert preparation saga changed during cleanup.");
+  }
+  return true;
+}
+
+async function commitApprovedSearchAlertPostgres(
+  sql: PostgresExecutor,
+  input: SearchAlertActivationInput,
+): Promise<SearchAlertActivationResult> {
+  if (
+    input.schedule.deliveryEndpointId !== input.verifiedEndpointId ||
+    input.decision.scope !== `search_alert.decision:${input.schedule.ownerId}`
+  ) {
+    return searchAlertConflict(
+      "Search-alert activation is not bound to the reviewed owner and endpoint.",
+    );
+  }
+
+  await sql`
+    SELECT pg_advisory_xact_lock(
+      hashtextextended(
+        ${`search-alert-activation:${input.schedule.ownerId}:${input.schedule.savedSearchId}`},
+        0
+      )
+    )`;
+
+  const scheduleRows = await sql<EntityRow[]>`
+    SELECT id, owner_id, body, version
+    FROM jobbbler.entity_records
+    WHERE kind = 'schedule'
+      AND (
+        id = ${input.schedule.id}
+        OR (
+          owner_id = ${input.schedule.ownerId}
+          AND body->>'savedSearchId' = ${input.schedule.savedSearchId}
+        )
+      )
+    ORDER BY CASE WHEN id = ${input.schedule.id} THEN 0 ELSE 1 END
+    FOR UPDATE`;
+  const storedSchedule =
+    scheduleRows[0] === undefined ? null : body<ScheduleRecord>(scheduleRows[0]);
+  if (
+    scheduleRows.length > 1 ||
+    (storedSchedule !== null && !isDeepStrictEqual(storedSchedule, input.schedule))
+  ) {
+    return searchAlertConflict("The reviewed search-alert schedule conflicts with stored state.");
+  }
+  const storedDecision = await getIdempotencyForUpdate(
+    sql,
+    input.decision.scope,
+    input.decision.key,
+  );
+  if (storedDecision !== null && !isDeepStrictEqual(storedDecision, input.decision)) {
+    return searchAlertConflict("The search-alert decision receipt conflicts with stored state.");
+  }
+  if (storedSchedule === null && storedDecision !== null) {
+    return searchAlertConflict(
+      "A search-alert decision receipt exists without its exact schedule.",
+    );
+  }
+  if (storedSchedule !== null && storedDecision !== null) {
+    return { inserted: false, schedule: storedSchedule, decision: storedDecision };
+  }
+
+  const savedSearch = await getForUpdate<SavedSearchRecord>(
+    sql,
+    "saved_search",
+    input.schedule.savedSearchId,
+  );
+  const endpoint = await getForUpdate<VerificationEndpointRecord>(
+    sql,
+    "verification_endpoint",
+    input.verifiedEndpointId,
+  );
+  const owner = await getForUpdate<OwnerRecord>(sql, "owner", input.schedule.ownerId);
+  if (
+    savedSearch === null ||
+    savedSearch.ownerId !== input.schedule.ownerId ||
+    savedSearch.version !== input.expectedSavedSearchVersion
+  ) {
+    return searchAlertConflict("The reviewed saved search changed before alert activation.");
+  }
+  if (
+    endpoint === null ||
+    endpoint.ownerId !== input.schedule.ownerId ||
+    endpoint.status !== "verified"
+  ) {
+    return searchAlertConflict("The reviewed delivery endpoint is no longer verified.");
+  }
+  if (owner === null || !owner.verified) {
+    return searchAlertConflict("The search-alert owner is no longer verified.");
+  }
+
+  if (storedSchedule === null) {
+    await sql`
+      INSERT INTO jobbbler.entity_records(
+        kind, id, owner_id, body, version, created_at, updated_at
+      ) VALUES (
+        'schedule', ${input.schedule.id}, ${input.schedule.ownerId},
+        ${sql.json(input.schedule as unknown as postgres.JSONValue)},
+        ${input.schedule.version}, ${input.schedule.createdAt}, ${input.schedule.updatedAt}
+      )`;
+  }
+  if (storedDecision === null) {
+    await putExactIdempotencyRecord(sql, input.decision);
+  }
+  return {
+    inserted: storedDecision === null,
+    schedule: storedSchedule ?? input.schedule,
+    decision: storedDecision ?? input.decision,
+  };
+}
+
 function createIdentityStore(sql: PostgresSql): IdentityStore {
   return {
     async createOwnerWithSession(input): Promise<ResolvedOwnerSession> {
@@ -376,24 +996,85 @@ function createIdentityStore(sql: PostgresSql): IdentityStore {
         throw new TypeError("Verification challenge and endpoint must belong to the same owner.");
       return sql.begin(async (transaction) => {
         const tx = transaction as PostgresExecutor;
-        const endpoints = await list<VerificationEndpointRecord>(
+        const purpose = input.challenge.purpose ?? "owner_email_verification";
+        const existingChallenge = await getForUpdate<VerificationChallengeRecord>(
           tx,
-          "verification_endpoint",
-          input.endpoint.ownerId,
+          "verification_challenge",
+          input.challenge.id,
         );
-        const existing = endpoints.find(
-          (item) =>
-            item.kind === input.endpoint.kind && item.addressHash === input.endpoint.addressHash,
-        );
+        if (existingChallenge !== null) {
+          const existingEndpoint = await getForUpdate<VerificationEndpointRecord>(
+            tx,
+            "verification_endpoint",
+            existingChallenge.endpointId,
+          );
+          const exact =
+            existingEndpoint !== null &&
+            existingEndpoint.ownerId === input.endpoint.ownerId &&
+            existingEndpoint.kind === input.endpoint.kind &&
+            existingEndpoint.addressHash === input.endpoint.addressHash &&
+            existingChallenge.ownerId === input.challenge.ownerId &&
+            (existingChallenge.purpose ?? "owner_email_verification") === purpose &&
+            existingChallenge.tokenHash === input.challenge.tokenHash &&
+            existingChallenge.maxAttempts === input.challenge.maxAttempts &&
+            existingChallenge.expiresAt === input.challenge.expiresAt &&
+            existingChallenge.createdAt === input.challenge.createdAt;
+          if (!exact) {
+            throw domain(
+              "CONFLICT",
+              "The verification challenge identifier is already bound to different data.",
+            );
+          }
+          if (purpose === "search_alert_review" && existingEndpoint.status === "revoked") {
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "This delivery address is revoked and cannot be used for search alerts.",
+              details: { reason: "revoked_destination" },
+            });
+          }
+          return { endpoint: existingEndpoint, challenge: existingChallenge };
+        }
+        const endpointRows = await tx<EntityRow[]>`
+          SELECT id, owner_id, body, version
+          FROM jobbbler.entity_records
+          WHERE kind = 'verification_endpoint'
+            AND owner_id = ${input.endpoint.ownerId}
+            AND body->>'kind' = ${input.endpoint.kind}
+            AND body->>'addressHash' = ${input.endpoint.addressHash}
+          FOR UPDATE`;
+        const existing =
+          endpointRows[0] === undefined
+            ? undefined
+            : body<VerificationEndpointRecord>(endpointRows[0]);
         const endpoint =
-          existing === undefined ? input.endpoint : { ...input.endpoint, id: existing.id };
-        await write(tx, "verification_endpoint", endpoint, endpoint.ownerId);
+          existing === undefined
+            ? input.endpoint
+            : existing.status === "verified" || existing.status === "revoked"
+              ? existing
+              : { ...input.endpoint, id: existing.id };
+        if (
+          existing === undefined ||
+          (existing.status !== "verified" && existing.status !== "revoked")
+        ) {
+          await write(tx, "verification_endpoint", endpoint, endpoint.ownerId);
+        }
+        if (purpose === "search_alert_review" && endpoint.status === "revoked") {
+          throw new DomainError({
+            code: "CONFLICT",
+            message: "This delivery address is revoked and cannot be used for search alerts.",
+            details: { reason: "revoked_destination" },
+          });
+        }
         for (const challenge of await list<VerificationChallengeRecord>(
           tx,
           "verification_challenge",
           input.challenge.ownerId,
         )) {
-          if (challenge.status === "pending")
+          if (
+            purpose === "owner_email_verification" &&
+            challenge.status === "pending" &&
+            (challenge.purpose ?? "owner_email_verification") === purpose
+          )
             await write(
               tx,
               "verification_challenge",
@@ -401,7 +1082,7 @@ function createIdentityStore(sql: PostgresSql): IdentityStore {
               challenge.ownerId,
             );
         }
-        const storedChallenge = { ...input.challenge, endpointId: endpoint.id };
+        const storedChallenge = { ...input.challenge, endpointId: endpoint.id, purpose };
         await insert(tx, "verification_challenge", storedChallenge, storedChallenge.ownerId);
         return { endpoint, challenge: storedChallenge };
       });
@@ -416,6 +1097,30 @@ function createIdentityStore(sql: PostgresSql): IdentityStore {
         );
         if (challenge === null || challenge.ownerId !== input.ownerId)
           return { status: "invalid", remainingAttempts: 0 };
+        const challengePurpose = challenge.purpose ?? "owner_email_verification";
+        if (input.expectedPurpose !== undefined && challengePurpose !== input.expectedPurpose) {
+          return { status: "invalid", remainingAttempts: 0 };
+        }
+        if (challenge.status === "consumed") {
+          if (input.acceptConsumed !== true) return { status: "consumed" };
+          if (challenge.tokenHash !== input.tokenHash) {
+            return { status: "invalid", remainingAttempts: 0 };
+          }
+          const consumedEndpoint = await getForUpdate<VerificationEndpointRecord>(
+            tx,
+            "verification_endpoint",
+            challenge.endpointId,
+          );
+          const consumedOwner = await getForUpdate<OwnerIdentityRecord>(tx, "owner", input.ownerId);
+          if (
+            consumedEndpoint === null ||
+            consumedOwner === null ||
+            consumedEndpoint.status !== "verified"
+          ) {
+            return { status: "consumed" };
+          }
+          return { status: "verified", owner: consumedOwner, endpoint: consumedEndpoint };
+        }
         if (challenge.status !== "pending") return { status: challenge.status };
         if (challenge.expiresAt <= input.now) {
           await write(
@@ -452,23 +1157,84 @@ function createIdentityStore(sql: PostgresSql): IdentityStore {
           consumedAt: input.now,
           updatedAt: input.now,
         };
-        const verifiedEndpoint = {
-          ...endpoint,
-          status: "verified" as const,
-          verifiedAt: input.now,
-          updatedAt: input.now,
-        };
-        const verifiedOwner = {
-          ...owner,
-          kind: owner.kind === "ephemeral" ? "guest" : owner.kind,
-          verified: true,
-          version: owner.version + 1,
-          updatedAt: input.now,
-        };
+        const verifiedEndpoint =
+          endpoint.status === "verified"
+            ? endpoint
+            : {
+                ...endpoint,
+                status: "verified" as const,
+                verifiedAt: input.now,
+                updatedAt: input.now,
+              };
+        const verifiedOwner = owner.verified
+          ? owner
+          : {
+              ...owner,
+              kind: owner.kind === "ephemeral" ? ("guest" as const) : owner.kind,
+              verified: true,
+              version: owner.version + 1,
+              updatedAt: input.now,
+            };
         await write(tx, "verification_challenge", consumed, owner.id);
-        await write(tx, "verification_endpoint", verifiedEndpoint, owner.id);
-        await write(tx, "owner", verifiedOwner, owner.id, verifiedOwner.version);
+        if (endpoint.status !== "verified") {
+          await write(tx, "verification_endpoint", verifiedEndpoint, owner.id);
+        }
+        if (!owner.verified) {
+          await write(tx, "owner", verifiedOwner, owner.id, verifiedOwner.version);
+        }
         return { status: "verified", owner: verifiedOwner, endpoint: verifiedEndpoint };
+      });
+    },
+    async abandonEmailVerification(input) {
+      return sql.begin(async (transaction) => {
+        const tx = transaction as PostgresExecutor;
+        const challenge = await getForUpdate<VerificationChallengeRecord>(
+          tx,
+          "verification_challenge",
+          input.challengeId,
+        );
+        if (
+          challenge?.ownerId !== input.ownerId ||
+          (challenge.purpose ?? "owner_email_verification") !== input.expectedPurpose
+        ) {
+          return false;
+        }
+        await tx`
+          DELETE FROM jobbbler.entity_records
+          WHERE kind = 'verification_challenge'
+            AND id = ${challenge.id}
+            AND owner_id = ${input.ownerId}`;
+        await deletePendingOrphanVerificationEndpoint(tx, input.ownerId, challenge.endpointId);
+        return true;
+      });
+    },
+    async purgeExpiredEmailVerifications(input) {
+      if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 1_000) {
+        throw new TypeError("Verification retention limit must be between 1 and 1000.");
+      }
+      return sql.begin(async (transaction) => {
+        const tx = transaction as PostgresExecutor;
+        const rows = await tx<EntityRow[]>`
+          SELECT id, owner_id, body, version
+          FROM jobbbler.entity_records
+          WHERE kind = 'verification_challenge'
+            AND COALESCE(body->>'purpose', 'owner_email_verification') = ${input.purpose}
+            AND body->>'expiresAt' <= ${input.now}
+          ORDER BY body->>'expiresAt', id
+          FOR UPDATE SKIP LOCKED
+          LIMIT ${input.limit}`;
+        const expired = rows.map(body<VerificationChallengeRecord>);
+        for (const challenge of expired) {
+          await tx`
+            DELETE FROM jobbbler.entity_records
+            WHERE kind = 'verification_challenge' AND id = ${challenge.id}`;
+          await deletePendingOrphanVerificationEndpoint(
+            tx,
+            challenge.ownerId,
+            challenge.endpointId,
+          );
+        }
+        return expired.length;
       });
     },
     async getVerificationEndpoint(ownerId, endpointId) {
@@ -885,6 +1651,283 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
       },
       async update(record, expectedVersion) {
         return updateVersioned(sql, "schedule", record, expectedVersion);
+      },
+    },
+    searchAlertActivation: {
+      async commitApproved(input) {
+        try {
+          return await sql.begin(async (transaction) => {
+            return commitApprovedSearchAlertPostgres(transaction as PostgresExecutor, input);
+          });
+        } catch (error) {
+          if (
+            typeof error === "object" &&
+            error !== null &&
+            "code" in error &&
+            (error as { readonly code?: unknown }).code === "23505"
+          ) {
+            throw domain("CONFLICT", "The search-alert activation conflicts with stored state.");
+          }
+          throw error;
+        }
+      },
+    },
+    searchAlertPreparation: {
+      async beginApproved(input) {
+        try {
+          return await sql.begin(async (transaction) => {
+            const tx = transaction as PostgresExecutor;
+            const saga = await findSearchAlertSagaForUpdate(tx, input.ownerId, input.requestId);
+            if (saga === null) {
+              return searchAlertConflict("The search-alert preparation saga was not found.");
+            }
+            assertSearchAlertSagaLive(saga, input.now);
+            await searchAlertEvidenceForUpdate(tx, saga, input.reviewEvidenceHash, {
+              liveAt: input.now,
+            });
+            assertSearchAlertIntent(input.intent, input.ownerId, input.requestId, "approved");
+            assertSearchAlertIntentLive(input.intent, input.now);
+            return putExactIdempotencyRecord(tx, input.intent);
+          });
+        } catch (error) {
+          if (
+            typeof error === "object" &&
+            error !== null &&
+            "code" in error &&
+            (error as { readonly code?: unknown }).code === "23505"
+          ) {
+            throw domain("CONFLICT", "The search-alert decision intent conflicts with state.");
+          }
+          throw error;
+        }
+      },
+      async commitApproved(input) {
+        try {
+          return await sql.begin(async (transaction) => {
+            const tx = transaction as PostgresExecutor;
+            const saga = await findSearchAlertSagaForUpdate(tx, input.ownerId, input.requestId);
+            if (saga === null) {
+              return searchAlertConflict("The search-alert preparation saga was not found.");
+            }
+            const evidence = await searchAlertEvidenceForUpdate(tx, saga, input.reviewEvidenceHash);
+            assertSearchAlertIntent(input.intent, input.ownerId, input.requestId, "approved");
+            const storedIntent = await getIdempotencyForUpdate(
+              tx,
+              input.intent.scope,
+              input.intent.key,
+            );
+            if (storedIntent === null || !isDeepStrictEqual(storedIntent, input.intent)) {
+              return searchAlertConflict(
+                "The exact approved search-alert intent was not recorded.",
+              );
+            }
+            assertSearchAlertIntentLive(storedIntent, input.now);
+            assertSearchAlertDecision(
+              input.decision,
+              saga,
+              evidence.body,
+              input.intent,
+              "approved",
+              input.schedule,
+            );
+            if (
+              input.schedule.ownerId !== saga.responseBody.ownerId ||
+              input.schedule.id !== saga.responseBody.scheduleId ||
+              input.schedule.savedSearchId !== saga.responseBody.savedSearchId ||
+              input.schedule.deliveryEndpointId !== evidence.body.endpointId ||
+              input.verifiedEndpointId !== evidence.body.endpointId ||
+              input.expectedSavedSearchVersion !== evidence.body.savedSearchVersion
+            ) {
+              return searchAlertConflict("The approved search-alert activation has drifted.");
+            }
+            await getForUpdate<VerificationChallengeRecord>(
+              tx,
+              "verification_challenge",
+              saga.responseBody.challengeId,
+            );
+            const result = await commitApprovedSearchAlertPostgres(tx, input);
+            if (!(await finalizeSearchAlertPreparation(tx, saga, evidence))) {
+              return searchAlertConflict("The search-alert preparation cleanup did not complete.");
+            }
+            return result;
+          });
+        } catch (error) {
+          if (
+            typeof error === "object" &&
+            error !== null &&
+            "code" in error &&
+            (error as { readonly code?: unknown }).code === "23505"
+          ) {
+            throw domain("CONFLICT", "The search-alert approval conflicts with stored state.");
+          }
+          throw error;
+        }
+      },
+      async decline(input) {
+        try {
+          return await sql.begin(async (transaction) => {
+            const tx = transaction as PostgresExecutor;
+            const saga = await findSearchAlertSagaForUpdate(tx, input.ownerId, input.requestId);
+            if (saga === null) {
+              return searchAlertConflict("The search-alert preparation saga was not found.");
+            }
+            assertSearchAlertSagaLive(saga, input.now);
+            const evidence = await searchAlertEvidenceForUpdate(
+              tx,
+              saga,
+              input.reviewEvidenceHash,
+              { liveAt: input.now },
+            );
+            assertSearchAlertIntent(input.intent, input.ownerId, input.requestId, "declined");
+            assertSearchAlertIntentLive(input.intent, input.now);
+            assertSearchAlertDecision(
+              input.decision,
+              saga,
+              evidence.body,
+              input.intent,
+              "declined",
+              null,
+            );
+            await putExactIdempotencyRecord(tx, input.intent);
+            const result = await putExactIdempotencyRecord(tx, input.decision);
+            if (!(await finalizeSearchAlertPreparation(tx, saga, evidence))) {
+              return searchAlertConflict("The search-alert preparation cleanup did not complete.");
+            }
+            return result;
+          });
+        } catch (error) {
+          if (
+            typeof error === "object" &&
+            error !== null &&
+            "code" in error &&
+            (error as { readonly code?: unknown }).code === "23505"
+          ) {
+            throw domain("CONFLICT", "The search-alert decline conflicts with stored state.");
+          }
+          throw error;
+        }
+      },
+      async expire(input) {
+        if (
+          searchAlertTimestampMs(input.reviewExpiresAt, "review expiry") >
+          searchAlertTimestampMs(input.now, "current")
+        ) {
+          return searchAlertConflict("The search-alert review has not expired.");
+        }
+        return sql.begin(async (transaction) => {
+          const tx = transaction as PostgresExecutor;
+          const saga = await findSearchAlertSagaForUpdate(tx, input.ownerId, input.requestId);
+          if (saga === null) return false;
+          const storedEvidence = await getIdempotencyForUpdate(
+            tx,
+            `search_alert.request:${input.ownerId}`,
+            input.requestId,
+          );
+          const evidence =
+            storedEvidence === null
+              ? null
+              : await searchAlertEvidenceForUpdate(tx, saga, input.reviewEvidenceHash);
+          if (evidence !== null && evidence.record.expiresAt !== input.reviewExpiresAt) {
+            return searchAlertConflict("The search-alert review expiry has drifted.");
+          }
+          if (await exactCommittedSearchAlertApproval(tx, saga)) return false;
+          if (await liveApprovedSearchAlertIntent(tx, saga, input.now)) {
+            return false;
+          }
+          return finalizeSearchAlertPreparation(tx, saga, evidence);
+        });
+      },
+      async compensate(input) {
+        return sql.begin(async (transaction) => {
+          const tx = transaction as PostgresExecutor;
+          const stored = await getIdempotencyForUpdate(tx, input.saga.scope, input.saga.key);
+          if (stored === null) return false;
+          const saga = parseSearchAlertSaga(stored);
+          if (!isDeepStrictEqual(saga, input.saga)) {
+            return searchAlertConflict("The search-alert preparation saga identity has drifted.");
+          }
+          const evidence = await optionalSearchAlertEvidenceForUpdate(tx, saga);
+          if (await exactCommittedSearchAlertApproval(tx, saga)) return false;
+          if (await liveApprovedSearchAlertIntent(tx, saga, input.now)) {
+            return false;
+          }
+          return finalizeSearchAlertPreparation(tx, saga, evidence);
+        });
+      },
+      async purgeExpired(input) {
+        if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 1_000) {
+          throw new TypeError("Search-alert preparation purge limit must be between 1 and 1000.");
+        }
+        return sql.begin(async (transaction) => {
+          const tx = transaction as PostgresExecutor;
+          const rows = await tx<EntityRow[]>`
+            SELECT saga.id, saga.owner_id, saga.body, saga.version
+            FROM jobbbler.entity_records AS saga
+            WHERE saga.kind = 'idempotency'
+              AND left(saga.body->>'scope', ${"search_alert.request_saga:".length}) =
+                'search_alert.request_saga:'
+              AND saga.body->>'expiresAt' <= ${input.now}
+              AND NOT EXISTS (
+                SELECT 1
+                FROM jobbbler.entity_records AS intent
+                WHERE intent.kind = 'idempotency'
+                  AND intent.body->>'scope' =
+                    'search_alert.decision_intent:' ||
+                    (saga.body->'responseBody'->>'ownerId')
+                  AND intent.body->>'key' = saga.body->'responseBody'->>'requestId'
+                  AND intent.body->>'responseStatus' = '202'
+                  AND intent.body->>'requestHash' =
+                    intent.body->'responseBody'->>'reviewBinding'
+                  AND intent.body->'responseBody'->>'version' = '1'
+                  AND intent.body->'responseBody'->>'status' = 'deciding'
+                  AND intent.body->'responseBody'->>'requestId' =
+                    saga.body->'responseBody'->>'requestId'
+                  AND intent.body->'responseBody'->>'decision' = 'approved'
+                  AND intent.body->'responseBody'->>'recordedAt' = intent.body->>'createdAt'
+                  AND intent.body->>'expiresAt' > ${input.now}
+                  AND (intent.body->>'expiresAt')::timestamptz >
+                    (intent.body->>'createdAt')::timestamptz
+                  AND (intent.body->>'expiresAt')::timestamptz <=
+                    (intent.body->>'createdAt')::timestamptz + interval '24 hours'
+              )
+              AND NOT EXISTS (
+                SELECT 1
+                FROM jobbbler.entity_records AS decision
+                JOIN jobbbler.entity_records AS schedule
+                  ON schedule.kind = 'schedule'
+                 AND schedule.id = saga.body->'responseBody'->>'scheduleId'
+                WHERE decision.kind = 'idempotency'
+                  AND decision.body->>'scope' =
+                    'search_alert.decision:' || (saga.body->'responseBody'->>'ownerId')
+                  AND decision.body->>'key' = saga.body->'responseBody'->>'requestId'
+                  AND decision.body->>'requestHash' =
+                    decision.body->'responseBody'->'evidence'->>'reviewBinding'
+                  AND decision.body->'responseBody'->'receipt'->>'requestId' =
+                    saga.body->'responseBody'->>'requestId'
+                  AND decision.body->'responseBody'->'receipt'->>'decision' = 'approved'
+                  AND decision.body->'responseBody'->'receipt'->>'scheduleId' =
+                    saga.body->'responseBody'->>'scheduleId'
+                  AND decision.body->'responseBody'->'evidence'->>'savedSearchId' =
+                    saga.body->'responseBody'->>'savedSearchId'
+                  AND schedule.owner_id = saga.body->'responseBody'->>'ownerId'
+                  AND schedule.body->>'savedSearchId' =
+                    saga.body->'responseBody'->>'savedSearchId'
+              )
+            ORDER BY saga.body->>'expiresAt', saga.id
+            FOR UPDATE OF saga SKIP LOCKED
+            LIMIT ${input.limit}`;
+          let removed = 0;
+          for (const row of rows) {
+            const saga = parseSearchAlertSaga(idempotencyFromEntity(row));
+            const evidence = await optionalSearchAlertEvidenceForUpdate(tx, saga);
+            if (await exactCommittedSearchAlertApproval(tx, saga)) continue;
+            if (await liveApprovedSearchAlertIntent(tx, saga, input.now)) {
+              continue;
+            }
+            if (await finalizeSearchAlertPreparation(tx, saga, evidence)) removed += 1;
+          }
+          return removed;
+        });
       },
     },
     alerts: {
@@ -1906,22 +2949,29 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
     idempotency: {
       async putIfAbsent(record) {
         const id = `${record.scope}:${record.key}`;
+        const candidate = { ...record, id };
+        const inserted = await sql<EntityRow[]>`
+          INSERT INTO jobbbler.entity_records
+            (kind, id, owner_id, body, version, created_at, updated_at)
+          VALUES (
+            'idempotency', ${id}, NULL, ${sql.json(candidate as postgres.JSONValue)}, 0,
+            ${record.createdAt}, ${record.createdAt}
+          )
+          ON CONFLICT (kind, id) DO NOTHING
+          RETURNING id, owner_id, body, version`;
+        if (inserted[0] !== undefined) return { inserted: true, record };
         const current = await get<IdempotencyRecord & { readonly id: string }>(
           sql,
           "idempotency",
           id,
         );
-        if (current !== null) {
-          if (current.requestHash !== record.requestHash)
-            throw domain(
-              "CONFLICT",
-              "The idempotency key is already bound to a different request.",
-            );
-          const { id: _id, ...stored } = current;
-          return { inserted: false, record: stored };
+        if (current === null) {
+          throw domain("CONFLICT", "The idempotency key claim could not be resolved.");
         }
-        await insert(sql, "idempotency", { ...record, id });
-        return { inserted: true, record };
+        if (current.requestHash !== record.requestHash)
+          throw domain("CONFLICT", "The idempotency key is already bound to a different request.");
+        const { id: _id, ...stored } = current;
+        return { inserted: false, record: stored };
       },
       async get(scope, key) {
         const current = await get<IdempotencyRecord & { readonly id: string }>(
@@ -1932,6 +2982,68 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
         if (current === null) return null;
         const { id: _id, ...record } = current;
         return record;
+      },
+      async deleteExact(input) {
+        const rows = await sql<{ readonly id: string }[]>`
+          DELETE FROM jobbbler.entity_records
+          WHERE kind = 'idempotency'
+            AND id = ${`${input.scope}:${input.key}`}
+            AND body->>'requestHash' = ${input.requestHash}
+            AND body->'responseBody' = ${sql.json(input.responseBody as postgres.JSONValue)}
+          RETURNING id`;
+        return rows[0] !== undefined;
+      },
+      async purgeExpired(input) {
+        if (
+          input.scopePrefix.length === 0 ||
+          input.scopePrefix.length > 128 ||
+          !Number.isSafeInteger(input.limit) ||
+          input.limit < 1 ||
+          input.limit > 1_000
+        ) {
+          throw new TypeError(
+            "Idempotency purge requires a scope prefix and limit from 1 to 1000.",
+          );
+        }
+        return sql.begin(async (transaction) => {
+          const tx = transaction as PostgresExecutor;
+          const expired = await tx<{ readonly id: string }[]>`
+            SELECT id
+            FROM jobbbler.entity_records
+            WHERE kind = 'idempotency'
+              AND left(body->>'scope', ${input.scopePrefix.length}) = ${input.scopePrefix}
+              AND body->>'expiresAt' <= ${input.now}
+              AND left(body->>'scope', length('search_alert.request_saga:'))
+                <> 'search_alert.request_saga:'
+              AND left(body->>'scope', length('search_alert.request:'))
+                <> 'search_alert.request:'
+              AND left(body->>'scope', length('search_alert.request_result:'))
+                <> 'search_alert.request_result:'
+              AND left(body->>'scope', length('search_alert.decision_intent:'))
+                <> 'search_alert.decision_intent:'
+            ORDER BY body->>'expiresAt', id
+            FOR UPDATE SKIP LOCKED
+            LIMIT ${input.limit}`;
+          let removed = 0;
+          for (const record of expired) {
+            const rows = await tx<{ readonly id: string }[]>`
+              DELETE FROM jobbbler.entity_records
+              WHERE kind = 'idempotency'
+                AND id = ${record.id}
+                AND body->>'expiresAt' <= ${input.now}
+                AND left(body->>'scope', length('search_alert.request_saga:'))
+                  <> 'search_alert.request_saga:'
+                AND left(body->>'scope', length('search_alert.request:'))
+                  <> 'search_alert.request:'
+                AND left(body->>'scope', length('search_alert.request_result:'))
+                  <> 'search_alert.request_result:'
+                AND left(body->>'scope', length('search_alert.decision_intent:'))
+                  <> 'search_alert.decision_intent:'
+              RETURNING id`;
+            if (rows[0] !== undefined) removed += 1;
+          }
+          return removed;
+        });
       },
     },
     ingestion: {

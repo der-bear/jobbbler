@@ -33,10 +33,14 @@ export interface VerificationEndpointRecord {
   readonly updatedAt: string;
 }
 
+export type VerificationChallengePurpose = "owner_email_verification" | "search_alert_review";
+
 export interface VerificationChallengeRecord {
   readonly id: string;
   readonly ownerId: string;
   readonly endpointId: string;
+  /** Defaults to owner_email_verification for records created before purpose binding. */
+  readonly purpose?: VerificationChallengePurpose;
   readonly tokenHash: string;
   readonly status: "pending" | "consumed" | "expired" | "locked";
   readonly attempts: number;
@@ -110,7 +114,20 @@ export interface IdentityStore {
     readonly challengeId: string;
     readonly tokenHash: string;
     readonly now: string;
+    readonly expectedPurpose?: VerificationChallengePurpose;
+    readonly acceptConsumed?: boolean;
   }): Promise<ConsumeVerificationResult>;
+  abandonEmailVerification(input: {
+    readonly ownerId: string;
+    readonly challengeId: string;
+    readonly expectedPurpose: VerificationChallengePurpose;
+    readonly now: string;
+  }): Promise<boolean>;
+  purgeExpiredEmailVerifications(input: {
+    readonly purpose: VerificationChallengePurpose;
+    readonly now: string;
+    readonly limit: number;
+  }): Promise<number>;
   getVerificationEndpoint(
     ownerId: string,
     endpointId: string,
@@ -146,6 +163,7 @@ export interface IdentityStore {
 export interface SecretCodec {
   createSessionToken(): string;
   createVerificationCode(): string;
+  deriveSearchAlertVerificationCode(challengeId: string): string;
   hash(purpose: "owner_session" | "email_verification" | "owner_recovery", value: string): string;
 }
 

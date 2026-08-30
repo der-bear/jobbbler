@@ -1,5 +1,7 @@
 import {
   createSavedSearchInputSchema,
+  jobSearchCriteriaSchema,
+  scheduleRecurrenceSchema,
   scheduleJobAlertInputSchema,
   setJobAlertEnabledInputSchema,
   updateJobAlertScheduleInputSchema,
@@ -37,6 +39,28 @@ export interface SavedSearchServicePorts {
 }
 
 const EVALUATION_JITTER_MAX_SECONDS = 120;
+
+function sameCriteria(left: unknown, right: unknown): boolean {
+  try {
+    return (
+      JSON.stringify(jobSearchCriteriaSchema.parse(left)) ===
+      JSON.stringify(jobSearchCriteriaSchema.parse(right))
+    );
+  } catch {
+    return false;
+  }
+}
+
+function sameRecurrence(left: unknown, right: unknown): boolean {
+  try {
+    return (
+      JSON.stringify(scheduleRecurrenceSchema.parse(left)) ===
+      JSON.stringify(scheduleRecurrenceSchema.parse(right))
+    );
+  } catch {
+    return false;
+  }
+}
 
 function addSeconds(instant: string, seconds: number): string {
   return new Date(Date.parse(instant) + seconds * 1_000).toISOString();
@@ -104,6 +128,50 @@ async function requireVerifiedEndpoint(
 }
 
 export function createSavedSearchService(ports: SavedSearchServicePorts) {
+  function exactSavedSearch(existing: SavedSearch, expected: SavedSearch): SavedSearch {
+    if (
+      existing.ownerId !== expected.ownerId ||
+      existing.name !== expected.name ||
+      existing.version !== expected.version ||
+      existing.createdAt !== expected.createdAt ||
+      existing.updatedAt !== expected.updatedAt ||
+      !sameCriteria(existing.criteria, expected.criteria)
+    ) {
+      throw new DomainError({
+        code: "CONFLICT",
+        message: "The saved-search identifier is already bound to different preparation data.",
+      });
+    }
+    return existing;
+  }
+
+  async function ensureSavedSearch(
+    ownerId: string,
+    savedSearchId: string,
+    rawInput: unknown,
+    createdAt: string,
+  ): Promise<SavedSearch> {
+    const input = createSavedSearchInputSchema.parse(rawInput);
+    const expected: SavedSearch = {
+      id: savedSearchId,
+      ownerId,
+      name: input.name,
+      criteria: { ...input.criteria, cursor: null },
+      version: 0,
+      createdAt,
+      updatedAt: createdAt,
+    };
+    const existing = await ports.savedSearches.getById(savedSearchId);
+    if (existing !== null) return exactSavedSearch(existing, expected);
+    try {
+      return await ports.savedSearches.insert(expected);
+    } catch (error) {
+      const winner = await ports.savedSearches.getById(savedSearchId);
+      if (winner !== null) return exactSavedSearch(winner, expected);
+      throw error;
+    }
+  }
+
   async function previewSchedule(ownerId: string, rawInput: unknown, now: string) {
     const input = scheduleJobAlertInputSchema.parse(rawInput);
     const saved = await requireOwnedSearch(ports, ownerId, input.savedSearchId);
@@ -122,6 +190,7 @@ export function createSavedSearchService(ports: SavedSearchServicePorts) {
   }
 
   return {
+    ensureSavedSearch,
     async createSavedSearch(ownerId: string, rawInput: unknown, now: string): Promise<SavedSearch> {
       const input = createSavedSearchInputSchema.parse(rawInput);
       return ports.savedSearches.insert({
@@ -155,7 +224,7 @@ export function createSavedSearchService(ports: SavedSearchServicePorts) {
         const identical =
           existing.delivery.channel === input.delivery.channel &&
           existing.delivery.endpointId === input.delivery.endpointId &&
-          JSON.stringify(existing.recurrence) === JSON.stringify(input.recurrence);
+          sameRecurrence(existing.recurrence, input.recurrence);
         if (identical) return existing;
         throw new DomainError({
           code: "CONFLICT",

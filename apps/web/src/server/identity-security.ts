@@ -15,6 +15,7 @@ type RuntimeEnvironment = Readonly<Record<string, string | undefined>>;
 const LOCAL_TOKEN_SECRET = "jobbbler-local-token-secret-change-before-production";
 const LOCAL_PII_SECRET = "jobbbler-local-pii-secret-change-before-production";
 const SECRET_MINIMUM_LENGTH = 32;
+const SEARCH_ALERT_OTP_DOMAIN = "jobbbler:search-alert-otp:v1";
 
 function requiredSecret(
   environment: RuntimeEnvironment,
@@ -49,6 +50,14 @@ export function createSecretCodec(environment: RuntimeEnvironment = process.env)
   return {
     createSessionToken: () => randomBytes(32).toString("base64url"),
     createVerificationCode: () => String(randomInt(0, 1_000_000)).padStart(6, "0"),
+    deriveSearchAlertVerificationCode(challengeId) {
+      const digest = createHmac("sha256", secret)
+        .update(SEARCH_ALERT_OTP_DOMAIN)
+        .update("\u0000")
+        .update(challengeId)
+        .digest();
+      return String(digest.readUInt32BE(0) % 1_000_000).padStart(6, "0");
+    },
     hash: (purpose, value) =>
       createHmac("sha256", secret).update(`jobbbler:${purpose}:v1\u0000${value}`).digest("hex"),
   };

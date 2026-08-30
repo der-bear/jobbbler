@@ -79,6 +79,31 @@ function ports() {
 }
 
 describe("saved-search and alert service", () => {
+  it("ensures one exact saga-bound saved search and rejects drift", async () => {
+    const state = ports();
+    const service = createSavedSearchService(state.current);
+    const savedSearchId = "saved_650e8400-e29b-41d4-a716-446655440000";
+    const input = { name: "Remote TypeScript", criteria };
+
+    const first = await service.ensureSavedSearch(ownerId, savedSearchId, input, now);
+
+    await expect(service.ensureSavedSearch(ownerId, savedSearchId, input, now)).resolves.toEqual(
+      first,
+    );
+    const reorderedCriteria = Object.fromEntries(
+      Object.entries(first.criteria).reverse(),
+    ) as unknown as SavedSearch["criteria"];
+    state.saved.set(savedSearchId, { ...first, criteria: reorderedCriteria });
+    await expect(service.ensureSavedSearch(ownerId, savedSearchId, input, now)).resolves.toEqual({
+      ...first,
+      criteria: reorderedCriteria,
+    });
+    await expect(
+      service.ensureSavedSearch(ownerId, savedSearchId, { ...input, name: "Changed" }, now),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(state.saved.size).toBe(1);
+  });
+
   it("stores one owner-scoped cursor-free search definition", async () => {
     const state = ports();
     const service = createSavedSearchService(state.current);

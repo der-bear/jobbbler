@@ -41,12 +41,15 @@ function session(): OwnerSessionRecord {
   };
 }
 
-function endpoint(id = "vep_00000000-0000-7000-8000-000000000001"): VerificationEndpointRecord {
+function endpoint(
+  id = "vep_00000000-0000-7000-8000-000000000001",
+  addressHash = "email-address-hash-only",
+): VerificationEndpointRecord {
   return {
     id,
     ownerId: owner.id,
     kind: "email",
-    addressHash: "email-address-hash-only",
+    addressHash,
     addressCiphertext: "encrypted-email",
     maskedAddress: "p•••••@example.com",
     status: "pending",
@@ -59,11 +62,13 @@ function endpoint(id = "vep_00000000-0000-7000-8000-000000000001"): Verification
 function challenge(
   id = "vch_00000000-0000-7000-8000-000000000001",
   endpointId = endpoint().id,
+  purpose: "owner_email_verification" | "search_alert_review" = "owner_email_verification",
 ): VerificationChallengeRecord {
   return {
     id,
     ownerId: owner.id,
     endpointId,
+    purpose,
     tokenHash: `challenge-hash-${id}`,
     status: "pending",
     attempts: 0,
@@ -120,6 +125,56 @@ afterEach(async () => {
 });
 
 describe("SQLite identity persistence", () => {
+  it("resumes the exact saga-bound alert challenge and rejects an identifier collision", async () => {
+    const current = store();
+    await current.store.createOwnerWithSession({ owner, session: session() });
+    const input = {
+      endpoint: endpoint(),
+      challenge: challenge(undefined, undefined, "search_alert_review"),
+    };
+
+    const first = await current.store.beginEmailVerification(input);
+
+    await expect(current.store.beginEmailVerification(input)).resolves.toEqual(first);
+    await expect(
+      current.store.beginEmailVerification({
+        ...input,
+        challenge: { ...input.challenge, tokenHash: "different-token-hash" },
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    current.database.close();
+  });
+
+  it("rejects another alert review without resurrecting a revoked shared endpoint", async () => {
+    const current = store();
+    await current.store.createOwnerWithSession({ owner, session: session() });
+    const first = await current.store.beginEmailVerification({
+      endpoint: endpoint(),
+      challenge: challenge(undefined, undefined, "search_alert_review"),
+    });
+    await current.store.revokeVerificationEndpoint(owner.id, first.endpoint.id, later);
+
+    await expect(
+      current.store.beginEmailVerification({
+        endpoint: endpoint("vep_00000000-0000-7000-8000-000000000002"),
+        challenge: challenge(
+          "vch_00000000-0000-7000-8000-000000000002",
+          "vep_00000000-0000-7000-8000-000000000002",
+          "search_alert_review",
+        ),
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(
+      current.store.getVerificationEndpoint(owner.id, first.endpoint.id),
+    ).resolves.toMatchObject({ status: "revoked" });
+    expect(
+      current.database
+        .prepare("SELECT count(*) AS count FROM verification_challenges WHERE id = ?")
+        .get("vch_00000000-0000-7000-8000-000000000002"),
+    ).toEqual({ count: 0 });
+    current.database.close();
+  });
+
   it("rejects cross-owner session and verification relationships before writing", async () => {
     const current = store();
 
@@ -199,6 +254,190 @@ describe("SQLite identity persistence", () => {
       owner: { kind: "guest", verified: true, version: 1 },
       endpoint: { status: "verified", verifiedAt: now },
     });
+    current.database.close();
+  });
+
+  it("confirms each search-alert challenge without mutating a previously verified shared endpoint", async () => {
+    const current = store();
+    await current.store.createOwnerWithSession({ owner, session: session() });
+    const first = await current.store.beginEmailVerification({
+      endpoint: endpoint(),
+      challenge: challenge(undefined, undefined, "search_alert_review"),
+    });
+    const verified = await current.store.consumeEmailVerification({
+      ownerId: owner.id,
+      challengeId: first.challenge.id,
+      tokenHash: first.challenge.tokenHash,
+      now,
+      expectedPurpose: "search_alert_review",
+      acceptConsumed: true,
+    });
+    expect(verified).toMatchObject({ status: "verified", owner: { version: 1 } });
+    const verifiedEndpoint = await current.store.getVerificationEndpoint(
+      owner.id,
+      first.endpoint.id,
+    );
+    const replacementChallenge = challenge(
+      "vch_00000000-0000-7000-8000-000000000002",
+      "vep_00000000-0000-7000-8000-000000000002",
+      "search_alert_review",
+    );
+
+    const replacement = await current.store.beginEmailVerification({
+      endpoint: {
+        ...endpoint("vep_00000000-0000-7000-8000-000000000002"),
+        addressCiphertext: "different-encrypted-envelope",
+        updatedAt: "2026-08-29T10:05:00.000Z",
+      },
+      challenge: {
+        ...replacementChallenge,
+        expiresAt: "2026-08-29T10:15:00.000Z",
+        createdAt: "2026-08-29T10:05:00.000Z",
+        updatedAt: "2026-08-29T10:05:00.000Z",
+      },
+    });
+
+    expect(replacement.endpoint).toEqual(verifiedEndpoint);
+    await expect(
+      current.store.consumeEmailVerification({
+        ownerId: owner.id,
+        challengeId: replacement.challenge.id,
+        tokenHash: replacement.challenge.tokenHash,
+        now: "2026-08-29T10:05:00.000Z",
+        expectedPurpose: "search_alert_review",
+        acceptConsumed: true,
+      }),
+    ).resolves.toMatchObject({
+      status: "verified",
+      owner: { version: 1 },
+      endpoint: verifiedEndpoint,
+    });
+    const declined = await current.store.beginEmailVerification({
+      endpoint: endpoint("vep_00000000-0000-7000-8000-000000000003"),
+      challenge: challenge(
+        "vch_00000000-0000-7000-8000-000000000003",
+        "vep_00000000-0000-7000-8000-000000000003",
+        "search_alert_review",
+      ),
+    });
+    await expect(
+      current.store.abandonEmailVerification({
+        ownerId: owner.id,
+        challengeId: declined.challenge.id,
+        expectedPurpose: "search_alert_review",
+        now,
+      }),
+    ).resolves.toBe(true);
+    await expect(
+      current.store.getVerificationEndpoint(owner.id, first.endpoint.id),
+    ).resolves.toEqual(verifiedEndpoint);
+    current.database.close();
+  });
+
+  it("keeps simultaneous search-alert review challenges independently consumable", async () => {
+    const current = store();
+    await current.store.createOwnerWithSession({ owner, session: session() });
+    const first = await current.store.beginEmailVerification({
+      endpoint: endpoint(),
+      challenge: challenge(undefined, undefined, "search_alert_review"),
+    });
+    const secondChallenge = challenge(
+      "vch_00000000-0000-7000-8000-000000000002",
+      "vep_00000000-0000-7000-8000-000000000002",
+      "search_alert_review",
+    );
+    const second = await current.store.beginEmailVerification({
+      endpoint: endpoint("vep_00000000-0000-7000-8000-000000000002"),
+      challenge: secondChallenge,
+    });
+
+    await expect(
+      current.store.consumeEmailVerification({
+        ownerId: owner.id,
+        challengeId: first.challenge.id,
+        tokenHash: first.challenge.tokenHash,
+        now,
+        expectedPurpose: "search_alert_review",
+        acceptConsumed: true,
+      }),
+    ).resolves.toMatchObject({ status: "verified", endpoint: { id: first.endpoint.id } });
+    await expect(
+      current.store.consumeEmailVerification({
+        ownerId: owner.id,
+        challengeId: second.challenge.id,
+        tokenHash: second.challenge.tokenHash,
+        now,
+        expectedPurpose: "search_alert_review",
+        acceptConsumed: true,
+      }),
+    ).resolves.toMatchObject({
+      status: "verified",
+      owner: { version: 1 },
+      endpoint: { id: first.endpoint.id },
+    });
+    current.database.close();
+  });
+
+  it("abandons only the exact review challenge and removes its still-pending provisional endpoint", async () => {
+    const current = store();
+    await current.store.createOwnerWithSession({ owner, session: session() });
+    const started = await current.store.beginEmailVerification({
+      endpoint: endpoint(),
+      challenge: challenge(undefined, undefined, "search_alert_review"),
+    });
+
+    await expect(
+      current.store.abandonEmailVerification({
+        ownerId: owner.id,
+        challengeId: started.challenge.id,
+        expectedPurpose: "search_alert_review",
+        now,
+      }),
+    ).resolves.toBe(true);
+    expect(
+      current.database.prepare("SELECT count(*) AS count FROM verification_challenges").get(),
+    ).toEqual({ count: 0 });
+    await expect(current.store.listVerificationEndpoints(owner.id)).resolves.toEqual([]);
+    current.database.close();
+  });
+
+  it("purges expired review data within a bound while preserving unrelated verification state", async () => {
+    const current = store();
+    await current.store.createOwnerWithSession({ owner, session: session() });
+    const alert = await current.store.beginEmailVerification({
+      endpoint: endpoint(),
+      challenge: challenge(undefined, undefined, "search_alert_review"),
+    });
+    const unrelatedEndpoint = endpoint(
+      "vep_00000000-0000-7000-8000-000000000009",
+      "unrelated-email-address-hash",
+    );
+    const unrelatedChallenge = challenge(
+      "vch_00000000-0000-7000-8000-000000000009",
+      unrelatedEndpoint.id,
+      "owner_email_verification",
+    );
+    await current.store.beginEmailVerification({
+      endpoint: unrelatedEndpoint,
+      challenge: unrelatedChallenge,
+    });
+
+    await expect(
+      current.store.purgeExpiredEmailVerifications({
+        purpose: "search_alert_review",
+        now: later,
+        limit: 1,
+      }),
+    ).resolves.toBe(1);
+    expect(
+      current.database.prepare("SELECT id FROM verification_challenges ORDER BY id").all(),
+    ).toEqual([{ id: unrelatedChallenge.id }]);
+    await expect(
+      current.store.getVerificationEndpoint(owner.id, alert.endpoint.id),
+    ).resolves.toBeNull();
+    await expect(
+      current.store.getVerificationEndpoint(owner.id, unrelatedEndpoint.id),
+    ).resolves.toMatchObject({ id: unrelatedEndpoint.id, status: "pending" });
     current.database.close();
   });
 

@@ -2,28 +2,47 @@ import { Buffer } from "node:buffer";
 
 import { describe, expect, it } from "vitest";
 
-import { createSearchAlertReviewCodec } from "./search-alert-review-token";
+import {
+  createSearchAlertReviewCodec,
+  type SearchAlertReviewPayload,
+} from "./search-alert-review-token";
 
 const environment = {
   NODE_ENV: "test",
   TOKEN_HASH_SECRET: "search-alert-review-test-secret-at-least-32-characters",
 } as const;
 
-const payload = {
+const payload: SearchAlertReviewPayload = {
   version: 1,
   purpose: "search_alert_activation",
   ownerId: "owner_550e8400-e29b-41d4-a716-446655440000",
   requestId: "req_550e8400-e29b-41d4-a716-446655440001",
   savedSearchId: "saved_550e8400-e29b-41d4-a716-446655440002",
   savedSearchVersion: 0,
+  criteria: {
+    query: "TypeScript",
+    categories: ["software_engineering"],
+    workModels: ["remote"],
+    seniorities: ["senior"],
+    locations: ["Europe"],
+    skills: ["React"],
+    excludeKeywords: [],
+    salary: null,
+    postedWithinDays: 30,
+    sort: "newest",
+    cursor: null,
+    limit: 20,
+    unresolvedAssumptions: [],
+  },
   endpointId: "endpoint_550e8400-e29b-41d4-a716-446655440003",
   challengeId: "challenge_550e8400-e29b-41d4-a716-446655440004",
+  scheduleId: "schedule_550e8400-e29b-41d4-a716-446655440005",
   recurrence: { frequency: "daily", time: "09:00", timeZone: "Europe/Kyiv" },
   firstRunAt: "2026-08-31T06:00:48.000Z",
   privacyNoticeVersion: "search-alert-v1",
   issuedAt: "2026-08-30T09:00:00.000Z",
   expiresAt: "2026-08-30T09:15:00.000Z",
-} as const;
+};
 
 describe("search alert review token", () => {
   it("round-trips the exact signed owner, request, purpose, and reviewed policy", () => {
@@ -40,6 +59,7 @@ describe("search alert review token", () => {
 
     expect(decoded).toContain(payload.endpointId);
     expect(decoded).toContain(payload.challengeId);
+    expect(decoded).toContain(payload.scheduleId);
     expect(decoded).not.toMatch(/@/u);
     expect(decoded).not.toContain("042197");
     expect(decoded).not.toMatch(/email|code/iu);
@@ -59,6 +79,15 @@ describe("search alert review token", () => {
     ).toThrow();
     expect(() => codec.sign({ ...payload, purpose: "some_other_purpose" } as never)).toThrow();
     expect(() => codec.verify(token, payload.ownerId, payload.expiresAt)).toThrow();
+  });
+
+  it("authenticates an expired review binding so its provisional data can be removed safely", () => {
+    const codec = createSearchAlertReviewCodec(environment);
+    const token = codec.sign(payload);
+
+    expect(codec.authenticate(token, payload.ownerId)).toEqual(payload);
+    expect(() => codec.verify(token, payload.ownerId, payload.expiresAt)).toThrow();
+    expect(() => codec.authenticate(token, "owner_650e8400-e29b-41d4-a716-446655440000")).toThrow();
   });
 
   it("refuses tokens with a lifetime longer than fifteen minutes or invalid time order", () => {

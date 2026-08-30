@@ -233,6 +233,20 @@ function dependencies(): ApplicationAuthorizationRouteDependencies {
         idempotencyRecords.set(key, record);
         return { inserted: true, record };
       }),
+      deleteExact: vi.fn(async (input) => {
+        const mapKey = `${input.scope}:${input.key}`;
+        const existing = idempotencyRecords.get(mapKey);
+        if (
+          existing === undefined ||
+          existing.requestHash !== input.requestHash ||
+          JSON.stringify(existing.responseBody) !== JSON.stringify(input.responseBody)
+        ) {
+          return false;
+        }
+        idempotencyRecords.delete(mapKey);
+        return true;
+      }),
+      purgeExpired: vi.fn(async () => 0),
     },
     dataGrantPolicy: {
       consentPresentation: vi.fn(async () => ({

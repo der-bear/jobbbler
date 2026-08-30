@@ -33,7 +33,7 @@ describe("SQLite recovery", () => {
     });
     const source = inspectSqliteDatabase(sourcePath);
     expect(source).toMatchObject({
-      migrations: 20,
+      migrations: 22,
       organizations: 12,
       jobs: 36,
       searchableJobs: 36,

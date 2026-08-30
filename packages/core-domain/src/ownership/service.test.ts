@@ -53,6 +53,12 @@ function fakeStore() {
       if (consumeResult === null) throw new Error("Missing consume result.");
       return consumeResult;
     },
+    async abandonEmailVerification() {
+      return true;
+    },
+    async purgeExpiredEmailVerifications() {
+      return 2;
+    },
     async getVerificationEndpoint(ownerId, endpointId) {
       return endpoint?.ownerId === ownerId && endpoint.id === endpointId ? endpoint : null;
     },
@@ -101,6 +107,8 @@ function service(store: IdentityStore) {
     secrets: {
       createSessionToken: () => "session-secret-with-at-least-thirty-two-characters",
       createVerificationCode: () => "372941",
+      deriveSearchAlertVerificationCode: (challengeId) =>
+        challengeId === "challenge_650e8400-e29b-41d4-a716-446655440003" ? "814205" : "372941",
       hash: digest,
     },
     email: {
@@ -210,5 +218,79 @@ describe("progressive owner identity", () => {
       code: "UNAUTHORIZED",
       details: { remainingAttempts: 2 },
     });
+  });
+
+  it("creates a purpose-bound search-alert challenge and confirms that exact code retry-safely", async () => {
+    const current = fakeStore();
+    const identity = service(current.store);
+
+    const started = await identity.startSearchAlertEmailVerification(
+      ids.owner(),
+      { email: "person@example.com" },
+      now,
+    );
+
+    expect(started.challengeId).toBe(ids.challenge());
+    expect(current.records().challenge).toMatchObject({ purpose: "search_alert_review" });
+
+    current.setConsumeResult({
+      status: "verified",
+      owner: {
+        id: ids.owner(),
+        kind: "guest",
+        verified: true,
+        version: 1,
+        createdAt: now,
+        updatedAt: now,
+      },
+      endpoint: {
+        ...current.records().endpoint!,
+        status: "verified",
+        verifiedAt: now,
+      },
+    });
+    await expect(
+      identity.confirmSearchAlertEmailVerification(
+        ids.owner(),
+        { challengeId: started.challengeId, code: "372941" },
+        now,
+      ),
+    ).resolves.toMatchObject({ endpointId: ids.endpoint() });
+  });
+
+  it("resumes a saga-bound alert challenge with the same identifiers and derived code", async () => {
+    const current = fakeStore();
+    const identity = service(current.store);
+    const stable = {
+      endpointId: "endpoint_650e8400-e29b-41d4-a716-446655440002",
+      challengeId: "challenge_650e8400-e29b-41d4-a716-446655440003",
+    };
+
+    const first = await identity.startSearchAlertEmailVerification(
+      ids.owner(),
+      { email: "person@example.com" },
+      now,
+      stable,
+    );
+    const replay = await identity.startSearchAlertEmailVerification(
+      ids.owner(),
+      { email: "person@example.com" },
+      now,
+      stable,
+    );
+
+    expect(first).toEqual(replay);
+    expect(first).toMatchObject({ ...stable, rawCode: "814205" });
+    expect(current.records().challenge?.tokenHash).toBe("test-digest-3f87cc0a");
+  });
+
+  it("exposes only purpose-scoped abandonment and bounded retention for search-alert reviews", async () => {
+    const current = fakeStore();
+    const identity = service(current.store);
+
+    await expect(
+      identity.abandonSearchAlertEmailVerification(ids.owner(), ids.challenge(), now),
+    ).resolves.toBe(true);
+    await expect(identity.purgeExpiredSearchAlertEmailVerifications(now, 25)).resolves.toBe(2);
   });
 });

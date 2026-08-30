@@ -10,6 +10,7 @@ import type {
   VerificationChallengeRecord,
   VerificationEndpointRecord,
 } from "@jobbbler/core-domain";
+import { DomainError } from "@jobbbler/core-domain";
 
 import type { SqliteDatabase } from "./connection.js";
 
@@ -50,6 +51,7 @@ interface ChallengeRow {
   readonly id: string;
   readonly owner_id: string;
   readonly endpoint_id: string;
+  readonly purpose: NonNullable<VerificationChallengeRecord["purpose"]>;
   readonly token_hash: string;
   readonly status: VerificationChallengeRecord["status"];
   readonly attempts: number;
@@ -118,6 +120,7 @@ function challengeFromRow(row: ChallengeRow): VerificationChallengeRecord {
     id: row.id,
     ownerId: row.owner_id,
     endpointId: row.endpoint_id,
+    purpose: row.purpose,
     tokenHash: row.token_hash,
     status: row.status,
     attempts: row.attempts,
@@ -143,6 +146,30 @@ function recoveryChallengeFromRow(row: RecoveryChallengeRow): OwnerRecoveryChall
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function deletePendingOrphanEndpoint(
+  database: SqliteDatabase,
+  ownerId: string,
+  endpointId: string,
+): void {
+  database
+    .prepare(
+      `DELETE FROM verification_endpoints
+       WHERE id = ?
+         AND owner_id = ?
+         AND status = 'pending'
+         AND NOT EXISTS (
+           SELECT 1 FROM verification_challenges WHERE endpoint_id = verification_endpoints.id
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM owner_recovery_challenges WHERE endpoint_id = verification_endpoints.id
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM schedules WHERE delivery_endpoint_id = verification_endpoints.id
+         )`,
+    )
+    .run(endpointId, ownerId);
 }
 
 export function createSqliteIdentityStore(database: SqliteDatabase): IdentityStore {
@@ -243,6 +270,43 @@ export function createSqliteIdentityStore(database: SqliteDatabase): IdentitySto
         throw new TypeError("Verification challenge and endpoint must belong to the same owner.");
       }
       const begin = database.transaction(() => {
+        const purpose = input.challenge.purpose ?? "owner_email_verification";
+        const existingChallenge = database
+          .prepare("SELECT * FROM verification_challenges WHERE id = ?")
+          .get(input.challenge.id) as ChallengeRow | undefined;
+        if (existingChallenge !== undefined) {
+          const existingEndpoint = database
+            .prepare("SELECT * FROM verification_endpoints WHERE id = ? AND owner_id = ?")
+            .get(existingChallenge.endpoint_id, input.endpoint.ownerId) as EndpointRow | undefined;
+          const exact =
+            existingEndpoint !== undefined &&
+            existingEndpoint.kind === input.endpoint.kind &&
+            existingEndpoint.address_hash === input.endpoint.addressHash &&
+            existingChallenge.owner_id === input.challenge.ownerId &&
+            existingChallenge.purpose === purpose &&
+            existingChallenge.token_hash === input.challenge.tokenHash &&
+            existingChallenge.max_attempts === input.challenge.maxAttempts &&
+            existingChallenge.expires_at === input.challenge.expiresAt &&
+            existingChallenge.created_at === input.challenge.createdAt;
+          if (!exact) {
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "The verification challenge identifier is already bound to different data.",
+            });
+          }
+          const endpoint = endpointFromRow(existingEndpoint);
+          if (purpose === "search_alert_review" && endpoint.status === "revoked") {
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "This delivery address is revoked and cannot be used for search alerts.",
+              details: { reason: "revoked_destination" },
+            });
+          }
+          return {
+            endpoint,
+            challenge: challengeFromRow(existingChallenge),
+          };
+        }
         database
           .prepare(
             `INSERT INTO verification_endpoints(
@@ -252,11 +316,31 @@ export function createSqliteIdentityStore(database: SqliteDatabase): IdentitySto
                @id, @ownerId, @kind, @addressHash, @addressCiphertext, @maskedAddress,
                @status, @verifiedAt, @createdAt, @updatedAt
              ) ON CONFLICT(owner_id, kind, address_hash) DO UPDATE SET
-               address_ciphertext = excluded.address_ciphertext,
-               masked_address = excluded.masked_address,
-               status = 'pending',
-               verified_at = NULL,
-               updated_at = excluded.updated_at`,
+               address_ciphertext = CASE
+                 WHEN verification_endpoints.status IN ('verified', 'revoked')
+                   THEN verification_endpoints.address_ciphertext
+                 ELSE excluded.address_ciphertext
+               END,
+               masked_address = CASE
+                 WHEN verification_endpoints.status IN ('verified', 'revoked')
+                   THEN verification_endpoints.masked_address
+                 ELSE excluded.masked_address
+               END,
+               status = CASE
+                 WHEN verification_endpoints.status IN ('verified', 'revoked')
+                   THEN verification_endpoints.status
+                 ELSE 'pending'
+               END,
+               verified_at = CASE
+                 WHEN verification_endpoints.status IN ('verified', 'revoked')
+                   THEN verification_endpoints.verified_at
+                 ELSE NULL
+               END,
+               updated_at = CASE
+                 WHEN verification_endpoints.status IN ('verified', 'revoked')
+                   THEN verification_endpoints.updated_at
+                 ELSE excluded.updated_at
+               END`,
           )
           .run(input.endpoint);
         const endpoint = database
@@ -269,24 +353,33 @@ export function createSqliteIdentityStore(database: SqliteDatabase): IdentitySto
             input.endpoint.kind,
             input.endpoint.addressHash,
           ) as EndpointRow;
-        database
-          .prepare(
-            `UPDATE verification_challenges
-             SET status = 'expired', updated_at = ?
-             WHERE owner_id = ? AND status = 'pending'`,
-          )
-          .run(input.challenge.updatedAt, input.challenge.ownerId);
+        if (purpose === "search_alert_review" && endpoint.status === "revoked") {
+          throw new DomainError({
+            code: "CONFLICT",
+            message: "This delivery address is revoked and cannot be used for search alerts.",
+            details: { reason: "revoked_destination" },
+          });
+        }
+        if (purpose === "owner_email_verification") {
+          database
+            .prepare(
+              `UPDATE verification_challenges
+               SET status = 'expired', updated_at = ?
+               WHERE owner_id = ? AND purpose = ? AND status = 'pending'`,
+            )
+            .run(input.challenge.updatedAt, input.challenge.ownerId, purpose);
+        }
         database
           .prepare(
             `INSERT INTO verification_challenges(
-               id, owner_id, endpoint_id, token_hash, status, attempts, max_attempts,
+               id, owner_id, endpoint_id, purpose, token_hash, status, attempts, max_attempts,
                expires_at, consumed_at, created_at, updated_at
              ) VALUES (
-               @id, @ownerId, @endpointId, @tokenHash, @status, @attempts, @maxAttempts,
+               @id, @ownerId, @endpointId, @purpose, @tokenHash, @status, @attempts, @maxAttempts,
                @expiresAt, @consumedAt, @createdAt, @updatedAt
              )`,
           )
-          .run({ ...input.challenge, endpointId: endpoint.id });
+          .run({ ...input.challenge, endpointId: endpoint.id, purpose });
         const challenge = database
           .prepare("SELECT * FROM verification_challenges WHERE id = ?")
           .get(input.challenge.id) as ChallengeRow;
@@ -301,11 +394,34 @@ export function createSqliteIdentityStore(database: SqliteDatabase): IdentitySto
           .prepare("SELECT * FROM verification_challenges WHERE id = ? AND owner_id = ?")
           .get(input.challengeId, input.ownerId) as ChallengeRow | undefined;
         if (challenge === undefined) return { status: "invalid", remainingAttempts: 0 } as const;
-        if (
-          challenge.status === "consumed" ||
-          challenge.status === "locked" ||
-          challenge.status === "expired"
-        ) {
+        if (input.expectedPurpose !== undefined && challenge.purpose !== input.expectedPurpose) {
+          return { status: "invalid", remainingAttempts: 0 } as const;
+        }
+        if (challenge.status === "consumed") {
+          if (input.acceptConsumed !== true) return { status: "consumed" } as const;
+          if (challenge.token_hash !== input.tokenHash) {
+            return { status: "invalid", remainingAttempts: 0 } as const;
+          }
+          const consumedOwner = database
+            .prepare("SELECT * FROM owners WHERE id = ?")
+            .get(input.ownerId) as OwnerRow | undefined;
+          const consumedEndpoint = database
+            .prepare("SELECT * FROM verification_endpoints WHERE id = ? AND owner_id = ?")
+            .get(challenge.endpoint_id, input.ownerId) as EndpointRow | undefined;
+          if (
+            consumedOwner === undefined ||
+            consumedEndpoint === undefined ||
+            consumedEndpoint.status !== "verified"
+          ) {
+            return { status: "consumed" } as const;
+          }
+          return {
+            status: "verified",
+            owner: ownerFromRow(consumedOwner),
+            endpoint: endpointFromRow(consumedEndpoint),
+          } as const;
+        }
+        if (challenge.status === "locked" || challenge.status === "expired") {
           return { status: challenge.status };
         }
         if (challenge.expires_at <= input.now) {
@@ -334,28 +450,41 @@ export function createSqliteIdentityStore(database: SqliteDatabase): IdentitySto
             remainingAttempts: challenge.max_attempts - attempts,
           } as const;
         }
+        const currentOwner = database
+          .prepare("SELECT * FROM owners WHERE id = ?")
+          .get(input.ownerId) as OwnerRow | undefined;
+        const currentEndpoint = database
+          .prepare("SELECT * FROM verification_endpoints WHERE id = ? AND owner_id = ?")
+          .get(challenge.endpoint_id, input.ownerId) as EndpointRow | undefined;
+        if (currentOwner === undefined || currentEndpoint === undefined) {
+          return { status: "invalid", remainingAttempts: 0 } as const;
+        }
         database
           .prepare(
             `UPDATE verification_challenges
              SET status = 'consumed', consumed_at = ?, updated_at = ? WHERE id = ?`,
           )
           .run(input.now, input.now, challenge.id);
-        database
-          .prepare(
-            `UPDATE verification_endpoints
-             SET status = 'verified', verified_at = ?, updated_at = ? WHERE id = ?`,
-          )
-          .run(input.now, input.now, challenge.endpoint_id);
-        database
-          .prepare(
-            `UPDATE owners
-             SET kind = CASE WHEN kind = 'ephemeral' THEN 'guest' ELSE kind END,
-                 verified = 1,
-                 version = version + 1,
-                 updated_at = ?
-             WHERE id = ?`,
-          )
-          .run(input.now, input.ownerId);
+        if (currentEndpoint.status !== "verified") {
+          database
+            .prepare(
+              `UPDATE verification_endpoints
+               SET status = 'verified', verified_at = ?, updated_at = ? WHERE id = ?`,
+            )
+            .run(input.now, input.now, challenge.endpoint_id);
+        }
+        if (currentOwner.verified !== 1) {
+          database
+            .prepare(
+              `UPDATE owners
+               SET kind = CASE WHEN kind = 'ephemeral' THEN 'guest' ELSE kind END,
+                   verified = 1,
+                   version = version + 1,
+                   updated_at = ?
+               WHERE id = ?`,
+            )
+            .run(input.now, input.ownerId);
+        }
         const owner = database
           .prepare("SELECT * FROM owners WHERE id = ?")
           .get(input.ownerId) as OwnerRow;
@@ -369,6 +498,44 @@ export function createSqliteIdentityStore(database: SqliteDatabase): IdentitySto
         } as const;
       });
       return consume.immediate();
+    },
+
+    async abandonEmailVerification(input): Promise<boolean> {
+      const abandon = database.transaction(() => {
+        const challenge = database
+          .prepare(
+            `SELECT * FROM verification_challenges
+             WHERE id = ? AND owner_id = ? AND purpose = ?`,
+          )
+          .get(input.challengeId, input.ownerId, input.expectedPurpose) as ChallengeRow | undefined;
+        if (challenge === undefined) return false;
+        database.prepare("DELETE FROM verification_challenges WHERE id = ?").run(challenge.id);
+        deletePendingOrphanEndpoint(database, input.ownerId, challenge.endpoint_id);
+        return true;
+      });
+      return abandon.immediate();
+    },
+
+    async purgeExpiredEmailVerifications(input): Promise<number> {
+      if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 1_000) {
+        throw new TypeError("Verification retention limit must be between 1 and 1000.");
+      }
+      const purge = database.transaction(() => {
+        const expired = database
+          .prepare(
+            `SELECT * FROM verification_challenges
+             WHERE purpose = ? AND expires_at <= ?
+             ORDER BY expires_at, id
+             LIMIT ?`,
+          )
+          .all(input.purpose, input.now, input.limit) as ChallengeRow[];
+        for (const challenge of expired) {
+          database.prepare("DELETE FROM verification_challenges WHERE id = ?").run(challenge.id);
+          deletePendingOrphanEndpoint(database, challenge.owner_id, challenge.endpoint_id);
+        }
+        return expired.length;
+      });
+      return purge.immediate();
     },
 
     async getVerificationEndpoint(ownerId, endpointId): Promise<VerificationEndpointRecord | null> {

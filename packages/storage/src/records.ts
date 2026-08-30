@@ -178,6 +178,83 @@ export interface IdempotencyRecord {
   readonly expiresAt: string;
 }
 
+export type IdempotencyRecordIdentity = Pick<
+  IdempotencyRecord,
+  "scope" | "key" | "requestHash" | "responseBody"
+>;
+
+export interface SearchAlertActivationInput {
+  readonly schedule: ScheduleRecord;
+  readonly expectedSavedSearchVersion: number;
+  readonly verifiedEndpointId: string;
+  readonly decision: IdempotencyRecord;
+}
+
+export interface SearchAlertActivationResult {
+  readonly inserted: boolean;
+  readonly schedule: ScheduleRecord;
+  readonly decision: IdempotencyRecord;
+}
+
+export interface SearchAlertPreparationSagaBody {
+  readonly version: 1;
+  readonly status: "preparing";
+  readonly ownerId: string;
+  readonly requestId: string;
+  readonly savedSearchId: string;
+  readonly endpointId: string;
+  readonly challengeId: string;
+  readonly scheduleId: string;
+  readonly issuedAt: string;
+}
+
+export interface SearchAlertPreparationSagaRecord extends IdempotencyRecord {
+  readonly responseBody: SearchAlertPreparationSagaBody;
+}
+
+export interface BeginApprovedSearchAlertPreparationInput {
+  readonly ownerId: string;
+  readonly requestId: string;
+  readonly reviewEvidenceHash: string;
+  readonly intent: IdempotencyRecord;
+  readonly now: string;
+}
+
+export interface CommitApprovedSearchAlertPreparationInput extends SearchAlertActivationInput {
+  readonly ownerId: string;
+  readonly requestId: string;
+  readonly reviewEvidenceHash: string;
+  readonly intent: IdempotencyRecord;
+  readonly now: string;
+}
+
+export interface DeclineSearchAlertPreparationInput {
+  readonly ownerId: string;
+  readonly requestId: string;
+  readonly reviewEvidenceHash: string;
+  readonly intent: IdempotencyRecord;
+  readonly decision: IdempotencyRecord;
+  readonly now: string;
+}
+
+export interface ExpireSearchAlertPreparationInput {
+  readonly ownerId: string;
+  readonly requestId: string;
+  readonly reviewEvidenceHash: string;
+  readonly reviewExpiresAt: string;
+  readonly now: string;
+}
+
+export interface CompensateSearchAlertPreparationInput {
+  readonly saga: SearchAlertPreparationSagaRecord;
+  readonly now: string;
+}
+
+export interface PurgeExpiredSearchAlertPreparationsInput {
+  readonly now: string;
+  readonly limit: number;
+}
+
 export interface ApplicationReviewRecord {
   readonly id: string;
   readonly ownerId: string;

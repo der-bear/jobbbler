@@ -12,6 +12,7 @@ import type {
   FailWorkItemInput,
   IdempotencyPutResult,
   IdempotencyRecord,
+  IdempotencyRecordIdentity,
   JobSearchPage,
   JobSearchQuery,
   OrganizationRecord,
@@ -53,7 +54,15 @@ import type {
   ResolveAgentSessionInput,
   RichDataGrantMatchInput,
   RichDataGrantRecord,
+  SearchAlertActivationInput,
+  SearchAlertActivationResult,
+  BeginApprovedSearchAlertPreparationInput,
+  CommitApprovedSearchAlertPreparationInput,
+  CompensateSearchAlertPreparationInput,
+  DeclineSearchAlertPreparationInput,
+  ExpireSearchAlertPreparationInput,
   GrantWithdrawalEvidence,
+  PurgeExpiredSearchAlertPreparationsInput,
 } from "./records.js";
 
 export interface OwnerRepository {
@@ -220,6 +229,27 @@ export interface OwnerActivityRepository {
 export interface IdempotencyRepository {
   putIfAbsent(record: IdempotencyRecord): Promise<IdempotencyPutResult>;
   get(scope: string, key: string): Promise<IdempotencyRecord | null>;
+  deleteExact(input: IdempotencyRecordIdentity): Promise<boolean>;
+  purgeExpired(input: {
+    readonly scopePrefix: string;
+    readonly now: string;
+    readonly limit: number;
+  }): Promise<number>;
+}
+
+export interface SearchAlertActivationRepository {
+  commitApproved(input: SearchAlertActivationInput): Promise<SearchAlertActivationResult>;
+}
+
+export interface SearchAlertPreparationRepository {
+  beginApproved(input: BeginApprovedSearchAlertPreparationInput): Promise<IdempotencyPutResult>;
+  commitApproved(
+    input: CommitApprovedSearchAlertPreparationInput,
+  ): Promise<SearchAlertActivationResult>;
+  decline(input: DeclineSearchAlertPreparationInput): Promise<IdempotencyPutResult>;
+  expire(input: ExpireSearchAlertPreparationInput): Promise<boolean>;
+  compensate(input: CompensateSearchAlertPreparationInput): Promise<boolean>;
+  purgeExpired(input: PurgeExpiredSearchAlertPreparationsInput): Promise<number>;
 }
 
 export interface IngestionRepository {
@@ -261,6 +291,8 @@ export interface Storage {
   readonly audit: AuditRepository;
   readonly ownerActivity: OwnerActivityRepository;
   readonly idempotency: IdempotencyRepository;
+  readonly searchAlertActivation: SearchAlertActivationRepository;
+  readonly searchAlertPreparation: SearchAlertPreparationRepository;
   readonly ingestion: IngestionRepository;
   close(): void;
 }

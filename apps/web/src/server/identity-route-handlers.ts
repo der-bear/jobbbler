@@ -30,6 +30,15 @@ export interface IdentityOperations {
     rawInput: unknown,
     now: string,
   ): Promise<StartedEmailVerification>;
+  startSearchAlertEmailVerification?(
+    ownerId: string,
+    rawInput: unknown,
+    now: string,
+    stableContext?: {
+      readonly endpointId: string;
+      readonly challengeId: string;
+    },
+  ): Promise<StartedEmailVerification>;
   completeEmailVerification(
     ownerId: string,
     rawInput: unknown,
@@ -39,6 +48,20 @@ export interface IdentityOperations {
     readonly endpointId: string;
     readonly verifiedAt: string;
   }>;
+  confirmSearchAlertEmailVerification?(
+    ownerId: string,
+    rawInput: unknown,
+    now: string,
+  ): Promise<{
+    readonly owner: ReturnType<typeof ownerSummary>;
+    readonly endpointId: string;
+    readonly verifiedAt: string;
+  }>;
+  abandonSearchAlertEmailVerification?(
+    ownerId: string,
+    challengeId: string,
+    now: string,
+  ): Promise<boolean>;
   listVerificationEndpoints(ownerId: string): Promise<
     readonly {
       readonly id: string;

@@ -13,6 +13,7 @@ import {
   type ObservableWorkerMode,
 } from "./observability.js";
 import { runRecurringService } from "./service-loop.js";
+import { runSearchAlertRetention } from "./search-alert-retention.js";
 import { createConfiguredWorkerStorage } from "./storage.js";
 
 const logger = pino({
@@ -38,6 +39,8 @@ const logger = pino({
     censor: "[REDACTED]",
   },
 });
+
+const SEARCH_ALERT_RETENTION_BATCH_LIMIT = 100;
 
 function positiveInteger(value: string | undefined, fallback: number, label: string): number {
   const parsed = Number(value ?? String(fallback));
@@ -128,6 +131,14 @@ async function main(): Promise<void> {
       const startedAtMs = Date.now();
       const correlationId = `cycle_${randomUUID()}`;
       const now = new Date().toISOString();
+      const searchAlertRetention = await runSearchAlertRetention(
+        storage.searchAlertPreparation,
+        storage.idempotency,
+        {
+          now,
+          limit: SEARCH_ALERT_RETENTION_BATCH_LIMIT,
+        },
+      );
       const batch = runsCatalog(mode)
         ? await runLeasedConnectorBatch({
             connectors,
@@ -199,6 +210,9 @@ async function main(): Promise<void> {
             errorCode: run.errorCode,
           })),
           purgedPayloads: batch?.purgedPayloads ?? 0,
+          purgedSearchAlertPreparations: searchAlertRetention.purgedPreparations,
+          purgedSearchAlertIdempotency: searchAlertRetention.purgedIdempotency,
+          searchAlertRetentionFailures: searchAlertRetention.failed,
           alertScheduler: scheduler,
           alertDelivery,
         },

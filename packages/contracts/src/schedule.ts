@@ -142,13 +142,23 @@ export const requestSearchAlertResultSchema = z.strictObject({
   review: searchAlertReviewSchema,
 });
 
-export const decideSearchAlertInputSchema = z.strictObject({
+const searchAlertDecisionInputBase = {
   requestId: entityIdSchema,
   reviewToken: z.string().min(1).max(4_096),
-  code: z.string().regex(/^\d{6}$/),
-  decision: z.enum(["approved", "declined"]),
   channel: z.literal("agent_client"),
-});
+} as const;
+
+export const decideSearchAlertInputSchema = z.discriminatedUnion("decision", [
+  z.strictObject({
+    ...searchAlertDecisionInputBase,
+    decision: z.literal("approved"),
+    code: z.string().regex(/^\d{6}$/),
+  }),
+  z.strictObject({
+    ...searchAlertDecisionInputBase,
+    decision: z.literal("declined"),
+  }),
+]);
 
 const searchAlertDecisionResultBaseSchema = z.strictObject({
   status: z.literal("completed"),

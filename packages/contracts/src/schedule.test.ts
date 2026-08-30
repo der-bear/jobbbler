@@ -162,21 +162,30 @@ describe("agent-native search alert contracts", () => {
     ).toThrow();
   });
 
-  it("requires a six-digit code and an exact agent-client decision", () => {
-    const decision = {
+  it("requires a six-digit code only for approval and an exact agent-client decision", () => {
+    const approval = {
       requestId: "req_550e8400-e29b-41d4-a716-446655440000",
       reviewToken: "signed.review",
       code: "042197",
       decision: "approved",
       channel: "agent_client",
     } as const;
-    expect(decideSearchAlertInputSchema.parse(decision)).toEqual(decision);
-    expect(() => decideSearchAlertInputSchema.parse({ ...decision, code: "42197" })).toThrow();
-    expect(() => decideSearchAlertInputSchema.parse({ ...decision, decision: "yes" })).toThrow();
+    const decline = {
+      requestId: approval.requestId,
+      reviewToken: approval.reviewToken,
+      decision: "declined",
+      channel: "agent_client",
+    } as const;
+
+    expect(decideSearchAlertInputSchema.parse(approval)).toEqual(approval);
+    expect(decideSearchAlertInputSchema.parse(decline)).toEqual(decline);
+    expect(() => decideSearchAlertInputSchema.parse({ ...decline, code: approval.code })).toThrow();
+    expect(() => decideSearchAlertInputSchema.parse({ ...approval, code: "42197" })).toThrow();
+    expect(() => decideSearchAlertInputSchema.parse({ ...approval, decision: "yes" })).toThrow();
     expect(() =>
-      decideSearchAlertInputSchema.parse({ ...decision, channel: "first_party_ui" }),
+      decideSearchAlertInputSchema.parse({ ...approval, channel: "first_party_ui" }),
     ).toThrow();
-    expect(() => decideSearchAlertInputSchema.parse({ ...decision, approved: true })).toThrow();
+    expect(() => decideSearchAlertInputSchema.parse({ ...approval, approved: true })).toThrow();
   });
 
   it("bounds the external-client review and approval receipt", () => {

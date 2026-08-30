@@ -88,6 +88,8 @@ function identityStore(options: {
     resolveSession: vi.fn(),
     beginEmailVerification: vi.fn(),
     consumeEmailVerification: vi.fn(),
+    abandonEmailVerification: vi.fn(),
+    purgeExpiredEmailVerifications: vi.fn(),
     getVerificationEndpoint: vi.fn(),
     listVerificationEndpoints: vi.fn(),
     revokeVerificationEndpoint: vi.fn(),
@@ -119,6 +121,7 @@ function service(store: IdentityStore) {
     secrets: {
       createSessionToken: () => "new-session-secret-with-at-least-thirty-two-characters",
       createVerificationCode: () => "372941",
+      deriveSearchAlertVerificationCode: () => "814205",
       hash: testDigest,
     },
     email: {

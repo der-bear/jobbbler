@@ -31,6 +31,20 @@ describe("identity security adapters", () => {
     );
   });
 
+  it("derives a stable purpose-separated search-alert code from the exact challenge", () => {
+    const secrets = createSecretCodec(environment);
+    const challenge = "challenge_550e8400-e29b-41d4-a716-446655440002";
+
+    const first = secrets.deriveSearchAlertVerificationCode(challenge);
+
+    expect(first).toMatch(/^\d{6}$/u);
+    expect(secrets.deriveSearchAlertVerificationCode(challenge)).toBe(first);
+    expect(
+      secrets.deriveSearchAlertVerificationCode("challenge_650e8400-e29b-41d4-a716-446655440002"),
+    ).not.toBe(first);
+    expect(secrets.hash("email_verification", `${challenge}\u0000${first}`)).not.toContain(first);
+  });
+
   it("encrypts normalized email addresses with randomized authenticated encryption", () => {
     const email = createEmailProtector(environment);
     const first = email.protect("Person@Example.com");

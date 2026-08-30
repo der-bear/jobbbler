@@ -15,6 +15,7 @@ import type {
   IdentityStore,
   OwnerIdentityRecord,
   SecretCodec,
+  VerificationChallengePurpose,
 } from "./types.js";
 
 const DEFAULT_SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -48,6 +49,11 @@ export interface StartedEmailVerification {
   readonly expiresAt: string;
   readonly maskedAddress: string;
   readonly encryptedAddress: string;
+}
+
+export interface StableSearchAlertVerificationContext {
+  readonly endpointId: string;
+  readonly challengeId: string;
 }
 
 function instant(value: string): number {
@@ -112,6 +118,107 @@ export function createIdentityService(options: IdentityServiceOptions) {
     "Deletion intent TTL",
   );
 
+  async function startEmailVerification(
+    ownerId: string,
+    rawInput: unknown,
+    now: string,
+    purpose: VerificationChallengePurpose,
+    stableContext?: StableSearchAlertVerificationContext,
+  ): Promise<StartedEmailVerification> {
+    const input = startEmailVerificationInputSchema.parse(rawInput);
+    const protectedEmail = options.email.protect(input.email);
+    const endpointId = stableContext?.endpointId ?? options.ids.endpoint();
+    const challengeId = stableContext?.challengeId ?? options.ids.challenge();
+    const rawCode =
+      purpose === "search_alert_review"
+        ? options.secrets.deriveSearchAlertVerificationCode(challengeId)
+        : options.secrets.createVerificationCode();
+    if (!/^\d{6}$/.test(rawCode)) {
+      throw new Error("Verification code source must return exactly six digits.");
+    }
+    const expiresAt = after(now, challengeTtlSeconds);
+    const stored = await options.store.beginEmailVerification({
+      endpoint: {
+        id: endpointId,
+        ownerId,
+        kind: "email",
+        addressHash: protectedEmail.addressHash,
+        addressCiphertext: protectedEmail.addressCiphertext,
+        maskedAddress: protectedEmail.maskedAddress,
+        status: "pending",
+        verifiedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+      challenge: {
+        id: challengeId,
+        ownerId,
+        endpointId,
+        purpose,
+        tokenHash: options.secrets.hash("email_verification", `${challengeId}\u0000${rawCode}`),
+        status: "pending",
+        attempts: 0,
+        maxAttempts: maxChallengeAttempts,
+        expiresAt,
+        consumedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+    });
+    return {
+      challengeId: stored.challenge.id,
+      endpointId: stored.endpoint.id,
+      rawCode,
+      expiresAt: stored.challenge.expiresAt,
+      maskedAddress: stored.endpoint.maskedAddress,
+      encryptedAddress: stored.endpoint.addressCiphertext,
+    };
+  }
+
+  async function completeEmailVerification(
+    ownerId: string,
+    rawInput: unknown,
+    now: string,
+    purpose: VerificationChallengePurpose,
+    acceptConsumed: boolean,
+  ) {
+    const input = completeEmailVerificationInputSchema.parse(rawInput);
+    const result = await options.store.consumeEmailVerification({
+      ownerId,
+      challengeId: input.challengeId,
+      tokenHash: options.secrets.hash(
+        "email_verification",
+        `${input.challengeId}\u0000${input.code}`,
+      ),
+      now,
+      expectedPurpose: purpose,
+      acceptConsumed,
+    });
+    if (result.status === "verified") {
+      return {
+        owner: ownerSummary(result.owner),
+        endpointId: result.endpoint.id,
+        verifiedAt: result.endpoint.verifiedAt ?? now,
+      };
+    }
+    if (result.status === "invalid") {
+      throw new DomainError({
+        code: "UNAUTHORIZED",
+        message: "The verification code is invalid.",
+        details: { remainingAttempts: result.remainingAttempts },
+      });
+    }
+    throw new DomainError({
+      code: "CONFLICT",
+      message:
+        result.status === "expired"
+          ? "The verification code expired. Request a new code."
+          : result.status === "locked"
+            ? "Too many verification attempts. Request a new code."
+            : "The verification code has already been used.",
+    });
+  }
+
   return {
     async createEphemeralSession(now: string): Promise<CreatedOwnerSession> {
       const rawToken = options.secrets.createSessionToken();
@@ -154,85 +261,41 @@ export function createIdentityService(options: IdentityServiceOptions) {
       rawInput: unknown,
       now: string,
     ): Promise<StartedEmailVerification> {
-      const input = startEmailVerificationInputSchema.parse(rawInput);
-      const protectedEmail = options.email.protect(input.email);
-      const rawCode = options.secrets.createVerificationCode();
-      if (!/^\d{6}$/.test(rawCode)) {
-        throw new Error("Verification code source must return exactly six digits.");
-      }
-      const endpointId = options.ids.endpoint();
-      const challengeId = options.ids.challenge();
-      const expiresAt = after(now, challengeTtlSeconds);
-      const stored = await options.store.beginEmailVerification({
-        endpoint: {
-          id: endpointId,
-          ownerId,
-          kind: "email",
-          addressHash: protectedEmail.addressHash,
-          addressCiphertext: protectedEmail.addressCiphertext,
-          maskedAddress: protectedEmail.maskedAddress,
-          status: "pending",
-          verifiedAt: null,
-          createdAt: now,
-          updatedAt: now,
-        },
-        challenge: {
-          id: challengeId,
-          ownerId,
-          endpointId,
-          tokenHash: options.secrets.hash("email_verification", `${challengeId}\u0000${rawCode}`),
-          status: "pending",
-          attempts: 0,
-          maxAttempts: maxChallengeAttempts,
-          expiresAt,
-          consumedAt: null,
-          createdAt: now,
-          updatedAt: now,
-        },
-      });
-      return {
-        challengeId: stored.challenge.id,
-        endpointId: stored.endpoint.id,
-        rawCode,
-        expiresAt: stored.challenge.expiresAt,
-        maskedAddress: stored.endpoint.maskedAddress,
-        encryptedAddress: stored.endpoint.addressCiphertext,
-      };
+      return startEmailVerification(ownerId, rawInput, now, "owner_email_verification");
+    },
+
+    async startSearchAlertEmailVerification(
+      ownerId: string,
+      rawInput: unknown,
+      now: string,
+      stableContext?: StableSearchAlertVerificationContext,
+    ): Promise<StartedEmailVerification> {
+      return startEmailVerification(ownerId, rawInput, now, "search_alert_review", stableContext);
     },
 
     async completeEmailVerification(ownerId: string, rawInput: unknown, now: string) {
-      const input = completeEmailVerificationInputSchema.parse(rawInput);
-      const result = await options.store.consumeEmailVerification({
+      return completeEmailVerification(ownerId, rawInput, now, "owner_email_verification", false);
+    },
+
+    async confirmSearchAlertEmailVerification(ownerId: string, rawInput: unknown, now: string) {
+      return completeEmailVerification(ownerId, rawInput, now, "search_alert_review", true);
+    },
+
+    abandonSearchAlertEmailVerification(ownerId: string, challengeId: string, now: string) {
+      return options.store.abandonEmailVerification({
         ownerId,
-        challengeId: input.challengeId,
-        tokenHash: options.secrets.hash(
-          "email_verification",
-          `${input.challengeId}\u0000${input.code}`,
-        ),
+        challengeId,
+        expectedPurpose: "search_alert_review",
         now,
       });
-      if (result.status === "verified") {
-        return {
-          owner: ownerSummary(result.owner),
-          endpointId: result.endpoint.id,
-          verifiedAt: result.endpoint.verifiedAt ?? now,
-        };
-      }
-      if (result.status === "invalid") {
-        throw new DomainError({
-          code: "UNAUTHORIZED",
-          message: "The verification code is invalid.",
-          details: { remainingAttempts: result.remainingAttempts },
-        });
-      }
-      throw new DomainError({
-        code: "CONFLICT",
-        message:
-          result.status === "expired"
-            ? "The verification code expired. Request a new code."
-            : result.status === "locked"
-              ? "Too many verification attempts. Request a new code."
-              : "The verification code has already been used.",
+    },
+
+    purgeExpiredSearchAlertEmailVerifications(now: string, limit: number) {
+      const boundedLimit = boundedInteger(limit, 1, 1_000, "Verification retention limit");
+      return options.store.purgeExpiredEmailVerifications({
+        purpose: "search_alert_review",
+        now,
+        limit: boundedLimit,
       });
     },
 

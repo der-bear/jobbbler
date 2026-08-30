@@ -111,6 +111,7 @@ export function createSearchAlertAgentRouteDependencies(
     identity,
     savedSearches: savedSearchDependencies.service,
     idempotency: storage.idempotency,
+    preparation: storage.searchAlertPreparation,
     ...(savedSearchDependencies.activity === undefined
       ? {}
       : { activity: savedSearchDependencies.activity }),
@@ -119,6 +120,14 @@ export function createSearchAlertAgentRouteDependencies(
       const scheduled = calculateNextRun(recurrence, now);
       const jitter = deriveEvaluationJitterSeconds(savedSearchId, EVALUATION_JITTER_MAX_SECONDS);
       return new Date(Date.parse(scheduled) + jitter * 1_000).toISOString();
+    },
+    ids: {
+      request: () => createEntityId("req"),
+      savedSearch: () => createEntityId("saved"),
+      endpoint: () => createEntityId("endpoint"),
+      challenge: () => createEntityId("challenge"),
+      schedule: () => createEntityId("schedule"),
+      claim: () => createEntityId("claim"),
     },
   };
 }

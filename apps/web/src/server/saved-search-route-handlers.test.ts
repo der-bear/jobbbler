@@ -127,6 +127,7 @@ function dependencies(): SavedSearchRouteDependencies {
     identity: identity(),
     idempotency: idempotencyStore(),
     service: {
+      ensureSavedSearch: vi.fn(async () => saved),
       createSavedSearch: vi.fn(async () => saved),
       listSavedSearches: vi.fn(async () => [saved]),
       previewSchedule: vi.fn(async () => ({
