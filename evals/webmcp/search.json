@@ -53,7 +53,7 @@
             "unknownPolicy": "include"
           },
           "sort": "relevance",
-          "limit": 20
+          "limit": 3
         }
       }
     },
@@ -80,7 +80,7 @@
             "unknownPolicy": "include"
           },
           "sort": "relevance",
-          "limit": 20
+          "limit": 3
         }
       }
     },
