@@ -226,6 +226,13 @@ export async function buildApplicationWorkspace(
             id: currentGrant.id,
             status: currentGrant.status,
             expiresAt: currentGrant.expiresAt,
+            decisionChannel:
+              currentGrant.approvalChannel ??
+              (currentGrant.approvalRequestId === null ||
+              currentGrant.approvalRequestId === undefined
+                ? "first_party_ui"
+                : "agent_client"),
+            decisionRequestId: currentGrant.approvalRequestId ?? currentGrant.id,
           }),
     delegationRequests: delegations.slice(0, 20).map((delegation) => ({
       id: delegation.id,
@@ -414,6 +421,7 @@ export function createApplicationRouteDependencies(
           reviewPayloadHash: review.payloadHash,
           confirmationId: input.confirmationId,
           confirmationHash,
+          decisionChannel: actor.kind === "agent" ? "agent_client" : "first_party_ui",
           grant: {
             id: grant.id,
             version: grant.version ?? 0,

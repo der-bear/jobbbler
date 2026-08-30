@@ -134,6 +134,8 @@ export const applicationDataGrantSummarySchema = z.strictObject({
   id: entityIdSchema,
   status: z.enum(["requested", "active", "withdrawn"]),
   expiresAt: isoInstantSchema,
+  decisionChannel: z.enum(["first_party_ui", "agent_client"]).optional(),
+  decisionRequestId: entityIdSchema.optional(),
 });
 
 export const applicationConsentWithdrawalSchema = z.strictObject({

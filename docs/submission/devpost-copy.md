@@ -50,8 +50,9 @@ When the journey reaches an application, speed stops being the point.
   continue on the employer's website.
 - Seven outcome-oriented application tools are discoverable from every page and
   state-gated at execution: each answers with the next safe step when its
-  moment has not arrived. Agent-prepared answers keep their provenance and
-  stay editable until the person's final review.
+  moment has not arrived. Agent-prepared answers keep their provenance. Once
+  assistance is requested or an agent suggestion exists, the site renders the
+  draft read-only and revisions stay in the external agent client.
 - Sharing reviewed data requires explicit permission bound to the exact
   reviewed payload, recipient, purpose, fields, and notice — permission
   applies only to this exact application. The external agent client presents
@@ -127,10 +128,11 @@ The application flow is agent-first with request-bound human decisions. The
 agent checks readiness, calls `request_application_assistance`, and waits while
 the external agent client presents the request. Only
 `decide_application_assistance` with the person's decision and the exact live
-request ID can enable short-lived, draft-bound assistance. The agent can then
-propose truthful answers in bounded batches and request one exact submission
-review — recipient, purpose, exact field values with sensitivity markers, and
-privacy notice. The external agent client presents that review and relays the person's decision. The server
+request ID can enable short-lived, draft-bound assistance; the same tool can
+withdraw that active authority only for the exact bound request. The agent can
+then propose truthful answers in bounded batches and request one exact
+submission review — recipient, purpose, exact field values with sensitivity
+markers, and privacy notice. The external agent client presents that review and relays the person's decision. The server
 accepts a submission decision only when it is bound to the exact
 request ID and draft version, seals the reviewed payload, and consumes a
 short-lived single-use confirmation for the idempotent submit. The stored
@@ -143,8 +145,10 @@ stops while historical submission receipts remain honest.
 
 A purely manual internal draft can still finish in the first-party UI. Once
 assistance is requested or an agent-suggested answer exists, the site offers no
-approval, consent, or submission bypass; server routes require those decisions
-to be relayed through the external agent client.
+local editing, approval, consent, or submission bypass; server routes require
+revisions and those decisions to be relayed through the external agent client.
+Pending data grants are reused only for the same decision channel and exact
+request; an incompatible pending grant is withdrawn and replaced.
 
 ## Challenges we ran into
 

@@ -157,7 +157,7 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
       },
       {
         name: "decide_application_assistance",
-        purpose: "Record the person's assistance decision from the agent client.",
+        purpose: "Approve, decline, or withdraw exact request-bound application assistance.",
         readOnly: false,
       },
       {

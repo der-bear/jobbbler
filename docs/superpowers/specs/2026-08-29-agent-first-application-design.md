@@ -20,8 +20,8 @@ The design preserves the kickoff invariant: every submitted application is bound
 1. **Preparing** — the agent fills the internal-role draft and reports progress.
    The page lists only unresolved questions or blockers. A purely manual draft
    may use the first-party flow; once assistance is requested or an agent
-   suggestion exists, assistance, disclosure, and submission decisions remain
-   in the external agent client.
+   suggestion exists, the site is read-only and revisions, assistance,
+   disclosure, and submission decisions remain in the external agent client.
 2. **Ready for review** — one document-like screen shows the role, employer, answers, documents, declarations, and the exact information that will be shared.
 3. **Review and submit** — one request-bound decision accepts the exact reviewed
    answers, authorizes that disclosure, creates a short-lived confirmation, and
@@ -56,7 +56,8 @@ Use outcome-oriented tools with stable schemas and explicit next actions:
 - `request_application_assistance(draftId)` returns one request-bound assistance
   presentation for the external agent client.
 - `decide_application_assistance(draftId, requestId, decision)` records only the
-  person's explicit decision for that exact request.
+  person's explicit approval or decline for that exact request, or withdraws
+  active assistance bound to that same request.
 - `propose_application_updates(draftId, patches[])` applies bounded agent suggestions in one call.
 - `request_submission_review(draftId)` returns the exact reviewed values,
   sensitivity markers, recipient, purpose, notice, request ID, and draft version
@@ -85,6 +86,9 @@ markers.
 - A final review is immutable and includes recipient, disclosure, notice, documents, declarations, and payload hashes.
 - Any material edit invalidates the review, permission, and confirmation.
 - Submission is atomic and idempotent; uncertain provider state is not reported as success.
+- The storage transaction rechecks manual-versus-assisted lineage before it
+  consumes confirmation state; delegation creation serializes on the same
+  draft lock.
 - Cross-owner and cross-draft access always fails without revealing resource existence.
 
 ## Verification

@@ -497,6 +497,12 @@ function dataGrantSummary(record: RichDataGrantRecord): ApplicationDataGrantSumm
     id: record.id,
     status: record.status,
     expiresAt: record.expiresAt,
+    decisionChannel:
+      record.approvalChannel ??
+      (record.approvalRequestId === null || record.approvalRequestId === undefined
+        ? "first_party_ui"
+        : "agent_client"),
+    decisionRequestId: record.approvalRequestId ?? record.id,
   });
 }
 

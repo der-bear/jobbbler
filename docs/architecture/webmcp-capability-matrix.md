@@ -53,9 +53,12 @@ MCP Resource dependency.
 3. `request_application_assistance` asks once for draft-bound, short-lived
    preparation authority in the external agent client.
 4. `decide_application_assistance` records the exact approved or declined
-   decision.
+   request decision, or withdraws active assistance only for that same bound
+   request.
 5. `propose_application_updates` writes one atomic batch from supplied facts;
-   the agent asks only for missing facts and never invents sensitive data.
+   the agent asks only for missing facts and never invents sensitive data. The
+   site keeps an assisted lineage read-only; revisions remain in the agent
+   client.
 6. `request_submission_review` presents recipient, purpose, every exact field
    value with an explicit sensitivity marker, privacy notice, request ID, and
    draft version in the agent client.

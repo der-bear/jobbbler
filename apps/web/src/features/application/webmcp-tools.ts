@@ -60,7 +60,13 @@ const patchesInputSchema = {
   required: ["patches"],
 } as const satisfies JsonSchema;
 
-const decisionProperty = {
+const assistanceDecisionProperty = {
+  type: "string",
+  description: "The person's explicit decision in the agent client.",
+  enum: ["approved", "declined", "withdraw"],
+} as const satisfies JsonSchema;
+
+const submissionDecisionProperty = {
   type: "string",
   description: "The person's explicit decision in the agent client.",
   enum: ["approved", "declined"],
@@ -75,7 +81,7 @@ const assistanceDecisionInputSchema = {
       description: "The server-issued assistance request ID.",
       pattern: "^delegation_[0-9a-f-]{36}$",
     },
-    decision: decisionProperty,
+    decision: assistanceDecisionProperty,
   },
   required: ["requestId", "decision"],
 } as const satisfies JsonSchema;
@@ -94,23 +100,24 @@ const submissionDecisionInputSchema = {
       description: "The exact draft version returned with the review request.",
       minimum: 0,
     },
-    decision: decisionProperty,
+    decision: submissionDecisionProperty,
   },
   required: ["requestId", "draftVersion", "decision"],
 } as const satisfies JsonSchema;
 
 const emptyInput = z.strictObject({});
-const decision = z.enum(["approved", "declined"]);
+const assistanceDecision = z.enum(["approved", "declined", "withdraw"]);
+const submissionDecision = z.enum(["approved", "declined"]);
 const assistanceDecisionInput = z.strictObject({
   requestId: entityIdSchema.refine((value) => value.startsWith("delegation_"), {
     message: "Expected the server-issued assistance request ID.",
   }),
-  decision,
+  decision: assistanceDecision,
 });
 const submissionDecisionInput = z.strictObject({
   requestId: z.string().max(128),
   draftVersion: z.number().int().nonnegative(),
-  decision,
+  decision: submissionDecision,
 });
 const patchesInput = z
   .strictObject({
@@ -171,11 +178,11 @@ export interface ApplicationToolDependencies {
   }>;
   decideAgentAccess(
     requestId: string,
-    decision: "approved" | "declined",
+    decision: "approved" | "declined" | "withdraw",
     options: Readonly<{ signal: AbortSignal; channel: "agent_client" }>,
   ): Promise<{
     readonly state: ApplicationAgentState;
-    readonly decision: "approved" | "declined";
+    readonly decision: "approved" | "declined" | "withdraw";
   }>;
   proposeUpdates(
     patches: readonly Readonly<{ fieldKey: string; value: string }>[],
@@ -333,7 +340,7 @@ function assistanceDecisionTool(
     name: "decide_application_assistance",
     purpose: "Record the person's assistance decision from the agent client.",
     description:
-      "Use the exact requestId returned by request_application_assistance and the person's explicit approved or declined decision. Never infer or approve this decision on the person's behalf. Approval is short-lived and draft-bound; it never shares data or submits an application.",
+      "Use the exact requestId returned by request_application_assistance and the person's explicit decision: approved, declined, or withdraw. Use withdraw only to revoke active assistance bound to that request. Never infer or approve this decision on the person's behalf. Approval is short-lived and draft-bound; it never shares data or submits an application.",
     inputSchema: assistanceDecisionInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -347,12 +354,19 @@ function assistanceDecisionTool(
           summary:
             result.decision === "approved"
               ? "Recorded the decision and enabled short-lived application assistance."
-              : "Recorded the decision and kept application assistance off.",
+              : result.decision === "withdraw"
+                ? "Withdrew the request-bound application assistance."
+                : "Recorded the decision and kept application assistance off.",
           data: {
             draftId: result.state.draftId,
             decision: result.decision,
             agentAuthorityStatus: result.state.agentAuthorityStatus,
-            nextTool: result.decision === "approved" ? "get_application_readiness" : null,
+            nextTool:
+              result.decision === "approved"
+                ? "get_application_readiness"
+                : result.decision === "withdraw"
+                  ? "request_application_assistance"
+                  : null,
           },
           resources: [
             { type: "application", id: result.state.draftId, label: "Private application" },
@@ -490,11 +504,20 @@ export function createApplicationToolManifests(
 ): readonly ToolManifest<unknown, ApplicationToolOutput>[] {
   const readiness = dependencies.currentReadiness();
   const tools: ToolManifest<unknown, ApplicationToolOutput>[] = [readinessTool(dependencies)];
-  if (readiness.state.applyMode === "external" || readiness.nextAction === "complete") return tools;
+  if (readiness.state.applyMode === "external" || readiness.nextAction === "complete") {
+    if (
+      readiness.state.agentAuthorityStatus === "requested" ||
+      readiness.state.agentAuthorityStatus === "active"
+    ) {
+      tools.push(assistanceDecisionTool(dependencies));
+    }
+    return tools;
+  }
 
   if (!hasPreparationAuthority(dependencies)) {
     tools.push(
-      readiness.state.agentAuthorityStatus === "requested"
+      readiness.state.agentAuthorityStatus === "requested" ||
+        readiness.state.agentAuthorityStatus === "active"
         ? assistanceDecisionTool(dependencies)
         : assistanceTool(dependencies),
     );
@@ -502,7 +525,12 @@ export function createApplicationToolManifests(
   }
 
   tools.push(updatesTool(dependencies));
-  if (readiness.missingFieldKeys.length > 0) return tools;
+  if (readiness.missingFieldKeys.length > 0) {
+    if (readiness.state.agentAuthorityStatus === "active") {
+      tools.push(assistanceDecisionTool(dependencies));
+    }
+    return tools;
+  }
 
   const pendingReview = dependencies.currentSubmissionReview();
   if (
@@ -513,6 +541,9 @@ export function createApplicationToolManifests(
     tools.push(submissionDecisionTool(dependencies));
   } else {
     tools.push(submissionReviewTool(dependencies));
+  }
+  if (readiness.state.agentAuthorityStatus === "active") {
+    tools.push(assistanceDecisionTool(dependencies));
   }
   return tools;
 }
@@ -616,7 +647,7 @@ const stableApplicationToolDefinitions: readonly StableApplicationToolDefinition
     name: "decide_application_assistance",
     purpose: "Record the person's assistance decision from the agent client.",
     description:
-      "Use the exact requestId returned by request_application_assistance and the person's explicit approved or declined decision. Never infer or approve this decision on the person's behalf. Approval is short-lived and limited to one private application.",
+      "Use the exact requestId returned by request_application_assistance and the person's explicit decision: approved, declined, or withdraw. Use withdraw to revoke active assistance bound to that request. Never infer or approve this decision on the person's behalf. Approval is short-lived and limited to one private application.",
     readOnly: false,
     input: "assistance_decision",
   },

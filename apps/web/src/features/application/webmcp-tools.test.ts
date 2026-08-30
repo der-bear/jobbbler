@@ -65,13 +65,16 @@ function dependencies(
         expiresAt: "2026-08-29T10:15:00.000Z",
       },
     })),
-    decideAgentAccess: vi.fn(async (_requestId: string, decision: "approved" | "declined") => ({
-      state: {
-        ...state,
-        agentAuthorityStatus: decision === "approved" ? ("active" as const) : ("revoked" as const),
-      },
-      decision,
-    })),
+    decideAgentAccess: vi.fn(
+      async (_requestId: string, decision: "approved" | "declined" | "withdraw") => ({
+        state: {
+          ...state,
+          agentAuthorityStatus:
+            decision === "approved" ? ("active" as const) : ("revoked" as const),
+        },
+        decision,
+      }),
+    ),
     proposeUpdates: vi.fn(async () => readiness({ ...state, version: state.version + 2 })),
     currentSubmissionReview: vi.fn(() => pendingReview),
     requestSubmissionReview: vi.fn(() => {
@@ -209,6 +212,48 @@ describe("application WebMCP outcomes", () => {
         nextTool: "get_application_readiness",
       },
     });
+  });
+
+  it("keeps active assistance revocable through the exact decision outcome", async () => {
+    const active = { ...base, agentAuthorityStatus: "active" as const };
+    const deps = dependencies(active);
+    const manifests = createApplicationToolManifests(deps);
+    const decisionTool = manifests.find(({ name }) => name === "decide_application_assistance");
+    expect(decisionTool).toBeDefined();
+
+    const signal = new AbortController().signal;
+    const result = await decisionTool!.execute(
+      { requestId: delegationRequestId, decision: "withdraw" },
+      { signal },
+    );
+
+    expect(deps.decideAgentAccess).toHaveBeenCalledWith(delegationRequestId, "withdraw", {
+      signal,
+      channel: "agent_client",
+    });
+    expect(result).toMatchObject({
+      status: "completed",
+      data: {
+        decision: "withdraw",
+        agentAuthorityStatus: "revoked",
+        nextTool: "request_application_assistance",
+      },
+    });
+  });
+
+  it("keeps terminal active assistance revocable instead of hiding the decision outcome", () => {
+    const deps = dependencies({
+      ...base,
+      state: "submitted",
+      stage: "complete",
+      agentAuthorityStatus: "active",
+      receiptStatus: "submitted",
+    });
+
+    expect(names(createApplicationToolManifests(deps))).toEqual([
+      "get_application_readiness",
+      "decide_application_assistance",
+    ]);
   });
 
   it("accepts a bounded batch of suggestions after assistance is active", async () => {
@@ -409,7 +454,7 @@ describe("site-wide application tools", () => {
       onNavigate: vi.fn(),
     });
     expect(names(manifests)).toEqual(stableNames);
-    expect(manifests[2]!.description).toContain("Never infer or approve this decision");
+    expect(manifests[2]!.description).toContain("revoke active assistance");
     expect(manifests[5]!.description).toContain("exact requestId and draftVersion");
     expect(manifests[6]!.description).toContain("immediately");
   });

@@ -36,9 +36,9 @@ const agentCan = [
 ] as const;
 
 const onlyYouCan = [
-  "Approve what an agent may change",
+  "Approve, decline, or withdraw draft-bound assistance in your external agent client",
   "Choose what candidate data is shared and why",
-  "Confirm the exact final application",
+  "Confirm the exact final application in your external agent client",
   "Withdraw candidate-data consent at any time",
 ] as const;
 

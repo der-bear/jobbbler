@@ -7,8 +7,10 @@ import { finalizeApplication } from "./application-finalization";
 const draftId = "application_550e8400-e29b-41d4-a716-446655440000";
 const reviewId = "review_550e8400-e29b-41d4-a716-446655440000";
 const grantId = "grant_550e8400-e29b-41d4-a716-446655440000";
+const replacementGrantId = "grant_650e8400-e29b-41d4-a716-446655440000";
 const confirmationId = "confirmation_550e8400-e29b-41d4-a716-446655440000";
 const interactionRequestId = "interaction_550e8400-e29b-41d4-a716-446655440000";
+const staleInteractionRequestId = "interaction_650e8400-e29b-41d4-a716-446655440000";
 const agentAuthorization = `Bearer ${"A".repeat(43)}`;
 
 const workspace: ApplicationWorkspace = {
@@ -66,6 +68,44 @@ const workspace: ApplicationWorkspace = {
   receipt: null,
 };
 
+function reviewedWorkspace(
+  dataGrant: NonNullable<ApplicationWorkspace["dataGrant"]>,
+): ApplicationWorkspace {
+  return {
+    ...workspace,
+    draft: {
+      ...workspace.draft,
+      state: "reviewed",
+      version: 4,
+      answers: [
+        {
+          fieldKey: "full_name",
+          value: "Ada Lovelace",
+          provenance: "user_entered",
+          sensitive: true,
+          acceptedByHuman: true,
+        },
+        {
+          fieldKey: "motivation",
+          value: "Candidate-authored note",
+          provenance: "user_entered",
+          sensitive: false,
+          acceptedByHuman: true,
+        },
+      ],
+    },
+    review: {
+      id: reviewId,
+      draftId,
+      draftVersion: 4,
+      payloadHash: "a".repeat(64),
+      status: "active",
+      createdAt: "2026-08-29T10:01:00.000Z",
+    },
+    dataGrant,
+  };
+}
+
 describe("finalizeApplication", () => {
   it("requires the exact agent-client review request before making any mutation", async () => {
     const request = vi.fn();
@@ -96,6 +136,155 @@ describe("finalizeApplication", () => {
       }),
     ).rejects.toThrow("agent credential");
     expect(request).not.toHaveBeenCalled();
+  });
+
+  it("replaces an agent-client pending grant bound to a different review request", async () => {
+    const pending = reviewedWorkspace({
+      id: grantId,
+      status: "requested",
+      expiresAt: "2026-08-29T10:31:00.000Z",
+      decisionChannel: "agent_client",
+      decisionRequestId: staleInteractionRequestId,
+    });
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ...pending.dataGrant,
+        status: "withdrawn",
+      })
+      .mockResolvedValueOnce({
+        id: replacementGrantId,
+        status: "requested",
+        expiresAt: "2026-08-29T10:31:00.000Z",
+        decisionChannel: "agent_client",
+        decisionRequestId: interactionRequestId,
+      })
+      .mockResolvedValueOnce({
+        id: replacementGrantId,
+        status: "active",
+        expiresAt: "2026-08-29T10:31:00.000Z",
+        decisionChannel: "agent_client",
+        decisionRequestId: interactionRequestId,
+      })
+      .mockResolvedValueOnce({ confirmationId, expiresAt: "2026-08-29T10:06:00.000Z" })
+      .mockResolvedValueOnce({
+        id: "receipt_550e8400-e29b-41d4-a716-446655440000",
+        status: "submitted",
+        externalUrl: null,
+        createdAt: "2026-08-29T10:02:00.000Z",
+      });
+
+    await finalizeApplication({
+      workspace: pending,
+      values: { full_name: "Ada Lovelace", motivation: "Candidate-authored note" },
+      request,
+      idempotencyKey: "550e8400-e29b-41d4-a716-446655440000",
+      interactionChannel: "agent_client",
+      interactionRequestId,
+      agentAuthorization,
+    });
+
+    expect(request.mock.calls.map(([url]) => url)).toEqual([
+      `/api/v1/applications/${draftId}/data-grants/${grantId}`,
+      `/api/v1/applications/${draftId}/data-grants`,
+      `/api/v1/applications/${draftId}/data-grants/${replacementGrantId}/approve`,
+      `/api/v1/applications/${draftId}/reviews/${reviewId}/confirm`,
+      `/api/v1/applications/${draftId}`,
+    ]);
+    expect(request.mock.calls[0]?.[2]).toMatchObject({ method: "DELETE" });
+    expect(request.mock.calls[1]?.[2]).toMatchObject({
+      body: { consentRequestId: interactionRequestId },
+      headers: { authorization: agentAuthorization },
+    });
+  });
+
+  it("replaces an agent-client pending grant before a manual decision can reuse it", async () => {
+    const pending = reviewedWorkspace({
+      id: grantId,
+      status: "requested",
+      expiresAt: "2026-08-29T10:31:00.000Z",
+      decisionChannel: "agent_client",
+      decisionRequestId: interactionRequestId,
+    });
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({ ...pending.dataGrant, status: "withdrawn" })
+      .mockResolvedValueOnce({
+        id: replacementGrantId,
+        status: "requested",
+        expiresAt: "2026-08-29T10:31:00.000Z",
+        decisionChannel: "first_party_ui",
+        decisionRequestId: replacementGrantId,
+      })
+      .mockResolvedValueOnce({
+        id: replacementGrantId,
+        status: "active",
+        expiresAt: "2026-08-29T10:31:00.000Z",
+        decisionChannel: "first_party_ui",
+        decisionRequestId: replacementGrantId,
+      })
+      .mockResolvedValueOnce({ confirmationId, expiresAt: "2026-08-29T10:06:00.000Z" })
+      .mockResolvedValueOnce({
+        id: "receipt_550e8400-e29b-41d4-a716-446655440000",
+        status: "submitted",
+        externalUrl: null,
+        createdAt: "2026-08-29T10:02:00.000Z",
+      });
+
+    await finalizeApplication({
+      workspace: pending,
+      values: { full_name: "Ada Lovelace", motivation: "Candidate-authored note" },
+      request,
+      idempotencyKey: "550e8400-e29b-41d4-a716-446655440000",
+    });
+
+    expect(request.mock.calls.map(([url]) => url)).toEqual([
+      `/api/v1/applications/${draftId}/data-grants/${grantId}`,
+      `/api/v1/applications/${draftId}/data-grants`,
+      `/api/v1/applications/${draftId}/data-grants/${replacementGrantId}/approve`,
+      `/api/v1/applications/${draftId}/reviews/${reviewId}/confirm`,
+      `/api/v1/applications/${draftId}`,
+    ]);
+    expect(request.mock.calls[1]?.[2]).not.toHaveProperty("body.consentRequestId");
+    expect(request.mock.calls[2]?.[2]).toMatchObject({
+      body: { interaction: { channel: "first_party_ui", requestId: replacementGrantId } },
+    });
+  });
+
+  it("reuses only the pending grant bound to the current agent-client request", async () => {
+    const pending = reviewedWorkspace({
+      id: grantId,
+      status: "requested",
+      expiresAt: "2026-08-29T10:31:00.000Z",
+      decisionChannel: "agent_client",
+      decisionRequestId: interactionRequestId,
+    });
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce({ ...pending.dataGrant, status: "active" })
+      .mockResolvedValueOnce({ confirmationId, expiresAt: "2026-08-29T10:06:00.000Z" })
+      .mockResolvedValueOnce({
+        id: "receipt_550e8400-e29b-41d4-a716-446655440000",
+        status: "submitted",
+        externalUrl: null,
+        createdAt: "2026-08-29T10:02:00.000Z",
+      });
+
+    await finalizeApplication({
+      workspace: pending,
+      values: { full_name: "Ada Lovelace", motivation: "Candidate-authored note" },
+      request,
+      idempotencyKey: "550e8400-e29b-41d4-a716-446655440000",
+      interactionChannel: "agent_client",
+      interactionRequestId,
+      agentAuthorization,
+    });
+
+    expect(request.mock.calls.map(([url]) => url)).toEqual([
+      `/api/v1/applications/${draftId}/data-grants/${grantId}/approve`,
+      `/api/v1/applications/${draftId}/reviews/${reviewId}/confirm`,
+      `/api/v1/applications/${draftId}`,
+    ]);
   });
 
   it("turns one human decision into accepted values, exact permission, confirmation, and submission", async () => {

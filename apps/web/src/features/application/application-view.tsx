@@ -52,11 +52,13 @@ function ApplicationField({
   workspace,
   fieldValues,
   fieldKey,
+  readOnly,
   onFieldChange,
 }: Readonly<{
   workspace: ApplicationWorkspace;
   fieldValues: Readonly<Record<string, string>>;
   fieldKey: string;
+  readOnly: boolean;
   onFieldChange(fieldKey: string, value: string): void;
 }>) {
   const field = workspace.requirements.find((candidate) => candidate.fieldKey === fieldKey);
@@ -95,9 +97,9 @@ function ApplicationField({
       </div>
       <p>{field.description}</p>
       {field.input === "textarea" ? (
-        <textarea {...shared} maxLength={10_000} rows={5} />
+        <textarea {...shared} maxLength={10_000} readOnly={readOnly} rows={5} />
       ) : field.input === "select" ? (
-        <select {...shared}>
+        <select {...shared} aria-readonly={readOnly} disabled={readOnly}>
           <option value="">Choose one</option>
           {field.options.map((option) => (
             <option key={option} value={option}>
@@ -110,6 +112,7 @@ function ApplicationField({
           {...shared}
           autoComplete={field.fieldKey === "email" ? "email" : "off"}
           maxLength={500}
+          readOnly={readOnly}
           type={field.input}
         />
       )}
@@ -177,9 +180,13 @@ function ReviewDocument({
           </p>
         </div>
         <p className={styles["sectionIntro"]}>
-          {readiness.readyForReview
-            ? "Everything required is ready. Edit anything that does not sound like you."
-            : "Ask your agent or fill it in here. You only need to resolve the items that are missing."}
+          {agentAssisted
+            ? readiness.readyForReview
+              ? "This page is read-only for this agent-assisted draft. Ask the agent to revise anything before the exact decision in your external client."
+              : "This page is read-only for this agent-assisted draft. Ask the agent to prepare the missing facts in your external client."
+            : readiness.readyForReview
+              ? "Everything required is ready. Edit anything that does not sound like you."
+              : "Ask your agent or fill it in here. You only need to resolve the items that are missing."}
         </p>
 
         {missingFields.length === 0 ? null : (
@@ -196,6 +203,7 @@ function ReviewDocument({
               fieldValues={fieldValues}
               key={field.fieldKey}
               onFieldChange={onFieldChange}
+              readOnly={agentAssisted}
               workspace={workspace}
             />
           ))}

@@ -12,33 +12,34 @@ import {
 } from "@jobbbler/contracts";
 import { DomainError } from "@jobbbler/core-domain";
 import { rankJob } from "@jobbbler/jobs-domain";
-import type {
-  AuditEventRecord,
-  ClaimWorkItemsInput,
-  IdempotencyRecord,
-  JobSearchPage,
-  OrganizationRecord,
-  OwnerActivityEventRecord,
-  OwnerRecord,
-  SavedSearchRecord,
-  ScheduleRecord,
-  Storage,
-  WorkItemRecord,
-  ApplicationReviewRecord,
-  ApplicationConfirmationRecord,
-  ApplicationReceiptRecord,
-  MaterialApplicationEditInput,
-  SealApplicationReviewInput,
-  CompleteApplicationSubmissionInput,
-  CompleteApplicationSubmissionResult,
-  ActiveDelegationMatchInput,
-  ApproveRichDataGrantInput,
-  AgentDelegationRecord,
-  AgentSessionRecord,
-  DataGrantRecord,
-  ResolveAgentSessionInput,
-  RichDataGrantMatchInput,
-  RichDataGrantRecord,
+import {
+  requiresAgentClientSubmissionDecision,
+  type ActiveDelegationMatchInput,
+  type AgentDelegationRecord,
+  type AgentSessionRecord,
+  type ApplicationConfirmationRecord,
+  type ApplicationReceiptRecord,
+  type ApplicationReviewRecord,
+  type ApproveRichDataGrantInput,
+  type AuditEventRecord,
+  type ClaimWorkItemsInput,
+  type IdempotencyRecord,
+  type JobSearchPage,
+  type OrganizationRecord,
+  type OwnerActivityEventRecord,
+  type OwnerRecord,
+  type SavedSearchRecord,
+  type ScheduleRecord,
+  type Storage,
+  type WorkItemRecord,
+  type MaterialApplicationEditInput,
+  type SealApplicationReviewInput,
+  type CompleteApplicationSubmissionInput,
+  type CompleteApplicationSubmissionResult,
+  type DataGrantRecord,
+  type ResolveAgentSessionInput,
+  type RichDataGrantMatchInput,
+  type RichDataGrantRecord,
 } from "@jobbbler/storage";
 
 import { openSqliteDatabase, type SqliteDatabase } from "./connection.js";
@@ -1371,6 +1372,23 @@ function createRepositories(
               code: "CONFLICT",
               message: "A current reviewed draft is required.",
             });
+          if (input.decisionChannel === "first_party_ui") {
+            const delegations = database
+              .prepare(
+                `SELECT status FROM application_delegation_records
+                 WHERE owner_id=? AND resource_type='application_draft' AND resource_id=?`,
+              )
+              .all(input.ownerId, input.draftId) as {
+              readonly status: AgentDelegationRecord["status"];
+            }[];
+            if (requiresAgentClientSubmissionDecision(applicationFromRow(draftRow), delegations)) {
+              throw new DomainError({
+                code: "FORBIDDEN",
+                message:
+                  "Complete consent and submission decisions for this agent-assisted draft in the external agent client.",
+              });
+            }
+          }
           const reviewRow = database
             .prepare(
               "SELECT * FROM application_review_records WHERE id=? AND owner_id=? AND draft_id=? AND draft_version=? AND payload_hash=? AND status='active'",
@@ -1482,32 +1500,44 @@ function createRepositories(
             .get(input.draftId, input.ownerId) as ApplicationRow;
           return { draft: applicationFromRow(updatedRow), receipt: input.receipt, inserted: true };
         });
-        return submit();
+        return submit.immediate();
       },
     },
     delegations: {
       async insert(record: AgentDelegationRecord) {
-        database
-          .prepare(
-            `INSERT INTO application_delegation_records(
-               id, owner_id, agent_id, resource_type, resource_id, operations_json, purpose,
-               status, expires_at, created_at, approved_at, revoked_at,
-               decision_channel, decision_request_id, decision_action, decision_evidence_version
-             ) VALUES (
-               @id, @ownerId, @agentSessionId, @resourceType, @resourceId, @operationsJson,
-               @purpose, @status, @expiresAt, @createdAt, @approvedAt, @revokedAt,
-               @decisionChannel, @decisionRequestId, @decisionAction, @decisionEvidenceVersion
-             )`,
-          )
-          .run({
-            ...record,
-            operationsJson: json(record.operations),
-            decisionChannel: record.decisionChannel ?? null,
-            decisionRequestId: record.decisionRequestId ?? null,
-            decisionAction: record.decisionAction ?? null,
-            decisionEvidenceVersion: record.decisionEvidenceVersion ?? null,
-          });
-        return record;
+        const insertDelegation = database.transaction(() => {
+          const draft = database
+            .prepare("SELECT * FROM application_drafts WHERE id=? AND owner_id=?")
+            .get(record.resourceId, record.ownerId) as ApplicationRow | undefined;
+          if (draft === undefined || draft.state === "submitted" || draft.state === "handed_off") {
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "Application assistance requires a current nonterminal owned draft.",
+            });
+          }
+          database
+            .prepare(
+              `INSERT INTO application_delegation_records(
+                 id, owner_id, agent_id, resource_type, resource_id, operations_json, purpose,
+                 status, expires_at, created_at, approved_at, revoked_at,
+                 decision_channel, decision_request_id, decision_action, decision_evidence_version
+               ) VALUES (
+                 @id, @ownerId, @agentSessionId, @resourceType, @resourceId, @operationsJson,
+                 @purpose, @status, @expiresAt, @createdAt, @approvedAt, @revokedAt,
+                 @decisionChannel, @decisionRequestId, @decisionAction, @decisionEvidenceVersion
+               )`,
+            )
+            .run({
+              ...record,
+              operationsJson: json(record.operations),
+              decisionChannel: record.decisionChannel ?? null,
+              decisionRequestId: record.decisionRequestId ?? null,
+              decisionAction: record.decisionAction ?? null,
+              decisionEvidenceVersion: record.decisionEvidenceVersion ?? null,
+            });
+          return record;
+        });
+        return insertDelegation.immediate();
       },
       async getById(id, ownerId) {
         const row = database

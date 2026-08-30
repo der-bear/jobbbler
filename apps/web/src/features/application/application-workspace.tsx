@@ -217,11 +217,14 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
       },
       async decideAgentAccess(requestId, decision, { signal, channel }) {
         const requested = workspace.delegationRequests.find(({ id }) => id === requestId);
-        if (requested === undefined || requested.status !== "requested") {
+        const expectedStatus = decision === "withdraw" ? "active" : "requested";
+        if (requested === undefined || requested.status !== expectedStatus) {
           throw new ApiClientError({
             code: "CONFLICT",
             message:
-              "That assistance request is no longer pending. Check application readiness for the current next step.",
+              decision === "withdraw"
+                ? "That exact assistance request is not active. Check application readiness for the current authority state."
+                : "That assistance request is no longer pending. Check application readiness for the current next step.",
             retryable: false,
           });
         }
@@ -236,13 +239,14 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
               interaction: {
                 channel,
                 requestId,
-                affirmation: decision,
+                affirmation: decision === "withdraw" ? "revoked" : decision,
                 evidenceVersion: "agent-interaction-v1",
               },
             },
             signal,
           },
         );
+        setSubmissionReview(null);
         return {
           state: (await reloadReadiness(signal)).state,
           decision,
@@ -376,9 +380,11 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
   async function perform(action: ApplicationAction) {
     if (state.kind !== "ready" || busy) return;
     const current = state.workspace;
-    if (action === "review_and_submit" && isAgentAssistedApplication(current)) {
+    if (isAgentAssistedApplication(current)) {
       setActionError(
-        "Complete the exact submission decision in your external agent client for this agent-assisted draft.",
+        action === "review_and_submit"
+          ? "Complete the exact submission decision in your external agent client for this agent-assisted draft."
+          : "This agent-assisted draft is read-only here. Ask the agent to prepare any changes in the external client.",
       );
       return;
     }
@@ -448,9 +454,11 @@ export function ApplicationWorkspace({ draftId }: Readonly<{ draftId: string }>)
       fieldValues={values}
       job={state.job}
       onAction={(action) => void perform(action)}
-      onFieldChange={(fieldKey, value) =>
-        setValues((current) => ({ ...current, [fieldKey]: value }))
-      }
+      onFieldChange={(fieldKey, value) => {
+        if (!isAgentAssistedApplication(state.workspace)) {
+          setValues((current) => ({ ...current, [fieldKey]: value }));
+        }
+      }}
       workspace={state.workspace}
     />
   );

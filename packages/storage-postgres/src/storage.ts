@@ -14,7 +14,7 @@ import {
   type VerificationEndpointRecord,
 } from "@jobbbler/core-domain";
 import { rankJob } from "@jobbbler/jobs-domain";
-import { ownerActivityEventSchema } from "@jobbbler/storage";
+import { ownerActivityEventSchema, requiresAgentClientSubmissionDecision } from "@jobbbler/storage";
 import type {
   AlertChangeRecord,
   AlertDeliveryRecord,
@@ -93,7 +93,10 @@ export type PostgresStorage = Omit<Storage, "close"> & {
   close(): Promise<void>;
 };
 
-function domain(code: "CONFLICT" | "NOT_FOUND" | "VALIDATION", message: string): DomainError {
+function domain(
+  code: "CONFLICT" | "FORBIDDEN" | "NOT_FOUND" | "VALIDATION",
+  message: string,
+): DomainError {
   return new DomainError({ code, message });
 }
 
@@ -1390,6 +1393,21 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
             draft.state !== "reviewed"
           )
             throw domain("CONFLICT", "A current reviewed draft is required.");
+          if (input.decisionChannel === "first_party_ui") {
+            const delegations = await listByOwnerDraft<AgentDelegationRecord>(
+              tx,
+              "delegation",
+              input.ownerId,
+              "resourceId",
+              input.draftId,
+            );
+            if (requiresAgentClientSubmissionDecision(draft, delegations)) {
+              throw domain(
+                "FORBIDDEN",
+                "Complete consent and submission decisions for this agent-assisted draft in the external agent client.",
+              );
+            }
+          }
           const review = await getForUpdate<ApplicationReviewRecord>(
             tx,
             "application_review",
@@ -1465,15 +1483,28 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
     },
     delegations: {
       async insert(record) {
-        await assertDraftOwnership(sql, record.ownerId, record.resourceId);
-        const session = await get<AgentSessionRecord>(sql, "agent_session", record.agentSessionId);
-        if (session?.ownerId !== record.ownerId || session.draftId !== record.resourceId) {
-          throw domain(
-            "VALIDATION",
-            "Delegation must bind an agent session for the same owner and application draft.",
-          );
-        }
-        return insert(sql, "delegation", record, record.ownerId);
+        return sql.begin(async (transaction) => {
+          const tx = transaction as PostgresExecutor;
+          const draft = await getForUpdate<ApplicationDraft>(tx, "application", record.resourceId);
+          if (
+            draft?.ownerId !== record.ownerId ||
+            draft.state === "submitted" ||
+            draft.state === "handed_off"
+          ) {
+            throw domain(
+              "CONFLICT",
+              "Application assistance requires a current nonterminal owned draft.",
+            );
+          }
+          const session = await get<AgentSessionRecord>(tx, "agent_session", record.agentSessionId);
+          if (session?.ownerId !== record.ownerId || session.draftId !== record.resourceId) {
+            throw domain(
+              "VALIDATION",
+              "Delegation must bind an agent session for the same owner and application draft.",
+            );
+          }
+          return insert(tx, "delegation", record, record.ownerId);
+        });
       },
       async getById(id, ownerId) {
         const record = await get<AgentDelegationRecord>(sql, "delegation", id);

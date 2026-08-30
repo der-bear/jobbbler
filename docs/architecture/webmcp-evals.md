@@ -33,7 +33,7 @@ decision points.
 | `detail.json`      | Source-backed role facts, application capability and mode-aware planning, explicit comparison, missing target, invalid ID                |
 | `compare.json`     | Current comparison, ordinal removal, addition, ambiguous ranking, unselected role                                                        |
 | `saved.json`       | Alert reading, pause or resume by exact schedule ID, reopen criteria, latest delta, recovery-first planning, ambiguity, unknown schedule |
-| `application.json` | Readiness, assistance request and exact decision, atomic answer batch, final review, and isolated approved or declined submission cases  |
+| `application.json` | Readiness, request-bound assistance approval and withdrawal, atomic answer batch, final review, and isolated submission decisions        |
 
 ## Evaluation method
 

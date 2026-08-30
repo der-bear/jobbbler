@@ -41,8 +41,9 @@ The current implementation keeps identity portable across both storage adapters.
 3. If authority is absent but requestable, the response is a structured denial with a non-secret, server-issued request ID, exact presentation facts, and `requires_user_action` status.
 4. The external agent client presents the named resource, operations, purpose,
    duration, and affected data classes through its own user-interaction surface.
-5. The person explicitly approves or declines there. Silence and unrelated
-   free-form text are not decisions.
+5. The person explicitly approves or declines there. While that request is
+   active, the person can explicitly withdraw it through the same outcome tool.
+   Silence and unrelated free-form text are not decisions.
 6. The agent invokes the matching decision tool with the exact server request
    ID and normalized decision. The server rechecks the owner session, pending
    request, draft, expiry, and expected state, then stores a versioned
@@ -52,7 +53,8 @@ The current implementation keeps identity portable across both storage adapters.
 7. Approval creates server-side, draft-bound delegation; no reusable secret is
    returned through WebMCP.
 8. The original command is not automatically replayed. The agent retries, and the backend performs a fresh authorization evaluation.
-9. Revocation, expiry, resource version changes, owner changes, or risk-policy changes take effect at the next evaluation.
+9. Request-bound withdrawal, expiry, resource version changes, owner changes,
+   or risk-policy changes take effect at the next evaluation.
 
 This follows the useful AuthZEN requestable-denial principle: approval workflow creates new authority, but the enforcement point still re-evaluates before allowing an operation.
 
@@ -103,6 +105,11 @@ timestamps, expiry, and withdrawal evidence. It does not retain the raw review
 values or raw chat text. A new recipient, purpose, field category, document, or
 materially changed payload requires a new grant.
 
+A requested grant is reusable only when its stored decision channel and server
+request ID match the current interaction lineage. Switching between a manual
+decision and an agent-client decision deterministically withdraws the
+incompatible pending grant and creates a correctly bound replacement.
+
 For the Jobbbler demo application, disclosure to the hiring organization uses
 explicit consent. The review presentation states the right to withdraw before
 the person decides. `withdraw_application_consent` is available through the
@@ -134,7 +141,11 @@ An internal submission is allowed only when all statements are true in one trans
 - every required data grant is active and covers the exact disclosure;
 - the confirmation is unused, unexpired, and bound to this owner and review;
 - the idempotency key is valid and either new or mapped to the same response;
-- no revoke or material edit won the race before the adapter claim.
+- for a first-party submission, the draft still has no requested or active
+  assistance and no agent-suggested answer when the storage transaction locks
+  the draft;
+- no withdrawal, assistance request, or material edit won the race before the
+  adapter claim.
 
 Submission token consumption, state transition, audit record, outbox event, and idempotency response commit atomically for internal demo applications. External jobs open only an available validated HTTPS employer page; if none is available, the workflow stops. Jobbbler creates no draft, prepares or discloses no application data, records no receipt, and makes no submitted claim. Historical `handed_off` records are read-only legacy compatibility and cannot be created by current server or storage writers.
 

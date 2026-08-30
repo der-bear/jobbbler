@@ -244,6 +244,8 @@ export interface CompleteApplicationSubmissionInput {
   readonly reviewPayloadHash: string;
   readonly confirmationId: string;
   readonly confirmationHash: string;
+  /** Decision surface whose lineage must still be valid when submission commits. */
+  readonly decisionChannel: "first_party_ui" | "agent_client";
   readonly grant: SubmissionGrantScope;
   readonly receipt: ApplicationReceiptRecord;
   readonly now: string;

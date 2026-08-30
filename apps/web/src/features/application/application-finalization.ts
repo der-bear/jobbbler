@@ -144,6 +144,19 @@ export async function finalizeApplication(
     (field) => (values[field.fieldKey]?.trim() ?? "").length > 0,
   );
   let grant = workspace.dataGrant;
+  if (
+    grant?.status === "requested" &&
+    (grant.decisionChannel !== interactionChannel ||
+      grant.decisionRequestId !==
+        (interactionChannel === "agent_client" ? interactionRequestId : grant.id))
+  ) {
+    await request(
+      `/api/v1/applications/${encodeURIComponent(draft.id)}/data-grants/${encodeURIComponent(grant.id)}`,
+      applicationDataGrantSummarySchema,
+      { method: "DELETE", ...requestOptions },
+    );
+    grant = null;
+  }
   if (grant?.status !== "active" && grant?.status !== "requested") {
     grant = await request(
       `/api/v1/applications/${encodeURIComponent(draft.id)}/data-grants`,

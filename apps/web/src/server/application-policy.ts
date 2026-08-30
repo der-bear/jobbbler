@@ -14,7 +14,10 @@ import {
 } from "@jobbbler/contracts";
 import { DomainError } from "@jobbbler/core-domain";
 import { canonicalApplicationPayload } from "@jobbbler/jobs-domain";
-import type { ApplicationReviewRecord } from "@jobbbler/storage";
+import {
+  requiresAgentClientSubmissionDecision,
+  type ApplicationReviewRecord,
+} from "@jobbbler/storage";
 
 const requirements = applicationFieldDefinitionSchema.array().parse([
   {
@@ -89,10 +92,7 @@ export function requiresAgentClientApplicationDecision(
   draft: Pick<ApplicationDraft, "answers">,
   delegations: readonly Readonly<{ status: "requested" | "active" | "revoked" }>[],
 ): boolean {
-  return (
-    delegations.some(({ status }) => status === "requested" || status === "active") ||
-    draft.answers.some(({ provenance }) => provenance === "agent_suggestion")
-  );
+  return requiresAgentClientSubmissionDecision(draft, delegations);
 }
 
 export const applicationPolicy: Readonly<{

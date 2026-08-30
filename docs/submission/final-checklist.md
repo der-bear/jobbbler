@@ -45,7 +45,14 @@
       `propose_application_updates`.
 - [ ] Confirm the site offers no approval, consent, confirmation, or submission
       bypass after assistance is requested or an agent-suggested answer exists;
-      a purely manual draft may still finish in the first-party UI.
+      it renders that lineage read-only, while a purely manual draft remains
+      editable and may still finish in the first-party UI.
+- [ ] Confirm `decide_application_assistance` can withdraw active assistance
+      only with its exact live request ID and returns the revoked authority
+      state without adding another tool.
+- [ ] Confirm a pending data grant is reused only for its decision channel and
+      exact request, and both storage adapters reject a late assistance request
+      before consuming a first-party confirmation.
 - [ ] Present the exact request-bound submission review in the external agent
       client and stop with that decision pending; do not invoke submission or
       claim that data was shared.

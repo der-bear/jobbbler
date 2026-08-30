@@ -61,6 +61,8 @@ Built for the OpenAI WebMCP Challenge.
   the agent presents assistance, consent, and submission decisions in the
   external agent client; the server rejects a first-party bypass and accepts
   only decisions bound to the exact server-issued request and draft version.
+  Active assistance can be withdrawn through that same request-bound decision
+  tool.
 - **Truthful actions.** Internal fictional-demo applications can produce an
   immutable receipt after the exact request-bound decision. External roles open
   an available validated HTTPS employer page; if none is available, the workflow
@@ -72,10 +74,10 @@ Built for the OpenAI WebMCP Challenge.
 
 ## Product tour
 
-| Find once                                                                                                                          | Stay updated                                                                            | Apply with control                                                                                                |
-| ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Search and live filters — chips, multi-selects, and a minimum-salary selector — with every result opening as a readable role page. | Save the exact query, preview the timing, verify your email, and see only what changed. | Review one document-like draft, decide once on the exact disclosure, and the sealed payload submits exactly once. |
-| Evidence, trade-offs, and source freshness stay on the role page.                                                                  | Pause or resume checking without exposing an address or credential to WebMCP.           | Agent-prepared answers keep their provenance and stay editable until the person's review.                         |
+| Find once                                                                                                                          | Stay updated                                                                            | Apply with control                                                                                                                     |
+| ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Search and live filters — chips, multi-selects, and a minimum-salary selector — with every result opening as a readable role page. | Save the exact query, preview the timing, verify your email, and see only what changed. | Review one document-like draft, decide once on the exact disclosure, and the sealed payload submits exactly once.                      |
+| Evidence, trade-offs, and source freshness stay on the role page.                                                                  | Pause or resume checking without exposing an address or credential to WebMCP.           | Agent-prepared answers keep their provenance; assisted drafts are read-only on the site and revised through the external agent client. |
 
 ![A role page reads like an article](docs/design/qa-role-article.png)
 

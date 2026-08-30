@@ -145,8 +145,9 @@ export function AgentGuide() {
           <h3 id="guide-control">What stays with you</h3>
           <ul>
             <li>Missing facts the agent asks for</li>
+            <li>Approve, decline, or withdraw assistance in your external agent client</li>
             <li>Consent to process your data — and the right to withdraw it</li>
-            <li>One final submission decision</li>
+            <li>The exact final submission decision in your external agent client</li>
           </ul>
         </section>
       </div>

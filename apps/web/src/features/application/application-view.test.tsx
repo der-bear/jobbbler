@@ -111,6 +111,7 @@ describe("ApplicationView", () => {
     expect(markup).not.toContain("Agent suggestion");
     expect(markup).toContain("Northstar Systems");
     expect(markup).toContain("Review and submit to Northstar Systems");
+    expect(markup).not.toContain('readOnly=""');
     expect(markup).not.toContain("Step 1 of 4");
     expect(markup).not.toContain("Permission</strong>");
     expect(markup).not.toContain("Assistant access");
@@ -185,6 +186,10 @@ describe("ApplicationView", () => {
     );
 
     expect(markup).toContain("Complete this decision in your external agent client");
+    expect(markup).toContain("read-only for this agent-assisted draft");
+    expect(markup.match(/readOnly=""/gu)).toHaveLength(2);
+    expect(markup).not.toContain("Edit anything that does not sound like you");
+    expect(markup).not.toContain("fill it in here");
     expect(markup).not.toContain("Allow preparation");
     expect(markup).not.toContain("Review and submit to Northstar Systems");
   });

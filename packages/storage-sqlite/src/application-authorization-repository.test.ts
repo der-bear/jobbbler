@@ -686,6 +686,7 @@ describe("SQLite application authorization persistence", () => {
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: { ...grant, version: 0 },
+        decisionChannel: "first_party_ui",
         receipt: {
           ...receipt,
           id: "receipt_71000000-0000-7000-8000-000000000099",
@@ -710,6 +711,7 @@ describe("SQLite application authorization persistence", () => {
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: { ...grant, version: 0, categories: ["contact"] },
+        decisionChannel: "first_party_ui",
         receipt,
         now,
       }),
@@ -718,6 +720,32 @@ describe("SQLite application authorization persistence", () => {
       storage.applications.getConfirmation(confirmation.id, ownerId),
     ).resolves.toMatchObject({ status: "active" });
     await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toBeNull();
+
+    await expect(storage.delegations.listByResource(ownerId, draftId)).resolves.toEqual([]);
+    await storage.agentSessions.insert({
+      id: agentSessionId,
+      ownerId,
+      draftId,
+      tokenHash: "5".repeat(64),
+      expiresAt: future,
+      revokedAt: null,
+      createdAt: now,
+    });
+    const lateAssistance = {
+      id: "delegation_71000000-0000-7000-8000-000000000011",
+      ownerId,
+      agentSessionId,
+      resourceType: "application_draft" as const,
+      resourceId: draftId,
+      operations: ["read_application"] as const,
+      purpose: "Prepare this application after the page preflight.",
+      status: "requested" as const,
+      expiresAt: future,
+      createdAt: now,
+      approvedAt: null,
+      revokedAt: null,
+    };
+    await storage.delegations.insert(lateAssistance);
     await expect(
       storage.applications.completeSubmission({
         ownerId,
@@ -728,12 +756,40 @@ describe("SQLite application authorization persistence", () => {
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: { ...grant, version: 0 },
+        decisionChannel: "first_party_ui",
+        receipt,
+        now,
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      storage.applications.getConfirmation(confirmation.id, ownerId),
+    ).resolves.toMatchObject({ status: "active", consumedAt: null });
+    await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toBeNull();
+    await storage.delegations.revoke(lateAssistance.id, ownerId, now);
+
+    await expect(
+      storage.applications.completeSubmission({
+        ownerId,
+        draftId,
+        expectedDraftVersion: reviewed.version,
+        reviewId: review.id,
+        reviewPayloadHash: review.payloadHash,
+        confirmationId: confirmation.id,
+        confirmationHash: confirmation.confirmationHash,
+        grant: { ...grant, version: 0 },
+        decisionChannel: "first_party_ui",
         receipt,
         now,
       }),
     ).resolves.toMatchObject({ draft: { state: "submitted", version: 2 }, receipt });
     await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toEqual(receipt);
     await expect(
+      storage.delegations.insert({
+        ...lateAssistance,
+        id: "delegation_71000000-0000-7000-8000-000000000012",
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(
       storage.applications.completeSubmission({
         ownerId,
         draftId,
@@ -743,6 +799,7 @@ describe("SQLite application authorization persistence", () => {
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: { ...grant, version: 0 },
+        decisionChannel: "first_party_ui",
         receipt: { ...receipt, id: "receipt_71000000-0000-7000-8000-000000000012" },
         now,
       }),

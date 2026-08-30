@@ -594,6 +594,8 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
     await expect(storage.delegations.revoke(delegation.id, ownerId, now)).resolves.toMatchObject({
       status: "revoked",
     });
+    await storage.delegations.revoke(expiredDelegation.id, ownerId, now);
+    await storage.delegations.revoke(newerDelegation.id, ownerId, now);
     await expect(storage.delegations.revoke(delegation.id, ownerId, now)).resolves.toMatchObject({
       status: "revoked",
     });
@@ -652,6 +654,7 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: submissionGrant,
+        decisionChannel: "agent_client",
         receipt: {
           ...receipt,
           id: "receipt-postgres-auth-handoff",
@@ -665,6 +668,30 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
       storage.applications.getConfirmation(confirmation.id, ownerId),
     ).resolves.toMatchObject({ status: "active", consumedAt: null });
     await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toBeNull();
+    expect(
+      (await storage.delegations.listByResource(ownerId, draftId)).filter(
+        ({ status }) => status === "requested" || status === "active",
+      ),
+    ).toEqual([]);
+    const submissionSessionId = "agent-session-postgres-late-assistance";
+    await storage.agentSessions.insert({
+      id: submissionSessionId,
+      ownerId,
+      draftId,
+      tokenHash: "e".repeat(64),
+      expiresAt: "2026-08-29T11:00:00.000Z",
+      revokedAt: null,
+      createdAt: now,
+    });
+    const lateAssistance = {
+      ...delegation,
+      id: "delegation-postgres-late-assistance",
+      agentSessionId: submissionSessionId,
+      status: "requested" as const,
+      approvedAt: null,
+      revokedAt: null,
+    };
+    await storage.delegations.insert(lateAssistance);
     await expect(
       storage.applications.completeSubmission({
         ownerId,
@@ -675,6 +702,27 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: submissionGrant,
+        decisionChannel: "first_party_ui",
+        receipt,
+        now,
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      storage.applications.getConfirmation(confirmation.id, ownerId),
+    ).resolves.toMatchObject({ status: "active", consumedAt: null });
+    await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toBeNull();
+    await storage.delegations.revoke(lateAssistance.id, ownerId, now);
+    await expect(
+      storage.applications.completeSubmission({
+        ownerId,
+        draftId,
+        expectedDraftVersion: 1,
+        reviewId: review.id,
+        reviewPayloadHash: review.payloadHash,
+        confirmationId: confirmation.id,
+        confirmationHash: confirmation.confirmationHash,
+        grant: submissionGrant,
+        decisionChannel: "first_party_ui",
         receipt,
         now,
       }),
@@ -684,6 +732,12 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
       inserted: true,
     });
     await expect(
+      storage.delegations.insert({
+        ...lateAssistance,
+        id: "delegation-postgres-after-submission",
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(
       storage.applications.completeSubmission({
         ownerId,
         draftId,
@@ -693,6 +747,7 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: submissionGrant,
+        decisionChannel: "first_party_ui",
         receipt: { ...receipt, id: "receipt-postgres-auth-retry" },
         now,
       }),

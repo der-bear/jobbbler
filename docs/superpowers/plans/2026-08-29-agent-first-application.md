@@ -87,7 +87,11 @@ Cover draft → save accepted values → validate → review → request/approve
 
 - [ ] **Step 3: Replace the progress wizard and trust rail**
 
-Render a concise role header, editable answer document, missing-item summary, exact recipient/data disclosure, one primary final action, optional pending agent-assistance request, and a truthful receipt. Keep technical audit facts inside one collapsed disclosure.
+Render a concise role header, an answer document that remains editable for a
+purely manual draft and becomes read-only for an assisted lineage, a
+missing-item summary, exact recipient/data disclosure, one primary final
+action, optional pending agent-assistance request, and a truthful receipt. Keep
+technical audit facts inside one collapsed disclosure.
 
 - [ ] **Step 4: Implement one-click resume-safe finalization**
 

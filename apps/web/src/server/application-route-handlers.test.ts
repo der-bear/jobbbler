@@ -5,6 +5,7 @@ import type { AgentDelegationRecord } from "@jobbbler/storage";
 
 import {
   confirmationCookie,
+  handleApplicationCommand,
   handleListApplications,
   handleRequestConfirmation,
   handleStartApplication,
@@ -161,6 +162,7 @@ function dependencies(nodeEnv: "test" | "production" = "test"): ApplicationRoute
     operations: {
       start: vi.fn(),
       get: vi.fn(async () => workspace()),
+      answer: vi.fn(async () => workspace().draft),
       requestConfirmation: vi.fn(async () => ({
         id: confirmationId,
         expiresAt: "2026-08-29T10:05:00.000Z",
@@ -202,6 +204,28 @@ function submissionRequest(): Request {
       reviewId,
       confirmationId,
       idempotencyKey: "550e8400-e29b-41d4-a716-446655440000",
+    }),
+  });
+}
+
+function answerRequest(headers: HeadersInit = {}): Request {
+  return new Request(`https://jobbbler.test/api/v1/applications/${draftId}/answer`, {
+    method: "POST",
+    headers: {
+      origin: "https://jobbbler.test",
+      cookie: "jobbbler_owner_session=owner",
+      "content-type": "application/json",
+      ...headers,
+    },
+    body: JSON.stringify({
+      expectedVersion: 3,
+      answer: {
+        fieldKey: "motivation",
+        value: "Locally changed answer",
+        provenance: "user_entered",
+        sensitive: false,
+        acceptedByHuman: true,
+      },
     }),
   });
 }
@@ -296,6 +320,28 @@ describe("application confirmation route", () => {
     },
   );
 
+  it.each([
+    ["requested assistance", workspace(), [storedDelegation("requested")]],
+    ["active assistance", workspace(), [storedDelegation("active")]],
+    ["an agent-suggested answer", workspace({ agentSuggestion: true }), []],
+  ])("rejects first-party answer edits after %s", async (_state, assisted, storedDelegations) => {
+    const current = dependencies();
+    vi.mocked(current.operations.get).mockResolvedValue(assisted);
+    vi.mocked(current.authorization.delegations.listByResource).mockResolvedValue(
+      storedDelegations,
+    );
+
+    const response = await handleApplicationCommand(
+      answerRequest(),
+      { params: Promise.resolve({ draftId }) },
+      current,
+      "answer",
+    );
+
+    expect(response.status).toBe(403);
+    expect(current.operations.answer).not.toHaveBeenCalled();
+  });
+
   it("keeps first-party confirmation and submission for a purely manual draft", async () => {
     const confirmationDependencies = dependencies();
     const confirmation = await handleRequestConfirmation(
@@ -313,6 +359,24 @@ describe("application confirmation route", () => {
     );
     expect(submission.status).toBe(200);
     expect(submissionDependencies.operations.submit).toHaveBeenCalled();
+  });
+
+  it("keeps first-party answer editing for a purely manual draft", async () => {
+    const current = dependencies();
+    const response = await handleApplicationCommand(
+      answerRequest(),
+      { params: Promise.resolve({ draftId }) },
+      current,
+      "answer",
+    );
+
+    expect(response.status, JSON.stringify(await response.clone().json())).toBe(200);
+    expect(current.operations.answer).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "human" }),
+      draftId,
+      expect.objectContaining({ expectedVersion: 3 }),
+      "2026-08-29T10:00:00.000Z",
+    );
   });
 });
 

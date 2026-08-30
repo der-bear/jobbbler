@@ -68,8 +68,9 @@ commands and policies.
 
 - A person can search, compare, save, monitor, and complete a manual internal
   application through the visible interface without WebMCP. When they choose
-  the agent-assisted application path, its assistance and submission decisions
-  stay in the external agent client.
+  the agent-assisted application path, its draft is read-only on the site and
+  its revisions, assistance decisions, and submission decisions stay in the
+  external agent client. Active assistance remains request-bound and revocable.
 - A compatible browser agent can start on any page with the complete 24-tool
   set and execute structured actions without simulating DOM clicks. Six are
   clear entry points; the rest validate their prerequisites when called. The

@@ -603,6 +603,8 @@ describe("application authorization route handlers", () => {
       id: grantId,
       status: "requested",
       expiresAt: grant.expiresAt,
+      decisionChannel: "agent_client",
+      decisionRequestId: consentRequestId,
     });
     expect(JSON.stringify(createdPayload)).not.toContain(rawAgentToken);
     const consentBoundGrant = { ...grant, approvalRequestId: consentRequestId };
@@ -1032,6 +1034,43 @@ describe("application authorization route handlers", () => {
         channel: "agent_client",
         requestId: delegationId,
         action: "declined",
+        evidenceVersion: "agent-interaction-v1",
+      },
+    );
+
+    const withdrawalDependencies = dependencies();
+    withdrawalDependencies.delegations.getById = vi.fn(async () => ({
+      ...delegation,
+      status: "active" as const,
+      approvedAt: now,
+    }));
+    const withdrawn = await handleRevokeDelegationRequest(
+      request(
+        `/api/v1/applications/${draftId}/delegations/${delegationId}`,
+        "DELETE",
+        {
+          interaction: {
+            channel: "agent_client",
+            requestId: delegationId,
+            affirmation: "revoked",
+            evidenceVersion: "agent-interaction-v1",
+          },
+        },
+        { human: true },
+      ),
+      { params: Promise.resolve({ draftId, delegationId }) },
+      withdrawalDependencies,
+    );
+
+    expect(withdrawn.status).toBe(200);
+    expect(withdrawalDependencies.delegations.revoke).toHaveBeenCalledWith(
+      delegationId,
+      ownerId,
+      now,
+      {
+        channel: "agent_client",
+        requestId: delegationId,
+        action: "revoked",
         evidenceVersion: "agent-interaction-v1",
       },
     );

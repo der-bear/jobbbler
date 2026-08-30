@@ -384,6 +384,9 @@ export async function handleApplicationCommand(
           ? "review_application"
           : "validate_application";
     const actor = await requireApplicationActor(request, draftId, operation, dependencies);
+    if (command === "answer") {
+      await requireFirstPartyApplicationDecisionAllowed(actor, draftId, dependencies);
+    }
     const now = dependencies.identity.now();
     const result =
       command === "answer"
