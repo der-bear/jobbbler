@@ -56,7 +56,7 @@ The optional Supabase channel is `private: true` and carries only an empty `chan
 
 ## Reliability
 
-- Polling starts immediately, follows the server interval, backs off exponentially to 30 seconds, honors `Retry-After`, pauses aggressive reads while the page is hidden, and aborts in-flight work on unmount.
+- Polling starts immediately. A page with committed activity returns to the server interval; consecutive empty reads step from 10 to 20 to 30 seconds with bounded jitter so idle browser sessions do not poll in lockstep. Transport failures use a separate exponential backoff, `Retry-After` is authoritative, hidden pages wait 30 seconds, and unmount aborts in-flight work.
 - Catch-up is bounded to five immediate pages before returning to the normal interval.
 - Realtime wakeups are coalesced while an HTTP read is active.
 - Event publishing may be at-least-once; the client deduplicates by event ID or correlation.
@@ -86,7 +86,7 @@ Enable the accelerator only with all of the following:
 - a signed Supabase Auth session whose app metadata carries the bound Jobbbler owner ID;
 - migration `0010` applied in Supabase.
 
-`ACTIVITY_POLL_INTERVAL_MS` controls the authoritative fallback from 1,000 to 30,000 ms and defaults to 5,000 ms.
+`ACTIVITY_POLL_INTERVAL_MS` controls the active fallback from 1,000 to 30,000 ms and defaults to 5,000 ms. Realtime, visibility, and explicit wakeups reset idle backoff before the next authoritative read.
 
 ## UX behavior
 
