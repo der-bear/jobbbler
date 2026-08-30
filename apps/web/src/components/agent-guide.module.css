@@ -22,7 +22,7 @@
 
 .guide h4 {
   color: var(--color-ink-muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.055em;
   text-transform: uppercase;
@@ -67,7 +67,7 @@
 .guideSteps span {
   color: var(--color-signal-strong);
   font-family: var(--jb-font-mono);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 650;
 }
 
@@ -141,7 +141,7 @@
 .sectionHeading > span {
   color: var(--color-ink-subtle);
   font-family: var(--jb-font-mono);
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .note {
@@ -191,7 +191,7 @@
   overflow: hidden;
   color: var(--color-ink-muted);
   font-family: var(--jb-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -207,7 +207,7 @@
 .humanDecision {
   flex: 0 0 auto;
   color: var(--color-signal-strong);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 650;
 }
 

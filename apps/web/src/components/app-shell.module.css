@@ -209,7 +209,7 @@
     flex: 1;
     flex-direction: column;
     gap: 2px;
-    font-size: 10px;
+    font-size: 11px;
     padding: 6px 10px;
   }
 
@@ -228,18 +228,6 @@
   .agentView {
     min-block-size: 36px;
     padding-inline: 10px;
-  }
-}
-
-@media (max-width: 420px) {
-  .agentView span:not(.sr-only) {
-    display: none;
-  }
-
-  .agentView {
-    inline-size: 36px;
-    justify-content: center;
-    padding: 0;
   }
 }
 

@@ -68,6 +68,11 @@ export function hasMeaningfulSearchCriteria(criteriaSearch: string): boolean {
   return parameters.size > 0;
 }
 
+export function backToSearchHref(criteriaSearch: string): string {
+  if (criteriaSearch.length === 0) return "/jobs";
+  return `/jobs${criteriaSearch.startsWith("?") ? criteriaSearch : `?${criteriaSearch}`}`;
+}
+
 function errorMessage(error: unknown): string {
   if (error instanceof ApiClientError && error.code === "NOT_FOUND") {
     return "This role is no longer available in the current catalog.";
@@ -141,7 +146,7 @@ function JobIdentity({
       </div>
       <p className={styles["summary"]}>{job.summary}</p>
       <div className={styles["actions"]}>
-        <Link className={styles["backLink"]} href={`/${criteriaSearch}`}>
+        <Link className={styles["backLink"]} href={backToSearchHref(criteriaSearch)}>
           <ArrowLeftIcon aria-hidden="true" size={16} />
           Back to search
         </Link>

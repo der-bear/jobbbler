@@ -138,7 +138,7 @@ function criteriaInput(criteria: JobSearchCriteria): JobSearchInput {
 
 function searchHref(criteria: JobSearchCriteria): string {
   const parameters = searchInputToSearchParams(criteriaInput(criteria));
-  return parameters.size === 0 ? "/" : `/?${parameters.toString()}`;
+  return parameters.size === 0 ? "/jobs" : `/jobs?${parameters.toString()}`;
 }
 
 function criteriaSummary(criteria: JobSearchCriteria): readonly string[] {
@@ -164,6 +164,7 @@ function defaultName(criteria: JobSearchCriteria): string {
 
 export function SavedWorkspace() {
   const searchParams = useSearchParams();
+  const searchParamsKey = searchParams.toString();
   const router = useRouter();
   const toast = useToast();
   const createRequested = searchParams.get("create") === "1";
@@ -228,8 +229,8 @@ export function SavedWorkspace() {
     const current = await queryApi("/api/v1/owners/session", ownerSessionResultSchema, {
       method: "POST",
     });
-    setOwner(current.owner);
     await loadPrivateResources();
+    setOwner(current.owner);
     return current.owner;
   }, [loadPrivateResources]);
 
@@ -240,7 +241,7 @@ export function SavedWorkspace() {
       setError(null);
       try {
         if (createRequested) {
-          const parameters = new URLSearchParams(searchParams.toString());
+          const parameters = new URLSearchParams(searchParamsKey);
           parameters.delete("create");
           const result = await queryApi(
             `/api/v1/jobs/search${parameters.size === 0 ? "" : `?${parameters.toString()}`}`,
@@ -255,8 +256,8 @@ export function SavedWorkspace() {
         try {
           const current = await queryApi("/api/v1/owners/session", ownerSessionResultSchema);
           if (cancelled) return;
-          setOwner(current.owner);
           await loadPrivateResources();
+          if (!cancelled) setOwner(current.owner);
         } catch (identityError) {
           if (!(identityError instanceof ApiClientError) || identityError.code !== "UNAUTHORIZED") {
             throw identityError;
@@ -275,7 +276,7 @@ export function SavedWorkspace() {
     return () => {
       cancelled = true;
     };
-  }, [createRequested, loadPrivateResources, searchParams, startPrivateWorkspace]);
+  }, [createRequested, loadPrivateResources, searchParamsKey, startPrivateWorkspace]);
 
   useEffect(
     () =>
@@ -555,9 +556,9 @@ export function SavedWorkspace() {
                 });
               }}
               onRecovered={(recoveredOwner) => {
-                setOwner(recoveredOwner);
                 void loadPrivateResources()
                   .then(() => {
+                    setOwner(recoveredOwner);
                     toast.show({
                       title: "Workspace recovered",
                       description: "A new private session is active on this browser.",
@@ -816,9 +817,6 @@ export function SavedWorkspace() {
               <BellRingingIcon aria-hidden="true" size={25} />
               <h3>No saved searches yet.</h3>
               <p>Search for roles first, then choose Save alert to set up email updates.</p>
-              <Link className={styles["secondaryButton"]} href="/jobs">
-                Explore technology roles
-              </Link>
             </div>
           ) : (
             <div className={styles["savedList"]}>

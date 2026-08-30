@@ -75,7 +75,7 @@
 .form label > span {
   color: var(--color-ink-subtle);
   font-family: var(--jb-font-mono);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }

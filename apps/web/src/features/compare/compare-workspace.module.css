@@ -19,7 +19,7 @@
   margin: 0;
   color: var(--color-ink-muted);
   font-family: var(--jb-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -42,7 +42,7 @@
   margin: 0;
   color: var(--color-ink-muted);
   font-family: var(--jb-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   text-align: end;
 }
 
@@ -76,7 +76,7 @@
   inline-size: 160px;
   color: var(--color-ink-muted);
   font-family: var(--jb-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;

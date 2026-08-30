@@ -98,10 +98,14 @@
   min-block-size: 40px;
   border: 1px solid var(--jb-signal);
   padding: 8px 13px;
-  color: var(--color-signal-on, #06170d);
+  color: var(--jb-signal-contrast);
   background: var(--jb-signal);
   font: inherit;
   cursor: pointer;
+}
+
+.applyButton:hover:not(:disabled) {
+  background: var(--color-signal-strong);
 }
 
 .applyButton:disabled {
@@ -152,7 +156,7 @@
   margin: 0 0 14px;
   color: var(--color-ink);
   font-family: var(--jb-font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -242,7 +246,7 @@
 .provenanceList dt {
   color: var(--color-ink-subtle);
   font-family: var(--jb-font-mono);
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }

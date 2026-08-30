@@ -15,7 +15,7 @@
   background: transparent;
   color: var(--color-ink-subtle);
   font-family: var(--jb-font-mono);
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .selector button:first-child {

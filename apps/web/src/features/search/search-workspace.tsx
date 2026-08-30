@@ -637,7 +637,11 @@ export function SearchWorkspace({
       <section className={styles["results"]} aria-labelledby="results-heading">
         <div className={styles["resultsHeader"]} data-agent-pulse={String(agentPulse)}>
           <div aria-label="Search status" role="status">
-            <h2 id="results-heading">{presentation.heading}</h2>
+            {presentation.landing ? (
+              <h2 id="results-heading">{presentation.heading}</h2>
+            ) : (
+              <h1 id="results-heading">{presentation.heading}</h1>
+            )}
           </div>
           {presentation.landing ? null : (
             <div className={styles["resultsControls"]}>

@@ -95,7 +95,7 @@ export function AppHeaderSurface({
 export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const pathname = usePathname();
   const webMcp = useWebMcp();
-  const [agentPanelOpen, setAgentPanelOpen] = useState(true);
+  const [agentPanelOpen, setAgentPanelOpen] = useState(false);
   const [agentPanelWidth, setAgentPanelWidth] = useState(380);
   const [compactAgentPanel, setCompactAgentPanel] = useState(false);
   const agentTriggerRef = useRef<HTMLButtonElement | null>(null);

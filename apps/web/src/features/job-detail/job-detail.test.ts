@@ -4,6 +4,7 @@ import type { Job } from "@jobbbler/contracts";
 
 import {
   applicationActionLabel,
+  backToSearchHref,
   externalApplicationUrl,
   hasMeaningfulSearchCriteria,
   supportsJobbblerPreparation,
@@ -122,6 +123,11 @@ describe("job-detail application entry", () => {
 });
 
 describe("job-detail fit explanation", () => {
+  it("returns to the Jobs results instead of the home page", () => {
+    expect(backToSearchHref("?q=platform&sort=newest")).toBe("/jobs?q=platform&sort=newest");
+    expect(backToSearchHref("")).toBe("/jobs");
+  });
+
   it("shows search-fit evidence only when a real search criterion is present", () => {
     expect(hasMeaningfulSearchCriteria("")).toBe(false);
     expect(hasMeaningfulSearchCriteria("?")).toBe(false);
