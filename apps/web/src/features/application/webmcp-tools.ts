@@ -417,7 +417,7 @@ function submissionReviewTool(
     name: "request_submission_review",
     purpose: "Ask the person to review and approve one exact completed application.",
     description:
-      "Present one clear final review with the recipient, purpose, every exact field value and its sensitivity marker, and the privacy notice. This tool grants no permission and submits nothing by itself.",
+      "Freeze the exact application on the visible review surface, then return a compact request-bound reference with recipient, purpose, field counts, sensitivity count, privacy notice, version, and expiry. Show the visible review in the agent client before asking for the final decision. This grants no permission and submits nothing.",
     inputSchema: emptyInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -654,7 +654,7 @@ const stableApplicationToolDefinitions: readonly StableApplicationToolDefinition
     name: "request_submission_review",
     purpose: "Ask the person to review one exact completed application.",
     description:
-      "Present the recipient, purpose, every exact field value with an explicit sensitivity marker, and the privacy notice in the agent client for one final decision. This submits nothing.",
+      "Freeze the exact application on its visible review surface and return a compact request-bound reference. Show that visible review in the agent client before asking for one final decision. This submits nothing.",
     readOnly: false,
     input: "draft",
   },

@@ -177,7 +177,7 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
       },
       {
         name: "request_submission_review",
-        purpose: "Present one exact completed application for a decision in the agent client.",
+        purpose: "Freeze one exact visible application review and return its decision reference.",
         readOnly: false,
       },
       {

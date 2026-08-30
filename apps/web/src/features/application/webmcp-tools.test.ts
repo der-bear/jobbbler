@@ -312,6 +312,9 @@ describe("application WebMCP outcomes", () => {
       "propose_application_updates",
       "request_submission_review",
     ]);
+    expect(manifests[2]!.description).toContain("visible review");
+    expect(manifests[2]!.description).toContain("compact request-bound reference");
+    expect(manifests[2]!.description).not.toContain("every exact field value");
 
     const result = await manifests[2]!.execute({}, { signal: new AbortController().signal });
     expect(result).toMatchObject({
