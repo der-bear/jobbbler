@@ -7,7 +7,11 @@ import { searchParamsToInput } from "@/lib/search-url";
 import { apiErrorResponse, apiSuccessResponse } from "./api-response";
 import { getDiscoveryRouteDependencies, type DiscoveryRouteDependencies } from "./commands";
 import { createPublicCommandContext, createRequestId } from "./context";
-import { checkDiscoveryRateLimit, rateLimitHeaders } from "./discovery-request";
+import {
+  checkDiscoveryRateLimit,
+  publicJobSearchPolicy,
+  rateLimitHeaders,
+} from "./discovery-request";
 
 export interface JobDetailRouteContext {
   readonly params: Promise<{ readonly id: string }>;
@@ -28,9 +32,9 @@ export async function handleSearchRequest(
     const rateLimit = await checkDiscoveryRateLimit(
       request,
       requestId,
-      "jobs.search",
+      publicJobSearchPolicy.scope,
       currentDependencies,
-      60,
+      publicJobSearchPolicy.limit,
     );
     if (rateLimit.response !== null) return rateLimit.response;
 
@@ -41,7 +45,7 @@ export async function handleSearchRequest(
     );
     return apiSuccessResponse(result, {
       requestId,
-      cacheControl: "public, max-age=0, s-maxage=60, stale-while-revalidate=300",
+      cacheControl: publicJobSearchPolicy.cacheControl,
       headers: rateLimitHeaders(rateLimit.decision),
     });
   } catch (error) {
