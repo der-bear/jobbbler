@@ -86,6 +86,10 @@ test.describe("agent journey through the live WebMCP surface", () => {
     page,
   }) => {
     await installModelContext(page);
+    // Compile the routes the journey will visit so the dev server's on-demand
+    // build cannot trigger a full-page reload mid-navigation.
+    await page.request.get("/jobs");
+    await page.request.get("/jobs/job_00000001-0000-7000-8000-000000000001");
     await page.goto("/about/webmcp");
 
     await expect.poll(() => registeredToolNames(page)).toEqual([...allSiteTools]);
