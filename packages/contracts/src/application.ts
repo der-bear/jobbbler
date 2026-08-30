@@ -183,6 +183,7 @@ export const applicationReceiptSummarySchema = z.strictObject({
 });
 
 export const applicationWorkspaceSchema = z.strictObject({
+  applyMode: z.enum(["internal", "external"]),
   draft: applicationDraftSchema,
   requirements: z.array(applicationFieldDefinitionSchema).min(1).max(24),
   recipient: z.strictObject({
@@ -217,8 +218,9 @@ export const applicationAgentSessionResultSchema = z.strictObject({
 export const applicationAgentStateSchema = z.strictObject({
   draftId: entityIdSchema,
   jobId: entityIdSchema,
+  applyMode: z.enum(["internal", "external"]),
   state: applicationStateSchema,
-  stage: z.enum(["profile", "review", "permission", "confirmation", "complete"]),
+  stage: z.enum(["profile", "review", "permission", "confirmation", "legacy_external", "complete"]),
   version: z.number().int().nonnegative(),
   requiredFields: z.number().int().nonnegative(),
   completedRequiredFields: z.number().int().nonnegative(),

@@ -10,6 +10,8 @@ import Link from "next/link";
 
 import type { ApplicationWorkspace, Job } from "@jobbbler/contracts";
 
+import { externalApplicationUrl } from "@/features/job-detail/application-capability";
+
 import { applicationDisclosure, applicationReadiness } from "./application-model";
 import styles from "./application-view.module.css";
 
@@ -312,6 +314,37 @@ function CompletePanel({ workspace }: Readonly<{ workspace: ApplicationWorkspace
   );
 }
 
+function LegacyExternalPanel({
+  workspace,
+  job,
+}: Readonly<{ workspace: ApplicationWorkspace; job: Job }>) {
+  const activeConsent = workspace.dataGrant?.status === "active";
+  const employerUrl = externalApplicationUrl(job);
+  return (
+    <section aria-labelledby="legacy-external-heading" className={styles["stagePanel"]}>
+      <p className={styles["eyebrow"]}>Legacy external application</p>
+      <h2 id="legacy-external-heading">This historical draft is read-only</h2>
+      <p className={styles["sectionIntro"]}>
+        External roles now continue on the employer&apos;s website. Jobbbler cannot edit, review,
+        prepare, or submit this legacy draft.
+      </p>
+      {activeConsent ? (
+        <p>
+          Active consent remains revocable. You can still withdraw consent in your agent client.
+        </p>
+      ) : null}
+      {employerUrl === null ? null : (
+        <a className={styles["primaryLink"]} href={employerUrl} rel="noreferrer" target="_blank">
+          Continue on the employer&apos;s website
+        </a>
+      )}
+      <Link className={styles["primaryLink"]} href="/applications">
+        Back to applications
+      </Link>
+    </section>
+  );
+}
+
 export function ApplicationView({
   workspace,
   job,
@@ -325,17 +358,26 @@ export function ApplicationView({
     workspace.receipt !== null ||
     workspace.draft.state === "submitted" ||
     workspace.draft.state === "handed_off";
+  const legacyExternalDraft = workspace.applyMode === "external" && !complete;
   return (
     <div className={styles["page"]}>
       <header className={styles["hero"]}>
         <Link className={styles["backLink"]} href={`/jobs/${encodeURIComponent(job.id)}`}>
           <ArrowLeftIcon aria-hidden="true" /> Back to role
         </Link>
-        <h1>{complete ? "Application receipt" : `Application for ${job.title}`}</h1>
+        <h1>
+          {complete
+            ? "Application receipt"
+            : legacyExternalDraft
+              ? "Legacy external application"
+              : `Application for ${job.title}`}
+        </h1>
         <p className={styles["heroSub"]}>
           {complete
             ? `${job.title} · ${job.organizationName}`
-            : "Your agent can prepare the work. Check the details once, then submit."}
+            : legacyExternalDraft
+              ? `${job.title} · ${job.organizationName}`
+              : "Your agent can prepare the work. Check the details once, then submit."}
         </p>
       </header>
       {error === null ? null : (
@@ -346,6 +388,8 @@ export function ApplicationView({
       <div className={styles["workspace"]}>
         {complete ? (
           <CompletePanel workspace={workspace} />
+        ) : legacyExternalDraft ? (
+          <LegacyExternalPanel job={job} workspace={workspace} />
         ) : (
           <ReviewDocument
             busy={busy}

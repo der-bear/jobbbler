@@ -145,6 +145,7 @@ describe("application authorization contracts", () => {
 
   it("describes the visible application, exact disclosure, and current authorization state without secrets", () => {
     const workspace = {
+      applyMode: "internal",
       draft: {
         id: draftId,
         ownerId: "owner_550e8400-e29b-41d4-a716-446655440000",
@@ -202,6 +203,7 @@ describe("application authorization contracts", () => {
     const state = applicationAgentStateSchema.parse({
       draftId,
       jobId: "job_550e8400-e29b-41d4-a716-446655440000",
+      applyMode: "internal",
       state: "reviewed",
       stage: "permission",
       version: 3,

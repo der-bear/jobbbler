@@ -6,6 +6,7 @@ import type { ApplicationWorkspace, Job } from "@jobbbler/contracts";
 import { ApplicationView } from "./application-view";
 
 const workspace: ApplicationWorkspace = {
+  applyMode: "internal",
   draft: {
     id: "draft_550e8400-e29b-41d4-a716-446655440000",
     ownerId: "owner_550e8400-e29b-41d4-a716-446655440000",
@@ -208,6 +209,63 @@ describe("ApplicationView", () => {
     expect(markup).toContain(`href="${externalUrl}"`);
     expect(markup).toContain("Back to applications");
     expect(markup).toContain('href="/applications"');
+  });
+
+  it("renders a legacy external draft as read-only without preparation or submission controls", () => {
+    const markup = renderToStaticMarkup(
+      <ApplicationView
+        busy={false}
+        confirmation={null}
+        error={null}
+        fieldValues={{ full_name: "Ada Lovelace", motivation: "Legacy answer" }}
+        job={{ ...job, applyMode: "external" }}
+        onAction={() => undefined}
+        onFieldChange={() => undefined}
+        workspace={{
+          ...workspace,
+          applyMode: "external",
+          dataGrant: {
+            id: "grant_550e8400-e29b-41d4-a716-446655440000",
+            status: "active",
+            expiresAt: "2026-08-29T10:34:00.000Z",
+          },
+        }}
+      />,
+    );
+
+    expect(markup).toContain("Legacy external application");
+    expect(markup).toContain("read-only");
+    expect(markup).toContain("withdraw consent");
+    expect(markup).not.toContain("Review your application");
+    expect(markup).not.toContain("Review and submit");
+    expect(markup).not.toContain("Allow preparation");
+    expect(markup).not.toContain("<input");
+    expect(markup).not.toContain("<textarea");
+    expect(markup).not.toContain("<select");
+  });
+
+  it("does not link a credential-bearing employer URL from a legacy external draft", () => {
+    const unsafeUrl = "https://user:secret@jobs.example.test/opening/42";
+    const markup = renderToStaticMarkup(
+      <ApplicationView
+        busy={false}
+        confirmation={null}
+        error={null}
+        fieldValues={{}}
+        job={{
+          ...job,
+          applyMode: "external",
+          source: { key: "external_source", label: "External source", url: unsafeUrl },
+        }}
+        onAction={() => undefined}
+        onFieldChange={() => undefined}
+        workspace={{ ...workspace, applyMode: "external" }}
+      />,
+    );
+
+    expect(markup).toContain("This historical draft is read-only");
+    expect(markup).not.toContain(`href="${unsafeUrl}"`);
+    expect(markup).not.toContain("Continue on the employer");
   });
 
   it("shows a concise receipt instead of stale permission controls", () => {

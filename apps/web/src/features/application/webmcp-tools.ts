@@ -8,6 +8,7 @@ import {
   type ApplicationConsentWithdrawal,
   type ApplicationSubmissionReviewRequest as ApplicationSubmissionReviewContract,
 } from "@jobbbler/contracts";
+import type { ApplicationNextAction } from "./application-model";
 import type { JsonSchema, JsonValue, ToolManifest } from "@jobbbler/webmcp";
 
 import {
@@ -143,7 +144,7 @@ export interface ApplicationToolReadiness {
   readonly state: ApplicationAgentState;
   readonly missingFieldKeys: readonly string[];
   readonly missingFieldLabels: readonly string[];
-  readonly nextAction: "prepare" | "review" | "submit" | "complete";
+  readonly nextAction: ApplicationNextAction;
 }
 
 export type ApplicationSubmissionReviewRequest = ApplicationSubmissionReviewContract & {
@@ -197,6 +198,7 @@ function safeReadiness(readiness: ApplicationToolReadiness): JsonValue {
   return {
     draftId: state.draftId,
     jobId: state.jobId,
+    applyMode: state.applyMode,
     state: state.state,
     stage: state.stage,
     version: state.version,
@@ -214,7 +216,8 @@ function safeReadiness(readiness: ApplicationToolReadiness): JsonValue {
 
 function nextApplicationTool(readiness: ApplicationToolReadiness): string | null {
   const { state } = readiness;
-  if (readiness.nextAction === "complete") return null;
+  if (readiness.nextAction === "withdraw") return "withdraw_application_consent";
+  if (readiness.nextAction === "read_only" || readiness.nextAction === "complete") return null;
   if (state.agentAuthorityStatus === "requested") return "decide_application_assistance";
   if (state.agentAuthorityStatus !== "active") return "request_application_assistance";
   if (readiness.missingFieldKeys.length > 0) return "propose_application_updates";
@@ -309,6 +312,8 @@ function assistanceTool(
             confirmLabel: "Allow once",
             facts: [
               { key: "Scope", value: "This application only" },
+              { key: "Purpose", value: request.purpose },
+              { key: "Allowed actions", value: request.operations.join(", ") },
               { key: "Expires", value: request.expiresAt },
             ],
           },
@@ -488,7 +493,7 @@ export function createApplicationToolManifests(
 ): readonly ToolManifest<unknown, ApplicationToolOutput>[] {
   const readiness = dependencies.currentReadiness();
   const tools: ToolManifest<unknown, ApplicationToolOutput>[] = [readinessTool(dependencies)];
-  if (readiness.nextAction === "complete") return tools;
+  if (readiness.state.applyMode === "external" || readiness.nextAction === "complete") return tools;
 
   if (!hasPreparationAuthority(dependencies)) {
     tools.push(

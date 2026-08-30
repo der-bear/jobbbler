@@ -12,6 +12,7 @@ const interactionRequestId = "interaction_550e8400-e29b-41d4-a716-446655440000";
 const agentAuthorization = `Bearer ${"A".repeat(43)}`;
 
 const workspace: ApplicationWorkspace = {
+  applyMode: "internal",
   draft: {
     id: draftId,
     ownerId: "owner_550e8400-e29b-41d4-a716-446655440000",

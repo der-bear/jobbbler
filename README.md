@@ -84,8 +84,9 @@ strict JSON schemas, stable global registration with state-gated execution,
 cancellation propagation, explicit annotations, and concise JSON-serializable
 results. A browser capability is never treated as identity or authorization.
 
-> Jobbbler also teaches a visiting agent the safest useful path through its
-> tools — without executing the plan or granting authority.
+> Jobbbler does not only expose tools. It also teaches a visiting agent the
+> safest useful path through them—without executing the plan or granting
+> authority.
 
 `plan_job_workflow` returns recommended safe steps for a goal from the current
 page. It is advisory only: it plans, it never acts.
@@ -127,7 +128,7 @@ and the [authorization and consent design](docs/architecture/agent-authorization
 
 ```mermaid
 flowchart LR
-  Browser[React interface + global WebMCP core and contextual tools] --> API[Next.js BFF and command boundary]
+  Browser[React interface + global 24-tool WebMCP surface] --> API[Next.js BFF and command boundary]
   API --> Domain[Framework-free domain services]
   Domain --> Storage[Portable repository contracts]
   Storage --> SQLite[(SQLite local)]

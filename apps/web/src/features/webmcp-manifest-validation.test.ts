@@ -17,6 +17,7 @@ function applicationState(overrides: Partial<ApplicationAgentState>): Applicatio
   return {
     draftId: "draft_550e8400-e29b-41d4-a716-446655440000",
     jobId: "job_550e8400-e29b-41d4-a716-446655440000",
+    applyMode: "internal",
     state: "draft",
     stage: "profile",
     version: 1,

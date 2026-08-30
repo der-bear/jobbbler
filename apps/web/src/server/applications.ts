@@ -201,6 +201,7 @@ export async function buildApplicationWorkspace(
   }
 
   return applicationWorkspaceSchema.parse({
+    applyMode: job.applyMode,
     draft,
     requirements: applicationPolicy.requirements,
     recipient: { id: job.organizationId, name: job.organizationName },
@@ -283,14 +284,14 @@ export function createApplicationRouteDependencies(
         const { jobId } = startApplicationInputSchema.parse(raw);
         const job = await requireJob(storage, jobId);
         assertInternalApplicationJob(job);
+        const existing = await storage.applications.getByOwnerAndJob(ownerId, jobId);
+        if (existing !== null) return { draft: existing, disposition: "reopened" as const };
         if (job.status !== "open") {
           throw new DomainError({
             code: "CONFLICT",
             message: "This role is no longer open for applications.",
           });
         }
-        const existing = await storage.applications.getByOwnerAndJob(ownerId, jobId);
-        if (existing !== null) return { draft: existing, disposition: "reopened" as const };
         const draft = createApplicationDraft({
           id: createEntityId("application"),
           ownerId,

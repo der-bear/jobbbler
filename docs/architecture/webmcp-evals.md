@@ -27,13 +27,13 @@ decision points.
 
 ## Coverage
 
-| Fixture            | Main outcomes tested                                                                                                                  |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `search.json`      | Exact and paraphrased search, active state, opening a role, monitoring plan, vague intent, premature comparison, invalid salary range |
-| `detail.json`      | Source-backed role facts, application capability, explicit comparison, missing target, invalid ID                                     |
-| `compare.json`     | Current comparison, ordinal removal, addition, ambiguous ranking, unselected role                                                     |
-| `saved.json`       | Alert reading, pause or resume by exact schedule ID, reopen criteria, latest delta, ambiguous alert, unknown schedule                 |
-| `application.json` | Readiness, assistance request and exact decision, atomic answer batch, final review, approved or declined exact submission            |
+| Fixture            | Main outcomes tested                                                                                                                    |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `search.json`      | Exact and paraphrased search, active state, opening a role, monitoring plan, vague intent, premature comparison, invalid salary range   |
+| `detail.json`      | Source-backed role facts, application capability, explicit comparison, missing target, invalid ID                                       |
+| `compare.json`     | Current comparison, ordinal removal, addition, ambiguous ranking, unselected role                                                       |
+| `saved.json`       | Alert reading, pause or resume by exact schedule ID, reopen criteria, latest delta, ambiguous alert, unknown schedule                   |
+| `application.json` | Readiness, assistance request and exact decision, atomic answer batch, final review, and isolated approved or declined submission cases |
 
 ## Evaluation method
 
@@ -54,7 +54,7 @@ decision points.
   two cases were re-run and the final result was 50/50.
 - Terra at medium effort: 10/10 end-to-end routing decisions, including alert
   disambiguation, assistance authorization, batched application preparation,
-  and the exact final submission decision.
+  and presentation of the exact final submission decision while it remained pending.
 - A follow-up pass confirmed that `prepare_application` creates or reopens a
   draft but grants no preparation authority, while `open_jobbbler_page` clearly
   separates the Applications list from an exact private application.
@@ -64,6 +64,7 @@ deterministic suites separately verify schemas, execution, cancellation,
 bounded output, UI synchronization, storage atomicity, and builds.
 
 The judge demo should show one natural-language search, one comparison, one
-saved-search delta, and the application sequence from assistance request to an
-exact final decision. No fixture, model, or agent may self-approve consent or
-claim an external employer received an application.
+saved-search delta, and the application sequence from assistance request through
+the exact final submission review. It ends with that decision pending; the judge
+does not approve or decline it. No fixture, model, or agent may self-approve
+consent or claim an external employer received an application.

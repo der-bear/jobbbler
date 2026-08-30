@@ -80,33 +80,29 @@ function externalVersion(job: Job): Job {
 
 async function legacyExternalSubmissionFixture() {
   const current = await fixture();
-  let draft = (await current.operations.start(ownerId, { jobId }, now)).draft;
-  draft = await current.operations.answer(
-    { kind: "human", ownerId },
-    draft.id,
-    {
-      expectedVersion: draft.version,
-      answer: {
+  const externalJob = {
+    ...externalVersion(current.job),
+    id: "job_81000000-0000-7000-8000-000000000099",
+  };
+  await current.storage.jobs.upsert(externalJob);
+  const reviewed = await current.storage.applications.insert({
+    id: "application_81000000-0000-7000-8000-000000000099",
+    ownerId,
+    jobId: externalJob.id,
+    state: "reviewed",
+    version: 2,
+    answers: [
+      {
         fieldKey: "full_name",
         value: "Alex Morgan",
         provenance: "user_entered",
         sensitive: true,
         acceptedByHuman: true,
       },
-    },
-    now,
-  );
-  const externalJob = externalVersion(current.job);
-  await current.storage.jobs.upsert(externalJob);
-  const reviewed = await current.storage.applications.update(
-    {
-      ...draft,
-      state: "reviewed",
-      version: draft.version + 1,
-      updatedAt: now,
-    },
-    draft.version,
-  );
+    ],
+    createdAt: now,
+    updatedAt: now,
+  });
   const review = {
     id: "review_81000000-0000-7000-8000-000000000099",
     ownerId,
@@ -146,6 +142,26 @@ async function legacyExternalSubmissionFixture() {
   };
   await current.storage.applications.insertConfirmation(confirmation);
   return { ...current, reviewed, review, grant, confirmation };
+}
+
+async function legacyExternalDraftFixture() {
+  const current = await fixture();
+  const externalJob = {
+    ...externalVersion(current.job),
+    id: "job_81000000-0000-7000-8000-000000000097",
+  };
+  await current.storage.jobs.upsert(externalJob);
+  const draft = await current.storage.applications.insert({
+    id: "application_81000000-0000-7000-8000-000000000097",
+    ownerId,
+    jobId: externalJob.id,
+    state: "draft",
+    version: 0,
+    answers: [],
+    createdAt: now,
+    updatedAt: now,
+  });
+  return { ...current, externalJob, draft };
 }
 
 afterEach(async () => {
@@ -343,21 +359,56 @@ describe("application operations with SQLite", () => {
   });
 
   it("never reopens a legacy draft after its role becomes external", async () => {
-    const { storage, job, operations } = await fixture();
-    const existing = (await operations.start(ownerId, { jobId }, now)).draft;
-    await storage.jobs.upsert(externalVersion(job));
+    const { storage, operations, externalJob, draft } = await legacyExternalDraftFixture();
 
-    await expect(operations.start(ownerId, { jobId }, now)).rejects.toMatchObject({
+    await expect(operations.start(ownerId, { jobId: externalJob.id }, now)).rejects.toMatchObject({
       code: "CONFLICT",
       message: "This role accepts applications on the employer's website.",
     });
-    await expect(storage.applications.getByOwner(existing.id, ownerId)).resolves.toEqual(existing);
+    await expect(storage.applications.getByOwner(draft.id, ownerId)).resolves.toEqual(draft);
+  });
+
+  it("reopens an existing internal draft after its listing closes", async () => {
+    const { storage, job, operations } = await fixture();
+    const existing = (await operations.start(ownerId, { jobId }, now)).draft;
+    await storage.jobs.upsert({ ...job, status: "closed", updatedAt: future });
+
+    await expect(operations.start(ownerId, { jobId }, future)).resolves.toEqual({
+      draft: existing,
+      disposition: "reopened",
+    });
+  });
+
+  it("does not let an apply-mode flip race an application mutation", async () => {
+    const { storage, job, operations } = await fixture();
+    const existing = (await operations.start(ownerId, { jobId }, now)).draft;
+
+    const [flip, mutation] = await Promise.allSettled([
+      storage.jobs.upsert(externalVersion(job)),
+      operations.answer(
+        { kind: "human", ownerId },
+        existing.id,
+        {
+          expectedVersion: existing.version,
+          answer: {
+            fieldKey: "full_name",
+            value: "Alex Morgan",
+            provenance: "user_entered",
+            sensitive: true,
+            acceptedByHuman: true,
+          },
+        },
+        now,
+      ),
+    ]);
+
+    expect(flip).toMatchObject({ status: "rejected", reason: { code: "CONFLICT" } });
+    expect(mutation).toMatchObject({ status: "fulfilled", value: { version: 1 } });
+    await expect(storage.jobs.getById(jobId)).resolves.toMatchObject({ applyMode: "internal" });
   });
 
   it("rejects every preparation mutation for a readable legacy external draft", async () => {
-    const { storage, job, operations } = await fixture();
-    const existing = (await operations.start(ownerId, { jobId }, now)).draft;
-    await storage.jobs.upsert(externalVersion(job));
+    const { storage, operations, draft: existing } = await legacyExternalDraftFixture();
     const rejection = {
       code: "CONFLICT",
       message: "This role accepts applications on the employer's website.",

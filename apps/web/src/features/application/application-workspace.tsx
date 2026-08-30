@@ -27,7 +27,11 @@ import {
   type ApplicationConfirmationView,
 } from "./application-view";
 import { finalizeApplication } from "./application-finalization";
-import { applicationAgentState, applicationReadiness } from "./application-model";
+import {
+  applicationAgentState,
+  applicationNextAction,
+  applicationReadiness,
+} from "./application-model";
 import type { ApplicationSubmissionReviewRequest, ApplicationToolReadiness } from "./webmcp-tools";
 import { publishApplicationWebMcpSurface } from "./webmcp-surface";
 import styles from "./application-view.module.css";
@@ -80,14 +84,7 @@ function toolReadiness(
       (fieldKey) =>
         workspace.requirements.find((field) => field.fieldKey === fieldKey)?.label ?? fieldKey,
     ),
-    nextAction:
-      state.receiptStatus !== "none"
-        ? "complete"
-        : finalConfirmationReady
-          ? "submit"
-          : progress.readyForReview
-            ? "review"
-            : "prepare",
+    nextAction: applicationNextAction(workspace, finalConfirmationReady),
   };
 }
 

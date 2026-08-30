@@ -74,8 +74,9 @@ When the journey reaches an application, speed stops being the point.
 > without hiding what changed, and without confusing tool access with human
 > authority.
 
-> Jobbbler also teaches a visiting agent the safest useful path through its
-> tools — without executing the plan or granting authority.
+> Jobbbler does not only expose tools. It also teaches a visiting agent the
+> safest useful path through them—without executing the plan or granting
+> authority.
 
 Jobbbler registers 24 focused WebMCP tools directly in the page. The same set
 stays discoverable on every page, so an agent never loses a capability by

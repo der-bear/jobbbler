@@ -279,7 +279,7 @@ function upsertOrganization(database: SqliteDatabase, record: OrganizationRecord
 
 function upsertJob(database: SqliteDatabase, value: Job): void {
   const record = jobSchema.parse(value);
-  database
+  const result = database
     .prepare(
       `INSERT INTO jobs(
          id, organization_id, organization_name, title, summary, categories_json,
@@ -313,7 +313,8 @@ function upsertJob(database: SqliteDatabase, value: Job): void {
          apply_mode = excluded.apply_mode,
          status = excluded.status,
          published_at = excluded.published_at,
-         updated_at = excluded.updated_at`,
+         updated_at = excluded.updated_at
+       WHERE jobs.apply_mode = excluded.apply_mode`,
     )
     .run({
       id: record.id,
@@ -339,6 +340,23 @@ function upsertJob(database: SqliteDatabase, value: Job): void {
       publishedAt: record.publishedAt,
       updatedAt: record.updatedAt,
     });
+  if (result.changes !== 1) {
+    throw new DomainError({
+      code: "CONFLICT",
+      message: "A job's application mode cannot change after creation.",
+    });
+  }
+}
+
+function assertJobApplyModeUnchanged(database: SqliteDatabase, value: Job): void {
+  const existing = database.prepare("SELECT apply_mode FROM jobs WHERE id = ?").get(value.id) as
+    { readonly apply_mode: Job["applyMode"] } | undefined;
+  if (existing !== undefined && existing.apply_mode !== value.applyMode) {
+    throw new DomainError({
+      code: "CONFLICT",
+      message: "A job's application mode cannot change after creation.",
+    });
+  }
 }
 
 function getRun(database: SqliteDatabase, id: string): SourceRunRecord | null {
@@ -451,6 +469,9 @@ function persistObservation(
         code: "VALIDATION",
         message: "Source evidence does not belong to the active source run.",
       });
+    }
+    if (input.normalization.accepted) {
+      assertJobApplyModeUnchanged(database, input.normalization.job);
     }
 
     const existingRecord = database

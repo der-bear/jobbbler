@@ -302,10 +302,6 @@ export interface DataGrantRecord {
   readonly approvedAt: string | null;
   readonly withdrawnAt: string | null;
 }
-export interface ApplicationReceiptPutResult {
-  readonly inserted: boolean;
-  readonly record: ApplicationReceiptRecord;
-}
 export interface AgentSessionRecord {
   readonly id: string;
   readonly ownerId: string;

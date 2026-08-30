@@ -1,11 +1,115 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { ApplicationDraft, Job, WorkItemRecord } from "@jobbbler/storage";
+import type {
+  ApplicationDraft,
+  Job,
+  PersistSourceObservationInput,
+  SourceRunRecord,
+  WorkItemRecord,
+} from "@jobbbler/storage";
 import { storageContractSuite } from "@jobbbler/storage/contract-tests";
 
 import { createPostgresStorage, migratePostgres, resetPostgresSchema } from "./index.js";
 
 const databaseUrl = process.env["POSTGRES_TEST_DATABASE_URL"];
+const ingestionNow = "2026-08-29T10:00:00.000Z";
+const ingestionLater = "2026-08-29T11:00:00.000Z";
+
+function ingestionRun(id: string, startedAt: string): SourceRunRecord {
+  return {
+    id,
+    sourceKey: "jobicy",
+    partition: "default",
+    purpose: "production",
+    status: "running",
+    policyVersion: 1,
+    startedAt,
+    completedAt: null,
+    complete: null,
+    notModified: false,
+    pagesFetched: 0,
+    recordsFetched: 0,
+    recordsAccepted: 0,
+    recordsRejected: 0,
+    recordsUnchanged: 0,
+    responseEtag: null,
+    responseLastModified: null,
+    responseBytes: 0,
+    errorCode: null,
+  };
+}
+
+function ingestionObservation(
+  runId: string,
+  rawHash: string,
+  applyMode: Job["applyMode"],
+): PersistSourceObservationInput {
+  const organization = {
+    id: "org-postgres-ingestion-mode",
+    name: "Postgres Ingestion Mode",
+    slug: "postgres-ingestion-mode",
+    website: null,
+    description: applyMode === "external" ? "Original organization." : "Conflicting update.",
+    createdAt: ingestionNow,
+    updatedAt: applyMode === "external" ? ingestionNow : ingestionLater,
+  };
+  return {
+    runId,
+    evidence: {
+      sourceKey: "jobicy",
+      partition: "default",
+      externalId: "postgres-mode-100",
+      originalUrl: "https://jobicy.example/jobs/postgres-mode-100",
+      applyUrl: "https://jobicy.example/jobs/postgres-mode-100/apply",
+      sourceUpdatedAt: applyMode === "external" ? ingestionNow : ingestionLater,
+      fetchedAt: applyMode === "external" ? ingestionNow : ingestionLater,
+      retainedUntil: "2026-09-29T10:00:00.000Z",
+      rawHash,
+      payload: { id: "postgres-mode-100" },
+      policyVersion: 1,
+      attribution: {
+        label: "Jobicy",
+        url: "https://jobicy.com/",
+        required: true,
+        followedLinkRequired: false,
+      },
+    },
+    normalization: {
+      accepted: true,
+      normalizerVersion: 1,
+      recordedAt: applyMode === "external" ? ingestionNow : ingestionLater,
+      organization,
+      job: {
+        id: "job-postgres-ingestion-mode",
+        organizationId: organization.id,
+        organizationName: organization.name,
+        title: "Postgres ingestion mode",
+        summary: "Verify atomic ingestion projection writes.",
+        categories: ["software_engineering"],
+        workModel: "remote",
+        employmentType: "full_time",
+        seniority: "senior",
+        locations: ["Europe"],
+        skills: ["PostgreSQL"],
+        salary: null,
+        source: {
+          key: "jobicy",
+          label: "Jobicy",
+          url: "https://jobicy.example/jobs/postgres-mode-100",
+        },
+        applyMode,
+        status: "open",
+        publishedAt: ingestionNow,
+        updatedAt: applyMode === "external" ? ingestionNow : ingestionLater,
+      },
+      sourceLink: {
+        originalUrl: "https://jobicy.example/jobs/postgres-mode-100",
+        applyUrl: "https://jobicy.example/jobs/postgres-mode-100/apply",
+        identityBasis: "source_id",
+      },
+    },
+  };
+}
 
 function deferred(): { readonly promise: Promise<void>; readonly resolve: () => void } {
   let resolve!: () => void;
@@ -64,6 +168,49 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
     expect(rows).not.toHaveLength(0);
     expect(rows.every((row) => row.rowsecurity)).toBe(true);
     await storage.close();
+  });
+
+  it("rolls back every observation write when an ingestion projection changes apply mode", async () => {
+    const storage = createPostgresStorage(databaseUrl!);
+    close = async () => storage.close();
+    await resetPostgresSchema(storage.sql);
+    await migratePostgres(storage.sql);
+    const original = ingestionObservation("run-postgres-mode-1", "a".repeat(64), "external");
+    await storage.ingestion.insertRun(ingestionRun(original.runId, ingestionNow));
+    await storage.ingestion.persistObservation(original);
+    await storage.ingestion.insertRun(ingestionRun("run-postgres-mode-2", ingestionLater));
+    const counts = async () =>
+      storage.sql<{ readonly kind: string; readonly count: string }[]>`
+        SELECT kind, count(*)::text AS count
+        FROM jobbbler.entity_records
+        WHERE kind IN (
+          'source_evidence', 'source_run_record', 'organization',
+          'job', 'job_version', 'job_source_link'
+        )
+        GROUP BY kind
+        ORDER BY kind`;
+    const before = await counts();
+
+    await expect(
+      storage.ingestion.persistObservation(
+        ingestionObservation("run-postgres-mode-2", "b".repeat(64), "internal"),
+      ),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+
+    await expect(counts()).resolves.toEqual(before);
+    await expect(storage.jobs.getById("job-postgres-ingestion-mode")).resolves.toMatchObject({
+      applyMode: "external",
+      updatedAt: ingestionNow,
+    });
+    await expect(
+      storage.organizations.getById("org-postgres-ingestion-mode"),
+    ).resolves.toMatchObject({ description: "Original organization.", updatedAt: ingestionNow });
+    await expect(
+      storage.ingestion.listJobVersions("job-postgres-ingestion-mode"),
+    ).resolves.toHaveLength(1);
+    await expect(
+      storage.ingestion.listJobSourceLinks("job-postgres-ingestion-mode"),
+    ).resolves.toEqual([expect.objectContaining({ latestRawHash: "a".repeat(64) })]);
   });
 
   it("does not overwrite a concurrent consent withdrawal with a stale application update", async () => {

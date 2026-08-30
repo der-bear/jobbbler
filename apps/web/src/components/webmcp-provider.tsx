@@ -34,6 +34,7 @@ import { startApplication } from "@/features/application/start-application";
 import { createStableApplicationToolManifests } from "@/features/application/webmcp-tools";
 import {
   applicationAgentState,
+  applicationNextAction,
   applicationReadiness,
 } from "@/features/application/application-model";
 import {
@@ -272,12 +273,7 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
                 workspace.requirements.find((field) => field.fieldKey === fieldKey)?.label ??
                 fieldKey,
             ),
-            nextAction:
-              state.receiptStatus !== "none"
-                ? "complete"
-                : progress.readyForReview
-                  ? "review"
-                  : "prepare",
+            nextAction: applicationNextAction(workspace),
           };
         } catch (error) {
           if (error instanceof ApiClientError && error.code === "NOT_FOUND") {

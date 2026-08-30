@@ -5,7 +5,11 @@ import type {
   DataCategory,
 } from "@jobbbler/contracts";
 
-export type ApplicationStage = "profile" | "review" | "permission" | "confirmation" | "complete";
+export type ApplicationStage =
+  "profile" | "review" | "permission" | "confirmation" | "legacy_external" | "complete";
+
+export type ApplicationNextAction =
+  "prepare" | "review" | "submit" | "withdraw" | "read_only" | "complete";
 
 function isCompletedAnswer(answer: ApplicationAnswer | undefined): boolean {
   if (answer === undefined || answer.value === null) return false;
@@ -67,6 +71,7 @@ export function applicationStage(workspace: ApplicationWorkspace): ApplicationSt
   ) {
     return "complete";
   }
+  if (workspace.applyMode === "external") return "legacy_external";
   if (workspace.draft.state === "valid") return "review";
   if (workspace.draft.state === "reviewed" || workspace.draft.state === "awaiting_confirmation") {
     return workspace.dataGrant?.status === "active" ? "confirmation" : "permission";
@@ -83,6 +88,7 @@ export function applicationAgentState(
   return {
     draftId: workspace.draft.id,
     jobId: workspace.draft.jobId,
+    applyMode: workspace.applyMode,
     state: workspace.draft.state,
     stage: applicationStage(workspace),
     version: workspace.draft.version,
@@ -94,4 +100,22 @@ export function applicationAgentState(
     finalConfirmationReady,
     receiptStatus: workspace.receipt?.status ?? "none",
   };
+}
+
+export function applicationNextAction(
+  workspace: ApplicationWorkspace,
+  finalConfirmationReady = false,
+): ApplicationNextAction {
+  if (
+    workspace.receipt !== null ||
+    workspace.draft.state === "submitted" ||
+    workspace.draft.state === "handed_off"
+  ) {
+    return "complete";
+  }
+  if (workspace.applyMode === "external") {
+    return workspace.dataGrant?.status === "active" ? "withdraw" : "read_only";
+  }
+  if (finalConfirmationReady) return "submit";
+  return applicationReadiness(workspace).readyForReview ? "review" : "prepare";
 }

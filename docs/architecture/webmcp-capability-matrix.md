@@ -31,7 +31,7 @@ All 24 tools are registered on every route. Six are natural entry points:
 - `get_search_filters` — accepted vocabulary for exact schemas;
 - `search_jobs` — source-backed catalog search;
 - `open_job_details` — navigate to a known role;
-- `prepare_application` — create or reopen one owner-bound draft;
+- `prepare_application` — create or reopen one owner-bound draft for an internal role;
 - `open_jobbbler_page` — explicit navigation to another workspace.
 
 The other tools remain discoverable but validate their prerequisites at
@@ -47,7 +47,7 @@ MCP Resource dependency.
 
 ## Agent-first application sequence
 
-1. `prepare_application` creates or reopens the chosen private draft.
+1. `prepare_application` creates or reopens the chosen private draft for an internal role.
 2. `get_application_readiness` reports only counts, missing field keys, and the
    next safe tool; it does not return private answers.
 3. `request_application_assistance` asks once for draft-bound, short-lived

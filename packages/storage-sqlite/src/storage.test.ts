@@ -180,31 +180,11 @@ describe("SQLite application capability persistence", () => {
         now,
       ),
     ).rejects.toMatchObject({ code: "CONFLICT" });
-    const receipt = {
-      id: "receipt_450e8400-e29b-41d4-a716-446655440000",
-      ownerId,
-      draftId: "application_450e8400-e29b-41d4-a716-446655440000",
-      reviewId: "review_450e8400-e29b-41d4-a716-446655440000",
-      confirmationId: "confirmation_450e8400-e29b-41d4-a716-446655440000",
-      idempotencyKey: "submit-once",
-      status: "submitted" as const,
-      externalUrl: null,
-      createdAt: now,
-    };
-    expect((await storage.applications.putReceiptIfAbsent(receipt)).inserted).toBe(true);
-    expect(
-      (
-        await storage.applications.putReceiptIfAbsent({
-          ...receipt,
-          id: "receipt_550e8400-e29b-41d4-a716-446655440000",
-        })
-      ).inserted,
-    ).toBe(false);
     const agentSessionId = "agent_session_450e8400-e29b-41d4-a716-446655440000";
     await storage.agentSessions.insert({
       id: agentSessionId,
       ownerId,
-      draftId: receipt.draftId,
+      draftId: "application_450e8400-e29b-41d4-a716-446655440000",
       tokenHash: "a".repeat(64),
       expiresAt: "2026-08-30T10:00:00.000Z",
       revokedAt: null,
@@ -215,7 +195,7 @@ describe("SQLite application capability persistence", () => {
       ownerId,
       agentSessionId,
       resourceType: "application_draft",
-      resourceId: receipt.draftId,
+      resourceId: "application_450e8400-e29b-41d4-a716-446655440000",
       operations: ["review_application"],
       purpose: "draft review",
       status: "requested",

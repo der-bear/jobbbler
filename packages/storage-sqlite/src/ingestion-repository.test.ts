@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createHash } from "node:crypto";
 
 import type {
   PersistSourceObservationInput,
@@ -10,6 +11,7 @@ import type {
 } from "@jobbbler/storage";
 
 import { createSqliteStorage } from "./storage.js";
+import { openSqliteDatabase } from "./connection.js";
 
 const now = "2026-08-29T10:00:00.000Z";
 const later = "2026-08-29T11:00:00.000Z";
@@ -197,6 +199,111 @@ describe("SQLite connector ingestion repository", () => {
       jobVersionInserted: false,
     });
 
+    storage.close();
+  });
+
+  it("rejects an ingestion projection that changes a job's application mode", async () => {
+    const storage = await create();
+    await storage.ingestion.insertRun(run("run_mode_1"));
+    await storage.ingestion.persistObservation(acceptedObservation("run_mode_1"));
+    await storage.ingestion.insertRun(run("run_mode_2", later));
+    const changed = acceptedObservation("run_mode_2", "f".repeat(64));
+    if (!changed.normalization.accepted) throw new Error("Expected an accepted fixture.");
+
+    await expect(
+      storage.ingestion.persistObservation({
+        ...changed,
+        evidence: {
+          ...changed.evidence,
+          sourceUpdatedAt: later,
+          fetchedAt: later,
+        },
+        normalization: {
+          ...changed.normalization,
+          recordedAt: later,
+          job: {
+            ...changed.normalization.job,
+            applyMode: "internal",
+            updatedAt: later,
+          },
+        },
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(storage.jobs.getById(acceptedJobId)).resolves.toMatchObject({
+      applyMode: "external",
+      updatedAt: now,
+    });
+    storage.close();
+  });
+
+  it("rejects a stale mode-changing observation and rolls back every ingestion side effect", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "jobbbler-ingestion-stale-mode-"));
+    temporaryDirectories.push(directory);
+    const filename = join(directory, "jobbbler.sqlite");
+    const storage = createSqliteStorage(filename);
+    await storage.ingestion.insertRun(run("run_stale_mode_1"));
+    const original = acceptedObservation("run_stale_mode_1");
+    if (!original.normalization.accepted) throw new Error("Expected an accepted fixture.");
+    await storage.ingestion.persistObservation(original);
+    await storage.ingestion.insertRun(run("run_stale_mode_2", later));
+    const stale = acceptedObservation("run_stale_mode_2", "e".repeat(64), "Stale title");
+    if (!stale.normalization.accepted) throw new Error("Expected an accepted fixture.");
+    const conflicting = {
+      ...stale,
+      evidence: {
+        ...stale.evidence,
+        fetchedAt: later,
+        sourceUpdatedAt: "2026-08-28T09:00:00.000Z",
+      },
+      normalization: {
+        ...stale.normalization,
+        recordedAt: later,
+        organization: {
+          ...stale.normalization.organization,
+          description: "This stale write must roll back.",
+          updatedAt: later,
+        },
+        job: {
+          ...stale.normalization.job,
+          applyMode: "internal" as const,
+          updatedAt: "2026-08-28T09:00:00.000Z",
+        },
+      },
+    };
+    const database = openSqliteDatabase(filename);
+    const count = (table: string): number =>
+      (
+        database.prepare(`SELECT count(*) AS count FROM ${table}`).get() as {
+          readonly count: number;
+        }
+      ).count;
+    const tables = [
+      "source_records",
+      "source_payloads",
+      "normalization_results",
+      "source_run_records",
+      "job_versions",
+      "job_source_links",
+    ] as const;
+    const before = Object.fromEntries(tables.map((table) => [table, count(table)]));
+
+    await expect(storage.ingestion.persistObservation(conflicting)).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
+
+    expect(Object.fromEntries(tables.map((table) => [table, count(table)]))).toEqual(before);
+    const rejectedSourceRecordId = `record_${createHash("sha256")
+      .update(`jobicy:default:jobicy-100:${"e".repeat(64)}`)
+      .digest("hex")}`;
+    await expect(storage.ingestion.getEvidence(rejectedSourceRecordId)).resolves.toBeNull();
+    await expect(
+      storage.organizations.getById(stale.normalization.organization.id),
+    ).resolves.toEqual(original.normalization.organization);
+    await expect(storage.ingestion.listJobVersions(acceptedJobId)).resolves.toHaveLength(1);
+    await expect(storage.ingestion.listJobSourceLinks(acceptedJobId)).resolves.toEqual([
+      expect.objectContaining({ latestRawHash: "a".repeat(64) }),
+    ]);
+    database.close();
     storage.close();
   });
 

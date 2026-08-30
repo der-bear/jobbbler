@@ -693,7 +693,7 @@ function upsertOrganization(
 }
 
 function upsertJob(database: SqliteDatabase, record: Job): Job {
-  database
+  const result = database
     .prepare(
       `INSERT INTO jobs(
          id, organization_id, organization_name, title, summary, categories_json,
@@ -727,7 +727,8 @@ function upsertJob(database: SqliteDatabase, record: Job): Job {
          apply_mode = excluded.apply_mode,
          status = excluded.status,
          published_at = excluded.published_at,
-         updated_at = excluded.updated_at`,
+         updated_at = excluded.updated_at
+       WHERE jobs.apply_mode = excluded.apply_mode`,
     )
     .run({
       id: record.id,
@@ -753,6 +754,12 @@ function upsertJob(database: SqliteDatabase, record: Job): Job {
       publishedAt: record.publishedAt,
       updatedAt: record.updatedAt,
     });
+  if (result.changes !== 1) {
+    throw new DomainError({
+      code: "CONFLICT",
+      message: "A job's application mode cannot change after creation.",
+    });
+  }
   return record;
 }
 
@@ -1320,67 +1327,6 @@ function createRepositories(
           .prepare("SELECT * FROM application_confirmation_records WHERE id=? AND owner_id=?")
           .get(id, ownerId) as Record<string, unknown>;
         return applicationRecord<ApplicationConfirmationRecord>(row);
-      },
-      async putReceiptIfAbsent(record) {
-        const found = database
-          .prepare(
-            "SELECT * FROM application_submission_receipts WHERE owner_id=? AND draft_id=? AND idempotency_key=?",
-          )
-          .get(record.ownerId, record.draftId, record.idempotencyKey) as
-          Record<string, unknown> | undefined;
-        if (found) {
-          const stored = applicationRecord<ApplicationReceiptRecord>(found);
-          if (
-            stored.reviewId !== record.reviewId ||
-            stored.confirmationId !== record.confirmationId
-          )
-            throw new DomainError({
-              code: "CONFLICT",
-              message: "Idempotency key is already bound to another review or confirmation.",
-            });
-          return { inserted: false, record: stored };
-        }
-        database
-          .prepare(
-            "INSERT INTO application_submission_receipts(id,owner_id,draft_id,review_id,confirmation_id,idempotency_key,status,external_url,created_at) VALUES(@id,@ownerId,@draftId,@reviewId,@confirmationId,@idempotencyKey,@status,@externalUrl,@createdAt)",
-          )
-          .run(record);
-        return { inserted: true, record };
-      },
-      async consumeAndPutReceipt(input) {
-        const submit = database.transaction(() => {
-          const found = database
-            .prepare(
-              "SELECT * FROM application_submission_receipts WHERE owner_id=? AND draft_id=? AND idempotency_key=?",
-            )
-            .get(input.receipt.ownerId, input.receipt.draftId, input.receipt.idempotencyKey) as
-            Record<string, unknown> | undefined;
-          if (found)
-            return { inserted: false, record: applicationRecord<ApplicationReceiptRecord>(found) };
-          const used = database
-            .prepare(
-              "UPDATE application_confirmation_records SET status='consumed', consumed_at=? WHERE id=? AND owner_id=? AND confirmation_hash=? AND status='active' AND expires_at>? ",
-            )
-            .run(
-              input.consumedAt,
-              input.confirmationId,
-              input.ownerId,
-              input.confirmationHash,
-              input.consumedAt,
-            );
-          if (used.changes !== 1)
-            throw new DomainError({
-              code: "CONFLICT",
-              message: "Confirmation is invalid, expired, or already used.",
-            });
-          database
-            .prepare(
-              "INSERT INTO application_submission_receipts(id,owner_id,draft_id,review_id,confirmation_id,idempotency_key,status,external_url,created_at) VALUES(@id,@ownerId,@draftId,@reviewId,@confirmationId,@idempotencyKey,@status,@externalUrl,@createdAt)",
-            )
-            .run(input.receipt);
-          return { inserted: true, record: input.receipt };
-        });
-        return submit();
       },
       async completeSubmission(
         input: CompleteApplicationSubmissionInput,

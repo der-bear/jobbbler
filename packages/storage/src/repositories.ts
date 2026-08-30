@@ -39,7 +39,6 @@ import type {
   ApplicationReviewRecord,
   ApplicationConfirmationRecord,
   ApplicationReceiptRecord,
-  ApplicationReceiptPutResult,
   MaterialApplicationEditInput,
   SealApplicationReviewInput,
   CompleteApplicationSubmissionInput,
@@ -141,14 +140,6 @@ export interface ApplicationRepository {
     confirmationHash: string,
     consumedAt: string,
   ): Promise<ApplicationConfirmationRecord>;
-  putReceiptIfAbsent(record: ApplicationReceiptRecord): Promise<ApplicationReceiptPutResult>;
-  consumeAndPutReceipt(input: {
-    readonly confirmationId: string;
-    readonly ownerId: string;
-    readonly confirmationHash: string;
-    readonly consumedAt: string;
-    readonly receipt: ApplicationReceiptRecord;
-  }): Promise<ApplicationReceiptPutResult>;
 }
 
 export interface DelegationRepository {

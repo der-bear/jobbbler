@@ -5,12 +5,14 @@ import type { ApplicationWorkspace } from "@jobbbler/contracts";
 import {
   applicationAgentState,
   applicationDisclosure,
+  applicationNextAction,
   applicationReadiness,
   applicationStage,
   visibleApplicationProgress,
 } from "./application-model";
 
 const base: ApplicationWorkspace = {
+  applyMode: "internal",
   draft: {
     id: "draft_550e8400-e29b-41d4-a716-446655440000",
     ownerId: "owner_550e8400-e29b-41d4-a716-446655440000",
@@ -160,5 +162,44 @@ describe("application presentation model", () => {
     });
     expect(JSON.stringify(state)).not.toContain("Ada Lovelace");
     expect(JSON.stringify(state)).not.toContain(base.draft.ownerId);
+  });
+
+  it("makes a legacy external draft read-only and recommends only active consent withdrawal", () => {
+    const external: ApplicationWorkspace = { ...base, applyMode: "external" };
+    expect(applicationStage(external)).toBe("legacy_external");
+    expect(applicationAgentState(external, false).applyMode).toBe("external");
+    expect(applicationNextAction(external)).toBe("read_only");
+    expect(
+      applicationNextAction({
+        ...external,
+        dataGrant: {
+          id: "grant_550e8400-e29b-41d4-a716-446655440000",
+          status: "active",
+          expiresAt: "2026-08-29T10:34:00.000Z",
+        },
+      }),
+    ).toBe("withdraw");
+  });
+
+  it("keeps a terminal legacy external handoff complete without hiding independent withdrawal", () => {
+    const completedExternal: ApplicationWorkspace = {
+      ...base,
+      applyMode: "external",
+      draft: { ...base.draft, state: "handed_off" },
+      dataGrant: {
+        id: "grant_550e8400-e29b-41d4-a716-446655440000",
+        status: "active",
+        expiresAt: "2026-08-29T10:34:00.000Z",
+      },
+      receipt: {
+        id: "receipt_550e8400-e29b-41d4-a716-446655440000",
+        status: "handed_off",
+        externalUrl: "https://jobs.example.test/opening/42",
+        createdAt: "2026-08-29T10:03:00.000Z",
+      },
+    };
+
+    expect(applicationStage(completedExternal)).toBe("complete");
+    expect(applicationNextAction(completedExternal)).toBe("complete");
   });
 });

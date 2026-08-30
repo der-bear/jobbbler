@@ -13,6 +13,7 @@ import {
 const base: ApplicationAgentState = {
   draftId: "application_550e8400-e29b-41d4-a716-446655440000",
   jobId: "job_550e8400-e29b-41d4-a716-446655440000",
+  applyMode: "internal",
   state: "draft",
   stage: "profile",
   version: 1,
@@ -133,6 +134,16 @@ describe("application WebMCP outcomes", () => {
       presentation: {
         title: "Let Jobbbler prepare this application?",
         confirmLabel: "Allow once",
+        facts: [
+          { key: "Scope", value: "This application only" },
+          { key: "Purpose", value: "Prepare this application with the candidate." },
+          {
+            key: "Allowed actions",
+            value:
+              "read_application, edit_application, validate_application, review_application, request_data_consent, request_confirmation, submit_application",
+          },
+          { key: "Expires", value: "2026-08-29T10:15:00.000Z" },
+        ],
       },
     });
     expect(deps.requestAgentAccess).toHaveBeenCalledWith(
@@ -342,6 +353,42 @@ describe("site-wide application tools", () => {
         nextTool: "request_application_assistance",
       },
     });
+  });
+
+  it("reports legacy external drafts as read-only while preserving active consent withdrawal", async () => {
+    const external = {
+      ...base,
+      applyMode: "external",
+      dataPermissionStatus: "active",
+    } as ApplicationAgentState;
+    const externalReadiness = {
+      ...readiness(external),
+      nextAction: "withdraw",
+    } as ApplicationToolReadiness;
+    const manifests = createStableApplicationToolManifests({
+      currentSurface: () => null,
+      readApplication: vi.fn(async () => externalReadiness),
+      withdrawConsent: vi.fn(),
+      onNavigate: vi.fn(),
+    });
+
+    const result = await manifests[0]!.execute(
+      { draftId: external.draftId },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toMatchObject({
+      status: "completed",
+      data: {
+        applyMode: "external",
+        nextAction: "withdraw",
+        nextTool: "withdraw_application_consent",
+      },
+    });
+    expect(names(createApplicationToolManifests(dependencies(external)))).toEqual([
+      "get_application_readiness",
+    ]);
+    expect(names(manifests)).toContain("withdraw_application_consent");
   });
 
   it("validates ownership before an action navigates and returns structured NOT_FOUND", async () => {

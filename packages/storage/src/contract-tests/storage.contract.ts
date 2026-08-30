@@ -8,8 +8,10 @@ import type {
   OrganizationRecord,
   OwnerActivityEventRecord,
   OwnerRecord,
+  PersistSourceObservationInput,
   SavedSearchRecord,
   ScheduleRecord,
+  SourceRunRecord,
   Storage,
   WorkItemRecord,
 } from "../index.js";
@@ -79,6 +81,82 @@ const emptyCriteria: JobSearchCriteria = {
   unresolvedAssumptions: [],
 };
 
+function ingestionRun(id: string, startedAt: string): SourceRunRecord {
+  return {
+    id,
+    sourceKey: "jobicy",
+    partition: "default",
+    purpose: "production",
+    status: "running",
+    policyVersion: 1,
+    startedAt,
+    completedAt: null,
+    complete: null,
+    notModified: false,
+    pagesFetched: 0,
+    recordsFetched: 0,
+    recordsAccepted: 0,
+    recordsRejected: 0,
+    recordsUnchanged: 0,
+    responseEtag: null,
+    responseLastModified: null,
+    responseBytes: 0,
+    errorCode: null,
+  };
+}
+
+function ingestionObservation(
+  runId: string,
+  rawHash: string,
+  sourceUpdatedAt: string,
+  applyMode: Job["applyMode"],
+): PersistSourceObservationInput {
+  const sourceJob: Job = {
+    ...job,
+    source: {
+      key: "jobicy",
+      label: "Jobicy",
+      url: "https://jobicy.example/jobs/contract-100",
+    },
+    applyMode,
+    updatedAt: sourceUpdatedAt,
+  };
+  return {
+    runId,
+    evidence: {
+      sourceKey: "jobicy",
+      partition: "default",
+      externalId: "contract-100",
+      originalUrl: "https://jobicy.example/jobs/contract-100",
+      applyUrl: "https://jobicy.example/jobs/contract-100/apply",
+      sourceUpdatedAt,
+      fetchedAt: sourceUpdatedAt,
+      retainedUntil: "2026-09-29T10:00:00.000Z",
+      rawHash,
+      payload: { id: "contract-100", title: sourceJob.title },
+      policyVersion: 1,
+      attribution: {
+        label: "Jobicy",
+        url: "https://jobicy.com/",
+        required: true,
+        followedLinkRequired: false,
+      },
+    },
+    normalization: {
+      accepted: true,
+      normalizerVersion: 1,
+      recordedAt: sourceUpdatedAt,
+      organization,
+      job: sourceJob,
+      sourceLink: {
+        originalUrl: "https://jobicy.example/jobs/contract-100",
+        applyUrl: "https://jobicy.example/jobs/contract-100/apply",
+        identityBasis: "source_id",
+      },
+    },
+  };
+}
+
 export function storageContractSuite(name: string, createStorage: StorageFactory): void {
   describe(`${name} storage contract`, () => {
     let storage: Storage | undefined;
@@ -106,6 +184,74 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
           limit: 10,
         }),
       ).toEqual({ jobs: [job], total: 1, nextCursor: null, catalogUpdatedAt: now });
+    });
+
+    it("keeps a job's application mode immutable across upserts", async () => {
+      const current = await create();
+      await current.organizations.upsert(organization);
+      await current.jobs.upsert(job);
+
+      await expect(
+        current.jobs.upsert({
+          ...job,
+          applyMode: "external",
+          source: {
+            key: "external_source",
+            label: "External source",
+            url: "https://jobs.example.test/opening/42",
+          },
+          updatedAt: later,
+        }),
+      ).rejects.toMatchObject({ code: "CONFLICT" });
+      await expect(current.jobs.getById(job.id)).resolves.toEqual(job);
+    });
+
+    it("rolls back an ingestion observation that changes an existing job's application mode", async () => {
+      const current = await create();
+      const original = ingestionObservation("run_contract_mode_1", "a".repeat(64), now, "external");
+      await current.ingestion.insertRun(ingestionRun(original.runId, now));
+      await current.ingestion.persistObservation(original);
+      await current.ingestion.insertRun(ingestionRun("run_contract_mode_2", later));
+
+      const conflicting = ingestionObservation(
+        "run_contract_mode_2",
+        "b".repeat(64),
+        later,
+        "internal",
+      );
+      if (!conflicting.normalization.accepted) throw new Error("Expected an accepted fixture.");
+      const changedOrganization = {
+        ...conflicting.normalization.organization,
+        description: "This write must roll back with the rejected observation.",
+        updatedAt: later,
+      };
+
+      await expect(
+        current.ingestion.persistObservation({
+          ...conflicting,
+          normalization: { ...conflicting.normalization, organization: changedOrganization },
+        }),
+      ).rejects.toMatchObject({ code: "CONFLICT" });
+      await expect(current.jobs.getById(job.id)).resolves.toMatchObject({
+        applyMode: "external",
+        updatedAt: now,
+      });
+      await expect(current.organizations.getById(organization.id)).resolves.toEqual(organization);
+      await expect(current.ingestion.listJobVersions(job.id)).resolves.toHaveLength(1);
+      await expect(current.ingestion.listJobSourceLinks(job.id)).resolves.toEqual([
+        expect.objectContaining({
+          latestRawHash: "a".repeat(64),
+          latestSourceUpdatedAt: now,
+        }),
+      ]);
+      await expect(
+        current.ingestion.persistObservation(
+          ingestionObservation("run_contract_mode_2", "b".repeat(64), later, "external"),
+        ),
+      ).resolves.toMatchObject({
+        sourceRecordInserted: true,
+        normalizationInserted: true,
+      });
     });
 
     it("suggests distinct open-role locations by relevance without loading the catalog", async () => {

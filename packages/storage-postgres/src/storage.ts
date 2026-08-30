@@ -211,6 +211,26 @@ async function write<T extends { readonly id: string }>(
   return record;
 }
 
+async function upsertJob(sql: PostgresExecutor, record: Job): Promise<Job> {
+  const rows = await sql<EntityRow[]>`
+    INSERT INTO jobbbler.entity_records AS existing
+      (kind, id, owner_id, body, version, created_at, updated_at)
+    VALUES ('job', ${record.id}, NULL, ${sql.json(record)}, 0,
+            ${timestamp(undefined)}, ${timestamp(record.updatedAt)})
+    ON CONFLICT (kind, id) DO UPDATE SET
+      owner_id = EXCLUDED.owner_id,
+      body = EXCLUDED.body,
+      version = EXCLUDED.version,
+      created_at = EXCLUDED.created_at,
+      updated_at = EXCLUDED.updated_at
+    WHERE existing.body->>'applyMode' = EXCLUDED.body->>'applyMode'
+    RETURNING id, owner_id, body, version`;
+  if (rows[0] === undefined) {
+    throw domain("CONFLICT", "A job's application mode cannot change after creation.");
+  }
+  return body<Job>(rows[0]);
+}
+
 async function insert<T extends { readonly id: string }>(
   sql: PostgresExecutor,
   kind: string,
@@ -839,7 +859,7 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
     },
     jobs: {
       async upsert(record) {
-        return write(sql, "job", record);
+        return upsertJob(sql, record);
       },
       async getById(id) {
         return get<Job>(sql, "job", id);
@@ -1323,38 +1343,6 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
         const next = { ...current, status: "consumed" as const, consumedAt };
         await write(sql, "application_confirmation", next, ownerId);
         return next;
-      },
-      async putReceiptIfAbsent(record) {
-        const existing = (
-          await list<ApplicationReceiptRecord>(sql, "application_receipt", record.ownerId)
-        ).find(
-          (item) =>
-            item.draftId === record.draftId && item.idempotencyKey === record.idempotencyKey,
-        );
-        if (existing !== undefined) {
-          if (
-            existing.reviewId !== record.reviewId ||
-            existing.confirmationId !== record.confirmationId
-          )
-            throw domain(
-              "CONFLICT",
-              "Idempotency key is already bound to another review or confirmation.",
-            );
-          return { inserted: false, record: existing };
-        }
-        await insert(sql, "application_receipt", record, record.ownerId);
-        return { inserted: true, record };
-      },
-      async consumeAndPutReceipt(input) {
-        const confirmation = await this.consumeConfirmation(
-          input.confirmationId,
-          input.ownerId,
-          input.confirmationHash,
-          input.consumedAt,
-        );
-        if (confirmation.id !== input.receipt.confirmationId)
-          throw domain("VALIDATION", "Receipt confirmation does not match consumed confirmation.");
-        return this.putReceiptIfAbsent(input.receipt);
       },
       async completeSubmission(
         input: CompleteApplicationSubmissionInput,
@@ -2033,91 +2021,94 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
       async persistObservation(
         input: PersistSourceObservationInput,
       ): Promise<PersistSourceObservationResult> {
-        const sourceRecordId = `source_${stableHash({ sourceKey: input.evidence.sourceKey, partition: input.evidence.partition, externalId: input.evidence.externalId, rawHash: input.evidence.rawHash })}`;
-        const existing = await get<StoredSourceEvidence>(sql, "source_evidence", sourceRecordId);
-        const evidence: StoredSourceEvidence = {
-          ...input.evidence,
-          id: sourceRecordId,
-          firstFetchedAt: input.evidence.fetchedAt,
-          payload: input.evidence.payload,
-          normalization: input.normalization.accepted
-            ? {
-                status: "accepted",
-                reason: null,
-                issues: [],
-                normalizerVersion: input.normalization.normalizerVersion,
-                normalizedHash: stableHash(input.normalization.job),
-                recordedAt: input.normalization.recordedAt,
-              }
-            : {
-                status: input.normalization.status,
-                reason: input.normalization.reason,
-                issues: input.normalization.issues,
-                normalizerVersion: input.normalization.normalizerVersion,
-                normalizedHash: null,
-                recordedAt: input.normalization.recordedAt,
-              },
-        };
-        if (existing === null) await insert(sql, "source_evidence", evidence);
-        await write(sql, "source_run_record", {
-          id: `${input.runId}:${sourceRecordId}`,
-          runId: input.runId,
-          sourceRecordId,
-          createdAt: input.evidence.fetchedAt,
-        });
-        if (!input.normalization.accepted)
+        return sql.begin(async (transaction) => {
+          const tx = transaction as PostgresExecutor;
+          const sourceRecordId = `source_${stableHash({ sourceKey: input.evidence.sourceKey, partition: input.evidence.partition, externalId: input.evidence.externalId, rawHash: input.evidence.rawHash })}`;
+          const existing = await get<StoredSourceEvidence>(tx, "source_evidence", sourceRecordId);
+          const evidence: StoredSourceEvidence = {
+            ...input.evidence,
+            id: sourceRecordId,
+            firstFetchedAt: input.evidence.fetchedAt,
+            payload: input.evidence.payload,
+            normalization: input.normalization.accepted
+              ? {
+                  status: "accepted",
+                  reason: null,
+                  issues: [],
+                  normalizerVersion: input.normalization.normalizerVersion,
+                  normalizedHash: stableHash(input.normalization.job),
+                  recordedAt: input.normalization.recordedAt,
+                }
+              : {
+                  status: input.normalization.status,
+                  reason: input.normalization.reason,
+                  issues: input.normalization.issues,
+                  normalizerVersion: input.normalization.normalizerVersion,
+                  normalizedHash: null,
+                  recordedAt: input.normalization.recordedAt,
+                },
+          };
+          if (existing === null) await insert(tx, "source_evidence", evidence);
+          await write(tx, "source_run_record", {
+            id: `${input.runId}:${sourceRecordId}`,
+            runId: input.runId,
+            sourceRecordId,
+            createdAt: input.evidence.fetchedAt,
+          });
+          if (!input.normalization.accepted)
+            return {
+              sourceRecordId,
+              sourceRecordInserted: existing === null,
+              normalizationInserted: existing === null,
+              jobVersionInserted: false,
+            };
+          await write(tx, "organization", input.normalization.organization);
+          await upsertJob(tx, input.normalization.job);
+          const version: JobVersionRecord = {
+            id: `job_version_${stableHash({ jobId: input.normalization.job.id, sourceRecordId, normalizedHash: stableHash(input.normalization.job) })}`,
+            jobId: input.normalization.job.id,
+            sourceRecordId,
+            normalizedHash: stableHash(input.normalization.job),
+            job: input.normalization.job,
+            observedAt: input.normalization.recordedAt,
+          };
+          const prior = await get<JobVersionRecord>(tx, "job_version", version.id);
+          if (prior === null) await insert(tx, "job_version", version);
+          const link: JobSourceLinkRecord & { readonly id: string } = {
+            id: `${input.normalization.job.id}:${input.evidence.sourceKey}:${input.evidence.partition}:${input.evidence.externalId}`,
+            jobId: input.normalization.job.id,
+            sourceKey: input.evidence.sourceKey,
+            partition: input.evidence.partition,
+            externalId: input.evidence.externalId,
+            originalUrl: input.normalization.sourceLink.originalUrl,
+            applyUrl: input.normalization.sourceLink.applyUrl,
+            identityBasis: "source_id",
+            firstSeenAt: input.evidence.fetchedAt,
+            lastSeenAt: input.evidence.fetchedAt,
+            status: "active",
+            missingCompleteRuns: 0,
+            lastCompleteRunId: null,
+            latestSourceRecordId: sourceRecordId,
+            latestSourceUpdatedAt: input.evidence.sourceUpdatedAt ?? input.evidence.fetchedAt,
+            latestRawHash: input.evidence.rawHash,
+            attributionLabel: input.evidence.attribution.label,
+            attributionUrl: input.evidence.attribution.url,
+            attributionRequired: input.evidence.attribution.required,
+            followedLinkRequired: input.evidence.attribution.followedLinkRequired,
+          };
+          const oldLink = await get<typeof link>(tx, "job_source_link", link.id);
+          await write(
+            tx,
+            "job_source_link",
+            oldLink === null ? link : { ...oldLink, ...link, firstSeenAt: oldLink.firstSeenAt },
+          );
           return {
             sourceRecordId,
             sourceRecordInserted: existing === null,
             normalizationInserted: existing === null,
-            jobVersionInserted: false,
+            jobVersionInserted: prior === null,
           };
-        await write(sql, "organization", input.normalization.organization);
-        await write(sql, "job", input.normalization.job);
-        const version: JobVersionRecord = {
-          id: `job_version_${stableHash({ jobId: input.normalization.job.id, sourceRecordId, normalizedHash: stableHash(input.normalization.job) })}`,
-          jobId: input.normalization.job.id,
-          sourceRecordId,
-          normalizedHash: stableHash(input.normalization.job),
-          job: input.normalization.job,
-          observedAt: input.normalization.recordedAt,
-        };
-        const prior = await get<JobVersionRecord>(sql, "job_version", version.id);
-        if (prior === null) await insert(sql, "job_version", version);
-        const link: JobSourceLinkRecord & { readonly id: string } = {
-          id: `${input.normalization.job.id}:${input.evidence.sourceKey}:${input.evidence.partition}:${input.evidence.externalId}`,
-          jobId: input.normalization.job.id,
-          sourceKey: input.evidence.sourceKey,
-          partition: input.evidence.partition,
-          externalId: input.evidence.externalId,
-          originalUrl: input.normalization.sourceLink.originalUrl,
-          applyUrl: input.normalization.sourceLink.applyUrl,
-          identityBasis: "source_id",
-          firstSeenAt: input.evidence.fetchedAt,
-          lastSeenAt: input.evidence.fetchedAt,
-          status: "active",
-          missingCompleteRuns: 0,
-          lastCompleteRunId: null,
-          latestSourceRecordId: sourceRecordId,
-          latestSourceUpdatedAt: input.evidence.sourceUpdatedAt ?? input.evidence.fetchedAt,
-          latestRawHash: input.evidence.rawHash,
-          attributionLabel: input.evidence.attribution.label,
-          attributionUrl: input.evidence.attribution.url,
-          attributionRequired: input.evidence.attribution.required,
-          followedLinkRequired: input.evidence.attribution.followedLinkRequired,
-        };
-        const oldLink = await get<typeof link>(sql, "job_source_link", link.id);
-        await write(
-          sql,
-          "job_source_link",
-          oldLink === null ? link : { ...oldLink, ...link, firstSeenAt: oldLink.firstSeenAt },
-        );
-        return {
-          sourceRecordId,
-          sourceRecordInserted: existing === null,
-          normalizationInserted: existing === null,
-          jobVersionInserted: prior === null,
-        };
+        });
       },
       async getEvidence(id) {
         return get<StoredSourceEvidence>(sql, "source_evidence", id);
