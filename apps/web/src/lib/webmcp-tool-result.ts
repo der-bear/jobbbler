@@ -9,7 +9,6 @@ import type { JsonValue } from "@jobbbler/webmcp";
 import { ApiClientError } from "./query-client";
 
 export const MAX_WEBMCP_RESULT_BYTES = 1_500;
-export const MAX_EXACT_REVIEW_RESULT_BYTES = 64 * 1_024;
 
 interface ResourceReference {
   readonly type: string;
@@ -27,18 +26,6 @@ export interface UserActionPresentation {
   readonly prompt: string;
   readonly confirmLabel: string;
   readonly facts?: readonly ResultFact[];
-  readonly application?: {
-    readonly recipient: string;
-    readonly purpose: string;
-    readonly fields: readonly Readonly<{
-      fieldKey: string;
-      label: string;
-      value: JsonValue;
-      sensitive: boolean;
-    }>[];
-    readonly privacyNotice: string;
-    readonly draftVersion: number;
-  };
 }
 
 export interface CompletedWebMcpResult<TData extends JsonValue> {

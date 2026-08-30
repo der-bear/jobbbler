@@ -20,7 +20,6 @@ import { jobSearchToolInput, jobSearchToolInputJsonSchema } from "@/features/sea
 import type { LatestSearchRun } from "@/lib/latest-run";
 
 import {
-  MAX_EXACT_REVIEW_RESULT_BYTES,
   completedWebMcpResult,
   requiresUserActionWebMcpResult,
   safeWebMcpErrorResult,
@@ -387,11 +386,11 @@ export function createSavedToolManifests(
           surface: "search_alert_consent",
           requestId: result.requestId,
           nextTool: "decide_search_alert",
-          maximumBytes: MAX_EXACT_REVIEW_RESULT_BYTES,
           decisionContext: {
             reviewToken: result.reviewToken,
             expiresAt: result.expiresAt,
-            review: result.review,
+            savedSearchId: result.review.savedSearchId,
+            savedSearchVersion: result.review.savedSearchVersion,
           },
           presentation: {
             title: "Review this job alert",

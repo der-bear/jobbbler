@@ -194,11 +194,8 @@ describe("saved-route WebMCP tools", () => {
       decisionContext: {
         reviewToken: alertReview.reviewToken,
         expiresAt: alertReview.expiresAt,
-        review: {
-          maskedDestination: alertReview.review.maskedDestination,
-          criteria: alertReview.review.criteria,
-          recurrence: alertReview.review.recurrence,
-        },
+        savedSearchId: alertReview.review.savedSearchId,
+        savedSearchVersion: alertReview.review.savedSearchVersion,
       },
       presentation: {
         title: "Review this job alert",
@@ -211,6 +208,8 @@ describe("saved-route WebMCP tools", () => {
       },
     });
     expect(JSON.stringify(result)).not.toContain("ada@example.com");
+    expect(JSON.stringify(result)).not.toContain('"review"');
+    expect(new TextEncoder().encode(JSON.stringify(result)).byteLength).toBeLessThanOrEqual(1_500);
   });
 
   it("shows every weekly check day in the external-client consent facts", async () => {
@@ -251,6 +250,7 @@ describe("saved-route WebMCP tools", () => {
         ]),
       },
     });
+    expect(new TextEncoder().encode(JSON.stringify(result)).byteLength).toBeLessThanOrEqual(1_500);
   });
 
   it("requires the person's exact approval and mailbox code before activation", async () => {
