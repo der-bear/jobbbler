@@ -11,10 +11,18 @@ case context; they do not artificially hide competing tools from the model.
 Each case supplies a route, stable product context, a prompt, and one expected
 result:
 
-- `tool_call` — invoke exactly `tool` with deep-equal `arguments`;
-- `clarification` — invoke nothing and cover every `mustMention` item;
+- `tool_call` — invoke the expected `tool` with schema-valid arguments that
+  preserve every material user constraint; checked-in `arguments` are the
+  canonical example, not the only valid serialization;
+- `clarification` — invoke nothing and cover every `mustMention` concept;
 - `reject_input` — invoke nothing, identify the intended tool and invalid
   field, and explain the listed constraint.
+
+Scoring accepts documented runtime defaults, a faithful structured category in
+place of equivalent query prose, and the person's own valid location wording.
+It rejects invented filters, omitted material constraints, fabricated IDs, and
+decisions the person did not make. This keeps the eval semantic without making
+it permissive.
 
 Search arguments use the public criteria contract. Job IDs use the `job_`
 entity format. Comparisons contain two or three unique IDs. Application
@@ -52,6 +60,11 @@ decision points.
   26-tool surface. The set contains 25 direct, 7 paraphrased, 5 ambiguous, 8
   wrong-order, and 5 invalid-input cases. Every tool is the actual expected
   outcome of at least one case; inventory lists alone do not count as coverage.
+  All 50 final responses selected the expected action kind and tool. Forty-five
+  also matched the canonical argument example byte for byte. The other five
+  were reviewed schema-valid equivalents: documented defaults, a structured
+  software-engineering category, the person's `UK` wording, or an explicit
+  `detail=summary` on the same read.
 - Terra at medium effort: 10/10 end-to-end workflows. These covered broad-search
   clarification, comparison, managed application assistance, exact pending
   submission review, external-employer stop, alert request plus mailbox
@@ -61,11 +74,14 @@ decision points.
   server-returned IDs and tokens, never invented a mailbox code, and did not
   claim that an external employer received an application.
 
-The run found no routing or schema ambiguity. Terra did identify one useful
-recoverability refinement: an incorrect mailbox code and an expired alert review
-should be distinguishable through a typed safe error, rather than requiring the
-agent to interpret message text. That is a result-contract improvement, not a
-reason to weaken the approval boundary.
+The eval changed the product before the final rerun. One early Luna response
+copied salary, category, and exclusion filters that the alert request did not
+contain, so `request_search_alert` now explicitly accepts only criteria from the
+current request or `get_search_state(detail=exact)`. A planning fixture also
+sounded like permission to inspect the role immediately; its plan-only intent
+is now explicit. The final full Luna rerun passed both cases. Terra exercised
+the typed `invalid_code` recovery path without interpreting free-form error text
+or weakening the approval boundary.
 
 These are isolated model-judgment runs, not production telemetry. The checked-in
 deterministic suites separately verify schemas, execution, cancellation,

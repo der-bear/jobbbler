@@ -39,6 +39,13 @@ export interface OwnerActivityEvent {
 
 The public contract is strict and versioned. The storage boundary rejects unknown fields and summaries containing credentials, URLs, portable resource IDs, email-like values, markup, or long token-like strings. Events deliberately omit owner IDs, actor IDs, aggregate IDs, arbitrary metadata, source records, and raw command payloads. The signed cursor lives in the page envelope rather than in each event.
 
+`actorKind` records operational provenance from a trusted route or decision
+channel, not cryptographic identity. For example, an explicit decision relayed
+through the agent-client channel is shown as agent activity even though the
+decision evidence separately records the person's request-bound action. The
+imperative WebMCP API does not prove which human, model, or agent vendor supplied
+that action.
+
 ## Delivery flow
 
 1. A command commits authoritative state and any audit, outbox, version, or idempotency facts required by that command.
