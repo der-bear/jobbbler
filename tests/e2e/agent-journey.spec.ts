@@ -95,6 +95,11 @@ test.describe("agent journey through the live WebMCP surface", () => {
     await page.goto("/about/webmcp");
 
     await expect.poll(() => registeredToolNames(page)).toEqual([...allSiteTools]);
+    await expect(page.getByRole("button", { name: /Agent view/ })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    await page.getByRole("button", { name: /Agent view/ }).click();
     await expect(page.getByRole("complementary", { name: "Agent view" })).toBeVisible();
     await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(
       `${String(allSiteTools.length)} tools active. Discovery is automatic.`,
@@ -204,6 +209,11 @@ test.describe("agent journey through the live WebMCP surface", () => {
   test("keeps the agent view honest when no agent is connected", async ({ page }) => {
     await page.goto("/");
 
+    await expect(page.getByRole("button", { name: /Agent view/ })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    await page.getByRole("button", { name: /Agent view/ }).click();
     await expect(page.getByRole("complementary", { name: "Agent view" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Activity" })).toHaveAttribute(
       "aria-selected",
