@@ -19,8 +19,8 @@
 
 .summary:focus-visible {
   border-radius: var(--radius-sm);
-  outline: 3px solid var(--jb-focus);
-  outline-offset: 2px;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: var(--jb-focus-offset);
 }
 
 .summary span {
@@ -99,9 +99,8 @@
 }
 
 .form input:focus-visible {
-  border-color: var(--jb-focus);
-  outline: 2px solid var(--jb-focus);
-  outline-offset: 0;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: var(--jb-focus-offset);
 }
 
 .form button {

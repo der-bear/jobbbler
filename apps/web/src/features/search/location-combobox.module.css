@@ -43,8 +43,8 @@
 }
 
 .clearButton:focus-visible {
-  outline: 2px solid var(--jb-focus);
-  outline-offset: 0;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: var(--jb-focus-offset);
 }
 
 .field > input::placeholder {

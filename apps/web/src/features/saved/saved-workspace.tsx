@@ -209,10 +209,10 @@ export function privateAccessCopy(
 }> {
   if (owner === null) {
     return {
-      eyebrow: "Private by default",
+      eyebrow: "Private workspace",
       title: "No account needed",
       description:
-        "Save searches in this browser. Add email later only if you want updates or access elsewhere.",
+        "This browser can keep saved searches and applications. Add email only for updates or access on another device.",
     };
   }
   if (
@@ -220,17 +220,37 @@ export function privateAccessCopy(
     !endpoints.some(({ status: endpointStatus }) => endpointStatus === "verified")
   ) {
     return {
-      eyebrow: "This browser",
-      title: "Saved here",
-      description: "Add a verified email only if you want updates or access from another device.",
+      eyebrow: "Private workspace",
+      title: "Saved on this device",
+      description:
+        "Your saved searches and applications stay private to this browser. Add email only for updates or access on another device.",
     };
   }
   return {
-    eyebrow: "Email connected",
-    title: "Recovery is ready",
+    eyebrow: "Verified email",
+    title: "Access from another device",
     description:
-      "Your verified email can restore saved searches and applications on another device. Email updates remain optional.",
+      "Use your verified email to restore saved searches and applications. Search updates are still optional.",
   };
+}
+
+export function savedComposerPresentation({
+  hasExistingSavedSearch,
+  isEditingSchedule,
+}: Readonly<{
+  hasExistingSavedSearch: boolean;
+  isEditingSchedule: boolean;
+}>): Readonly<{
+  title: "Save this search" | "Add email updates" | "Edit email updates";
+  showSearchSetup: boolean;
+}> {
+  if (isEditingSchedule) {
+    return { title: "Edit email updates", showSearchSetup: false };
+  }
+  if (hasExistingSavedSearch) {
+    return { title: "Add email updates", showSearchSetup: false };
+  }
+  return { title: "Save this search", showSearchSetup: true };
 }
 
 function message(error: unknown): string {
@@ -856,6 +876,10 @@ export function SavedWorkspace({
 
   const composing = criteria !== null;
   const accessCopy = privateAccessCopy(owner, endpoints);
+  const composerPresentation = savedComposerPresentation({
+    hasExistingSavedSearch: pendingSaved !== null,
+    isEditingSchedule: editingSchedule !== null,
+  });
   const nextRecurrence = recurrence();
   const previousDestination =
     endpoints.find(({ id }) => id === editingSchedule?.delivery.endpointId)?.maskedDestination ??
@@ -1002,9 +1026,7 @@ export function SavedWorkspace({
               tabIndex={-1}
             >
               <div className={styles["sectionHeading"]}>
-                <h2 id="composer-title">
-                  {editingSchedule === null ? "Save this search" : "Edit email updates"}
-                </h2>
+                <h2 id="composer-title">{composerPresentation.title}</h2>
                 <button
                   className={styles["quietButton"]}
                   onClick={() => {
@@ -1033,7 +1055,7 @@ export function SavedWorkspace({
                 ))}
               </div>
 
-              {editingSchedule === null ? (
+              {composerPresentation.showSearchSetup ? (
                 <div className={styles["form"]}>
                   <label>
                     <span>Search name</span>

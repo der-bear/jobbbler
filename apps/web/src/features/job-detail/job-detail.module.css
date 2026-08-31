@@ -180,6 +180,7 @@
  */
 .applyButton {
   border: 1px solid var(--jb-signal);
+  border-radius: var(--radius-sm);
   padding: 8px 13px;
   color: var(--jb-signal-contrast);
   background: var(--jb-signal);

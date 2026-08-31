@@ -113,6 +113,9 @@ describe("ApplicationView", () => {
     expect(markup).not.toContain("Agent suggestion");
     expect(markup).toContain("Northstar Systems");
     expect(markup).toContain("Submit to Northstar Systems");
+    expect(markup).toContain('href="/privacy"');
+    expect(markup).toContain("Read our privacy notice");
+    expect(markup).not.toContain("privacy-2026-08-29");
     expect(markup).not.toContain("Application draft");
     expect(markup).not.toContain("the draft");
     expect(markup).not.toContain('readOnly=""');

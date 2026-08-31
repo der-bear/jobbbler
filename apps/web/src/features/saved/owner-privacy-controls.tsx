@@ -359,7 +359,7 @@ export function OwnerPrivacyControls({
       <details className={`${styles["panel"]} ${styles["danger"]}`}>
         <summary className={styles["summary"]}>
           <span>Workspace controls</span>
-          <strong>Privacy &amp; access</strong>
+          <strong>Delete private data</strong>
         </summary>
         <div className={styles["content"]}>
           <div>

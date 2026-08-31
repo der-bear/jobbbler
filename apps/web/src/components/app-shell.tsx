@@ -50,6 +50,7 @@ export function AppFooter() {
       <span>© 2026 Jobbbler</span>
       <nav aria-label="Secondary navigation">
         <Link href="/about/webmcp">How it works</Link>
+        <Link href="/privacy">Privacy</Link>
         <a href="https://github.com/der-bear/jobbbler" rel="noreferrer" target="_blank">
           Source code
           <span className="sr-only"> (opens in a new tab)</span>

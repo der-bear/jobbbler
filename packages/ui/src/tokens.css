@@ -15,6 +15,8 @@
   --jb-danger: #a63c35;
   --jb-warning: #8a5d10;
   --jb-focus: #0b6f47;
+  --jb-focus-width: 2px;
+  --jb-focus-offset: 2px;
   /*
    * Filled controls cannot be dimmed with group opacity: it fades the label and
    * the fill together, so the pair below carries its own contrast (5.2:1 here,
@@ -27,6 +29,13 @@
   --jb-radius-lg: 12px;
   --jb-radius-pill: 999px;
   --jb-shadow-raised: 0 12px 32px rgb(20 34 24 / 12%);
+  --jb-toast-bg: #242521;
+  --jb-toast-text: #ffffff;
+  --jb-toast-muted: #d8d8d3;
+  --jb-toast-success: #8be2a8;
+  --jb-toast-warning: #ffd27c;
+  --jb-toast-danger: #ffaaa0;
+  --jb-page-title-size: clamp(2.25rem, 4.2vw, 3.25rem);
   --jb-duration-fast: 140ms;
   --jb-duration-base: 180ms;
   --jb-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -75,6 +84,12 @@
   --jb-danger: #ff9b91;
   --jb-warning: #f5c46f;
   --jb-focus: #8adba5;
+  --jb-toast-bg: #f1f1ee;
+  --jb-toast-text: #20211f;
+  --jb-toast-muted: #5f605b;
+  --jb-toast-success: #15532d;
+  --jb-toast-warning: #7a510c;
+  --jb-toast-danger: #97352f;
   --jb-signal-disabled: #2a322d;
   --jb-signal-disabled-contrast: #8d9a93;
 }

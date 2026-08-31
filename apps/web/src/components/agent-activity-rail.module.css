@@ -64,7 +64,7 @@
   overflow: hidden;
   margin-block-start: 8px;
   border: 1px solid var(--color-line);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   background: var(--color-surface-subtle);
   color: var(--color-ink);
   padding: 4px 7px;

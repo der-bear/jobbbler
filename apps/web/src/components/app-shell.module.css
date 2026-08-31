@@ -52,8 +52,8 @@
 
 .siteFooter a:focus-visible {
   border-radius: var(--radius-sm);
-  outline: 3px solid var(--jb-focus);
-  outline-offset: 3px;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: var(--jb-focus-offset);
 }
 
 .contentFrame[data-agent-open="true"] {

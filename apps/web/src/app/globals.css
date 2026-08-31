@@ -33,7 +33,7 @@ button,
 input,
 select,
 textarea {
-  -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: color-mix(in srgb, var(--jb-signal) 18%, transparent);
 }
 
 button,

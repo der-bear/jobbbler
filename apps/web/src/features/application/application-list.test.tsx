@@ -64,12 +64,12 @@ describe("ApplicationHistory", () => {
 
     expect(markup).toContain("My applications");
     expect(markup).toContain(
-      "Applications you started or allowed your agent to prepare. Continue one or open its receipt.",
+      "Applications prepared on Jobbbler, whether you started them here or asked an agent. Open one to see its status or receipt.",
     );
     expect(markup).toContain("Senior Product Engineer");
     expect(markup).toContain("Northstar Labs");
     expect(markup).toContain("Submitted");
-    expect(markup).toContain("Continue application");
+    expect(markup).toContain("Open application");
     expect(markup).toContain("Ready to review");
     expect(markup).toContain("Your decision needed");
     expect(markup).toContain("Review application");
@@ -87,7 +87,7 @@ describe("ApplicationHistory", () => {
 
     expect(markup).toContain("No applications yet");
     expect(markup).toContain(
-      "You have not started an application yet. Browse roles to apply yourself, or ask your agent to prepare one after you approve.",
+      "Browse roles to apply yourself, or ask a compatible agent to help. Jobbbler will ask before using your personal data or submitting anything.",
     );
     expect(markup).toContain("Browse open roles");
     expect(markup).toContain('href="/jobs"');

@@ -151,8 +151,8 @@
 .tabs button:focus-visible,
 .content:focus-visible,
 .close:focus-visible {
-  outline: 3px solid var(--jb-focus);
-  outline-offset: -3px;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: calc(-1 * var(--jb-focus-width));
 }
 
 .content {

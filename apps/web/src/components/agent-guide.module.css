@@ -134,8 +134,8 @@
 
 .technicalDetails summary:focus-visible {
   border-radius: var(--radius-sm);
-  outline: 3px solid var(--jb-focus);
-  outline-offset: 2px;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: var(--jb-focus-offset);
 }
 
 .technicalDetails p {
@@ -200,8 +200,8 @@
 
 .capabilityGroup summary:focus-visible {
   border-radius: var(--radius-sm);
-  outline: 3px solid var(--jb-focus);
-  outline-offset: 2px;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: var(--jb-focus-offset);
 }
 
 .groupHeading {
@@ -313,6 +313,6 @@
 
 .moreLink:focus-visible {
   border-radius: var(--radius-sm);
-  outline: 3px solid var(--jb-focus);
-  outline-offset: 2px;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: var(--jb-focus-offset);
 }

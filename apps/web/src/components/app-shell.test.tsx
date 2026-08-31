@@ -48,6 +48,8 @@ describe("AppHeaderSurface", () => {
     const markup = renderToStaticMarkup(<AppFooter />);
 
     expect(markup).toContain("How it works");
+    expect(markup).toContain('href="/privacy"');
+    expect(markup).toContain("Privacy");
     expect(markup).toContain("Source code");
     expect(markup).toContain("© 2026 Jobbbler");
   });

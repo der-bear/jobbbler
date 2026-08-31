@@ -63,7 +63,7 @@ function actionLabel(item: ApplicationListItem): string {
     case "submitting":
       return "View status";
     case "draft":
-      return "Continue application";
+      return "Open application";
     default:
       return "View application";
   }
@@ -82,8 +82,8 @@ export function ApplicationHistory({
       <header className={styles["header"]}>
         <h1 id="applications-title">My applications</h1>
         <p>
-          Applications you started or allowed your agent to prepare. Continue one or open its
-          receipt.
+          Applications prepared on Jobbbler, whether you started them here or asked an agent. Open
+          one to see its status or receipt.
         </p>
       </header>
 
@@ -91,8 +91,8 @@ export function ApplicationHistory({
         <div className={styles["empty"]}>
           <h2>No applications yet</h2>
           <p>
-            You have not started an application yet. Browse roles to apply yourself, or ask your
-            agent to prepare one after you approve.
+            Browse roles to apply yourself, or ask a compatible agent to help. Jobbbler will ask
+            before using your personal data or submitting anything.
           </p>
           <Link className={styles["primaryLink"]} href="/jobs">
             Browse open roles <ArrowRightIcon aria-hidden="true" />

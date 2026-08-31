@@ -220,7 +220,7 @@
 .field select {
   inline-size: 100%;
   border: 1px solid var(--color-line-strong);
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   padding: 11px 12px;
   color: var(--color-ink);
   background: var(--color-surface);
@@ -241,9 +241,8 @@
 .field input:focus-visible,
 .field textarea:focus-visible,
 .field select:focus-visible {
-  border-color: var(--jb-focus);
-  outline: 2px solid var(--jb-focus);
-  outline-offset: 0;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: var(--jb-focus-offset);
 }
 
 .suggestion {
@@ -387,6 +386,12 @@
 
 .technicalDetails .permissionGrid {
   margin-block-start: 0;
+}
+
+.technicalDetails a {
+  color: var(--color-signal-strong);
+  font-weight: 620;
+  text-underline-offset: 3px;
 }
 
 .missingSummary {

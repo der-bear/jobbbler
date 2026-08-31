@@ -53,7 +53,10 @@ describe("AgentPanelSurface", () => {
     );
     expect(markup).toContain('aria-controls="agent-panel-activity" aria-selected="true"');
     expect(markup).toContain("No agent activity yet");
-    expect(markup).toContain("Tool calls and visible results will appear here.");
+    expect(markup).toContain(
+      "Start a task in a compatible agent client. Each Jobbbler tool call will appear here.",
+    );
+    expect(markup).toContain("Open guide");
   });
 
   it("keeps the full catalog visible without claiming tools are active while registration prepares", () => {

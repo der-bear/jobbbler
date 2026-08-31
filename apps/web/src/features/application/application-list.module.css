@@ -22,7 +22,7 @@
 .header h1 {
   margin: 12px 0 12px;
   color: var(--color-ink);
-  font-size: clamp(38px, 6vw, 64px);
+  font-size: var(--jb-page-title-size);
   font-weight: 540;
   letter-spacing: -0.064em;
   line-height: 1;
@@ -85,6 +85,16 @@
 
 .state > span[data-state="submitted"] {
   color: var(--color-signal-strong);
+}
+
+.state > span[data-state="valid"],
+.state > span[data-state="reviewed"],
+.state > span[data-state="awaiting_confirmation"] {
+  color: var(--color-warning);
+}
+
+.state > span[data-state="failed"] {
+  color: var(--color-danger);
 }
 
 .state time {

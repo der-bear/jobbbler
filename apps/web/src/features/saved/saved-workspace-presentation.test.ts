@@ -6,7 +6,12 @@ import type {
   VerificationEndpointSummary,
 } from "@jobbbler/contracts";
 
-import { privateAccessCopy, scheduleFormValues, scheduleReviewChanges } from "./saved-workspace";
+import {
+  privateAccessCopy,
+  savedComposerPresentation,
+  scheduleFormValues,
+  scheduleReviewChanges,
+} from "./saved-workspace";
 
 const owner: OwnerSummary = {
   id: "owner_550e8400-e29b-41d4-a716-446655440000",
@@ -28,25 +33,26 @@ function endpoint(
 }
 
 const browserOnlyCopy = {
-  eyebrow: "This browser",
-  title: "Saved here",
-  description: "Add a verified email only if you want updates or access from another device.",
+  eyebrow: "Private workspace",
+  title: "Saved on this device",
+  description:
+    "Your saved searches and applications stay private to this browser. Add email only for updates or access on another device.",
 };
 
 const recoverableCopy = {
-  eyebrow: "Email connected",
-  title: "Recovery is ready",
+  eyebrow: "Verified email",
+  title: "Access from another device",
   description:
-    "Your verified email can restore saved searches and applications on another device. Email updates remain optional.",
+    "Use your verified email to restore saved searches and applications. Search updates are still optional.",
 };
 
 describe("privateAccessCopy", () => {
   it("explains the no-account state before private work exists", () => {
     expect(privateAccessCopy(null, [])).toEqual({
-      eyebrow: "Private by default",
+      eyebrow: "Private workspace",
       title: "No account needed",
       description:
-        "Save searches in this browser. Add email later only if you want updates or access elsewhere.",
+        "This browser can keep saved searches and applications. Add email only for updates or access on another device.",
     });
   });
 
@@ -150,5 +156,40 @@ describe("email-update schedule editing", () => {
         next: "n•••@example.com",
       },
     ]);
+  });
+});
+
+describe("saved-search composer", () => {
+  it("treats adding updates to an existing saved search as a distinct task", () => {
+    expect(
+      savedComposerPresentation({
+        hasExistingSavedSearch: true,
+        isEditingSchedule: false,
+      }),
+    ).toEqual({
+      title: "Add email updates",
+      showSearchSetup: false,
+    });
+  });
+
+  it("keeps first-time saving and schedule editing in their own modes", () => {
+    expect(
+      savedComposerPresentation({
+        hasExistingSavedSearch: false,
+        isEditingSchedule: false,
+      }),
+    ).toEqual({
+      title: "Save this search",
+      showSearchSetup: true,
+    });
+    expect(
+      savedComposerPresentation({
+        hasExistingSavedSearch: true,
+        isEditingSchedule: true,
+      }),
+    ).toEqual({
+      title: "Edit email updates",
+      showSearchSetup: false,
+    });
   });
 });

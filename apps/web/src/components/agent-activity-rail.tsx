@@ -2,6 +2,7 @@
 
 import {
   ArrowClockwiseIcon,
+  ArrowRightIcon,
   CheckCircleIcon,
   WarningCircleIcon,
   XIcon,
@@ -161,13 +162,20 @@ export function AgentActivityRail({
         <div className={styles["empty"]} role="status">
           <p>{webMcpAvailable ? "No agent activity yet" : "No agent actions in this browser."}</p>
           {webMcpAvailable ? (
-            <span>Tool calls and visible results will appear here.</span>
+            <span>
+              Start a task in a compatible agent client. Each Jobbbler tool call will appear here.
+            </span>
           ) : (
             <span>Agent tools are off in this browser. You can still search here.</span>
           )}
           {onOpenGuide === undefined ? null : (
-            <Button onClick={onOpenGuide} size="sm" variant="quiet">
-              How to start
+            <Button
+              onClick={onOpenGuide}
+              size="sm"
+              trailingIcon={<ArrowRightIcon aria-hidden="true" size={14} />}
+              variant="quiet"
+            >
+              Open guide
             </Button>
           )}
         </div>

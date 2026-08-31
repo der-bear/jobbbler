@@ -74,9 +74,8 @@
 }
 
 .heroSearch:has(input:focus-visible) {
-  border-color: var(--jb-focus);
-  outline: 2px solid var(--jb-focus);
-  outline-offset: 0;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: var(--jb-focus-offset);
 }
 
 .heroField {
@@ -201,9 +200,8 @@
 
 .railSearch:has(input:focus-visible),
 .railLocation:has(input:focus-visible) {
-  border-color: var(--jb-focus);
-  outline: 2px solid var(--jb-focus);
-  outline-offset: 0;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: var(--jb-focus-offset);
 }
 
 .railSearch > svg {
@@ -297,9 +295,8 @@
 
 .filterRow input:focus-visible,
 .filterRow select:focus-visible {
-  border-color: var(--jb-focus);
-  outline: 2px solid var(--jb-focus);
-  outline-offset: 0;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: var(--jb-focus-offset);
 }
 
 .filterRow .railSearch input:focus-visible,
@@ -434,8 +431,8 @@
 }
 
 .sortSelect:focus-within {
-  border-color: var(--jb-signal);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--jb-signal) 14%, transparent);
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: var(--jb-focus-offset);
 }
 
 .saveAlertLink,
@@ -618,8 +615,7 @@
   text-decoration: underline;
 }
 
-.saveAlertLink:hover,
-.errorState button:hover {
+.saveAlertLink:hover {
   background: var(--color-surface-subtle);
 }
 
@@ -660,25 +656,34 @@
   align-items: center;
   gap: 14px;
   margin-block-start: 18px;
-  border: 1px solid color-mix(in srgb, var(--jb-danger) 35%, var(--color-line));
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   padding: 15px;
-  color: var(--jb-danger);
+  background: var(--jb-toast-bg);
+  box-shadow: var(--jb-shadow-raised);
+  color: var(--jb-toast-danger);
 }
 
 .errorState strong {
-  color: var(--color-ink);
+  color: var(--jb-toast-text);
   font-size: 12px;
 }
 
 .errorState p {
   margin: 4px 0 0;
-  color: var(--color-ink-muted);
+  color: var(--jb-toast-muted);
   font-size: 11px;
 }
 
 .errorState button {
+  border-color: transparent;
+  background: var(--jb-toast-text);
+  color: var(--jb-toast-bg);
   padding-inline: 12px;
+}
+
+.errorState button:hover {
+  background: color-mix(in srgb, var(--jb-toast-text) 88%, transparent);
 }
 
 .emptyState {
@@ -833,8 +838,8 @@
 
   .advancedSummary:focus-visible {
     border-radius: var(--radius-sm);
-    outline: 3px solid var(--jb-focus);
-    outline-offset: 2px;
+    outline: var(--jb-focus-width) solid var(--jb-focus);
+    outline-offset: var(--jb-focus-offset);
   }
 
   .advancedFilterBody {

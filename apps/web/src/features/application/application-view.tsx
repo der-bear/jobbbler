@@ -311,7 +311,9 @@ function ReviewDocument({
               </div>
               <div>
                 <dt>Privacy notice</dt>
-                <dd>{workspace.noticeVersion}</dd>
+                <dd>
+                  <Link href="/privacy">Read our privacy notice</Link>
+                </dd>
               </div>
             </dl>
           </details>

@@ -116,7 +116,9 @@ describe("AgentActivityRail", () => {
     const markup = renderToStaticMarkup(<AgentActivityRail activities={[]} webMcpAvailable />);
 
     expect(markup).toContain("No agent activity yet");
-    expect(markup).toContain("Tool calls and visible results will appear here.");
+    expect(markup).toContain(
+      "Start a task in a compatible agent client. Each Jobbbler tool call will appear here.",
+    );
     expect(markup).not.toContain("Copy prompt");
   });
 
@@ -125,7 +127,7 @@ describe("AgentActivityRail", () => {
       <AgentActivityRail activities={[]} onOpenGuide={() => undefined} webMcpAvailable />,
     );
 
-    expect(markup).toContain("How to start");
+    expect(markup).toContain("Open guide");
   });
 
   it("groups repeated identical calls so the judge timeline stays readable", () => {

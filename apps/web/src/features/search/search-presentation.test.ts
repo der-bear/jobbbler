@@ -6,6 +6,7 @@ import { salaryCardPresentation, salaryLabel } from "@/lib/job-format";
 
 import {
   fetchLocationSuggestions,
+  locationEnterChoice,
   locationSuggestionItems,
   locationSuggestions,
 } from "./location-combobox";
@@ -107,6 +108,40 @@ describe("locationSuggestions", () => {
       fetchLocationSuggestions("", new AbortController().signal, request),
     ).resolves.toEqual([]);
     expect(request).not.toHaveBeenCalled();
+  });
+
+  it("chooses the best known place on Enter when no suggestion was highlighted", () => {
+    const items = locationSuggestionItems(["Phoenix, AZ"], "Phoenix");
+
+    expect(locationEnterChoice(items, -1, "Phoenix")).toEqual({
+      kind: "suggestion",
+      label: "Phoenix, AZ",
+      value: "Phoenix, AZ",
+    });
+  });
+
+  it("commits free text on Enter when no known location matches", () => {
+    const items = locationSuggestionItems([], "Tallinn, Estonia");
+
+    expect(locationEnterChoice(items, -1, "Tallinn, Estonia")).toEqual({
+      kind: "free-text",
+      label: "Search for \u201cTallinn, Estonia\u201d",
+      value: "Tallinn, Estonia",
+    });
+  });
+
+  it("keeps an explicitly highlighted location as the Enter choice", () => {
+    const items = locationSuggestionItems(["Phoenix, AZ"], "Phoenix");
+
+    expect(locationEnterChoice(items, 0, "Phoenix")).toEqual({
+      kind: "suggestion",
+      label: "Phoenix, AZ",
+      value: "Phoenix, AZ",
+    });
+  });
+
+  it("does not invent an Enter choice for an empty location", () => {
+    expect(locationEnterChoice(locationSuggestionItems([], ""), -1, "")).toBeNull();
   });
 });
 

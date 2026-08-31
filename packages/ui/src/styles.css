@@ -21,8 +21,8 @@ button:disabled {
   cursor: not-allowed;
 }
 :focus-visible {
-  outline: 3px solid var(--jb-focus);
-  outline-offset: 3px;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: var(--jb-focus-offset);
 }
 .jb-sr-only {
   clip: rect(0, 0, 0, 0);
@@ -52,6 +52,9 @@ button:disabled {
 }
 .jb-button:hover:not(:disabled) {
   transform: translateY(-1px);
+}
+.jb-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
 }
 /*
  * Group opacity fades a filled button's label and its fill together, so the
@@ -345,23 +348,31 @@ button.jb-chip {
 }
 .jb-toast {
   align-items: flex-start;
-  background: var(--jb-surface);
-  border: 1px solid var(--jb-border-strong);
+  background: var(--jb-toast-bg);
+  border: 1px solid transparent;
   border-radius: var(--jb-radius-md);
   box-shadow: var(--jb-shadow-raised);
+  color: var(--jb-toast-text);
   display: grid;
   gap: 0.75rem;
   grid-template-columns: auto 1fr auto;
   padding: 0.875rem;
+  animation: jb-toast-in var(--jb-duration-base) var(--jb-ease) both;
 }
-.jb-toast--warning {
-  border-color: color-mix(in srgb, var(--jb-warning) 45%, var(--jb-border-strong));
+.jb-toast--success > svg {
+  color: var(--jb-toast-success);
 }
-.jb-toast--danger {
-  border-color: color-mix(in srgb, var(--jb-danger) 45%, var(--jb-border-strong));
+.jb-toast--warning > svg {
+  color: var(--jb-toast-warning);
+}
+.jb-toast--danger > svg {
+  color: var(--jb-toast-danger);
+}
+.jb-toast .jb-icon-button {
+  color: var(--jb-toast-text);
 }
 .jb-toast p {
-  color: var(--jb-text-muted);
+  color: var(--jb-toast-muted);
   font-size: 0.8125rem;
   margin: 0.25rem 0 0;
 }
@@ -387,6 +398,12 @@ button.jb-chip {
     opacity: 1;
   }
 }
+@keyframes jb-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -410,7 +427,7 @@ button.jb-chip {
   justify-content: space-between;
   gap: 8px;
   border: 1px solid var(--jb-border-strong);
-  border-radius: var(--jb-radius-md);
+  border-radius: var(--jb-radius-sm);
   background: var(--jb-surface);
   color: var(--jb-text);
   padding: 7px 10px;
@@ -433,8 +450,8 @@ button.jb-chip {
 }
 
 .jb-multiselect__control:focus-visible {
-  outline: 3px solid var(--jb-focus);
-  outline-offset: -3px;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: calc(-1 * var(--jb-focus-width));
 }
 
 .jb-multiselect__popover {
@@ -464,8 +481,8 @@ button.jb-chip {
 }
 
 .jb-multiselect__search:focus-visible {
-  outline: 3px solid var(--jb-focus);
-  outline-offset: -3px;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: calc(-1 * var(--jb-focus-width));
 }
 
 .jb-multiselect__list {
@@ -499,8 +516,8 @@ button.jb-chip {
 }
 
 .jb-multiselect__option:focus-visible {
-  outline: 3px solid var(--jb-focus);
-  outline-offset: -3px;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: calc(-1 * var(--jb-focus-width));
 }
 
 .jb-multiselect__indicator {
@@ -593,7 +610,7 @@ button.jb-chip {
 }
 
 .jb-range:focus-visible {
-  outline: 3px solid var(--jb-focus);
-  outline-offset: 4px;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: var(--jb-focus-offset);
   border-radius: 999px;
 }

@@ -97,6 +97,33 @@ export function locationSuggestionItems(
   return items;
 }
 
+export function locationEnterChoice(
+  items: readonly LocationSuggestionItem[],
+  activeIndex: number,
+  query: string,
+): LocationSuggestionItem | null {
+  const activeItem = items[activeIndex];
+  if (activeItem !== undefined) return activeItem;
+
+  const trimmedQuery = query.trim();
+  if (trimmedQuery.length === 0) return null;
+
+  return (
+    items.find(
+      ({ kind, value }) =>
+        kind === "suggestion" &&
+        canonicalizeLocation(value).toLocaleLowerCase("en") ===
+          canonicalizeLocation(trimmedQuery).toLocaleLowerCase("en"),
+    ) ??
+    items.find(({ kind }) => kind === "suggestion") ??
+    items.find(({ kind, value }) => kind === "free-text" && value === trimmedQuery) ?? {
+      kind: "free-text",
+      label: `Search for \u201c${trimmedQuery}\u201d`,
+      value: trimmedQuery,
+    }
+  );
+}
+
 type LocationSuggestionRequest = (
   url: string,
   schema: typeof locationSuggestionsResultSchema,
@@ -227,9 +254,11 @@ export function LocationCombobox({
       event.preventDefault();
       setActiveIndex(suggestionItems.length - 1);
     } else if (event.key === "Enter") {
-      if (open && activeOption !== undefined) {
+      if (open) {
+        const choice = locationEnterChoice(suggestionItems, activeIndex, query);
+        if (choice === null) return;
         event.preventDefault();
-        choose(activeOption);
+        choose(choice);
       }
     } else if (event.key === "Escape") {
       event.preventDefault();
