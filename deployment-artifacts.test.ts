@@ -25,12 +25,13 @@ describe("production deployment artifacts", () => {
     expect(dockerfile).toContain('CMD ["node", "apps/worker/dist/main.js"]');
     expect(dockerfile).toContain("apps/web/.next/standalone");
     expect(dockerfile).toContain("apps/web/.next/static");
-    expect(dockerfile).not.toContain("/app/apps/web/public");
+    expect(dockerfile).toContain("/app/apps/web/public");
     expect(dockerfile).toContain("ARG NEXT_PUBLIC_SUPABASE_URL");
     expect(dockerfile).toContain("ARG NEXT_PUBLIC_SUPABASE_ANON_KEY");
     expect(dockerfile).toContain("ARG NEXT_PUBLIC_SUPABASE_ACTIVITY_WAKEUPS");
     expect(ignore).toContain(".env");
     expect(ignore).toContain("node_modules");
+    expect(ignore).toContain("**/.next*");
     expect(ignore).toContain(".git");
   });
 
