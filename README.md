@@ -127,17 +127,18 @@ validate explicit IDs, ownership, and workflow state at execution time:
 Operational action results stay within 1.5 KB. The advisory
 `plan_job_workflow` result may use up to 2 KB, while `get_applications` is an
 explicitly paged private index (10 by default, 20 maximum) bounded to 16 KB.
-Readiness, activity, and
-safe-error results never expose an owner ID, candidate answer, contact detail,
-reusable agent token, confirmation secret, raw email destination, or
-ciphertext. `request_submission_review` freezes the exact application on the
-visible owner review surface and returns only a compact request-bound reference:
-review URL, recipient, purpose, field and sensitivity counts, notice version,
-draft version, and expiry. Exact application values are not serialized into its
-WebMCP JSON result. They remain on the visible owner review page, which a
-compatible agent client may show or observe as the current tab or surface.
-Stored consent evidence represents those values with field keys and a payload
-hash, not the raw values. `request_search_alert` returns the masked destination,
+Readiness, activity, and safe-error results never expose an owner ID, candidate
+answer, contact detail, reusable agent token, confirmation secret, raw email
+destination, or ciphertext. After application-bound assistance is authorized,
+`request_submission_review` freezes the exact application and returns a private,
+request-bound review to that same agent client: every completed value with its
+sensitivity marker, review URL, recipient, purpose, notice version, draft
+version, and expiry. The client must present those exact values before asking
+for the person's final decision; the review URL is an optional first-party
+fallback. This intentionally private result has a dedicated 64 KB bound because
+the values themselves are the object of the decision. Stored consent evidence
+represents those values with field keys and a payload hash, not the raw values.
+`request_search_alert` returns the masked destination,
 exact policy, expiry, and an opaque request-bound continuation token. Neither
 result returns a reusable credential or performs the final action.
 

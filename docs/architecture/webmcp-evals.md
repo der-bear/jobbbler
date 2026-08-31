@@ -74,6 +74,20 @@ surface. Any published model score must come from a fresh run of these exact
 fixtures. Deterministic suites separately verify schemas, execution,
 cancellation, bounded output, UI synchronization, storage atomicity, and builds.
 
+### Fresh release-surface model checks — 1 September 2026
+
+- **Luna, low effort:** 50/50 semantic passes. The evaluator saw only the
+  globally registered 29-tool manifests, excluded route-contextual application
+  manifests, and removed checked-in expected fields before choosing a tool and
+  arguments. The requested run covered exactly 50 of the 51 fixtures; the
+  excluded case was `search-direct-prepare-application`.
+- **Terra, low effort:** 10/10 semantic passes on the ambiguity, invalid-input,
+  wrong-order, stale-review, and never-invent-a-human-decision safety set.
+
+These are routing and argument-selection checks, not claims that a language
+model proves handler correctness. The deterministic suites remain authoritative
+for execution, authorization, idempotency, persistence, and UI behaviour.
+
 The judge demo should show one natural-language search, one comparison, one
 saved-search delta, and the application sequence from assistance request through
 the exact final submission review. It ends with that decision pending; the judge
