@@ -181,7 +181,10 @@ OAuth security guidance recommends sender-constrained and audience-restricted ac
 ## Privacy and security invariants
 
 - Tool schemas ask only for data necessary to perform the named operation; they do not harvest personalization context.
-- Sensitive values and documents are entered or selected through the private owner workflow, not echoed through tool outputs.
+- Sensitive values and documents stay within the private owner workflow. Only
+  the already-authorized, request-bound final review may return exact values to
+  the external agent client; routine, readiness, activity, and error results do
+  not echo them.
 - Audit events identify decisions and hashes but redact secrets and high-risk personal content.
 - Access uses deny-by-default policy, resource ownership, and aggregate version checks.
 - Every grant and delegation has an accessible revoke surface and deterministic expiry.

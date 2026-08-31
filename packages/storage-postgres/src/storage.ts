@@ -214,6 +214,40 @@ export async function findOwnerSessionByTokenHash(
   return rows[0] === undefined ? null : body<OwnerSessionRecord>(rows[0]);
 }
 
+export async function resolveOwnerSession(
+  sql: PostgresSql,
+  tokenHash: string,
+  now: string,
+): Promise<ResolvedOwnerSession | null> {
+  return sql.begin(async (transaction) => {
+    const tx = transaction as PostgresExecutor;
+    const candidate = await findOwnerSessionByTokenHash(tx, tokenHash);
+    if (candidate === null) return null;
+
+    // Recovery and deletion lock the owner before its sessions. Keep the same
+    // ordering here, then re-read the exact session under lock so a stale
+    // pre-lock snapshot can never revive a revoked or expired session.
+    const owner = await getForUpdate<OwnerIdentityRecord>(tx, "owner", candidate.ownerId);
+    if (owner === null) return null;
+    const session = await getForUpdate<OwnerSessionRecord>(tx, "owner_session", candidate.id);
+    if (
+      session === null ||
+      session.ownerId !== owner.id ||
+      session.tokenHash !== tokenHash ||
+      session.status !== "active"
+    ) {
+      return null;
+    }
+    if (session.expiresAt <= now) {
+      await write(tx, "owner_session", { ...session, status: "expired", updatedAt: now }, owner.id);
+      return null;
+    }
+    const refreshed = { ...session, lastSeenAt: now, updatedAt: now };
+    await write(tx, "owner_session", refreshed, owner.id);
+    return { owner, session: refreshed };
+  });
+}
+
 async function listByOwnerDraft<T>(
   sql: PostgresExecutor,
   kind: "delegation" | "rich_data_grant",
@@ -980,17 +1014,7 @@ function createIdentityStore(sql: PostgresSql): IdentityStore {
       return { owner: input.owner, session: input.session };
     },
     async resolveSession(tokenHash, now) {
-      const session = await findOwnerSessionByTokenHash(sql, tokenHash);
-      if (session === null) return null;
-      if (session.status === "active" && session.expiresAt <= now)
-        await write(sql, "owner_session", { ...session, status: "expired", updatedAt: now });
-      const active = session.status === "active" && session.expiresAt > now ? session : null;
-      if (active === null) return null;
-      const owner = await get<OwnerIdentityRecord>(sql, "owner", active.ownerId);
-      if (owner === null) return null;
-      const refreshed = { ...active, lastSeenAt: now, updatedAt: now };
-      await write(sql, "owner_session", refreshed, active.ownerId);
-      return { owner, session: refreshed };
+      return resolveOwnerSession(sql, tokenHash, now);
     },
     async beginEmailVerification(input) {
       if (input.endpoint.ownerId !== input.challenge.ownerId)
@@ -1450,6 +1474,7 @@ function createIdentityStore(sql: PostgresSql): IdentityStore {
           "owner_deletion_intent",
           input.deletionId,
         );
+        const owner = await getForUpdate<OwnerIdentityRecord>(tx, "owner", input.ownerId);
         const session = await getForUpdate<OwnerSessionRecord>(
           tx,
           "owner_session",
@@ -1463,7 +1488,8 @@ function createIdentityStore(sql: PostgresSql): IdentityStore {
           session === null ||
           session.ownerId !== input.ownerId ||
           session.status !== "active" ||
-          session.expiresAt <= input.now
+          session.expiresAt <= input.now ||
+          owner === null
         ) {
           if (
             intent !== null &&
@@ -1480,8 +1506,6 @@ function createIdentityStore(sql: PostgresSql): IdentityStore {
           }
           return false;
         }
-        const owner = await getForUpdate<OwnerIdentityRecord>(tx, "owner", input.ownerId);
-        if (owner === null) return false;
         const privatePattern = `%${input.ownerId}%`;
         await tx`
           UPDATE jobbbler.entity_records AS audit
