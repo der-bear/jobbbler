@@ -121,6 +121,26 @@ test.describe("saved-search ownership workspace", () => {
     await expect(page.getByText("Email updates on", { exact: true })).toHaveCount(0);
   });
 
+  test("keeps the page title aligned with the access card when recovery is expanded", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1_440, height: 1_200 });
+    await createPrivateSession(page);
+    await page.goto("/saved");
+    await page.getByText("Keep access on other devices", { exact: true }).click();
+
+    const titleBox = await page
+      .getByRole("heading", { name: "Saved searches", exact: true })
+      .boundingBox();
+    const accessBox = await page
+      .getByRole("complementary", { name: "Saved search access" })
+      .boundingBox();
+
+    expect(titleBox).not.toBeNull();
+    expect(accessBox).not.toBeNull();
+    expect(Math.abs(titleBox!.y - accessBox!.y)).toBeLessThan(80);
+  });
+
   test("edits an existing email-update schedule without creating a duplicate", async ({ page }) => {
     await page.goto("/saved?q=platform&work=remote&create=1");
     await page.getByLabel("Email me when results change").check();

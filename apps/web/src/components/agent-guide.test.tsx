@@ -27,6 +27,8 @@ describe("AgentTools", () => {
     expect(markup).toContain("<summary>");
     expect(markup).toContain("plan_job_workflow");
     expect(markup).toContain("Get the safe steps for a Jobbbler goal.");
+    expect(markup).toContain("current workflow step");
+    expect(markup).not.toContain("this application&#x27;s current step");
     expect(markup).toContain("get_search_state");
     expect(markup).not.toContain("decide_application_submission");
     expect(markup).not.toContain("decide_search_alert");

@@ -101,7 +101,7 @@ function ApplicationField({
   return (
     <div
       className={styles["field"]}
-      data-missing={(fieldValues[field.fieldKey] ?? "").trim() === ""}
+      data-missing={field.required && (fieldValues[field.fieldKey] ?? "").trim() === ""}
     >
       <div className={styles["fieldLabel"]}>
         <label htmlFor={shared.id}>{field.label}</label>
@@ -212,12 +212,6 @@ function ReviewDocument({
       workspace.requirements.find((field) => field.fieldKey === fieldKey)?.label ??
       humanize(fieldKey),
   );
-  const sensitiveLabels = disclosure.sensitiveFieldKeys.map(
-    (fieldKey) =>
-      workspace.requirements.find((field) => field.fieldKey === fieldKey)?.label ??
-      humanize(fieldKey),
-  );
-
   return (
     <>
       <AgentAssistanceRequest now={now} workspace={workspace} />
@@ -279,7 +273,7 @@ function ReviewDocument({
             <ShieldCheckIcon aria-hidden="true" weight="fill" />
             <div>
               <p className={styles["eyebrow"]}>Before submission</p>
-              <h3 id="sharing-heading">Your data, this application only</h3>
+              <h3 id="sharing-heading">What this application will send</h3>
             </div>
           </div>
           <dl className={styles["permissionGrid"]}>
@@ -295,28 +289,16 @@ function ReviewDocument({
             </div>
             <div>
               <dt>Your control</dt>
-              <dd>Any change requires a new decision. Your agent cannot reuse it.</dd>
+              <dd>
+                {agentAssisted
+                  ? "Your agent can submit only this unchanged application after your final decision."
+                  : "Nothing is sent until you choose to submit this exact application."}
+              </dd>
             </div>
           </dl>
-          <details className={styles["technicalDetails"]}>
-            <summary>Privacy details</summary>
-            <dl className={styles["permissionGrid"]}>
-              <div>
-                <dt>Purpose</dt>
-                <dd>{workspace.purpose}</dd>
-              </div>
-              <div>
-                <dt>Private fields</dt>
-                <dd>{sensitiveLabels.length === 0 ? "None" : sensitiveLabels.join(" · ")}</dd>
-              </div>
-              <div>
-                <dt>Privacy notice</dt>
-                <dd>
-                  <Link href="/privacy">Read our privacy notice</Link>
-                </dd>
-              </div>
-            </dl>
-          </details>
+          <Link className={styles["privacyLink"]} href="/privacy">
+            Read our privacy notice
+          </Link>
         </section>
 
         {agentAssisted ? (
@@ -331,6 +313,7 @@ function ReviewDocument({
         ) : (
           <div aria-busy={busy} className={styles["actions"]}>
             <button
+              aria-describedby="application-submit-guidance"
               aria-busy={busy}
               className={styles["primaryAction"]}
               disabled={busy || !readiness.readyForReview}
@@ -346,11 +329,15 @@ function ReviewDocument({
               )}
             </button>
             {busy ? (
-              <p aria-live="polite" role="status">
+              <p aria-live="polite" id="application-submit-guidance" role="status">
                 Submitting your application.
               </p>
             ) : (
-              <p>Nothing is sent until this final action succeeds.</p>
+              <p id="application-submit-guidance">
+                {readiness.readyForReview
+                  ? "Nothing is sent until this final action succeeds."
+                  : `Complete ${String(missingFields.length)} required ${missingFields.length === 1 ? "detail" : "details"} before submitting.`}
+              </p>
             )}
           </div>
         )}

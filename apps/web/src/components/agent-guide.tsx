@@ -101,7 +101,7 @@ export function AgentTools({ tools, webMcpAvailable }: AgentToolsProps) {
         </div>
         <p className={styles["note"]}>
           {webMcpAvailable
-            ? `${String(visibleToolCount)} Jobbbler tools are active here and stay available as the agent moves through the site. Private actions still check ownership and this application's current step.`
+            ? `${String(visibleToolCount)} Jobbbler tools are active here and stay available as the agent moves through the site. Private actions still check ownership and the current workflow step.`
             : `Preview the same ${String(totalCatalogTools)} tools an agent-enabled browser discovers automatically.`}
         </p>
         <div className={styles["capabilityGroups"]}>

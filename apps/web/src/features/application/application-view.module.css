@@ -394,6 +394,19 @@
   text-underline-offset: 3px;
 }
 
+.privacyLink {
+  display: inline-flex;
+  margin-block-start: 12px;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  font-weight: 620;
+  text-underline-offset: 3px;
+}
+
+.privacyLink:hover {
+  color: var(--color-ink);
+}
+
 .missingSummary {
   display: flex;
   align-items: baseline;

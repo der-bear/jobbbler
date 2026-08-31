@@ -45,6 +45,7 @@ import { useToast } from "@jobbbler/ui";
 import { markOwnerSessionStarted } from "@/lib/owner-session-marker";
 import { ApiClientError, queryApi } from "@/lib/query-client";
 import { searchInputToSearchParams } from "@/lib/search-url";
+import { categoryLabel, seniorityLabel, workModelLabel } from "@/lib/job-format";
 import {
   subscribeWebMcpSavedSearch,
   subscribeWebMcpSavedSearchDeletion,
@@ -321,12 +322,12 @@ function searchHref(criteria: JobSearchCriteria): string {
   return parameters.size === 0 ? "/jobs" : `/jobs?${parameters.toString()}`;
 }
 
-function criteriaSummary(criteria: JobSearchCriteria): readonly string[] {
+export function savedSearchCriteriaSummary(criteria: JobSearchCriteria): readonly string[] {
   const summary: string[] = [];
   if (criteria.query !== null) summary.push(criteria.query);
-  summary.push(...criteria.categories.map((value) => value.replaceAll("_", " ")));
-  summary.push(...criteria.workModels);
-  summary.push(...criteria.seniorities);
+  summary.push(...criteria.categories.map(categoryLabel));
+  summary.push(...criteria.workModels.map(workModelLabel));
+  summary.push(...criteria.seniorities.map(seniorityLabel));
   summary.push(...criteria.locations);
   if (criteria.salary?.minimum !== null && criteria.salary?.minimum !== undefined) {
     summary.push(
@@ -336,10 +337,23 @@ function criteriaSummary(criteria: JobSearchCriteria): readonly string[] {
   return summary.slice(0, 6);
 }
 
-function defaultName(criteria: JobSearchCriteria): string {
-  if (criteria.query !== null) return criteria.query.slice(0, 100);
-  const parts = [...criteria.seniorities, ...criteria.categories, ...criteria.locations];
-  return (parts.length === 0 ? "My technology roles" : parts.join(" · ")).slice(0, 100);
+function compactGroup<T>(values: readonly T[], label: (value: T) => string): string {
+  const visible = values.slice(0, 3).map(label);
+  if (values.length > visible.length) visible.push(`+${String(values.length - visible.length)}`);
+  return visible.join(" / ");
+}
+
+export function defaultSavedSearchName(criteria: JobSearchCriteria): string {
+  const query = criteria.query?.trim();
+  if (query !== undefined && query.length > 0) return query.slice(0, 100);
+
+  const seniority = compactGroup(criteria.seniorities, seniorityLabel);
+  const category = compactGroup(criteria.categories, categoryLabel) || "Technology";
+  const workModel = compactGroup(criteria.workModels, workModelLabel);
+  const location = compactGroup(criteria.locations, (value) => value);
+  const focus = [seniority, category].filter(Boolean).join(" ");
+  const context = [workModel, location].filter(Boolean);
+  return `${focus} roles${context.length === 0 ? "" : ` · ${context.join(" · ")}`}`.slice(0, 100);
 }
 
 export function SavedWorkspace({
@@ -444,7 +458,7 @@ export function SavedWorkspace({
         if (criteriaResult.status === "rejected") throw criteriaResult.reason;
         if (criteriaResult.value !== null) {
           setCriteria(criteriaResult.value.criteria);
-          setName(defaultName(criteriaResult.value.criteria));
+          setName(defaultSavedSearchName(criteriaResult.value.criteria));
         }
         if (workspaceResult.status === "fulfilled") {
           applyPrivateResources(workspaceResult.value);
@@ -1050,7 +1064,7 @@ export function SavedWorkspace({
               </div>
 
               <div className={styles["criteria"]} aria-label="Search criteria">
-                {criteriaSummary(criteria).map((item) => (
+                {savedSearchCriteriaSummary(criteria).map((item) => (
                   <span key={item}>{item}</span>
                 ))}
               </div>
@@ -1364,7 +1378,7 @@ export function SavedWorkspace({
                       </div>
                       <h3>{saved.name}</h3>
                       <div className={styles["criteria"]}>
-                        {criteriaSummary(saved.criteria).map((item) => (
+                        {savedSearchCriteriaSummary(saved.criteria).map((item) => (
                           <span key={item}>{item}</span>
                         ))}
                       </div>

@@ -7,8 +7,10 @@ import type {
 } from "@jobbbler/contracts";
 
 import {
+  defaultSavedSearchName,
   privateAccessCopy,
   savedComposerPresentation,
+  savedSearchCriteriaSummary,
   scheduleFormValues,
   scheduleReviewChanges,
 } from "./saved-workspace";
@@ -160,6 +162,66 @@ describe("email-update schedule editing", () => {
 });
 
 describe("saved-search composer", () => {
+  it("presents saved criteria with the same labels as the job search UI", () => {
+    expect(
+      savedSearchCriteriaSummary({
+        query: null,
+        categories: ["product"],
+        workModels: ["remote"],
+        seniorities: ["senior", "staff"],
+        locations: ["Berlin, Germany"],
+        skills: [],
+        excludeKeywords: [],
+        salary: null,
+        postedWithinDays: null,
+        sort: "newest",
+        cursor: null,
+        limit: 20,
+        unresolvedAssumptions: [],
+      }),
+    ).toEqual(["Product", "Remote", "Senior", "Staff", "Berlin, Germany"]);
+  });
+
+  it("suggests a readable name from the whole search instead of raw enum values", () => {
+    expect(
+      defaultSavedSearchName({
+        query: null,
+        categories: ["product"],
+        workModels: ["remote"],
+        seniorities: ["senior", "staff"],
+        locations: ["Berlin, Germany"],
+        skills: [],
+        excludeKeywords: [],
+        salary: null,
+        postedWithinDays: null,
+        sort: "newest",
+        cursor: null,
+        limit: 20,
+        unresolvedAssumptions: [],
+      }),
+    ).toBe("Senior / Staff Product roles · Remote · Berlin, Germany");
+  });
+
+  it("keeps the person's explicit query as the concise suggested name", () => {
+    expect(
+      defaultSavedSearchName({
+        query: "  platform reliability  ",
+        categories: [],
+        workModels: [],
+        seniorities: [],
+        locations: [],
+        skills: [],
+        excludeKeywords: [],
+        salary: null,
+        postedWithinDays: null,
+        sort: "relevance",
+        cursor: null,
+        limit: 20,
+        unresolvedAssumptions: [],
+      }),
+    ).toBe("platform reliability");
+  });
+
   it("treats adding updates to an existing saved search as a distinct task", () => {
     expect(
       savedComposerPresentation({

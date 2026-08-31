@@ -129,6 +129,62 @@ describe("ApplicationView", () => {
     expect(markup).not.toContain("payloadHash");
   });
 
+  it("marks only required empty fields as missing", () => {
+    const markup = renderToStaticMarkup(
+      <ApplicationView
+        busy={false}
+        confirmation={null}
+        error={null}
+        fieldValues={{
+          full_name: "Ada Lovelace",
+          cover_letter: "A candidate-authored cover letter.",
+          portfolio: "",
+        }}
+        job={job}
+        now={workspace.serverNow}
+        onAction={() => undefined}
+        onFieldChange={() => undefined}
+        workspace={{
+          ...workspace,
+          requirements: [
+            ...workspace.requirements,
+            {
+              fieldKey: "portfolio",
+              label: "Portfolio or profile",
+              description: "An optional link to relevant work.",
+              input: "url",
+              required: false,
+              sensitive: false,
+              category: "application_answers",
+              options: [],
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(markup).not.toContain('data-missing="true"');
+  });
+
+  it("explains a disabled submit action beside the action itself", () => {
+    const markup = renderToStaticMarkup(
+      <ApplicationView
+        busy={false}
+        confirmation={null}
+        error={null}
+        fieldValues={{}}
+        job={job}
+        now={workspace.serverNow}
+        onAction={() => undefined}
+        onFieldChange={() => undefined}
+        workspace={workspace}
+      />,
+    );
+
+    expect(markup).toContain("Complete 2 required details before submitting.");
+    expect(markup).toContain('aria-describedby="application-submit-guidance"');
+  });
+
   it.each([
     {
       state: "requested assistance",
