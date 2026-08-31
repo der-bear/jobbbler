@@ -500,6 +500,7 @@ describe("site-wide application tools", () => {
       onNavigate: vi.fn(),
     });
     expect(names(manifests)).toEqual(stableNames);
+    for (const manifest of manifests) expect(manifest.description).toContain("draftId");
     expect(manifests[2]!.description).toContain("revoke active assistance");
     expect(manifests[2]!.description).toContain(
       "tell the person to decide in the external agent client",

@@ -628,9 +628,11 @@ describe("route-scoped WebMCP tool manifests", () => {
 
     expectAnnotatedUntrustedRoute(manifests, ["get_job_details", "compare_jobs"]);
     expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([true, false]);
+    expect(tool(manifests, "get_job_details").description).toContain("jobId");
     expect(tool(manifests, "compare_jobs").description).toContain(
       "after two or three exact job IDs are known",
     );
+    expect(tool(manifests, "compare_jobs").description).toContain("jobIds");
     expect(tool(manifests, "compare_jobs").description).toContain("Never call it with one role");
     expect(manifests.map(({ name }) => name)).not.toContain("get_job_application_capability");
 

@@ -152,7 +152,7 @@ export function createJobDetailToolManifests(
     name: "get_job_details",
     purpose: "Inspect source-backed facts and fit evidence for one explicitly identified role.",
     description:
-      "Read one technology role's full description, requirements, provenance, compensation, known unknowns, and fit evidence by Jobbbler ID. It works from any page and changes nothing.",
+      "Read one technology role's full description, requirements, provenance, compensation, known unknowns, and fit evidence. Pass the exact Jobbbler role ID in jobId. It works from any page and changes nothing.",
     inputSchema: detailInputJsonSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -183,7 +183,7 @@ export function createJobDetailToolManifests(
     name: "compare_jobs",
     purpose: "Compare two or three explicitly identified technology roles.",
     description:
-      "Compare source-backed roles only after two or three exact job IDs are known, then open the visible comparison. Never call it with one role; if a target is missing, search or ask which other role to compare first.",
+      "Compare source-backed roles only after two or three exact job IDs are known. Pass every selected ID together in the jobIds array, then open the visible comparison. Never call it with one role; if a target is missing, search or ask which other role to compare first.",
     inputSchema: comparisonInputJsonSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {

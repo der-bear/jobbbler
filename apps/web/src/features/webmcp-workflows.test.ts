@@ -5,6 +5,16 @@ import { MAX_WEBMCP_RESULT_BYTES, webMcpResultSize } from "@/lib/webmcp-tool-res
 import { createWorkflowPlannerTool, workflowGoals } from "./webmcp-workflows";
 
 describe("plan_job_workflow", () => {
+  it("names the required goal field and every supported outcome for weaker agents", () => {
+    const planner = createWorkflowPlannerTool({
+      route: "/",
+      availableTools: () => [],
+    });
+
+    expect(planner.description).toContain("required goal");
+    for (const goal of workflowGoals) expect(planner.description).toContain(goal);
+  });
+
   it("reads the current page when invoked instead of capturing a stale registration route", async () => {
     let route = "/";
     const planner = createWorkflowPlannerTool({

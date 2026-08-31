@@ -344,7 +344,7 @@ export function createWorkflowPlannerTool(
     name: "plan_job_workflow",
     purpose: "Return the recommended safe steps for one Jobbbler goal from the current page.",
     description:
-      "Return a concise, route-aware plan for a Jobbbler goal: which tools compose the outcome, in what order, and which steps stay with the human. Advisory only — it executes nothing, grants nothing, and confirms nothing.",
+      "Pass one required goal: find_roles, compare_roles, save_search, monitor_search, prepare_application, enable_recovery, or recover_workspace. The result is a concise, route-aware tool sequence with human decision points. Advisory only — it executes nothing, grants nothing, and confirms nothing.",
     inputSchema: planInputSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: false },
     async execute(input, { signal }) {

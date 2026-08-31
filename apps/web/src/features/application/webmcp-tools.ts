@@ -666,7 +666,7 @@ const stableApplicationToolDefinitions: readonly StableApplicationToolDefinition
     name: "get_application_readiness",
     purpose: "Check what one private application still needs, without returning its answers.",
     description:
-      "Read safe completion counts, missing field keys and labels, receipt state, and the next useful action for one owner-accessible application.",
+      "Pass the application ID returned by prepare_application as draftId. Read safe completion counts, missing field keys and labels, receipt state, and the next useful action without returning private answers.",
     readOnly: true,
     input: "draft",
   },
@@ -674,7 +674,7 @@ const stableApplicationToolDefinitions: readonly StableApplicationToolDefinition
     name: "request_application_assistance",
     purpose: "Ask once for short-lived permission to prepare one private application.",
     description:
-      "Request application-bound authority for this agent client to prepare truthful answers and read them back for final review. Nothing is sent to an employer until the person approves the exact completed application.",
+      "Pass the application ID returned by prepare_application as draftId. Request application-bound authority for this agent client to prepare truthful answers and read them back for final review. Nothing is sent to an employer until the person approves the exact completed application.",
     readOnly: false,
     input: "draft",
   },
@@ -682,7 +682,7 @@ const stableApplicationToolDefinitions: readonly StableApplicationToolDefinition
     name: "decide_application_assistance",
     purpose: "Record the person's assistance decision from the agent client.",
     description:
-      "Use the exact requestId returned by request_application_assistance and the person's explicit decision: approved, declined, or withdraw. Use withdraw to revoke active assistance bound to that request. Never infer or approve this decision on the person's behalf; when no explicit decision is present, stop and tell the person to decide in the external agent client. Approval is short-lived and limited to one private application.",
+      "Pass draftId for the same application, the exact requestId returned by request_application_assistance, and the person's explicit decision: approved, declined, or withdraw. Use withdraw to revoke active assistance bound to that request. Never infer or approve this decision on the person's behalf; when no explicit decision is present, stop and tell the person to decide in the external agent client. Approval is short-lived and application-bound.",
     readOnly: false,
     input: "assistance_decision",
   },
@@ -690,7 +690,7 @@ const stableApplicationToolDefinitions: readonly StableApplicationToolDefinition
     name: "propose_application_updates",
     purpose: "Prepare several truthful answers in one identified application.",
     description:
-      "Update up to 24 distinct fields from known facts in one call. For cover_letter, use the full role and local CV context but send only the finished letter. Ask for missing facts instead of inventing them; the person sees the result before submission.",
+      "Pass draftId for the application and update up to 24 distinct fields from known facts in one call. For cover_letter, use the full role and local CV context but send only the finished letter. Ask for missing facts instead of inventing them; the person sees the result before submission.",
     readOnly: false,
     input: "patches",
   },
@@ -698,7 +698,7 @@ const stableApplicationToolDefinitions: readonly StableApplicationToolDefinition
     name: "request_submission_review",
     purpose: "Ask the person to review one exact completed application.",
     description:
-      "Freeze the exact application and return its exact field values to the already-authorized agent client. Present every value before asking for one final decision. The review link is an optional browser fallback; this submits nothing.",
+      "Pass draftId for the completed application. Freeze its exact field values and return them to the already-authorized agent client. Present every value before asking for one final decision. The review link is an optional browser fallback; this submits nothing.",
     readOnly: false,
     input: "draft",
   },
@@ -706,7 +706,7 @@ const stableApplicationToolDefinitions: readonly StableApplicationToolDefinition
     name: "decide_application_submission",
     purpose: "Record the person's exact submission decision from the agent client.",
     description:
-      "Use the exact requestId and draftVersion returned by request_submission_review plus the person's explicit decision. Never approve on the person's behalf. On approval, store disclosure consent, seal the unchanged payload, submit once, and return a receipt; on decline, share and submit nothing.",
+      "Pass draftId for the same application, the exact requestId and draftVersion returned by request_submission_review, and the person's explicit decision. Never approve on the person's behalf. On approval, store disclosure consent, seal the unchanged payload, submit once, and return a receipt; on decline, share and submit nothing.",
     readOnly: false,
     input: "submission_decision",
   },
@@ -714,7 +714,7 @@ const stableApplicationToolDefinitions: readonly StableApplicationToolDefinition
     name: "withdraw_application_consent",
     purpose: "Withdraw consent for future processing tied to one application.",
     description:
-      "Use this to immediately withdraw every live consent-based permission for one owner-accessible application. This stops future processing under that consent; it does not erase the application or retract a submission already sent.",
+      "Pass draftId for the owner-accessible application to immediately withdraw every live consent-based permission tied to it. This stops future processing under that consent; it does not erase the application or retract a submission already sent.",
     readOnly: false,
     input: "draft",
   },
