@@ -155,21 +155,13 @@ function formatSalaryRange(
   if (minimum !== null && maximum !== null) {
     return `${amount(minimum, currency, compact)}–${amount(maximum, currency, compact)} / ${periodLabel}`;
   }
-  if (minimum !== null)
-    return `From ${amount(minimum, currency, compact)} / ${periodLabel}`;
-  if (maximum !== null)
-    return `Up to ${amount(maximum, currency, compact)} / ${periodLabel}`;
+  if (minimum !== null) return `From ${amount(minimum, currency, compact)} / ${periodLabel}`;
+  if (maximum !== null) return `Up to ${amount(maximum, currency, compact)} / ${periodLabel}`;
   return "Salary not listed";
 }
 
 function sourceSalaryLabel(salary: SalaryRange, compact: boolean): string {
-  return formatSalaryRange(
-    salary.minimum,
-    salary.maximum,
-    salary.currency,
-    salary.period,
-    compact,
-  );
+  return formatSalaryRange(salary.minimum, salary.maximum, salary.currency, salary.period, compact);
 }
 
 function sourceSalaryDescription(salary: SalaryRange): string {

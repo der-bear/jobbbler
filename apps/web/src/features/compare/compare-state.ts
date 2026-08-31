@@ -1,3 +1,5 @@
+import type { Job, JobFit } from "@jobbbler/contracts";
+
 export type CompareSelection =
   | { readonly kind: "ready"; readonly jobIds: readonly string[] }
   | { readonly kind: "missing" }
@@ -49,6 +51,20 @@ export function removeComparedJob(
   return jobIds.filter((jobId) => jobId !== removedJobId);
 }
 
+export function comparisonLocation(locations: readonly string[]): string {
+  return (
+    locations.find((location) => location.includes(",")) ?? locations[0] ?? "Location not stated"
+  );
+}
+
+export function comparisonSourceDestination(
+  applyMode: Job["applyMode"],
+  sourceUrl: string | null,
+): string | null {
+  if (sourceUrl !== null) return null;
+  return applyMode === "internal" ? "Apply on Jobbbler" : "Application link unavailable";
+}
+
 export function comparisonRowVisibility(fits: readonly JobFit[]): Readonly<{
   eligibility: boolean;
   fit: boolean;
@@ -64,4 +80,3 @@ export function comparisonRowVisibility(fits: readonly JobFit[]): Readonly<{
     ),
   };
 }
-import type { JobFit } from "@jobbbler/contracts";

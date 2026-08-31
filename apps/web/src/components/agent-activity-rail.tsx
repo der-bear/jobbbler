@@ -12,6 +12,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { ToolActivity } from "@jobbbler/contracts";
 import { Button } from "@jobbbler/ui";
 
+import type { WebMcpRegistrationStatus } from "./webmcp-provider";
+
 import styles from "./agent-activity-rail.module.css";
 
 export interface AgentActivityRailProps {
@@ -21,7 +23,7 @@ export interface AgentActivityRailProps {
   readonly onClearHistory?: () => Promise<void>;
   readonly onHistoryCleared?: () => void;
   readonly onOpenGuide?: () => void;
-  readonly webMcpAvailable: boolean;
+  readonly webMcpStatus: WebMcpRegistrationStatus;
 }
 
 interface ActivityPresentation {
@@ -116,6 +118,35 @@ export function activityReceiptCount(activities: readonly ToolActivity[]): numbe
   return groupedActivities(activities).length;
 }
 
+function emptyActivityCopy(status: WebMcpRegistrationStatus): Readonly<{
+  detail: string;
+  title: string;
+}> {
+  if (status === "ready") {
+    return {
+      title: "No agent activity yet",
+      detail:
+        "Start a task in a compatible agent client. Each Jobbbler tool call will appear here.",
+    };
+  }
+  if (status === "checking" || status === "preparing") {
+    return {
+      title: "Getting agent tools ready",
+      detail: "Tool calls will appear here as soon as setup finishes.",
+    };
+  }
+  if (status === "error") {
+    return {
+      title: "Agent tools need a retry",
+      detail: "Retry above. The job portal still works normally.",
+    };
+  }
+  return {
+    title: "No agent activity in this browser",
+    detail: "Open Jobbbler in a WebMCP-compatible agent client to use the tools.",
+  };
+}
+
 export function AgentActivityRail({
   activities,
   className,
@@ -123,7 +154,7 @@ export function AgentActivityRail({
   onClearHistory,
   onHistoryCleared,
   onOpenGuide,
-  webMcpAvailable,
+  webMcpStatus,
 }: AgentActivityRailProps) {
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [clearStatus, setClearStatus] = useState<"idle" | "pending" | "error">("idle");
@@ -138,6 +169,7 @@ export function AgentActivityRail({
   const latestSourceActivity = activities.at(-1);
   const latestActivity =
     latestSourceActivity === undefined ? undefined : normalizeLegacyActivity(latestSourceActivity);
+  const emptyCopy = emptyActivityCopy(webMcpStatus);
 
   useEffect(() => {
     if (!confirmingClear) return;
@@ -160,14 +192,8 @@ export function AgentActivityRail({
 
       {visibleActivities.length === 0 ? (
         <div className={styles["empty"]} role="status">
-          <p>{webMcpAvailable ? "No agent activity yet" : "No agent actions in this browser."}</p>
-          {webMcpAvailable ? (
-            <span>
-              Start a task in a compatible agent client. Each Jobbbler tool call will appear here.
-            </span>
-          ) : (
-            <span>Agent tools are off in this browser. You can still search here.</span>
-          )}
+          <p>{emptyCopy.title}</p>
+          <span>{emptyCopy.detail}</span>
           {onOpenGuide === undefined ? null : (
             <Button
               onClick={onOpenGuide}

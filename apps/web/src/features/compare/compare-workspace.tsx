@@ -24,8 +24,10 @@ import { ApiClientError, queryApi } from "@/lib/query-client";
 import {
   compareApiUrl,
   comparePageHref,
+  comparisonLocation,
   comparisonRowVisibility,
   comparisonSearchHref,
+  comparisonSourceDestination,
   removeComparedJob,
   resolveCompareSelection,
 } from "./compare-state";
@@ -97,6 +99,26 @@ function unknownCount(fit: JobFit): number {
   return Object.values(fit.dimensions).filter((dimension) => dimension.status === "unknown").length;
 }
 
+function SourceFacts({ job }: Readonly<{ job: Job }>) {
+  const destination = comparisonSourceDestination(job.applyMode, job.source.url);
+  return (
+    <>
+      <p className={styles["sourceFact"]}>{job.source.label}</p>
+      <p className={styles["freshness"]}>{relativeFreshness(job.updatedAt)}</p>
+      <p className={styles["freshness"]}>Published {compactDate(job.publishedAt)}</p>
+      {job.source.url === null ? (
+        <p className={job.applyMode === "internal" ? styles["freshness"] : styles["unknown"]}>
+          {destination}
+        </p>
+      ) : (
+        <a href={job.source.url} rel="noreferrer" target="_blank">
+          View original source <ArrowSquareOutIcon aria-hidden="true" size={14} />
+        </a>
+      )}
+    </>
+  );
+}
+
 function ComparisonTable({
   criteriaSearch,
   result,
@@ -141,7 +163,7 @@ function ComparisonTable({
             <th scope="row">Work and location</th>
             {result.jobs.map(({ job }) => (
               <td key={job.id}>
-                {workModelLabel(job.workModel)} · {job.locations.join(", ")}
+                {workModelLabel(job.workModel)} · {comparisonLocation(job.locations)}
               </td>
             ))}
           </tr>
@@ -184,18 +206,7 @@ function ComparisonTable({
             <th scope="row">Source and freshness</th>
             {result.jobs.map(({ job }) => (
               <td key={job.id}>
-                <p className={styles["sourceFact"]}>{job.source.label}</p>
-                <p className={styles["freshness"]}>
-                  Observed {relativeFreshness(job.updatedAt).replace("Updated ", "")}
-                </p>
-                <p className={styles["freshness"]}>Published {compactDate(job.publishedAt)}</p>
-                {job.source.url === null ? (
-                  <p className={styles["unknown"]}>Original source link unavailable.</p>
-                ) : (
-                  <a href={job.source.url} rel="noreferrer" target="_blank">
-                    View original source <ArrowSquareOutIcon aria-hidden="true" size={14} />
-                  </a>
-                )}
+                <SourceFacts job={job} />
               </td>
             ))}
           </tr>
@@ -259,7 +270,7 @@ function MobileComparison({
                 </MobileFact>
               ) : null}
               <MobileFact label="Work and location">
-                {workModelLabel(job.workModel)} · {job.locations.join(", ")}
+                {workModelLabel(job.workModel)} · {comparisonLocation(job.locations)}
               </MobileFact>
               <MobileFact label="Level and type">
                 {job.seniority === null ? "Seniority not stated" : seniorityLabel(job.seniority)} ·{" "}
@@ -277,18 +288,7 @@ function MobileComparison({
                 </MobileFact>
               ) : null}
               <MobileFact label="Source and freshness">
-                <p className={styles["sourceFact"]}>{job.source.label}</p>
-                <p className={styles["freshness"]}>
-                  Observed {relativeFreshness(job.updatedAt).replace("Updated ", "")}
-                </p>
-                <p className={styles["freshness"]}>Published {compactDate(job.publishedAt)}</p>
-                {job.source.url === null ? (
-                  <p className={styles["unknown"]}>Original source link unavailable.</p>
-                ) : (
-                  <a href={job.source.url} rel="noreferrer" target="_blank">
-                    View original source <ArrowSquareOutIcon aria-hidden="true" size={14} />
-                  </a>
-                )}
+                <SourceFacts job={job} />
               </MobileFact>
               {visible.unknowns ? (
                 <MobileFact label="Unknowns">
@@ -407,10 +407,6 @@ export function CompareWorkspace({
         result={state.result}
         selectedJobIds={selection.jobIds}
       />
-      <p className={styles["footnote"]}>
-        Everything shown comes from the original listings, which remain the source of truth for
-        availability and application details.
-      </p>
     </section>
   );
 }

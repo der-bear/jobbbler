@@ -170,10 +170,14 @@ test.describe("public job search workspace", () => {
     await expect(reset).toHaveCount(0);
   });
 
-  test("opens the judge-facing agent activity panel by default on wide screens", async ({ page }) => {
+  test("opens the judge-facing agent activity panel by default on wide screens", async ({
+    page,
+  }) => {
     await page.goto("/");
 
-    await expect(page.getByRole("complementary", { name: "What your agent is doing" })).toBeVisible();
+    await expect(
+      page.getByRole("complementary", { name: "What your agent is doing" }),
+    ).toBeVisible();
     await expect(page.getByRole("button", { name: /Agent activity —/i })).toHaveAttribute(
       "aria-expanded",
       "true",

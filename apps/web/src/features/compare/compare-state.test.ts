@@ -5,8 +5,10 @@ import type { JobFit } from "@jobbbler/contracts";
 import {
   compareApiUrl,
   comparePageHref,
+  comparisonLocation,
   comparisonRowVisibility,
   comparisonSearchHref,
+  comparisonSourceDestination,
   removeComparedJob,
   resolveCompareSelection,
 } from "./compare-state";
@@ -100,5 +102,17 @@ describe("shareable comparison state", () => {
         },
       ]),
     ).toEqual({ eligibility: true, fit: true, tradeOffs: true, unknowns: true });
+  });
+
+  it("shows one concrete city without repeating its country and region", () => {
+    expect(comparisonLocation(["Berlin, Germany", "Germany", "Europe"])).toBe("Berlin, Germany");
+    expect(comparisonLocation(["Europe"])).toBe("Europe");
+    expect(comparisonLocation([])).toBe("Location not stated");
+  });
+
+  it("describes managed demo applications without implying a missing source", () => {
+    expect(comparisonSourceDestination("internal", null)).toBe("Apply on Jobbbler");
+    expect(comparisonSourceDestination("external", null)).toBe("Application link unavailable");
+    expect(comparisonSourceDestination("external", "https://example.com/jobs/1")).toBeNull();
   });
 });

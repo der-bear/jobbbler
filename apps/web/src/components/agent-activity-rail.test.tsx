@@ -44,7 +44,7 @@ describe("AgentActivityRail", () => {
             affectedResourceIds: [],
           },
         ]}
-        webMcpAvailable
+        webMcpStatus="ready"
       />,
     );
 
@@ -64,7 +64,7 @@ describe("AgentActivityRail", () => {
             safeSummary: "Application draft updated.",
           },
         ]}
-        webMcpAvailable
+        webMcpStatus="ready"
       />,
     );
 
@@ -77,7 +77,7 @@ describe("AgentActivityRail", () => {
       <AgentActivityRail
         activities={activities}
         onClearHistory={async () => undefined}
-        webMcpAvailable
+        webMcpStatus="ready"
       />,
     );
 
@@ -96,7 +96,11 @@ describe("AgentActivityRail", () => {
 
   it("does not show a meaningless clear action for an empty history", () => {
     const markup = renderToStaticMarkup(
-      <AgentActivityRail activities={[]} onClearHistory={async () => undefined} webMcpAvailable />,
+      <AgentActivityRail
+        activities={[]}
+        onClearHistory={async () => undefined}
+        webMcpStatus="ready"
+      />,
     );
 
     expect(markup).not.toContain("Clear history");
@@ -104,16 +108,26 @@ describe("AgentActivityRail", () => {
 
   it("shows a plain-language browser fallback without nested disclosures", () => {
     const markup = renderToStaticMarkup(
-      <AgentActivityRail activities={[]} webMcpAvailable={false} />,
+      <AgentActivityRail activities={[]} webMcpStatus="unsupported" />,
     );
 
-    expect(markup).toContain("No agent actions in this browser.");
-    expect(markup).toContain("Agent tools are off in this browser. You can still search here.");
+    expect(markup).toContain("No agent activity in this browser");
+    expect(markup).toContain("Open Jobbbler in a WebMCP-compatible agent client to use the tools.");
     expect(markup).not.toContain("<details");
   });
 
+  it("does not claim tools are off while registration is still preparing", () => {
+    const markup = renderToStaticMarkup(
+      <AgentActivityRail activities={[]} webMcpStatus="preparing" />,
+    );
+
+    expect(markup).toContain("Getting agent tools ready");
+    expect(markup).toContain("Tool calls will appear here as soon as setup finishes.");
+    expect(markup).not.toContain("tools are off");
+  });
+
   it("shows a useful empty receipt state when an agent is ready", () => {
-    const markup = renderToStaticMarkup(<AgentActivityRail activities={[]} webMcpAvailable />);
+    const markup = renderToStaticMarkup(<AgentActivityRail activities={[]} webMcpStatus="ready" />);
 
     expect(markup).toContain("No agent activity yet");
     expect(markup).toContain(
@@ -124,7 +138,7 @@ describe("AgentActivityRail", () => {
 
   it("offers a direct path to the guide from an empty panel", () => {
     const markup = renderToStaticMarkup(
-      <AgentActivityRail activities={[]} onOpenGuide={() => undefined} webMcpAvailable />,
+      <AgentActivityRail activities={[]} onOpenGuide={() => undefined} webMcpStatus="ready" />,
     );
 
     expect(markup).toContain("Open guide");
@@ -141,7 +155,7 @@ describe("AgentActivityRail", () => {
       completedAt: `2026-08-29T10:23:0${String(index)}.000Z`,
     }));
     const markup = renderToStaticMarkup(
-      <AgentActivityRail activities={repeated} webMcpAvailable />,
+      <AgentActivityRail activities={repeated} webMcpStatus="ready" />,
     );
 
     expect(markup).toContain("4 similar calls grouped");
@@ -159,7 +173,7 @@ describe("AgentActivityRail", () => {
       completedAt: `2026-08-29T10:24:0${String(index)}.500Z`,
     }));
     const markup = renderToStaticMarkup(
-      <AgentActivityRail activities={distinct} maxItems={4} webMcpAvailable />,
+      <AgentActivityRail activities={distinct} maxItems={4} webMcpStatus="ready" />,
     );
 
     expect(markup).toContain("Showing the 4 most recent actions.");

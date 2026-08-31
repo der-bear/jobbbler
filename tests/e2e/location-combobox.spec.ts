@@ -106,9 +106,9 @@ test.describe("location combobox", () => {
     await phoenix.click();
     await search;
 
-    await expect.poll(() => new URL(page.url()).searchParams.get("location")).toBe(
-      "Phoenix, United States",
-    );
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get("location"))
+      .toBe("Phoenix, United States");
     await expect(page.getByRole("heading", { level: 1, name: "1 match" })).toBeVisible();
     await expect(page.getByRole("article")).toHaveCount(1);
     await expect(page.getByRole("article").first()).toContainText("Phoenix, United States");

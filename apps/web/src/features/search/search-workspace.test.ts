@@ -87,7 +87,7 @@ describe("deriveSearchPresentation", () => {
     expect(presentation.showHeroSearch).toBe(false);
     expect(presentation.resultLayout).toBe("list");
     expect(presentation.showFilters).toBe(true);
-    expect(presentation.heading).toBe("8 technology roles");
+    expect(presentation.heading).toBe("8 roles");
     expect(presentation.visibleJobs).toHaveLength(8);
   });
 

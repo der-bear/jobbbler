@@ -214,7 +214,7 @@ export function deriveSearchPresentation(
         ? `${String(result?.total ?? 0)} matches`
         : result === null
           ? "Technology roles"
-          : `${String(result.total)} technology roles`,
+          : `${String(result.total)} roles`,
     landing,
     resultLayout: landing ? "cards" : "list",
     showHeroSearch: landing,

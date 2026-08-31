@@ -75,6 +75,8 @@ describe("AgentPanelSurface", () => {
     );
 
     expect(markup).toContain("Preparing agent tools");
+    expect(markup).toContain("Getting agent tools ready");
+    expect(markup).not.toContain("tools are off");
     expect(markup).toContain("Capability catalog");
     expect(markup).toContain("29 tools");
     expect(markup).not.toContain("Active tools");

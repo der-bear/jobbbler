@@ -221,7 +221,6 @@
   font-weight: 620;
 }
 
-.footnote,
 .empty > p:not(.eyebrow) {
   max-inline-size: 70ch;
   margin: 24px 0 0;

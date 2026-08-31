@@ -483,6 +483,7 @@
 
 .saveAlertLink {
   padding-inline: 11px;
+  white-space: nowrap;
 }
 
 .resultList {
