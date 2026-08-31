@@ -280,9 +280,7 @@ export function rankJob(job: Job, criteria: JobSearchCriteria, context: RankJobC
   });
 
   const matchedLocations = criteria.locations.filter((requested) =>
-    job.locations.some(
-      (actual) => matchesText(actual, requested) || matchesText(requested, actual),
-    ),
+    job.locations.some((actual) => matchesText(actual, requested)),
   );
   const locations = makeDimension(criteria.locations, matchedLocations, { hard: true });
 

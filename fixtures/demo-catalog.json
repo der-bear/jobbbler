@@ -2166,7 +2166,7 @@
       "workModel": "remote",
       "employmentType": "part_time",
       "seniority": "mid",
-      "locations": ["Denver, United States", "United States", "North America"],
+      "locations": ["Phoenix, United States", "United States", "North America"],
       "skills": ["TypeScript", "React", "Node.js", "PostgreSQL", "REST APIs"],
       "salary": {
         "minimum": 46000,

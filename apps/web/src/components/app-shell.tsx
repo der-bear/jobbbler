@@ -117,11 +117,16 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const [agentPanelMaximumWidth, setAgentPanelMaximumWidth] = useState(560);
   const [compactAgentPanel, setCompactAgentPanel] = useState(false);
   const agentTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const agentPanelInitialStateSet = useRef(false);
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 1200px)");
     const update = () => {
       setCompactAgentPanel(query.matches);
+      if (!agentPanelInitialStateSet.current) {
+        agentPanelInitialStateSet.current = true;
+        setAgentPanelOpen(!query.matches);
+      }
       const maximumWidth = maximumAgentPanelWidth(window.innerWidth);
       setAgentPanelMaximumWidth(maximumWidth);
       if (!query.matches) {

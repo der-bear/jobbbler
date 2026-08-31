@@ -4,6 +4,7 @@
 node_modules/
 .pnpm-store/
 .next/
+.next-*/
 dist/
 coverage/
 playwright-report/

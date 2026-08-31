@@ -215,7 +215,11 @@ describe("rankJob", () => {
   it("matches a canonical country when the search used its common alias", () => {
     const criteria = normalizeJobSearchCriteria({ locations: ["UK"] });
 
-    const ranked = rankJob(job({ locations: ["London, United Kingdom"] }), criteria, evaluation);
+    const ranked = rankJob(
+      job({ locations: ["London, United Kingdom", "United Kingdom", "Europe"] }),
+      criteria,
+      evaluation,
+    );
 
     expect(ranked.eligible).toBe(true);
     expect(ranked.dimensions.locations).toMatchObject({
@@ -223,6 +227,23 @@ describe("rankJob", () => {
       matched: ["United Kingdom"],
       missing: [],
     });
+  });
+
+  it("does not broaden a city search to every role in the same country", () => {
+    const criteria = normalizeJobSearchCriteria({ locations: ["Phoenix, United States"] });
+    const phoenix = rankJob(
+      job({ locations: ["Phoenix, United States", "United States", "North America"] }),
+      criteria,
+      evaluation,
+    );
+    const denver = rankJob(
+      job({ locations: ["Denver, United States", "United States", "North America"] }),
+      criteria,
+      evaluation,
+    );
+
+    expect(phoenix.eligible).toBe(true);
+    expect(denver.eligible).toBe(false);
   });
 
   it("returns deterministic dimension evidence for an eligible match", () => {

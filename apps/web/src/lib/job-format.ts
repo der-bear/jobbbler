@@ -149,18 +149,16 @@ function formatSalaryRange(
   maximum: number | null,
   currency: string,
   period: SalaryRange["period"],
-  approximate: boolean,
   compact: boolean,
 ): string {
-  const prefix = approximate ? "≈" : "";
   const periodLabel = salaryPeriodLabel(period, true);
   if (minimum !== null && maximum !== null) {
-    return `${prefix}${amount(minimum, currency, compact)}–${amount(maximum, currency, compact)} / ${periodLabel}`;
+    return `${amount(minimum, currency, compact)}–${amount(maximum, currency, compact)} / ${periodLabel}`;
   }
   if (minimum !== null)
-    return `${prefix}From ${amount(minimum, currency, compact)} / ${periodLabel}`;
+    return `From ${amount(minimum, currency, compact)} / ${periodLabel}`;
   if (maximum !== null)
-    return `${prefix}Up to ${amount(maximum, currency, compact)} / ${periodLabel}`;
+    return `Up to ${amount(maximum, currency, compact)} / ${periodLabel}`;
   return "Salary not listed";
 }
 
@@ -170,7 +168,6 @@ function sourceSalaryLabel(salary: SalaryRange, compact: boolean): string {
     salary.maximum,
     salary.currency,
     salary.period,
-    false,
     compact,
   );
 }
@@ -228,7 +225,6 @@ export function salaryCardPresentation(
     convertedMinimum === null ? null : annualizeSalaryAmount(convertedMinimum, salary.period);
   const annualMaximum =
     convertedMaximum === null ? null : annualizeSalaryAmount(convertedMaximum, salary.period);
-  const transformed = salary.currency !== targetCurrency || salary.period !== "year";
   const actions = [
     salary.currency === targetCurrency ? null : "converted using Jobbbler's fixed demo rates",
     salary.period === "hour"
@@ -244,7 +240,6 @@ export function salaryCardPresentation(
       annualMaximum,
       targetCurrency,
       "year",
-      transformed,
       Math.max(annualMinimum ?? 0, annualMaximum ?? 0) >= 10_000,
     ),
     explanation:
@@ -273,8 +268,8 @@ export function compactDate(value: string): string {
 
 export function relativeFreshness(value: string, now = new Date()): string {
   const hours = Math.max(0, Math.round((now.getTime() - Date.parse(value)) / 3_600_000));
-  if (hours < 1) return "Updated just now";
-  if (hours < 24) return `Updated ${String(hours)}h ago`;
+  if (hours < 1) return "Just now";
+  if (hours < 24) return `${String(hours)}h ago`;
   const days = Math.round(hours / 24);
-  return `Updated ${String(days)}d ago`;
+  return `${String(days)}d ago`;
 }

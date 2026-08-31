@@ -92,6 +92,28 @@ function waitForLocationSearch(page: Page, location: string | null) {
 test.describe("location combobox", () => {
   test.describe.configure({ timeout: 60_000 });
 
+  test("suggests a real Phoenix opening and applies the city without free-text fallback", async ({
+    page,
+  }) => {
+    await page.goto("/jobs?sort=newest");
+    const input = page.getByRole("combobox", { name: "Location" });
+
+    await input.fill("Phoenix");
+    const phoenix = page.getByRole("option", { name: "Phoenix, United States", exact: true });
+    await expect(phoenix).toBeVisible();
+
+    const search = waitForLocationSearch(page, "Phoenix, United States");
+    await phoenix.click();
+    await search;
+
+    await expect.poll(() => new URL(page.url()).searchParams.get("location")).toBe(
+      "Phoenix, United States",
+    );
+    await expect(page.getByRole("heading", { level: 1, name: "1 match" })).toBeVisible();
+    await expect(page.getByRole("article")).toHaveCount(1);
+    await expect(page.getByRole("article").first()).toContainText("Phoenix, United States");
+  });
+
   test("exposes direct listbox options and supports the complete keyboard contract", async ({
     page,
   }) => {

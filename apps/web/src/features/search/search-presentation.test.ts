@@ -148,10 +148,10 @@ describe("salaryLabel", () => {
     period: "year",
   };
 
-  it("converts a disclosed range into the selected display currency", () => {
+  it("converts a disclosed range without adding a visual approximation symbol", () => {
     const label = salaryLabel(salary, "EUR");
 
-    expect(label).toMatch(/^≈/);
+    expect(label).toMatch(/^€/);
     expect(label).toContain("€");
     expect(label).not.toContain("$");
     expect(label).toContain("/ yr");
@@ -186,7 +186,7 @@ describe("salaryLabel", () => {
         },
         "EUR",
       ),
-    ).toBe("≈€114k–€156k / yr");
+    ).toBe("€114k–€156k / yr");
 
     expect(
       salaryLabel(
@@ -198,7 +198,7 @@ describe("salaryLabel", () => {
         },
         "EUR",
       ),
-    ).toBe("≈€125k–€160k / yr");
+    ).toBe("€125k–€160k / yr");
   });
 
   it("keeps the source currency and period when no card display currency is requested", () => {
@@ -211,7 +211,7 @@ describe("salaryLabel", () => {
     expect(
       salaryCardPresentation({ minimum: 70, maximum: 90, currency: "USD", period: "hour" }, "EUR"),
     ).toEqual({
-      label: "≈€125k–€160k / yr",
+      label: "€125k–€160k / yr",
       explanation:
         "Estimated annual compensation in EUR. Originally listed as $70–$90 per hour; converted using Jobbbler's fixed demo rates and annualized at 2,080 hours per year.",
     });

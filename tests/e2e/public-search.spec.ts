@@ -116,7 +116,9 @@ test.describe("public job search workspace", () => {
 
     const role = resultCard(page, seededRole.title, seededRole.company);
     await expect(role).toBeVisible();
-    await expect(role.getByText(/updated|ago/i)).toBeVisible();
+    const freshness = role.locator("time");
+    await expect(freshness).toHaveText(/(?:just now|\d+[hd] ago)/i);
+    await expect(freshness).toHaveAttribute("title", /^Updated /);
     await expect(
       role.getByRole("link", {
         name: `View details for ${seededRole.title} at ${seededRole.company}`,
@@ -142,6 +144,44 @@ test.describe("public job search workspace", () => {
 
     await expect(page).not.toHaveURL(/(?:\?|&)work=remote(?:&|$)/);
     await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
+  });
+
+  test("resets every active filter in one clear action", async ({ page }) => {
+    await page.goto(
+      "/jobs?q=platform&location=Berlin%2C+Germany&work=remote&seniority=staff&sort=newest",
+    );
+
+    const reset = page.getByRole("button", { name: "Reset filters" });
+    await expect(reset).toBeVisible();
+    const search = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.pathname === "/api/v1/jobs/search" && !url.searchParams.has("location");
+    });
+    await reset.click();
+    await search;
+
+    await expect(page.getByRole("searchbox", { name: "Search" })).toHaveValue("");
+    await expect(page.getByRole("combobox", { name: "Location" })).toHaveValue("");
+    await expect(page.getByRole("button", { name: "Remote" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+    await expect(page).not.toHaveURL(/(?:\?|&)(?:q|location|work|seniority)=/u);
+    await expect(reset).toHaveCount(0);
+  });
+
+  test("opens the judge-facing agent activity panel by default on wide screens", async ({ page }) => {
+    await page.goto("/");
+
+    await expect(page.getByRole("complementary", { name: "What your agent is doing" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Agent activity —/i })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    await expect(page.getByRole("tab", { name: /^Activity/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
   });
 
   test("keeps every catalog result reachable without replacing earlier pages", async ({ page }) => {

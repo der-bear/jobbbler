@@ -9,7 +9,6 @@ const e2eDatabasePath = resolve(projectRoot, ".data/jobbbler-e2e.sqlite");
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  globalSetup: "./tests/e2e/global-setup.ts",
   fullyParallel: false,
   forbidOnly: Boolean(process.env["CI"]),
   // Next's development compiler owns one shared route graph. Serial browser
@@ -40,7 +39,7 @@ export default defineConfig({
     : {
         webServer: {
           command:
-            "pnpm --filter @jobbbler/web exec next dev --webpack --hostname 127.0.0.1 --port 3100",
+            "node --disable-warning=DEP0205 --import tsx scripts/prepare-e2e.ts && pnpm --filter @jobbbler/web exec next dev --webpack --hostname 127.0.0.1 --port 3100",
           url: baseURL,
           reuseExistingServer: false,
           timeout: 120_000,

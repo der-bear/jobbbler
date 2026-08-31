@@ -37,6 +37,7 @@ import { Chip, MultiSelect } from "@jobbbler/ui";
 import { useWebMcp } from "@/components/webmcp-provider";
 import {
   categoryLabel,
+  compactDate,
   deviatingEmploymentLabel,
   employmentLabel,
   locationBesideWorkModel,
@@ -294,6 +295,7 @@ function SearchFilters({
     draft.minimumSalary !== "",
     draft.excludeKeywords.trim().length > 0,
   ].filter(Boolean).length;
+  const hasActiveFilters = hasMeaningfulSearchCriteria(inputFromDraft(draft));
 
   function toggleWorkModel(value: WorkModel) {
     const workModels = draft.workModels.includes(value)
@@ -345,7 +347,22 @@ function SearchFilters({
         onCommit(draft);
       }}
     >
-      <p className={styles["railTitle"]}>Filters</p>
+      <div className={styles["filterHeading"]}>
+        <p className={styles["railTitle"]}>Filters</p>
+        {hasActiveFilters ? (
+          <button
+            aria-label="Reset filters"
+            className={styles["resetFilters"]}
+            onClick={() => {
+              cancelScheduledTextCommit();
+              onCommit(draftFromInput(defaultSearch));
+            }}
+            type="button"
+          >
+            Reset
+          </button>
+        ) : null}
+      </div>
       <label className={styles["filterRow"]}>
         <span>Search</span>
         <span className={styles["railSearch"]}>
@@ -600,7 +617,11 @@ function JobResult({
               {salary.explanation}
             </span>
           )}
-          <small>{relativeFreshness(job.updatedAt)}</small>
+          <small>
+            <time dateTime={job.updatedAt} title={`Updated ${compactDate(job.updatedAt)}`}>
+              {relativeFreshness(job.updatedAt)}
+            </time>
+          </small>
         </div>
       </div>
     </article>
