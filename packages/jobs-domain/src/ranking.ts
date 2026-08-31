@@ -58,6 +58,46 @@ function matchesText(haystack: string, needle: string): boolean {
   return normalizedNeedle.length > 0 && normalizeSearchText(haystack).includes(normalizedNeedle);
 }
 
+const textFieldWeights = {
+  title: 1,
+  skills: 0.9,
+  organization: 0.8,
+  categories: 0.75,
+  locations: 0.6,
+  summary: 0.45,
+} as const;
+
+function rankText(job: Job, requested: readonly string[]): RankDimension {
+  if (requested.length === 0) return emptyDimension;
+
+  const fields = {
+    title: normalizeSearchText(job.title),
+    skills: job.skills.map(normalizeSearchText),
+    organization: normalizeSearchText(job.organizationName),
+    categories: job.categories.map(normalizeSearchText),
+    locations: job.locations.map(normalizeSearchText),
+    summary: normalizeSearchText(job.summary),
+  };
+  const tokenScores = requested.map((token) => {
+    if (fields.title.includes(token)) return textFieldWeights.title;
+    if (fields.skills.some((value) => value.includes(token))) return textFieldWeights.skills;
+    if (fields.organization.includes(token)) return textFieldWeights.organization;
+    if (fields.categories.some((value) => value.includes(token))) {
+      return textFieldWeights.categories;
+    }
+    if (fields.locations.some((value) => value.includes(token))) return textFieldWeights.locations;
+    if (fields.summary.includes(token)) return textFieldWeights.summary;
+    return 0;
+  });
+  const matched = requested.filter((_, index) => (tokenScores[index] ?? 0) > 0);
+  const dimension = makeDimension(requested, matched, { hard: true });
+
+  return {
+    ...dimension,
+    score: tokenScores.reduce<number>((total, score) => total + score, 0) / requested.length,
+  };
+}
+
 function makeDimension(
   requested: readonly string[],
   matched: readonly string[],
@@ -216,10 +256,8 @@ function rankFreshness(
 
 export function rankJob(job: Job, criteria: JobSearchCriteria, context: RankJobContext): JobRank {
   const document = getJobSearchDocument(job);
-  const normalizedDocument = normalizeSearchText(document);
   const queryTokens = criteria.query === null ? [] : normalizeSearchText(criteria.query).split(" ");
-  const matchedQueryTokens = queryTokens.filter((token) => normalizedDocument.includes(token));
-  const text = makeDimension(queryTokens, matchedQueryTokens, { hard: true });
+  const text = rankText(job, queryTokens);
 
   const matchedCategories = criteria.categories.filter((category) =>
     job.categories.includes(category),

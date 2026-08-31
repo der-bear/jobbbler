@@ -65,8 +65,7 @@
   box-shadow: 0 16px 44px color-mix(in srgb, var(--color-ink) 6%, transparent);
   transition:
     inline-size var(--jb-duration-base) var(--ease-standard),
-    box-shadow var(--motion-fast) var(--ease-standard),
-    border-color var(--motion-fast) var(--ease-standard);
+    box-shadow var(--motion-fast) var(--ease-standard);
 }
 
 .heroSearch:focus-within {
@@ -74,8 +73,9 @@
 }
 
 .heroSearch:has(input:focus-visible) {
+  border-color: transparent;
   outline: var(--jb-focus-width) solid var(--jb-focus);
-  outline-offset: var(--jb-focus-offset);
+  outline-offset: calc(-1 * var(--jb-focus-width));
 }
 
 .heroField {
@@ -200,8 +200,9 @@
 
 .railSearch:has(input:focus-visible),
 .railLocation:has(input:focus-visible) {
+  border-color: transparent;
   outline: var(--jb-focus-width) solid var(--jb-focus);
-  outline-offset: var(--jb-focus-offset);
+  outline-offset: calc(-1 * var(--jb-focus-width));
 }
 
 .railSearch > svg {

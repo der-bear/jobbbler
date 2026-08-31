@@ -82,7 +82,9 @@ const allSiteTools = [
   "decide_application_assistance",
   "decide_application_submission",
   "decide_search_alert",
+  "enable_workspace_recovery",
   "get_application_readiness",
+  "get_applications",
   "get_comparison",
   "get_job_details",
   "get_latest_search_update",
@@ -100,6 +102,7 @@ const allSiteTools = [
   "request_application_assistance",
   "request_search_alert",
   "request_submission_review",
+  "save_job_search",
   "search_jobs",
   "set_job_alert_state",
   "withdraw_application_consent",
@@ -129,12 +132,14 @@ test.describe("agent journey through the live WebMCP surface", () => {
     await page.goto("/about/webmcp");
 
     await expect.poll(() => registeredToolNames(page)).toEqual([...allSiteTools]);
-    await expect(page.getByRole("button", { name: /Agent view/ })).toHaveAttribute(
+    await expect(page.getByRole("button", { name: /Agent activity/ })).toHaveAttribute(
       "aria-expanded",
       "false",
     );
-    await page.getByRole("button", { name: /Agent view/ }).click();
-    await expect(page.getByRole("complementary", { name: "Agent view" })).toBeVisible();
+    await page.getByRole("button", { name: /Agent activity/ }).click();
+    await expect(
+      page.getByRole("complementary", { name: "What your agent is doing" }),
+    ).toBeVisible();
     await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(
       `${String(allSiteTools.length)} tools active. Discovery is automatic.`,
     );
@@ -234,15 +239,17 @@ test.describe("agent journey through the live WebMCP surface", () => {
     await expect.poll(() => registeredToolNames(page)).toEqual([...allSiteTools]);
   });
 
-  test("keeps the agent view honest when no agent is connected", async ({ page }) => {
+  test("keeps the agent activity panel honest when no agent is connected", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByRole("button", { name: /Agent view/ })).toHaveAttribute(
+    await expect(page.getByRole("button", { name: /Agent activity/ })).toHaveAttribute(
       "aria-expanded",
       "false",
     );
-    await page.getByRole("button", { name: /Agent view/ }).click();
-    await expect(page.getByRole("complementary", { name: "Agent view" })).toBeVisible();
+    await page.getByRole("button", { name: /Agent activity/ }).click();
+    await expect(
+      page.getByRole("complementary", { name: "What your agent is doing" }),
+    ).toBeVisible();
     await expect(page.getByRole("tab", { name: "Activity" })).toHaveAttribute(
       "aria-selected",
       "true",
@@ -254,12 +261,12 @@ test.describe("agent journey through the live WebMCP surface", () => {
     await page.getByRole("tab", { name: "Tools" }).click();
     await expect(page.getByRole("tab", { name: "Tools" })).toHaveAttribute("aria-selected", "true");
     await expect(page.getByRole("heading", { name: "Capability catalog" })).toBeVisible();
-    await expect(page.getByText(`${String(allSiteTools.length)} tools`)).toBeVisible();
+    await expect(
+      page.getByText(`${String(allSiteTools.length)} tools`, { exact: true }),
+    ).toBeVisible();
     await expect(page.getByText("plan_job_workflow").first()).toBeVisible();
 
     await page.getByRole("tab", { name: "Guide" }).click();
-    await expect(
-      page.getByRole("heading", { name: "Use Jobbbler from your agent chat" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Start in your agent chat" })).toBeVisible();
   });
 });

@@ -21,8 +21,6 @@ import { queryApi } from "@/lib/query-client";
 
 import styles from "./location-combobox.module.css";
 
-const featuredLocations = ["Remote", "Global", "Europe"] as const;
-
 function uniqueLocations(values: readonly string[]): readonly string[] {
   const seen = new Set<string>();
   const result: string[] = [];
@@ -51,8 +49,8 @@ export function locationSuggestions(options: readonly string[], query: string): 
   const canonicalOptions = options.map(canonicalizeLocation);
   const ordered =
     normalizedQuery.length === 0
-      ? uniqueLocations([...featuredLocations, ...canonicalOptions])
-      : uniqueLocations([...aliasChoice, ...canonicalOptions, ...featuredLocations])
+      ? uniqueLocations(canonicalOptions)
+      : uniqueLocations([...aliasChoice, ...canonicalOptions])
           .map((option, index) => ({ option, index }))
           .filter(({ option }) => option.toLocaleLowerCase("en").includes(normalizedQuery))
           .sort(
@@ -162,7 +160,7 @@ export function LocationCombobox({
   onChange,
   onCommit,
   options = [],
-  placeholder = "City, country, or remote",
+  placeholder = "City, country or region",
   value,
 }: LocationComboboxProps) {
   const id = useId();

@@ -20,9 +20,6 @@ describe("locationSuggestions", () => {
 
   it("keeps useful starting options when the field is empty", () => {
     expect(locationSuggestions(["Kyiv, Ukraine", "Berlin, Germany"], "")).toEqual([
-      "Remote",
-      "Global",
-      "Europe",
       "Kyiv, Ukraine",
       "Berlin, Germany",
     ]);
@@ -58,19 +55,17 @@ describe("locationSuggestions", () => {
     expect(locationSuggestions([], "USA")).toEqual(["United States"]);
   });
 
+  it("uses one plain-language label for worldwide eligibility", () => {
+    expect(locationSuggestions(["Global"], "global")).toEqual(["Worldwide"]);
+  });
+
   it("puts the exact canonical location first without collapsing distinct stored values", () => {
     expect(
       locationSuggestions(
         ["Remote Europe", "Remote - Europe", "Remote - Global", "Remote Worldwide"],
         "Remote",
       ),
-    ).toEqual([
-      "Remote",
-      "Remote Europe",
-      "Remote - Europe",
-      "Remote - Global",
-      "Remote Worldwide",
-    ]);
+    ).toEqual(["Remote Europe", "Remote - Europe", "Remote - Global", "Remote Worldwide"]);
   });
 
   it("requests a small encoded suggestion page instead of loading the whole catalog", async () => {
@@ -101,7 +96,7 @@ describe("locationSuggestions", () => {
     );
   });
 
-  it("uses local featured choices without requesting the server for an empty query", async () => {
+  it("does not request the server before the person starts typing", async () => {
     const request = vi.fn(async () => ({ locations: ["Berlin, Germany"] }));
 
     await expect(

@@ -73,7 +73,7 @@ export function searchParamsToInput(parameters: URLSearchParams): ParsedJobSearc
     period !== undefined ||
     unknownPolicy !== undefined;
 
-  return jobSearchInputSchema.parse({
+  const parsed = jobSearchInputSchema.parse({
     query: single(parameters, "q"),
     categories: parameters.getAll("category"),
     workModels: parameters.getAll("work"),
@@ -95,6 +95,11 @@ export function searchParamsToInput(parameters: URLSearchParams): ParsedJobSearc
     sort: single(parameters, "sort"),
     cursor: single(parameters, "cursor"),
     limit: numberParameter(parameters, "limit"),
+  });
+
+  return jobSearchInputSchema.parse({
+    ...criteriaToSearchInput(normalizeJobSearchCriteria(parsed)),
+    ...(parsed.cursor === undefined ? {} : { cursor: parsed.cursor }),
   });
 }
 

@@ -243,4 +243,29 @@ describe("rankJob", () => {
     expect(ranked.dimensions.skills.matched).toEqual(["React", "TypeScript"]);
     expect(ranked.evidence.length).toBeGreaterThan(2);
   });
+
+  it("ranks title matches above the same terms found only in body copy", () => {
+    const criteria = normalizeJobSearchCriteria({ query: "security" });
+    const titleMatch = rankJob(
+      job({
+        title: "Security Engineer",
+        summary: "Build dependable systems for technology teams.",
+      }),
+      criteria,
+      evaluation,
+    );
+    const bodyMatch = rankJob(
+      job({
+        title: "Chief Technology Officer",
+        summary: "Lead engineering, operations, and security across the company.",
+      }),
+      criteria,
+      evaluation,
+    );
+
+    expect(titleMatch.eligible).toBe(true);
+    expect(bodyMatch.eligible).toBe(true);
+    expect(titleMatch.dimensions.text.score).toBeGreaterThan(bodyMatch.dimensions.text.score);
+    expect(titleMatch.score).toBeGreaterThan(bodyMatch.score);
+  });
 });

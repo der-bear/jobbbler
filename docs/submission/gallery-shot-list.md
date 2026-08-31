@@ -10,7 +10,7 @@ with the same global 29-tool Agent activity panel used by the submission story.
    - Alt text: “Jobbbler search page showing Platform, Remote, and Europe filters, three ranked matches, and Agent activity recording the completed search_jobs action.”
 2. **`media/04-agentic-web-proof.png` — Agentic web proof of value**
    - Caption: “A familiar website can expose structured actions directly to a compatible browser agent—without a separate MCP server.”
-   - Alt text: “Jobbbler How it works page showing one complete external-agent prompt beside Agent activity, where all 28 browser-registered tools are grouped by outcome.”
+   - Alt text: “Jobbbler How it works page showing one complete external-agent prompt beside Agent activity, where all 29 browser-registered tools are grouped by outcome.”
 3. **`media/03-application-permission.png` — Prepared, not silently submitted**
    - Caption: “The agent prepares the answers and the site shows the exact synthetic draft; the person’s final decision remains in the external agent client.”
    - Alt text: “Read-only Jobbbler application review for a fictional Senior Full-Stack Engineer role, with five synthetic answers ready and Agent activity showing the assistance, update, and final-review stages.”

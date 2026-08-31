@@ -11,7 +11,6 @@
   "scripts": {
     "dev": "pnpm dev:web",
     "dev:web": "ALLOW_LOCAL_OTP_CAPTURE=true NOTIFICATION_DRIVER=capture PUBLIC_BASE_URL=http://localhost:3000 pnpm --filter @jobbbler/web dev",
-    "dev:e2e": "node --disable-warning=DEP0205 --import tsx scripts/start-e2e-server.ts",
     "dev:worker": "pnpm --filter @jobbbler/worker dev",
     "build": "pnpm --filter @jobbbler/web build && pnpm --filter @jobbbler/worker build",
     "typecheck": "pnpm -r --if-present typecheck",

@@ -35,4 +35,26 @@ describe("createWebMcpNavigator", () => {
     expect(settled).toBe(true);
     expect(currentUrl).toBe("https://jobbbler.test/jobs?q=platform");
   });
+
+  it("keeps a cold client-side route transition alive beyond four seconds", async () => {
+    vi.useFakeTimers();
+    let currentUrl = "https://jobbbler.test/jobs/job_1";
+    const navigate = createWebMcpNavigator({
+      currentUrl: () => currentUrl,
+      navigate(href) {
+        globalThis.setTimeout(() => {
+          currentUrl = new URL(href, currentUrl).href;
+        }, 4_500);
+      },
+      pollIntervalMilliseconds: 50,
+    });
+
+    const navigation = navigate("/jobs?q=platform", {
+      signal: new AbortController().signal,
+    });
+
+    await vi.advanceTimersByTimeAsync(4_500);
+    await expect(navigation).resolves.toBeUndefined();
+    expect(currentUrl).toBe("https://jobbbler.test/jobs?q=platform");
+  });
 });

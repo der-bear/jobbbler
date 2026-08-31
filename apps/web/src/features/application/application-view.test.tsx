@@ -616,6 +616,50 @@ describe("ApplicationView", () => {
     expect(markup).not.toContain('<main class="');
   });
 
+  it("presents the pre-release motivation receipt as a cover letter without changing its value", () => {
+    const markup = renderToStaticMarkup(
+      <ApplicationView
+        busy={false}
+        confirmation={null}
+        error={null}
+        fieldValues={{}}
+        job={job}
+        now={workspace.serverNow}
+        onAction={() => undefined}
+        onFieldChange={() => undefined}
+        workspace={{
+          ...workspace,
+          draft: { ...workspace.draft, state: "submitted" },
+          receipt: {
+            id: "receipt_550e8400-e29b-41d4-a716-446655440000",
+            status: "submitted",
+            externalUrl: null,
+            createdAt: "2026-08-29T10:03:00.000Z",
+            submission: {
+              provider: "jobbbler_demo",
+              providerReferenceId: "demo_submission_550e8400-e29b-41d4-a716-446655440000",
+              role: { id: workspace.draft.jobId, title: job.title },
+              recipient: workspace.recipient,
+              submittedAt: "2026-08-29T10:02:30.000Z",
+              fields: [
+                {
+                  fieldKey: "motivation",
+                  label: "Why this role",
+                  value: "The exact previously submitted letter.",
+                },
+              ],
+            },
+          },
+        }}
+      />,
+    );
+
+    expect(markup).toContain(
+      "<dt>Cover letter</dt><dd>The exact previously submitted letter.</dd>",
+    );
+    expect(markup).not.toContain("Why this role");
+  });
+
   it("does not claim submission success when the receipt is missing", () => {
     const markup = renderToStaticMarkup(
       <ApplicationView

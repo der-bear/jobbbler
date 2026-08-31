@@ -364,7 +364,15 @@ function SubmittedApplicationSnapshot({
 }: Readonly<{ fields: SubmittedReceipt["submission"]["fields"] }>) {
   const presentedFields = fields.flatMap((field) => {
     const value = submittedAnswerValue(field.value);
-    return value === null ? [] : [{ ...field, value }];
+    return value === null
+      ? []
+      : [
+          {
+            ...field,
+            label: field.fieldKey === "motivation" ? "Cover letter" : field.label,
+            value,
+          },
+        ];
   });
 
   return (

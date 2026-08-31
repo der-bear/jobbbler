@@ -16,6 +16,7 @@ import {
   type SafeWebMcpErrorResult,
 } from "@/lib/webmcp-tool-result";
 import type { WebMcpNavigate } from "@/lib/webmcp-navigation";
+import { concreteJobLocations } from "@/lib/job-format";
 
 const jobIdProperty = {
   type: "string",
@@ -70,6 +71,7 @@ function short(value: string, maximum = 160): string {
 }
 
 function detailData(result: JobDetailResult): JsonValue {
+  const locations = concreteJobLocations(result.job.locations);
   return {
     id: result.job.id,
     title: result.job.title,
@@ -78,7 +80,7 @@ function detailData(result: JobDetailResult): JsonValue {
     categories: result.job.categories,
     workModel: result.job.workModel,
     employmentType: result.job.employmentType,
-    locations: result.job.locations,
+    locations,
     seniority: result.job.seniority,
     skills: result.job.skills,
     salary:
@@ -109,7 +111,7 @@ function comparisonData(result: CompareJobsResult): JsonValue {
       organization: short(job.organizationName, 40),
       matchScore: fit.score,
       workModel: job.workModel,
-      location: short(job.locations[0] ?? "Location not stated", 32),
+      location: short(concreteJobLocations(job.locations)[0] ?? "Location not stated", 32),
       salaryMinimum: job.salary?.minimum ?? null,
       salaryCurrency: job.salary?.currency ?? null,
     })),

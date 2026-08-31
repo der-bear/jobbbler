@@ -1564,15 +1564,18 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
         const normalizedQuery = query.trim().slice(0, 120).toLocaleLowerCase("en");
         if (normalizedQuery.length === 0) return [];
         const safeLimit = Math.min(20, Math.max(1, Math.trunc(limit)));
-        const prefixUpperBound = `${normalizedQuery}${String.fromCodePoint(0x10ffff)}`;
         const rows = await sql<{ readonly value: string }[]>`
           SELECT min(value) AS value
           FROM jobbbler.job_location_suggestions
-          WHERE normalized_value COLLATE "C" >= ${normalizedQuery}
-            AND normalized_value COLLATE "C" < ${prefixUpperBound}
+          WHERE position(${normalizedQuery} in normalized_value) > 0
           GROUP BY normalized_value
           ORDER BY
             CASE WHEN normalized_value = ${normalizedQuery} THEN 0 ELSE 1 END,
+            CASE
+              WHEN left(normalized_value, char_length(${normalizedQuery})) = ${normalizedQuery}
+                THEN 0
+              ELSE 1
+            END,
             count(*) DESC,
             normalized_value ASC
           LIMIT ${safeLimit}`;

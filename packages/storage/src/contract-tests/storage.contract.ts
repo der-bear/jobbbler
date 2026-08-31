@@ -732,6 +732,33 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
       ).toEqual({ jobs: [job], total: 1, nextCursor: null, catalogUpdatedAt: now });
     });
 
+    it("orders title matches ahead of body-only matches for best-match search", async () => {
+      const current = await create();
+      await current.organizations.upsert(organization);
+      const titleMatch = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440020",
+        title: "Security Engineer",
+        summary: "Build dependable systems for technology teams.",
+      };
+      const bodyMatch = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440021",
+        title: "Chief Technology Officer",
+        summary: "Lead engineering, operations, and security across the company.",
+      };
+      await current.jobs.upsert(bodyMatch);
+      await current.jobs.upsert(titleMatch);
+
+      await expect(
+        current.jobs.search({
+          criteria: { ...emptyCriteria, query: "security", sort: "relevance" },
+          now,
+          limit: 10,
+        }),
+      ).resolves.toMatchObject({ jobs: [titleMatch, bodyMatch], total: 2 });
+    });
+
     it("keeps a job's application mode immutable across upserts", async () => {
       const current = await create();
       await current.organizations.upsert(organization);
@@ -818,6 +845,7 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
 
       await expect(current.jobs.suggestLocations("", 8)).resolves.toEqual([]);
       await expect(current.jobs.suggestLocations("ber", 8)).resolves.toEqual(["Berlin, Germany"]);
+      await expect(current.jobs.suggestLocations("germ", 8)).resolves.toEqual(["Berlin, Germany"]);
     });
 
     it("applies hard structured filters after lexical retrieval", async () => {

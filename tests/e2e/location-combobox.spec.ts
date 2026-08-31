@@ -54,6 +54,30 @@ async function outlinedElementCount(page: Page, label: string) {
   });
 }
 
+async function compositeFocusPresentation(page: Page, label: string) {
+  return page.getByRole("combobox", { name: label }).evaluate((input) => {
+    let owner: HTMLElement | null = input;
+    while (owner !== null) {
+      const candidateStyle = getComputedStyle(owner);
+      if (
+        candidateStyle.outlineStyle !== "none" &&
+        Number.parseFloat(candidateStyle.outlineWidth) > 0
+      ) {
+        break;
+      }
+      owner = owner.parentElement;
+    }
+    if (owner === null) return null;
+    const style = getComputedStyle(owner);
+    return {
+      borderColor: style.borderColor,
+      outlineColor: style.outlineColor,
+      outlineOffset: style.outlineOffset,
+      outlineWidth: style.outlineWidth,
+    };
+  });
+}
+
 function waitForLocationSearch(page: Page, location: string | null) {
   return page.waitForResponse((response) => {
     const url = new URL(response.url());
@@ -83,7 +107,7 @@ test.describe("location combobox", () => {
     const options = listbox.locator(":scope > [role=option]");
     await expect(options).toHaveCount(3);
     await expect(options.nth(0)).toHaveText("Phoenix, AZ");
-    await expect(options.nth(2)).toContainText("Use \u201cPho\u201d");
+    await expect(options.nth(2)).toContainText("Search for \u201cPho\u201d");
     await expect(input).toHaveAttribute("aria-controls", await listbox.getAttribute("id"));
 
     await input.press("End");
@@ -150,9 +174,11 @@ test.describe("location combobox", () => {
     const input = page.getByRole("combobox", { name: "Location" });
 
     await input.fill("Atlantis");
-    await expect(page.getByText("No catalog matches. Use your exact location.")).toBeVisible();
+    await expect(
+      page.getByText("No listed location matches yet. You can still search this place."),
+    ).toBeVisible();
     const atlantisSearch = waitForLocationSearch(page, "Atlantis");
-    await page.getByRole("option", { name: "Use \u201cAtlantis\u201d" }).click();
+    await page.getByRole("option", { name: "Search for \u201cAtlantis\u201d" }).click();
     await atlantisSearch;
     await expect.poll(() => new URL(page.url()).searchParams.get("location")).toBe("Atlantis");
     await expect(page.locator('[data-loading="true"]')).toHaveCount(0);
@@ -194,7 +220,9 @@ test.describe("location combobox", () => {
     await expect(
       page.getByText("Suggestions unavailable. You can still use your exact text."),
     ).toBeVisible();
-    await expect(page.getByRole("option", { name: "Use \u201cErrorville\u201d" })).toBeVisible();
+    await expect(
+      page.getByRole("option", { name: "Search for \u201cErrorville\u201d" }),
+    ).toBeVisible();
     await page.waitForLoadState("networkidle");
   });
 
@@ -202,10 +230,30 @@ test.describe("location combobox", () => {
     await page.goto("/");
     await page.getByRole("combobox", { name: "Location" }).focus();
     expect(await outlinedElementCount(page, "Location")).toBe(1);
+    expect(await compositeFocusPresentation(page, "Location")).toMatchObject({
+      borderColor: "rgba(0, 0, 0, 0)",
+      outlineOffset: "-2px",
+      outlineWidth: "2px",
+    });
 
     await page.goto("/jobs?sort=newest");
     await page.getByRole("combobox", { name: "Location" }).focus();
     expect(await outlinedElementCount(page, "Location")).toBe(1);
+    expect(await compositeFocusPresentation(page, "Location")).toMatchObject({
+      borderColor: "rgba(0, 0, 0, 0)",
+      outlineOffset: "-2px",
+      outlineWidth: "2px",
+    });
+  });
+
+  test("canonicalizes a legacy Remote location URL without showing it as a place", async ({
+    page,
+  }) => {
+    await page.goto("/jobs?location=Remote");
+
+    await expect(page).toHaveURL(/\/jobs\?work=remote(?:&|$)/u);
+    await expect(page.getByRole("combobox", { name: "Location" })).toHaveValue("");
+    await expect(page.getByRole("button", { name: "Remote", pressed: true })).toBeVisible();
   });
 });
 

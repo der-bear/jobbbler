@@ -17,7 +17,11 @@ export function createWebMcpNavigator(
 ): WebMcpNavigate {
   const currentUrl = options.currentUrl ?? (() => window.location.href);
   const pollIntervalMilliseconds = options.pollIntervalMilliseconds ?? 16;
-  const timeoutMilliseconds = options.timeoutMilliseconds ?? 4_000;
+  // A cold client-side route may compile before it commits in local previews,
+  // and browser-agent hosts can briefly pause the page while refreshing the
+  // global tool registry. Keep the transition bounded without turning either
+  // condition into a false tool failure.
+  const timeoutMilliseconds = options.timeoutMilliseconds ?? 12_000;
 
   return async (href, { signal }) => {
     if (signal.aborted) throw cancellationError();

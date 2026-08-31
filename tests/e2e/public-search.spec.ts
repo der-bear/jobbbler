@@ -98,7 +98,7 @@ test.describe("public job search workspace", () => {
     await page.goto("/jobs?limit=999");
 
     await expect(
-      page.getByRole("region", { name: "All technology roles" }).getByRole("alert"),
+      page.getByRole("region", { name: "Technology roles" }).getByRole("alert"),
     ).toContainText("search filters are invalid");
     await expect(page.getByRole("searchbox", { name: "Search" })).toBeEditable();
     expect(browserSearchRequests).toEqual([]);
@@ -331,9 +331,12 @@ test.describe("public job search workspace", () => {
     await location.focus();
 
     const outlinedAncestors = await location.evaluate((input) => {
-      const elements = [input, input.parentElement, input.parentElement?.parentElement].filter(
-        (element): element is HTMLElement => element instanceof HTMLElement,
-      );
+      const elements: HTMLElement[] = [];
+      let element: HTMLElement | null = input;
+      while (element !== null && elements.length < 6) {
+        elements.push(element);
+        element = element.parentElement;
+      }
       return elements.filter((element) => {
         const style = getComputedStyle(element);
         return style.outlineStyle !== "none" && Number.parseFloat(style.outlineWidth) > 0;
@@ -384,7 +387,9 @@ test.describe("public job search workspace", () => {
     });
     await page.goto("/");
 
-    await expect(page.getByRole("button", { name: /Agent view — Browser mode/i })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Agent activity — Browser mode/i }),
+    ).toBeVisible();
     const outcome = page.getByRole("searchbox", { name: "Search jobs" });
     await outcome.fill(exampleOutcome);
     await outcome.press("Enter");
@@ -454,12 +459,12 @@ test.describe("mobile and reduced-motion public search", () => {
   }) => {
     await page.goto("/");
 
-    const trigger = page.getByRole("button", { name: /Agent view/ });
+    const trigger = page.getByRole("button", { name: /Agent activity/ });
     await expect(trigger).toBeVisible();
-    await expect(page.getByRole("dialog", { name: "Agent view" })).toHaveCount(0);
+    await expect(page.getByRole("dialog", { name: "What your agent is doing" })).toHaveCount(0);
 
     await trigger.click();
-    const panel = page.getByRole("dialog", { name: "Agent view" });
+    const panel = page.getByRole("dialog", { name: "What your agent is doing" });
     await expect(panel).toBeVisible();
     await expect(page.getByRole("tab", { name: "Activity" })).toBeFocused();
     await expect(page.locator("header[inert]")).toHaveCount(1);

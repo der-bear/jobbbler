@@ -48,9 +48,24 @@ describe("normalizeJobSearchCriteria", () => {
 
   it("canonicalizes exact common country aliases without rewriting arbitrary locations", () => {
     const criteria = normalizeJobSearchCriteria({
-      locations: ["UK", "gb", "U.K.", "US", "usa", "U.S.A.", "Tallinn, Estonia"],
+      locations: ["UK", "gb", "U.K.", "US", "usa", "U.S.A.", "Global", "Tallinn, Estonia"],
     });
 
-    expect(criteria.locations).toEqual(["Tallinn, Estonia", "United Kingdom", "United States"]);
+    expect(criteria.locations).toEqual([
+      "Tallinn, Estonia",
+      "United Kingdom",
+      "United States",
+      "Worldwide",
+    ]);
+  });
+
+  it("treats an exact Remote location as work-model intent", () => {
+    const criteria = normalizeJobSearchCriteria({
+      workModels: ["hybrid"],
+      locations: [" remote ", "Europe"],
+    });
+
+    expect(criteria.workModels).toEqual(["hybrid", "remote"]);
+    expect(criteria.locations).toEqual(["Europe"]);
   });
 });

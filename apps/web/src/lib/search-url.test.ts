@@ -51,6 +51,16 @@ describe("shareable job-search URL state", () => {
     });
   });
 
+  it("canonicalizes the legacy Remote location shortcut as a work model", () => {
+    const input = searchParamsToInput(new URLSearchParams("location=Remote"));
+
+    expect(input).toMatchObject({
+      locations: [],
+      workModels: ["remote"],
+    });
+    expect(searchInputToSearchParams(input).toString()).toBe("work=remote");
+  });
+
   it("rejects malformed numeric state rather than silently changing the search", () => {
     expect(() => searchParamsToInput(new URLSearchParams("salary_min=not-a-number"))).toThrow();
     expect(() => searchParamsToInput(new URLSearchParams("limit=999"))).toThrow();

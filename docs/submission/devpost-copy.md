@@ -91,7 +91,7 @@ When the journey reaches an application, speed stops being the point.
 > safest useful path through them—without executing the plan or granting
 > authority.
 
-Jobbbler registers 28 focused WebMCP tools directly in the page. The same set
+Jobbbler registers 29 focused WebMCP tools directly in the page. The same set
 stays discoverable on every page, so an agent never loses a capability by
 navigating. Private and workflow-specific tools are state-gated at execution —
 when their required ID, ownership, or stage is not ready they return a clear
@@ -191,7 +191,7 @@ request; an incompatible pending grant is withdrawn and replaced.
 
 ## Accomplishments we are proud of
 
-- A real WebMCP surface: 28 focused tools for job, comparison, saved-search,
+- A real WebMCP surface: 29 focused tools for job, comparison, saved-search,
   and application work — all discoverable from any page, each honest about
   when its prerequisites have not arrived.
 - A zero-configuration website encounter: the agent opens Jobbbler and

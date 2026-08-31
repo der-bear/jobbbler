@@ -18,7 +18,7 @@
 
 - [ ] Verify WebMCP in a supported browser context using the real registered
       tools.
-- [ ] Verify the global Agent layer on more than one route: the same 28 focused
+- [ ] Verify the global Agent layer on more than one route: the same 29 focused
       imperative tools stay registered everywhere, and state-gated tools
       answer with a clear next step when they are not ready.
 - [ ] Record actual registration/readiness, tool activity, search, compare,

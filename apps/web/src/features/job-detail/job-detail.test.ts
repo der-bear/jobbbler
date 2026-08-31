@@ -34,7 +34,7 @@ const job = {
   summary: "Build calm, accessible collaboration workflows.",
   categories: ["software_engineering"],
   skills: ["TypeScript"],
-  locations: ["Europe"],
+  locations: ["Berlin, Germany", "Germany", "Europe"],
   workModel: "remote",
   employmentType: "full_time",
   seniority: "senior",
@@ -240,7 +240,7 @@ describe("job-detail fit explanation", () => {
     const backIndex = markup.indexOf("Back to search");
     const titleIndex = markup.indexOf("Senior Product Engineer");
     const remoteIndex = markup.indexOf(">Remote</span>");
-    const locationIndex = markup.indexOf(">Europe</span>");
+    const locationIndex = markup.indexOf(">Berlin, Germany</span>");
     const applyIndex = markup.indexOf(">Apply<");
     expect(backIndex).toBeGreaterThanOrEqual(0);
     expect(titleIndex).toBeGreaterThanOrEqual(0);
@@ -267,7 +267,7 @@ describe("job-detail fit explanation", () => {
     expect(markup).toContain(">Full-time</span>");
   });
 
-  it("removes the repeated work-model prefix from every listed location", () => {
+  it("shows concrete cities without repeating broader search scopes", () => {
     const markup = renderToStaticMarkup(
       createElement(JobDetail, {
         jobId: job.id,
@@ -276,15 +276,15 @@ describe("job-detail fit explanation", () => {
           job: {
             ...job,
             applyMode: "internal",
-            locations: ["Remote - Europe", "Remote - United Kingdom"],
+            locations: ["Berlin, Germany", "Hamburg, Germany", "Germany", "Europe"],
           },
           fit: noEvidenceFit,
         },
       }),
     );
 
-    expect(markup).toContain(">Europe, United Kingdom</span>");
-    expect(markup).not.toContain("Remote - United Kingdom");
+    expect(markup).toContain(">Berlin, Germany, Hamburg, Germany</span>");
+    expect(markup).not.toContain(">Europe</span>");
   });
 
   it("does not tell people to recheck a fictional demo posting on another site", () => {

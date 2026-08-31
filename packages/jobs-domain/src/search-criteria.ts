@@ -8,6 +8,7 @@ import {
 const collator = new Intl.Collator("en", { sensitivity: "base" });
 
 const canonicalCountryByAlias = new Map<string, string>([
+  ["global", "Worldwide"],
   ["gb", "United Kingdom"],
   ["uk", "United Kingdom"],
   ["us", "United States"],
@@ -22,6 +23,10 @@ export function canonicalizeLocation(value: string): string {
   const collapsed = collapseWhitespace(value);
   const alias = collapsed.normalize("NFKC").toLocaleLowerCase("en").replace(/[.\s]/g, "");
   return canonicalCountryByAlias.get(alias) ?? collapsed;
+}
+
+export function isRemoteLocationIntent(value: string): boolean {
+  return collapseWhitespace(value).normalize("NFKC").toLocaleLowerCase("en") === "remote";
 }
 
 function uniqueEnumValues<TValue extends string>(values: readonly TValue[] | undefined): TValue[] {
@@ -42,14 +47,19 @@ function uniqueDisplayValues(values: readonly string[] | undefined): string[] {
 
 export function normalizeJobSearchCriteria(input: JobSearchInput): JobSearchCriteria {
   const parsed = jobSearchInputSchema.parse(input);
+  const normalizedLocations = uniqueDisplayValues(parsed.locations?.map(canonicalizeLocation));
+  const remoteLocationIntent = normalizedLocations.some(isRemoteLocationIntent);
 
   return jobSearchCriteriaSchema.parse({
     query: parsed.query === undefined ? null : collapseWhitespace(parsed.query),
     categories: uniqueEnumValues(parsed.categories),
-    workModels: uniqueEnumValues(parsed.workModels),
+    workModels: uniqueEnumValues([
+      ...(parsed.workModels ?? []),
+      ...(remoteLocationIntent ? (["remote"] as const) : []),
+    ]),
     employmentTypes: uniqueEnumValues(parsed.employmentTypes),
     seniorities: uniqueEnumValues(parsed.seniorities),
-    locations: uniqueDisplayValues(parsed.locations?.map(canonicalizeLocation)),
+    locations: normalizedLocations.filter((location) => !isRemoteLocationIntent(location)),
     skills: uniqueDisplayValues(parsed.skills),
     excludeKeywords: uniqueDisplayValues(parsed.excludeKeywords),
     salary:

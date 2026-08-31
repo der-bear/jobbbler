@@ -25,6 +25,7 @@ import { startApplication } from "@/features/application/start-application";
 import { externalApplicationUrl, supportsJobbblerPreparation } from "./application-capability";
 import {
   compactDate,
+  concreteJobLocations,
   employmentLabel,
   locationBesideWorkModel,
   relativeFreshness,
@@ -135,7 +136,7 @@ function JobIdentity({
 }>) {
   const canPrepare = supportsJobbblerPreparation(job);
   const employerApplicationUrl = externalApplicationUrl(job);
-  const normalizedLocations = job.locations
+  const normalizedLocations = concreteJobLocations(job.locations)
     .map((location) => locationBesideWorkModel(location, job.workModel))
     .filter((location): location is string => location !== null);
   const factLocations = normalizedLocations.length === 0 ? null : normalizedLocations.join(", ");

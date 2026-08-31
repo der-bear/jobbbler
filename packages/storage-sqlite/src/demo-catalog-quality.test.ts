@@ -54,6 +54,34 @@ describe("presentation demo catalog", () => {
     expect.soft(jobs.every(({ summary }) => summary.length >= 700)).toBe(true);
     expect
       .soft(
+        jobs.every(({ summary }) => {
+          const paragraphs = summary.split(/\n{2,}/u);
+          return paragraphs.length >= 3 && paragraphs.every((paragraph) => paragraph.length >= 80);
+        }),
+      )
+      .toBe(true);
+    expect
+      .soft(
+        jobs.every(({ locations }) =>
+          locations.every((location) => location.toLocaleLowerCase("en") !== "global"),
+        ),
+      )
+      .toBe(true);
+    expect.soft(jobs.every(({ locations }) => locations[0]?.includes(","))).toBe(true);
+    expect
+      .soft(
+        jobs.every(({ locations }) => {
+          const primary = locations[0];
+          if (primary === undefined) return false;
+          const country = primary.split(", ").at(-1);
+          if (country === undefined) return false;
+          const region = ["Canada", "United States"].includes(country) ? "North America" : "Europe";
+          return locations.join("|") === [primary, country, region].join("|");
+        }),
+      )
+      .toBe(true);
+    expect
+      .soft(
         jobs.every(({ organizationId, organizationName }) => {
           const organization = organizations.get(organizationId);
           return organization?.name === organizationName && organization.website === null;

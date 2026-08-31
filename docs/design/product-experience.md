@@ -93,7 +93,7 @@ commands and policies.
 
 ## Route experience
 
-The catalog has **28 focused tools**, all registered on every page. Nine are
+The catalog has **29 focused tools**, all registered on every page. Nine are
 clear entry points; private and stage-specific tools remain state-gated at
 execution.
 
@@ -145,7 +145,7 @@ activity” button opens it. It is a transparency layer, not a competing
 workspace and not a source of authority.
 
 - The header states the panel's purpose in one line; a status row shows the
-  live WebMCP state and the 28 capabilities discoverable across Jobbbler.
+  live WebMCP state and the 29 capabilities discoverable across Jobbbler.
 - Three tabs, in this order: **Activity**, **Tools**, and **Guide**.
 - Activity entries are two-level: the human sentence comes first, then the
   technical line — tool name, status, and duration. Running work, required
@@ -167,7 +167,7 @@ The submission should show a real external browser-agent session rather than a
 simulated chat inside Jobbbler:
 
 1. The user asks for a job outcome in the agent client.
-2. The agent opens Jobbbler, discovers the same 28 focused tools on any page,
+2. The agent opens Jobbbler, discovers the same 29 focused tools on any page,
    and may ask `plan_job_workflow` for recommended safe steps when useful.
 3. It invokes `search_jobs`; the real URL, filters, and results update.
 4. Navigation preserves the entire tool set; role and application actions

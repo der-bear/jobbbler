@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 async function createPrivateSession(page: Page): Promise<void> {
+  if (page.url() === "about:blank") await page.goto("/");
   const status = await page.evaluate(async () => {
     const response = await fetch("/api/v1/owners/session", { method: "POST" });
     return response.status;
@@ -74,7 +75,7 @@ test.describe("saved-search ownership workspace", () => {
     await expect(card).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "No saved searches yet." })).toBeVisible();
     await expect(page.getByRole("region", { name: "Your saved searches" })).toBeFocused();
-    await expect(page.getByText("Privacy & access", { exact: true })).toBeVisible();
+    await expect(page.getByRole("complementary", { name: "Saved search access" })).toBeVisible();
   });
 
   test("moves focus into recovery and deletion confirmation steps", async ({ page }) => {
@@ -86,7 +87,12 @@ test.describe("saved-search ownership workspace", () => {
 
     await createPrivateSession(page);
     await page.goto("/saved");
-    await page.getByText("Privacy & access", { exact: true }).click();
+    await page
+      .getByRole("complementary", { name: "Saved search access" })
+      .locator("details")
+      .filter({ hasText: "Delete private data" })
+      .locator("summary")
+      .click();
     await page.getByLabel(/Type DELETE MY PRIVATE DATA/u).fill("DELETE MY PRIVATE DATA");
     await page.getByRole("button", { name: "Continue to final confirmation" }).click();
     await expect(page.getByLabel("Final confirmation")).toBeFocused();
@@ -98,6 +104,7 @@ test.describe("saved-search ownership workspace", () => {
 
     await page.getByText("Keep access on other devices", { exact: true }).click();
     await page
+      .getByRole("complementary", { name: "Saved search access" })
       .getByLabel("Email address")
       .fill(`workspace-recovery-${String(Date.now())}@example.test`);
     await page.getByRole("button", { name: "Send verification code" }).click();
@@ -105,16 +112,22 @@ test.describe("saved-search ownership workspace", () => {
     await expect(page.getByRole("button", { name: "Verify email" })).toBeEnabled();
     await page.getByRole("button", { name: "Verify email" }).click();
 
-    await expect(page.getByText("Recovery is ready", { exact: true })).toBeVisible();
+    await expect(page.getByText("Recovery email added", { exact: true })).toBeVisible();
+    await expect(page.getByText("Access from another device", { exact: true })).toBeVisible();
     await expect(page.getByText("Keep access on other devices", { exact: true })).toHaveCount(0);
-    await expect(page.getByText("Email updates remain optional.", { exact: false })).toBeVisible();
+    await expect(
+      page.getByText("Search updates are still optional.", { exact: false }),
+    ).toBeVisible();
     await expect(page.getByText("Email updates on", { exact: true })).toHaveCount(0);
   });
 
   test("edits an existing email-update schedule without creating a duplicate", async ({ page }) => {
     await page.goto("/saved?q=platform&work=remote&create=1");
     await page.getByLabel("Email me when results change").check();
-    await page.getByLabel("Email address").fill(`schedule-edit-${String(Date.now())}@example.test`);
+    await page
+      .getByRole("region", { name: "Save this search" })
+      .getByLabel("Email address")
+      .fill(`schedule-edit-${String(Date.now())}@example.test`);
     await page.getByRole("button", { name: "Send verification code" }).click();
     await page.getByRole("button", { name: "Verify and continue" }).click();
 

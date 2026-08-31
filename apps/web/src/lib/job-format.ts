@@ -79,6 +79,38 @@ export function locationBesideWorkModel(
   return remainder.length > 0 ? remainder : null;
 }
 
+function normalizedLocation(value: string): string {
+  return value.trim().normalize("NFKC").toLocaleLowerCase("en");
+}
+
+export function concreteJobLocations(locations: readonly string[]): readonly string[] {
+  return locations.filter((location) => location.includes(","));
+}
+
+export function locationForSearch(
+  locations: readonly string[],
+  requestedLocations: readonly string[],
+): string | undefined {
+  const concreteLocations = concreteJobLocations(locations);
+  for (const requested of requestedLocations) {
+    const normalizedRequested = normalizedLocation(requested);
+    const exact = concreteLocations.find(
+      (location) => normalizedLocation(location) === normalizedRequested,
+    );
+    if (exact !== undefined) return exact;
+
+    const containing = concreteLocations.find((location) => {
+      const normalizedActual = normalizedLocation(location);
+      return (
+        normalizedActual.includes(normalizedRequested) ||
+        normalizedRequested.includes(normalizedActual)
+      );
+    });
+    if (containing !== undefined) return containing;
+  }
+  return concreteLocations[0];
+}
+
 /* Full-time is the default every reader assumes, so only deviations are shown. */
 export function deviatingEmploymentLabel(value: EmploymentType): string | null {
   return value === "full_time" ? null : employmentLabels[value];

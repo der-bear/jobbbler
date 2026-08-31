@@ -13,13 +13,14 @@ roles: search, filters, saved alerts, and one deliberate application at a time.
 Describe what you want once, in plain words, to a compatible browser agent; the
 agent runs the search on the real site, the server keeps checking after you
 close the page, and the next answer contains only what changed. When it is time
-to apply, the flow deliberately slows down: the exact disclosure is shown on
-the visible owner review surface, and one explicit decision — bound to that
-exact application — is recorded before anything is shared or submitted.
+to apply, the agent prepares the exact application and the external agent
+client presents every value, recipient, and data-use term for one explicit
+decision bound to that unchanged application. The ordinary site remains a
+complete manual alternative and a readable record of what was submitted.
 
 The technology that makes this possible is WebMCP — no separately installed or
 declared MCP server. A global Agent layer is available on every page: the same
-28 focused tools stay discoverable across navigation, while private and
+29 focused tools stay discoverable across navigation, while private and
 workflow-specific actions enforce IDs, ownership, and state when executed.
 
 > Not an AI job board. A proof that any data-rich website can become safely
@@ -35,7 +36,7 @@ Built for the OpenAI WebMCP Challenge.
   salary semantics, known limits, and search-fit evidence stay visible in the
   interface. Salary ranking is currency-aware (EUR, USD, GBP, and CAD at pinned
   rates) and explains itself with evidence strings.
-- **Global agent layer.** Twenty-eight focused tools for search, roles,
+- **Global agent layer.** Twenty-nine focused tools for search, roles,
   comparison, saved alerts, and applications — all registered on every page,
   so navigation never costs an agent a capability. State-gated tools answer
   with a clear next step when
@@ -90,7 +91,7 @@ results. A browser capability is never treated as identity or authorization.
 `plan_job_workflow` returns recommended safe steps for a goal from the current
 page. It is advisory only: it plans, it never acts.
 
-The catalog has **28 focused tools**, all registered on every page. Nine are
+The catalog has **29 focused tools**, all registered on every page. Nine are
 clear entry points — `plan_job_workflow`, `get_search_filters`, `search_jobs`,
 `open_job_details`, `prepare_application`, `get_applications`,
 `open_jobbbler_page`, `enable_workspace_recovery`, and

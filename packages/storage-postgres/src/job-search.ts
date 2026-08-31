@@ -67,6 +67,7 @@ export async function searchPostgresJobs(
         search.seniority,
         search.location_terms,
         search.skill_terms,
+        search.body,
         NULLIF(search.body->'salary', 'null'::jsonb) AS job_salary,
         input.criteria
       FROM jobbbler.job_search_documents AS search
@@ -207,6 +208,34 @@ export async function searchPostgresJobs(
     dimensions AS NOT MATERIALIZED (
       SELECT
         salary_scored.*,
+        COALESCE((
+          SELECT avg(
+            CASE
+              WHEN strpos(jobbbler.normalize_search_text(body->>'title'), token.value) > 0 THEN 1.0
+              WHEN EXISTS (
+                SELECT 1 FROM jsonb_array_elements_text(body->'skills') AS skill(value)
+                WHERE strpos(jobbbler.normalize_search_text(skill.value), token.value) > 0
+              ) THEN 0.9
+              WHEN strpos(jobbbler.normalize_search_text(body->>'organizationName'), token.value) > 0
+                THEN 0.8
+              WHEN EXISTS (
+                SELECT 1 FROM jsonb_array_elements_text(body->'categories') AS category(value)
+                WHERE strpos(jobbbler.normalize_search_text(category.value), token.value) > 0
+              ) THEN 0.75
+              WHEN EXISTS (
+                SELECT 1 FROM jsonb_array_elements_text(body->'locations') AS location(value)
+                WHERE strpos(jobbbler.normalize_search_text(location.value), token.value) > 0
+              ) THEN 0.6
+              WHEN strpos(jobbbler.normalize_search_text(body->>'summary'), token.value) > 0 THEN 0.45
+              ELSE 0.0
+            END
+          )
+          FROM regexp_split_to_table(
+            jobbbler.normalize_search_text(criteria->>'query'),
+            ' +'
+          ) AS token(value)
+          WHERE token.value <> ''
+        ), 1.0)::double precision AS text_score,
         (
           SELECT count(*)::double precision
           FROM jsonb_array_elements_text(criteria->'categories') AS requested(value)
@@ -255,7 +284,7 @@ export async function searchPostgresJobs(
           WHEN 'relevance' THEN
             CASE
               WHEN (
-                CASE WHEN criteria->>'query' IS NULL THEN 0 ELSE 30 END
+                CASE WHEN criteria->>'query' IS NULL THEN 0 ELSE 30 * text_score END
                 + CASE WHEN jsonb_array_length(criteria->'categories') = 0 THEN 0 ELSE 15 END
                 + CASE WHEN jsonb_array_length(criteria->'workModels') = 0 THEN 0 ELSE 10 END
                 + CASE WHEN jsonb_array_length(criteria->'seniorities') = 0 THEN 0 ELSE 10 END

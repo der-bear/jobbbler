@@ -24,7 +24,7 @@ describe("SearchFilters", () => {
     );
 
     const searchIndex = markup.indexOf("Role, skill or company");
-    const locationIndex = markup.indexOf("City, country, or remote");
+    const locationIndex = markup.indexOf("City, country or region");
     const disclosureIndex = markup.indexOf("More filters");
 
     expect(searchIndex).toBeGreaterThan(-1);

@@ -55,7 +55,7 @@ const firstJob: Job = {
   workModel: "remote",
   employmentType: "full_time",
   seniority: "senior",
-  locations: ["Europe"],
+  locations: ["Berlin, Germany", "Germany", "Europe"],
   skills: ["TypeScript", "React"],
   salary: { minimum: 100_000, maximum: 130_000, currency: "EUR", period: "year" },
   source: { key: "jobbbler_demo", label: "Jobbbler demo", url: null },
@@ -653,6 +653,11 @@ describe("route-scoped WebMCP tool manifests", () => {
       signal: controller.signal,
     });
     expect(comparison.status).toBe("completed");
+    expect(comparison).toMatchObject({
+      data: {
+        jobs: [{ location: "Berlin, Germany" }, { location: "Berlin, Germany" }],
+      },
+    });
     expectBoundedJson(comparison);
 
     await expectSafeRejection(
@@ -746,7 +751,7 @@ describe("route-scoped WebMCP tool manifests", () => {
     const completeJob = {
       ...secondJob,
       summary: completeSummary,
-      locations: ["Berlin, Germany", "Hamburg, Germany"],
+      locations: ["Berlin, Germany", "Hamburg, Germany", "Germany", "Europe"],
       skills: ["TypeScript", "React", "PostgreSQL", "Kubernetes"],
     };
     const completeFit = {
@@ -779,7 +784,7 @@ describe("route-scoped WebMCP tool manifests", () => {
         title: completeJob.title,
         organization: completeJob.organizationName,
         summary: completeSummary,
-        locations: completeJob.locations,
+        locations: ["Berlin, Germany", "Hamburg, Germany"],
         skills: completeJob.skills,
         evidence: completeFit.evidence,
       },

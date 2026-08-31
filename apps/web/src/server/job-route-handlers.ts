@@ -12,7 +12,6 @@ import {
   publicJobSearchPolicy,
   rateLimitHeaders,
 } from "./discovery-request";
-import { mergeLocationSuggestions, referenceLocationSuggestions } from "./location-suggestion-data";
 
 export interface JobDetailRouteContext {
   readonly params: Promise<{ readonly id: string }>;
@@ -76,16 +75,14 @@ export async function handleLocationSuggestionsRequest(
       limit: url.searchParams.get("limit") ?? undefined,
     });
     const catalogLocations = await currentDependencies.jobs.suggestLocations(query.q, query.limit);
-    const locations = mergeLocationSuggestions(
-      catalogLocations,
-      referenceLocationSuggestions(query.q, query.limit),
-      query.limit,
+    return apiSuccessResponse(
+      locationSuggestionsResultSchema.parse({ locations: catalogLocations }),
+      {
+        requestId,
+        cacheControl: "public, max-age=60, s-maxage=300, stale-while-revalidate=1800",
+        headers: rateLimitHeaders(rateLimit.decision),
+      },
     );
-    return apiSuccessResponse(locationSuggestionsResultSchema.parse({ locations }), {
-      requestId,
-      cacheControl: "public, max-age=60, s-maxage=300, stale-while-revalidate=1800",
-      headers: rateLimitHeaders(rateLimit.decision),
-    });
   } catch (error) {
     return apiErrorResponse(error, { requestId });
   }

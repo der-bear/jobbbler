@@ -21,7 +21,7 @@ test.afterEach(async ({ page }) => {
 test("multi-select exposes one named multi-value listbox and returns focus on Escape", async ({
   page,
 }) => {
-  const control = page.locator(".jb-multiselect__control").first();
+  const control = page.getByRole("button", { name: /^Function:/u });
   await expect(control).toHaveAccessibleName("Function: Any function");
 
   await control.click();

@@ -5,6 +5,7 @@ import type { JobSummary, SearchJobsResult, ToolActivity } from "@jobbbler/contr
 import {
   createLatestSearchCommit,
   deriveSearchPresentation,
+  searchSortAfterQueryChange,
   searchWorkspaceHref,
   shouldPulseResultsForActivity,
 } from "./search-workspace";
@@ -114,6 +115,24 @@ describe("deriveSearchPresentation", () => {
 });
 
 describe("deferred text filter commits", () => {
+  it("switches the first text query from catalog recency to best match", () => {
+    expect(
+      searchSortAfterQueryChange(
+        { sort: "newest", limit: 20 },
+        { query: "security", sort: "newest", limit: 20 },
+      ),
+    ).toBe("relevance");
+  });
+
+  it("preserves a sort chosen after a query already exists", () => {
+    expect(
+      searchSortAfterQueryChange(
+        { query: "security", sort: "newest", limit: 20 },
+        { query: "security engineer", sort: "newest", limit: 20 },
+      ),
+    ).toBe("newest");
+  });
+
   it("uses the latest draft and commit callback after an agent replaces the search", () => {
     let draft = "human typing";
     const calls: string[] = [];

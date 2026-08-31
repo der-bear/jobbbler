@@ -1433,15 +1433,16 @@ function suggestLocations(
     .prepare(
       `SELECT min(value) AS value, COUNT(*) AS frequency
        FROM job_location_suggestions
-       WHERE normalized_value >= ? AND normalized_value < ?
+       WHERE instr(normalized_value, ?) > 0
        GROUP BY normalized_value
        ORDER BY
          CASE WHEN normalized_value = ? THEN 0 ELSE 1 END,
+         CASE WHEN substr(normalized_value, 1, length(?)) = ? THEN 0 ELSE 1 END,
          frequency DESC,
          normalized_value ASC
        LIMIT ?`,
     )
-    .all(normalizedQuery, `${normalizedQuery}\uffff`, normalizedQuery, safeLimit) as {
+    .all(normalizedQuery, normalizedQuery, normalizedQuery, normalizedQuery, safeLimit) as {
     readonly value: string;
   }[];
   return rows.map(({ value }) => value);

@@ -31,6 +31,7 @@ import {
   type ToolActivity,
   type WorkModel,
 } from "@jobbbler/contracts";
+import { isRemoteLocationIntent } from "@jobbbler/jobs-domain";
 import { Chip, MultiSelect } from "@jobbbler/ui";
 
 import { useWebMcp } from "@/components/webmcp-provider";
@@ -39,6 +40,7 @@ import {
   deviatingEmploymentLabel,
   employmentLabel,
   locationBesideWorkModel,
+  locationForSearch,
   relativeFreshness,
   salaryCardPresentation,
   seniorityLabel,
@@ -130,6 +132,15 @@ function inputFromDraft(draft: SearchDraft): JobSearchInput {
         }),
     sort: draft.sort,
     limit: 20,
+  };
+}
+
+function normalizeLocationDraftIntent(draft: SearchDraft): SearchDraft {
+  if (!isRemoteLocationIntent(draft.location)) return draft;
+  return {
+    ...draft,
+    location: "",
+    workModels: [...new Set([...draft.workModels, "remote" as const])],
   };
 }
 
@@ -226,6 +237,16 @@ export function createLatestSearchCommit<TValue>(
     if (!canCommit()) return;
     readCommit()(readValue());
   };
+}
+
+export function searchSortAfterQueryChange(
+  current: JobSearchInput,
+  next: JobSearchInput,
+): JobSearchCriteria["sort"] {
+  const nextSort = next.sort ?? "relevance";
+  const currentHasQuery = (current.query?.trim().length ?? 0) > 0;
+  const nextHasQuery = (next.query?.trim().length ?? 0) > 0;
+  return !currentHasQuery && nextHasQuery && nextSort === "newest" ? "relevance" : nextSort;
 }
 
 function SearchFilters({
@@ -537,12 +558,15 @@ function JobResult({
   displayCurrency,
   job,
   detailSearch,
+  requestedLocations,
 }: Readonly<{
   displayCurrency: DisplayCurrency;
   job: JobSummary;
   detailSearch: string;
+  requestedLocations: readonly string[];
 }>) {
   const salary = salaryCardPresentation(job.salary, displayCurrency);
+  const displayedLocation = locationForSearch(job.locations, requestedLocations);
   const salaryExplanationId =
     salary.explanation === null ? undefined : `salary-explanation-${job.id}`;
   return (
@@ -560,7 +584,7 @@ function JobResult({
               {workModelLabel(job.workModel)}
             </Chip>
             {[
-              locationBesideWorkModel(job.locations[0], job.workModel),
+              locationBesideWorkModel(displayedLocation, job.workModel),
               deviatingEmploymentLabel(job.employmentType),
             ]
               .filter((fact): fact is string => fact !== null)
@@ -601,6 +625,17 @@ export function SearchWorkspace({
   const mountedAt = useRef(Date.now());
   const lastPulsedActivityId = useRef<string | null>(null);
   const latestActivity = webMcp.activities.at(-1);
+
+  useEffect(() => {
+    if (mode !== "catalog" || initialSearch.error !== null || window.location.search.length === 0) {
+      return;
+    }
+    const parameters = searchInputToSearchParams(applied);
+    const canonicalSearch = parameters.size === 0 ? "" : `?${parameters.toString()}`;
+    if (window.location.search !== canonicalSearch) {
+      window.history.replaceState({}, "", `/jobs${canonicalSearch}`);
+    }
+  }, [applied, initialSearch.error, mode]);
 
   useEffect(() => {
     if (
@@ -758,8 +793,15 @@ export function SearchWorkspace({
   );
 
   function commitDraft(next: SearchDraft) {
-    setDraft(next);
-    const input = inputFromDraft(next);
+    const locationNormalizedDraft = normalizeLocationDraftIntent(next);
+    const draftInput = inputFromDraft(locationNormalizedDraft);
+    const sort = searchSortAfterQueryChange(applied, draftInput);
+    const committedDraft =
+      sort === locationNormalizedDraft.sort
+        ? locationNormalizedDraft
+        : { ...locationNormalizedDraft, sort };
+    const input = sort === draftInput.sort ? draftInput : { ...draftInput, sort };
+    setDraft(committedDraft);
     if (
       searchInputToSearchParams(input).toString() === searchInputToSearchParams(applied).toString()
     ) {
@@ -925,6 +967,7 @@ export function SearchWorkspace({
                 displayCurrency={draft.currency}
                 job={job}
                 key={job.id}
+                requestedLocations={applied.locations ?? []}
               />
             ))}
           </div>

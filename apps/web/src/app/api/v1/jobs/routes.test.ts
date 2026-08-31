@@ -201,7 +201,7 @@ describe("job discovery API routes", () => {
     });
   });
 
-  it("supplements sparse catalog location suggestions with realistic geography", async () => {
+  it("does not advertise locations that have no matching open role", async () => {
     const current = dependencies();
     const suggestLocations = vi.fn(async () => []);
     const response = await handleLocationSuggestionsRequest(
@@ -213,7 +213,7 @@ describe("job discovery API routes", () => {
     expect(suggestLocations).toHaveBeenCalledWith("pho", 8);
     await expect(response.json()).resolves.toMatchObject({
       ok: true,
-      data: { locations: expect.arrayContaining(["Phoenix, AZ"]) },
+      data: { locations: [] },
     });
   });
 

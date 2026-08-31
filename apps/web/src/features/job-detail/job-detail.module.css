@@ -133,19 +133,23 @@
   letter-spacing: -0.035em;
 }
 
+/*
+ * A posting is four paragraphs — role, work, requirements, terms — and the gap
+ * has to separate them. At 16px against a 26.4px line the blocks ran together.
+ */
 .summary {
   display: grid;
-  gap: 16px;
+  gap: 21px;
 }
 
 /*
  * Capped measure: the column is wide enough to run 95–116 characters per line,
- * which costs the reader the start of the next line. 68ch keeps it near the
- * 65–75 that prose is comfortable at.
+ * which costs the reader the start of the next line. Manrope sets roughly 1.35
+ * characters per `ch` at this size, so 53ch lands the longest lines near 72.
  */
 .summary p {
   margin: 0;
-  max-inline-size: 56ch;
+  max-inline-size: 53ch;
   color: var(--color-ink);
   font-size: 16px;
   line-height: 1.65;
