@@ -41,6 +41,7 @@ import {
   assertRequestedDisclosureMatches,
   hashApplicationReviewSnapshot,
   normalizeApplicationAnswer,
+  normalizeLegacyApplicationDraft,
 } from "./application-policy";
 import {
   createConfirmationSecrets,
@@ -100,6 +101,7 @@ function persistedReceiptSummary(
     submission: {
       provider: receipt.submission.provider,
       providerReferenceId: receipt.submission.providerReferenceId,
+      role: receipt.submission.role,
       recipient: {
         id: receipt.submission.recipientId,
         name: receipt.submission.recipientName,
@@ -160,7 +162,7 @@ async function requireOwnedDraft(
 ): Promise<ApplicationDraft> {
   const draft = await storage.applications.getByOwner(draftId, ownerId);
   if (draft === null) throw notFound("Application");
-  return draft;
+  return normalizeLegacyApplicationDraft(draft);
 }
 
 async function requireJob(storage: Storage, jobId: string): Promise<Job> {
@@ -345,7 +347,12 @@ export function createApplicationRouteDependencies(
         assertInternalApplicationJob(job);
         assertOpenApplicationJob(job);
         const existing = await storage.applications.getByOwnerAndJob(ownerId, jobId);
-        if (existing !== null) return { draft: existing, disposition: "reopened" as const };
+        if (existing !== null) {
+          return {
+            draft: normalizeLegacyApplicationDraft(existing),
+            disposition: "reopened" as const,
+          };
+        }
         const draft = createApplicationDraft({
           id: createEntityId("application"),
           ownerId,
@@ -472,12 +479,21 @@ export function createApplicationRouteDependencies(
             existing.submission.managedDeliveryId,
             actor.ownerId,
           );
-          const summary = persistedReceiptSummary(existing);
           if (
             delivery?.status !== "acknowledged" ||
             delivery.providerReferenceId !== existing.submission.providerReferenceId ||
-            summary === null
+            delivery.role?.id !== job.id ||
+            delivery.role?.title !== job.title ||
+            existing.submission.role?.id !== delivery.role.id ||
+            existing.submission.role?.title !== delivery.role.title
           ) {
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "The persisted submission is missing its delivery acknowledgement.",
+            });
+          }
+          const summary = persistedReceiptSummary(existing);
+          if (summary === null) {
             throw new DomainError({
               code: "CONFLICT",
               message: "The persisted submission is missing its delivery acknowledgement.",
@@ -541,6 +557,7 @@ export function createApplicationRouteDependencies(
               managedDeliveryId: delivery.id,
               provider: delivery.provider,
               providerReferenceId: delivery.providerReferenceId,
+              role: delivery.role,
               recipientId: delivery.recipientId,
               recipientName: delivery.recipientName,
               submittedAt: delivery.acknowledgedAt,

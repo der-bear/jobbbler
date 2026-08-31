@@ -231,7 +231,7 @@ describe("application operations with SQLite", () => {
       ["full_name", "Alex Morgan", true],
       ["email", "alex.morgan@example.com", true],
       ["location", "Kyiv, Ukraine", true],
-      ["motivation", "I build calm, accessible product workflows.", false],
+      ["cover_letter", "I build calm, accessible product workflows.", true],
       ["work_authorization", "Authorized to work in the European Union", true],
     ] as const;
     for (const [fieldKey, value, sensitive] of answers) {
@@ -320,6 +320,7 @@ describe("application operations with SQLite", () => {
       submission: {
         provider: "jobbbler_demo",
         providerReferenceId: expect.stringMatching(/^demo_submission_/u),
+        role: { id: job.id, title: job.title },
         recipient: { id: organizationId, name: "Northstar Systems" },
         submittedAt: now,
         fields: [
@@ -327,8 +328,8 @@ describe("application operations with SQLite", () => {
           { fieldKey: "email", label: "Email", value: "alex.morgan@example.com" },
           { fieldKey: "location", label: "Current location", value: "Kyiv, Ukraine" },
           {
-            fieldKey: "motivation",
-            label: "Why this role",
+            fieldKey: "cover_letter",
+            label: "Cover letter",
             value: "I build calm, accessible product workflows.",
           },
           {
@@ -347,6 +348,7 @@ describe("application operations with SQLite", () => {
     if (persistedReceipt?.status !== "submitted") {
       throw new Error("Missing persisted submission receipt fixture.");
     }
+    expect(persistedReceipt.submission.role).toEqual({ id: job.id, title: job.title });
     await expect(
       storage.applications.getManagedDelivery(
         persistedReceipt.submission.managedDeliveryId,
@@ -400,10 +402,10 @@ describe("application operations with SQLite", () => {
       {
         expectedVersion: draft.version,
         answer: {
-          fieldKey: "motivation",
+          fieldKey: "cover_letter",
           value: "A polished suggestion.",
           provenance: "user_entered",
-          sensitive: false,
+          sensitive: true,
           acceptedByHuman: true,
         },
       },

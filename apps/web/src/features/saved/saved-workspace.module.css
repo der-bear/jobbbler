@@ -259,9 +259,9 @@
 
 .form input:focus-visible,
 .form select:focus-visible {
-  border-color: var(--jb-signal);
-  outline: 3px solid var(--jb-focus);
-  outline-offset: 2px;
+  border-color: var(--jb-focus);
+  outline: 2px solid var(--jb-focus);
+  outline-offset: 0;
 }
 
 .formGrid {
@@ -312,8 +312,8 @@
 }
 
 .weekdayFieldset input:focus-visible + span {
-  outline: 3px solid var(--jb-focus);
-  outline-offset: 2px;
+  outline: 2px solid var(--jb-focus);
+  outline-offset: 0;
 }
 
 .primaryButton,
@@ -620,8 +620,8 @@
 
 .removeConfirmation input:focus-visible {
   border-color: var(--jb-danger);
-  outline: 3px solid var(--jb-focus);
-  outline-offset: 2px;
+  outline: 2px solid var(--jb-focus);
+  outline-offset: 0;
 }
 
 .removeConfirmation > div {

@@ -32,6 +32,7 @@ export function searchInputToSearchParams(input: JobSearchInput): URLSearchParam
   if (criteria.query !== null) parameters.set("q", criteria.query);
   appendAll(parameters, "category", criteria.categories);
   appendAll(parameters, "work", criteria.workModels);
+  appendAll(parameters, "employment", criteria.employmentTypes ?? []);
   appendAll(parameters, "seniority", criteria.seniorities);
   appendAll(parameters, "location", criteria.locations);
   appendAll(parameters, "skill", criteria.skills);
@@ -76,6 +77,7 @@ export function searchParamsToInput(parameters: URLSearchParams): ParsedJobSearc
     query: single(parameters, "q"),
     categories: parameters.getAll("category"),
     workModels: parameters.getAll("work"),
+    employmentTypes: parameters.getAll("employment"),
     seniorities: parameters.getAll("seniority"),
     locations: parameters.getAll("location"),
     skills: parameters.getAll("skill"),
@@ -101,6 +103,7 @@ export function criteriaToSearchInput(criteria: JobSearchCriteria): JobSearchInp
     ...(criteria.query === null ? {} : { query: criteria.query }),
     categories: criteria.categories,
     workModels: criteria.workModels,
+    employmentTypes: criteria.employmentTypes ?? [],
     seniorities: criteria.seniorities,
     locations: criteria.locations,
     skills: criteria.skills,

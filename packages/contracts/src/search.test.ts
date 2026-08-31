@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import { jobSearchInputSchema, locationSuggestionsResultSchema } from "./search.js";
+import {
+  jobSearchInputSchema,
+  locationSuggestionsResultSchema,
+  searchSortSchema,
+} from "./search.js";
 
 describe("jobSearchInputSchema", () => {
   it("normalizes bounded human search input", () => {
     const parsed = jobSearchInputSchema.parse({
       query: "  Senior product engineer  ",
       categories: ["software_engineering", "product"],
+      employmentTypes: ["full_time", "contract"],
       locations: [" Europe ", "Kyiv"],
       salary: {
         minimum: 100_000,
@@ -19,6 +24,7 @@ describe("jobSearchInputSchema", () => {
 
     expect(parsed.query).toBe("Senior product engineer");
     expect(parsed.locations).toEqual(["Europe", "Kyiv"]);
+    expect(parsed.employmentTypes).toEqual(["full_time", "contract"]);
     expect(parsed.salary?.currency).toBe("EUR");
     expect(parsed.limit).toBe(24);
   });
@@ -36,6 +42,16 @@ describe("jobSearchInputSchema", () => {
 
     expect(() => jobSearchInputSchema.parse({ limit: 51 })).toThrow();
     expect(() => jobSearchInputSchema.parse({ query: "x".repeat(501) })).toThrow();
+  });
+
+  it("accepts every user-facing deterministic sort order", () => {
+    expect(searchSortSchema.options).toEqual([
+      "relevance",
+      "newest",
+      "updated_desc",
+      "salary_desc",
+      "salary_asc",
+    ]);
   });
 });
 

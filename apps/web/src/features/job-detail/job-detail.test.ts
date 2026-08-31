@@ -192,15 +192,40 @@ describe("job-detail fit explanation", () => {
     expect(markup).toContain("Final detail.");
   });
 
-  it("turns a dense source description into readable paragraphs without dropping words", () => {
+  it("splits a description on the paragraphs it marks rather than on sentence pairs", () => {
+    const authored = [
+      "This role exists because monitoring coverage fell behind the network.",
+      "What you will own: dashboards, alerting, and the incident review that follows. A second sentence keeps this paragraph longer than one.",
+      "What we look for: production Prometheus experience and calm incident judgement.",
+    ].join("\n\n");
+
+    expect(jobSummaryParagraphs(authored)).toEqual([
+      "This role exists because monitoring coverage fell behind the network.",
+      "What you will own: dashboards, alerting, and the incident review that follows. A second sentence keeps this paragraph longer than one.",
+      "What we look for: production Prometheus experience and calm incident judgement.",
+    ]);
+  });
+
+  it("does not invent paragraph breaks for descriptions written as one block", () => {
+    const unstructured = "One. Two. Three. Four. Five.";
+
+    expect(jobSummaryParagraphs(unstructured)).toEqual([unstructured]);
+  });
+
+  it("collapses single line breaks inside one authored paragraph", () => {
+    const wrapped = "First paragraph\nwrapped mid-sentence.\n\nSecond paragraph stands alone.";
+
+    expect(jobSummaryParagraphs(wrapped)).toEqual([
+      "First paragraph wrapped mid-sentence.",
+      "Second paragraph stands alone.",
+    ]);
+  });
+
+  it("keeps a dense source paragraph intact without dropping words", () => {
     const description =
       "First sentence explains the context. Second sentence explains the work. Third sentence covers collaboration. Fourth sentence covers success. Fifth sentence covers the team.";
 
-    expect(jobSummaryParagraphs(description)).toEqual([
-      "First sentence explains the context. Second sentence explains the work.",
-      "Third sentence covers collaboration. Fourth sentence covers success.",
-      "Fifth sentence covers the team.",
-    ]);
+    expect(jobSummaryParagraphs(description)).toEqual([description]);
   });
 
   it("places the return path before the role heading and the application action after key facts", () => {
@@ -212,13 +237,54 @@ describe("job-detail fit explanation", () => {
       }),
     );
 
-    expect(markup.indexOf("Back to search")).toBeLessThan(
-      markup.indexOf("Senior Product Engineer"),
-    );
-    expect(markup.indexOf("Remote · Europe")).toBeLessThan(markup.indexOf(">Apply<"));
-    expect(markup.indexOf(">Apply<")).toBeLessThan(
+    const backIndex = markup.indexOf("Back to search");
+    const titleIndex = markup.indexOf("Senior Product Engineer");
+    const remoteIndex = markup.indexOf(">Remote</span>");
+    const locationIndex = markup.indexOf(">Europe</span>");
+    const applyIndex = markup.indexOf(">Apply<");
+    expect(backIndex).toBeGreaterThanOrEqual(0);
+    expect(titleIndex).toBeGreaterThanOrEqual(0);
+    expect(remoteIndex).toBeGreaterThanOrEqual(0);
+    expect(locationIndex).toBeGreaterThanOrEqual(0);
+    expect(applyIndex).toBeGreaterThanOrEqual(0);
+    expect(backIndex).toBeLessThan(titleIndex);
+    expect(remoteIndex).toBeLessThan(locationIndex);
+    expect(locationIndex).toBeLessThan(applyIndex);
+    expect(applyIndex).toBeLessThan(
       markup.indexOf("Build calm, accessible collaboration workflows."),
     );
+  });
+
+  it("keeps the known employment type visible on the role detail", () => {
+    const markup = renderToStaticMarkup(
+      createElement(JobDetail, {
+        jobId: job.id,
+        criteriaSearch: "",
+        initialResult: { job: { ...job, applyMode: "internal" }, fit: noEvidenceFit },
+      }),
+    );
+
+    expect(markup).toContain(">Full-time</span>");
+  });
+
+  it("removes the repeated work-model prefix from every listed location", () => {
+    const markup = renderToStaticMarkup(
+      createElement(JobDetail, {
+        jobId: job.id,
+        criteriaSearch: "",
+        initialResult: {
+          job: {
+            ...job,
+            applyMode: "internal",
+            locations: ["Remote - Europe", "Remote - United Kingdom"],
+          },
+          fit: noEvidenceFit,
+        },
+      }),
+    );
+
+    expect(markup).toContain(">Europe, United Kingdom</span>");
+    expect(markup).not.toContain("Remote - United Kingdom");
   });
 
   it("does not tell people to recheck a fictional demo posting on another site", () => {

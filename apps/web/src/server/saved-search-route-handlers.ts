@@ -101,14 +101,18 @@ async function privateMutation(
   return { ownerId: current.owner.id, body: await readSmallJsonBody(request) };
 }
 
-export async function handleCreateSavedSearchRequest(
+async function handleCreateSavedSearchRequestForActor(
   request: Request,
   dependencies: SavedSearchRouteDependencies,
+  actorKind: "human" | "agent",
+  idempotencyRequired: boolean,
 ): Promise<Response> {
   const requestId = createRequestId();
   try {
     const command = await privateMutation(request, dependencies);
-    const idempotencyKey = readIdempotencyKey(request);
+    const idempotencyKey = idempotencyRequired
+      ? requireIdempotencyKey(request)
+      : readIdempotencyKey(request);
     const scope = `saved_search.create:${command.ownerId}`;
     const now = dependencies.identity.now();
     if (idempotencyKey !== null) {
@@ -158,7 +162,7 @@ export async function handleCreateSavedSearchRequest(
       key: "save_job_search",
       status: "completed",
       safeSummary: "Job search saved to the private workspace.",
-      actorKind: "human",
+      actorKind,
       aggregate: { type: "saved_search", version: saved.version },
       occurredAt: now,
       effects: [
@@ -170,6 +174,20 @@ export async function handleCreateSavedSearchRequest(
   } catch (error) {
     return apiErrorResponse(error, { requestId });
   }
+}
+
+export function handleCreateSavedSearchRequest(
+  request: Request,
+  dependencies: SavedSearchRouteDependencies,
+): Promise<Response> {
+  return handleCreateSavedSearchRequestForActor(request, dependencies, "human", false);
+}
+
+export function handleAgentCreateSavedSearchRequest(
+  request: Request,
+  dependencies: SavedSearchRouteDependencies,
+): Promise<Response> {
+  return handleCreateSavedSearchRequestForActor(request, dependencies, "agent", true);
 }
 
 export async function handleListSavedSearchesRequest(

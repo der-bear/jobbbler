@@ -52,11 +52,12 @@ The current implementation keeps identity portable across both storage adapters.
 
 1. A WebMCP command reaches the Policy Enforcement Point in the BFF.
 2. The backend evaluates the owner session, agent session, resource, action, state, expiry, and risk.
-3. If authority is absent but requestable, the response is a structured denial with a non-secret, server-issued request ID, bounded presentation facts or a compact owner-review reference, and `requires_user_action` status.
+3. If authority is absent but requestable, the response is a structured denial with a non-secret, server-issued request ID, bounded presentation facts, and `requires_user_action` status. After application-bound assistance is approved, the final review may include the exact private application values because those values are the object of the decision.
 4. A compatible external agent client presents the named resource, operations,
-   purpose, duration, and affected data classes through its own interaction UI
-   or by showing the current Jobbbler surface. Neither path is a standardized
-   WebMCP consent UI.
+   purpose, duration, and affected data classes through its own interaction UI.
+   For final application submission it presents every exact returned value; an
+   optional Jobbbler review URL is a browser fallback, not a required step.
+   Neither path is a standardized WebMCP consent UI.
 5. The person explicitly approves or declines there. While that request is
    active, the person can explicitly withdraw it through the same outcome tool.
    Silence and unrelated free-form text are not decisions.
@@ -95,18 +96,17 @@ The browser agent session ID is a scoping handle, not a claim that Jobbbler has 
 ## Data authorization and consent
 
 The agent may request a data operation. For the final application review,
-Jobbbler freezes every exact field value and sensitivity marker on the visible
-owner review surface. WebMCP returns only a compact request-bound reference
-with the review URL, recipient, purpose, field and sensitivity counts, notice
-version, draft version, and expiry; the exact values are not serialized into the
-WebMCP JSON result. They remain on the visible owner review page, which a
-compatible client may show or observe as the current tab or surface. The
-matching decision tool accepts only the exact live request ID, current draft
-version, and normalized decision. The server rechecks that exact request against
-the unchanged review snapshot, then stores the request-bound `agent_client`
-action. Stored consent evidence represents the reviewed values with field keys
-and a payload hash, not the raw values. This verifies the exact request and
-server state, not the human, model, or agent-vendor identity.
+Jobbbler freezes every exact field value and sensitivity marker, then returns
+that private review to the already-authorized external agent client together
+with the recipient, purpose, privacy notice, request binding, expiry, and an
+optional owner-review URL. This result has a dedicated 64 KB bound because the
+values are the object of the decision. The matching decision tool accepts only
+the exact live request ID, current draft version, and normalized decision. The
+server rechecks that exact request against the unchanged review snapshot, then
+stores the request-bound `agent_client` action. Stored consent evidence
+represents the reviewed values with field keys and a payload hash, not the raw
+values. This verifies the exact request and server state, not the human, model,
+or agent-vendor identity.
 
 Before optional AI processing or disclosure to an employer, the visible owner
 review presentation shows:
@@ -163,9 +163,10 @@ An internal submission is allowed only when all statements are true in one trans
 - every required data grant is active and covers the exact disclosure;
 - the confirmation is unused, unexpired, and bound to this owner and review;
 - the idempotency key is valid and either new or mapped to the same response;
-- for a first-party submission, the draft still has no requested or active
-  assistance and no agent-suggested answer when the storage transaction locks
-  the draft;
+- for a first-party submission, the draft still has no unexpired requested or
+  active assistance when the storage transaction locks the draft; historical
+  agent-suggested answers retain provenance but do not become permanent
+  authority or a permanent lock;
 - no withdrawal, assistance request, or material edit won the race before the
   adapter claim.
 

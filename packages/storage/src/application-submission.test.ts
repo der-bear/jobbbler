@@ -9,10 +9,10 @@ const expired = "2026-08-29T09:59:59.999Z";
 const manualDraft = {
   answers: [
     {
-      fieldKey: "motivation",
+      fieldKey: "cover_letter",
       value: "Candidate-authored note",
       provenance: "user_entered" as const,
-      sensitive: false,
+      sensitive: true,
       acceptedByHuman: true,
     },
   ],
@@ -37,7 +37,7 @@ describe("requiresAgentClientSubmissionDecision", () => {
     },
   );
 
-  it("keeps an agent-suggested answer lineage in the agent client after assistance ends", () => {
+  it("allows first-party takeover of agent suggestions after assistance is revoked", () => {
     expect(
       requiresAgentClientSubmissionDecision(
         {
@@ -52,7 +52,7 @@ describe("requiresAgentClientSubmissionDecision", () => {
         [{ status: "revoked", expiresAt: future }],
         now,
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("leaves a purely manual draft in the first-party flow", () => {

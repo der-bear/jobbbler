@@ -2,10 +2,11 @@
 
 import { ArrowRightIcon } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { applicationListSchema, type ApplicationListItem } from "@jobbbler/contracts";
 
+import { OwnerPrivacyControls } from "@/features/saved/owner-privacy-controls";
 import { ApiClientError, queryApi } from "@/lib/query-client";
 import { hasOwnerSessionMarker, markOwnerSessionStarted } from "@/lib/owner-session-marker";
 
@@ -72,7 +73,10 @@ function updatedLabel(value: string): string {
   return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(value));
 }
 
-export function ApplicationHistory({ items }: Readonly<{ items: readonly ApplicationListItem[] }>) {
+export function ApplicationHistory({
+  items,
+  recovery = null,
+}: Readonly<{ items: readonly ApplicationListItem[]; recovery?: ReactNode }>) {
   return (
     <section aria-labelledby="applications-title" className={styles["page"]}>
       <header className={styles["header"]}>
@@ -93,6 +97,7 @@ export function ApplicationHistory({ items }: Readonly<{ items: readonly Applica
           <Link className={styles["primaryLink"]} href="/jobs">
             Browse open roles <ArrowRightIcon aria-hidden="true" />
           </Link>
+          {recovery}
         </div>
       ) : (
         <ol className={styles["list"]}>
@@ -123,8 +128,13 @@ export function ApplicationsWorkspace({
   const [items, setItems] = useState<readonly ApplicationListItem[] | null>(initialItems);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [recovered, setRecovered] = useState(initialItems !== null);
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  const reloadAfterRecovery = useCallback(() => {
+    setRecovered(true);
+    retry();
+  }, [retry]);
 
   useEffect(() => {
     if (initialItems !== null) markOwnerSessionStarted();
@@ -157,7 +167,10 @@ export function ApplicationsWorkspace({
   }, [attempt, initialItems]);
 
   useEffect(() => {
-    if (initialItems !== null) setItems(initialItems);
+    if (initialItems !== null) {
+      setItems(initialItems);
+      setRecovered(true);
+    }
   }, [initialItems]);
 
   if (error !== null) {
@@ -177,21 +190,16 @@ export function ApplicationsWorkspace({
     );
   }
 
-  if (items === null) {
-    return (
-      <section aria-busy="true" className={styles["page"]}>
-        <header className={styles["header"]}>
-          <h1>My applications</h1>
-          <p>Loading your applications…</p>
-        </header>
-        <div className={styles["loading"]} role="status">
-          <span />
-          <span />
-          <span />
-        </div>
-      </section>
-    );
-  }
+  const recovery =
+    initialItems === null && !recovered ? (
+      <OwnerPrivacyControls
+        hasVerifiedRecoveryEmail={false}
+        owner={null}
+        onDeleted={() => undefined}
+        onRecovered={reloadAfterRecovery}
+        onRecoveryEmailEnabled={() => undefined}
+      />
+    ) : null;
 
-  return <ApplicationHistory items={items} />;
+  return <ApplicationHistory items={items ?? []} recovery={recovery} />;
 }

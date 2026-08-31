@@ -43,10 +43,10 @@ describe("managed demo application submission adapter", () => {
           acceptedByHuman: true,
         },
         {
-          fieldKey: "motivation",
+          fieldKey: "cover_letter",
           value: "Build useful systems.",
           provenance: "user_entered",
-          sensitive: false,
+          sensitive: true,
           acceptedByHuman: true,
         },
         {
@@ -95,6 +95,7 @@ describe("managed demo application submission adapter", () => {
       id: ids.managed_delivery,
       provider: "jobbbler_demo",
       providerReferenceId: ids.demo_submission,
+      role: { id: job.id, title: job.title },
       recipientId: job.organizationId,
       recipientName: job.organizationName,
       status: "acknowledged",
@@ -112,8 +113,8 @@ describe("managed demo application submission adapter", () => {
           value: "London, United Kingdom",
         }),
         expect.objectContaining({
-          fieldKey: "motivation",
-          label: "Why this role",
+          fieldKey: "cover_letter",
+          label: "Cover letter",
           value: "Build useful systems.",
         }),
         expect.objectContaining({

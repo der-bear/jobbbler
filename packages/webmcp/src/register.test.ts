@@ -7,6 +7,7 @@ import {
   isModelContextAvailable,
   jsonObject,
   jsonString,
+  recordToolRequestCorrelation,
   registerToolSet,
   validateToolManifest,
   type ToolManifest,
@@ -102,19 +103,21 @@ describe("WebMCP framework core", () => {
     expect(activities.snapshot()).toBe(snapshot);
   });
 
-  it("reconciles the server record with the nearest local run when request IDs differ", () => {
+  it("keeps an unmatched durable event separate from a sole local call in another tab", () => {
     let now = new Date("2026-08-29T10:00:00.000Z");
     const activities = new AgentActivityStore({ now: () => now });
-    const localId = activities.start("start_application", "Creating an application workspace.");
+    const localId = activities.start("prepare_application", "Preparing this application.", {
+      affectedResourceIds: ["job_550e8400-e29b-41d4-a716-446655440001"],
+    });
     now = new Date("2026-08-29T10:00:01.000Z");
-    activities.finish(localId, "completed", "Application workspace created.");
+    activities.finish(localId, "completed", "Application prepared.");
 
     activities.mergeCommitted([
       {
         id: "activity_550e8400-e29b-41d4-a716-446655440000",
-        toolName: "start_application",
+        toolName: "prepare_application",
         status: "completed",
-        safeSummary: "Application workspace created.",
+        safeSummary: "Another application was prepared.",
         correlationId: "server_request_550e8400-e29b-41d4-a716-446655440000",
         startedAt: "2026-08-29T10:00:00.200Z",
         completedAt: "2026-08-29T10:00:01.000Z",
@@ -122,12 +125,60 @@ describe("WebMCP framework core", () => {
       },
     ]);
 
-    expect(activities.snapshot()).toHaveLength(1);
-    expect(activities.snapshot()[0]).toMatchObject({
-      id: "activity_550e8400-e29b-41d4-a716-446655440000",
-      toolName: "start_application",
-      correlationId: "server_request_550e8400-e29b-41d4-a716-446655440000",
+    expect(activities.snapshot()).toHaveLength(2);
+    expect(activities.snapshot()).toMatchObject([
+      {
+        id: localId,
+        safeSummary: "Application prepared.",
+        affectedResourceIds: ["job_550e8400-e29b-41d4-a716-446655440001"],
+      },
+      {
+        id: "activity_550e8400-e29b-41d4-a716-446655440000",
+        safeSummary: "Another application was prepared.",
+        affectedResourceIds: [],
+      },
+    ]);
+  });
+
+  it("never attaches a committed result to one of several ambiguous local calls", () => {
+    let now = new Date("2026-08-29T10:00:00.000Z");
+    const activities = new AgentActivityStore({ now: () => now });
+    const firstId = activities.start("prepare_application", "Preparing the first application.", {
+      affectedResourceIds: ["job_550e8400-e29b-41d4-a716-446655440001"],
     });
+    now = new Date("2026-08-29T10:00:00.100Z");
+    const secondId = activities.start("prepare_application", "Preparing the second application.", {
+      affectedResourceIds: ["job_550e8400-e29b-41d4-a716-446655440002"],
+    });
+    activities.finish(firstId, "completed", "First application prepared.");
+    activities.finish(secondId, "completed", "Second application prepared.");
+
+    activities.mergeCommitted([
+      {
+        id: "activity_550e8400-e29b-41d4-a716-446655440000",
+        toolName: "prepare_application",
+        status: "completed",
+        safeSummary: "Second application committed.",
+        correlationId: "server_request_550e8400-e29b-41d4-a716-446655440000",
+        startedAt: "2026-08-29T10:00:00.200Z",
+        completedAt: "2026-08-29T10:00:00.300Z",
+        affectedResourceIds: ["application_550e8400-e29b-41d4-a716-446655440002"],
+      },
+    ]);
+
+    expect(activities.snapshot()).toHaveLength(3);
+    expect(activities.snapshot().slice(0, 2)).toMatchObject([
+      {
+        id: firstId,
+        safeSummary: "First application prepared.",
+        affectedResourceIds: ["job_550e8400-e29b-41d4-a716-446655440001"],
+      },
+      {
+        id: secondId,
+        safeSummary: "Second application prepared.",
+        affectedResourceIds: ["job_550e8400-e29b-41d4-a716-446655440002"],
+      },
+    ]);
   });
 
   it("preserves known local resources when the matching committed event omits them", () => {
@@ -156,6 +207,42 @@ describe("WebMCP framework core", () => {
     ]);
 
     expect(activities.snapshot()).toMatchObject([{ affectedResourceIds: [draftId] }]);
+  });
+
+  it("collapses a durable event that arrives before the local tool call finishes", () => {
+    const activities = new AgentActivityStore({
+      now: () => new Date("2026-08-29T10:00:00.000Z"),
+    });
+    const requestId = "req_750e8400-e29b-41d4-a716-446655440000";
+    const applicationId = "application_750e8400-e29b-41d4-a716-446655440001";
+    const localId = activities.start("prepare_application", "Preparing this application.");
+
+    activities.mergeCommitted([
+      {
+        id: "activity_750e8400-e29b-41d4-a716-446655440000",
+        toolName: "prepare_application",
+        status: "completed",
+        safeSummary: "Application prepared.",
+        correlationId: requestId,
+        startedAt: "2026-08-29T10:00:00.000Z",
+        completedAt: "2026-08-29T10:00:00.000Z",
+        affectedResourceIds: [],
+      },
+    ]);
+    activities.finish(localId, "completed", "Application prepared.", [applicationId], requestId);
+
+    expect(activities.snapshot()).toEqual([
+      {
+        id: "activity_750e8400-e29b-41d4-a716-446655440000",
+        toolName: "prepare_application",
+        status: "completed",
+        safeSummary: "Application prepared.",
+        correlationId: requestId,
+        startedAt: "2026-08-29T10:00:00.000Z",
+        completedAt: "2026-08-29T10:00:00.000Z",
+        affectedResourceIds: [applicationId],
+      },
+    ]);
   });
 
   it("builds bounded, JSON-serializable object schemas", () => {
@@ -300,6 +387,30 @@ describe("WebMCP framework core", () => {
         completedAt: "2026-08-29T00:00:00.000Z",
       },
     ]);
+  });
+
+  it("reconciles a tool call with the request ID captured from its API response", async () => {
+    const modelContext = new FakeModelContext();
+    const activities = new AgentActivityStore({ now: () => new Date("2026-08-29T00:00:00.000Z") });
+    const requestId = "req_650e8400-e29b-41d4-a716-446655440000";
+    await registerToolSet(
+      [
+        manifest({
+          execute: async (_input, { signal }) => {
+            recordToolRequestCorrelation(signal, requestId);
+            return { count: 1 };
+          },
+        }),
+      ],
+      { modelContext, activities },
+    );
+
+    await modelContext.registrations[0]!.tool.execute(
+      { query: "platform" },
+      { signal: new AbortController().signal },
+    );
+
+    expect(activities.snapshot()).toMatchObject([{ correlationId: requestId }]);
   });
 
   it("supplies a live cancellation signal when an early client omits it", async () => {

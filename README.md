@@ -153,7 +153,7 @@ and the [authorization and consent design](docs/architecture/agent-authorization
 
 ```mermaid
 flowchart LR
-  Browser[React interface + global 28-tool WebMCP surface] --> API[Next.js BFF and command boundary]
+  Browser[React interface + global 29-tool WebMCP surface] --> API[Next.js BFF and command boundary]
   API --> Domain[Framework-free domain services]
   Domain --> Storage[Portable repository contracts]
   Storage --> SQLite[(SQLite local)]

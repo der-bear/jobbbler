@@ -56,10 +56,10 @@ function workspace(
         input.agentSuggestion === true
           ? [
               {
-                fieldKey: "motivation",
+                fieldKey: "cover_letter",
                 value: "Agent-prepared note",
                 provenance: "agent_suggestion",
-                sensitive: false,
+                sensitive: true,
                 acceptedByHuman: false,
               },
             ]
@@ -224,10 +224,10 @@ function answerRequest(headers: HeadersInit = {}): Request {
     body: JSON.stringify({
       expectedVersion: 3,
       answer: {
-        fieldKey: "motivation",
+        fieldKey: "cover_letter",
         value: "Locally changed answer",
         provenance: "user_entered",
-        sensitive: false,
+        sensitive: true,
         acceptedByHuman: true,
       },
     }),
@@ -292,7 +292,6 @@ describe("application confirmation route", () => {
   it.each([
     ["requested assistance", workspace(), [storedDelegation("requested")]],
     ["active assistance", workspace(), [storedDelegation("active")]],
-    ["an agent-suggested answer", workspace({ agentSuggestion: true }), []],
   ])(
     "rejects first-party confirmation and submission after %s",
     async (_state, assisted, storedDelegations) => {
@@ -327,7 +326,6 @@ describe("application confirmation route", () => {
   it.each([
     ["requested assistance", workspace(), [storedDelegation("requested")]],
     ["active assistance", workspace(), [storedDelegation("active")]],
-    ["an agent-suggested answer", workspace({ agentSuggestion: true }), []],
   ])("rejects first-party answer edits after %s", async (_state, assisted, storedDelegations) => {
     const current = dependencies();
     vi.mocked(current.operations.get).mockResolvedValue(assisted);
@@ -344,6 +342,46 @@ describe("application confirmation route", () => {
 
     expect(response.status).toBe(403);
     expect(current.operations.answer).not.toHaveBeenCalled();
+  });
+
+  it("allows first-party takeover after assistance ends while preserving agent provenance", async () => {
+    const assisted = workspace({ agentSuggestion: true });
+    const confirmationDependencies = dependencies();
+    vi.mocked(confirmationDependencies.operations.get).mockResolvedValue(assisted);
+    vi.mocked(confirmationDependencies.authorization.delegations.listByResource).mockResolvedValue(
+      [],
+    );
+    const confirmation = await handleRequestConfirmation(
+      request(),
+      { params: Promise.resolve({ draftId, reviewId }) },
+      confirmationDependencies,
+    );
+    expect(confirmation.status, JSON.stringify(await confirmation.clone().json())).toBe(201);
+
+    const submissionDependencies = dependencies();
+    vi.mocked(submissionDependencies.operations.get).mockResolvedValue(assisted);
+    vi.mocked(submissionDependencies.authorization.delegations.listByResource).mockResolvedValue(
+      [],
+    );
+    const submission = await handleSubmitApplication(
+      submissionRequest(),
+      { params: Promise.resolve({ draftId }) },
+      submissionDependencies,
+    );
+    expect(submission.status, JSON.stringify(await submission.clone().json())).toBe(200);
+    expect(submissionDependencies.operations.submit).toHaveBeenCalled();
+
+    const answerDependencies = dependencies();
+    vi.mocked(answerDependencies.operations.get).mockResolvedValue(assisted);
+    vi.mocked(answerDependencies.authorization.delegations.listByResource).mockResolvedValue([]);
+    const answer = await handleApplicationCommand(
+      answerRequest(),
+      { params: Promise.resolve({ draftId }) },
+      answerDependencies,
+      "answer",
+    );
+    expect(answer.status, JSON.stringify(await answer.clone().json())).toBe(200);
+    expect(answerDependencies.operations.answer).toHaveBeenCalled();
   });
 
   it.each(["requested", "active"] as const)(

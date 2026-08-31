@@ -176,11 +176,42 @@ describe("plan_job_workflow", () => {
     expect(JSON.stringify(result)).not.toContain("Saved page");
   });
 
+  it("keeps save-only requests separate from email monitoring", async () => {
+    const planner = createWorkflowPlannerTool({
+      route: "/jobs",
+      availableTools: () => ["search_jobs", "get_search_state", "save_job_search"],
+    });
+
+    const result = await planner.execute(
+      { goal: "save_search" },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toMatchObject({
+      status: "completed",
+      data: {
+        nextTool: "search_jobs",
+        steps: [
+          expect.objectContaining({ tool: "search_jobs" }),
+          expect.objectContaining({ tool: "get_search_state", needs: ["detail=exact"] }),
+          expect.objectContaining({
+            tool: "save_job_search",
+            needs: ["name", "criteria from get_search_state.data.criteria"],
+          }),
+        ],
+      },
+    });
+    const serialized = JSON.stringify(result);
+    expect(serialized).toContain("Email updates stay off");
+    expect(serialized).not.toContain("request_search_alert");
+  });
+
   it("plans one direct Jobbbler-managed application path without capability preflight", async () => {
     const planner = createWorkflowPlannerTool({
       route: "/jobs/:jobId",
       availableTools: () => [
         "open_job_details",
+        "get_job_details",
         "prepare_application",
         "get_application_readiness",
         "request_application_assistance",
@@ -199,12 +230,17 @@ describe("plan_job_workflow", () => {
     expect(result).toMatchObject({
       status: "completed",
       data: {
-        nextTool: "prepare_application",
+        nextTool: "get_job_details",
         nextInputs: ["jobId"],
         steps: [
           {
             intent: "Open the role",
             tool: "open_job_details",
+            needs: ["jobId"],
+          },
+          {
+            intent: "Read the full role before writing the cover letter",
+            tool: "get_job_details",
             needs: ["jobId"],
           },
           {
@@ -215,7 +251,10 @@ describe("plan_job_workflow", () => {
           expect.objectContaining({ tool: "get_application_readiness" }),
           expect.objectContaining({ tool: "request_application_assistance" }),
           expect.objectContaining({ tool: "decide_application_assistance" }),
-          expect.objectContaining({ tool: "propose_application_updates" }),
+          expect.objectContaining({
+            tool: "propose_application_updates",
+            ask: expect.stringContaining("CV stays in the agent client"),
+          }),
           expect.objectContaining({ tool: "request_submission_review" }),
           expect.objectContaining({ tool: "decide_application_submission" }),
         ],

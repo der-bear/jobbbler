@@ -32,7 +32,7 @@ describe("locationSuggestions", () => {
     expect(locationSuggestionItems(["Europe", "Remote"], "Tallinn, Estonia")).toEqual([
       {
         kind: "free-text",
-        label: "Use \u201cTallinn, Estonia\u201d",
+        label: "Search for \u201cTallinn, Estonia\u201d",
         value: "Tallinn, Estonia",
       },
     ]);
@@ -42,7 +42,7 @@ describe("locationSuggestions", () => {
     expect(locationSuggestionItems(["Phoenix, AZ", "Phoenixville, PA", "Europe"], "Pho")).toEqual([
       { kind: "suggestion", label: "Phoenix, AZ", value: "Phoenix, AZ" },
       { kind: "suggestion", label: "Phoenixville, PA", value: "Phoenixville, PA" },
-      { kind: "free-text", label: "Use \u201cPho\u201d", value: "Pho" },
+      { kind: "free-text", label: "Search for \u201cPho\u201d", value: "Pho" },
     ]);
   });
 

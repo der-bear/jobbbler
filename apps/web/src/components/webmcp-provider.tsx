@@ -56,6 +56,7 @@ import {
   requestSearchAlert,
 } from "@/features/saved/search-alert-client";
 import { createSavedWebMcpReadAdapter } from "@/features/saved/saved-webmcp-read-adapter";
+import { saveJobSearchForAgent } from "@/features/saved/saved-search-client";
 import { createSavedToolManifests } from "@/features/saved/webmcp-tools";
 import { createSiteWideToolManifests } from "@/features/site-wide-webmcp-tools";
 import { ApiClientError, queryApi } from "@/lib/query-client";
@@ -77,6 +78,7 @@ import {
 import { subscribeToConfiguredSupabaseActivityWakeups } from "@/lib/supabase-activity-wakeup";
 import {
   commitWebMcpJobDetail,
+  commitWebMcpSavedSearch,
   commitWebMcpSavedSearchDeletion,
   commitWebMcpSchedule,
   commitWebMcpSearch,
@@ -211,6 +213,7 @@ function savedManifests(navigate: WebMcpNavigate): readonly ToolManifest<unknown
   return createSavedToolManifests({
     listSavedSearches: reads.listSavedSearches,
     listSchedules: reads.listSchedules,
+    saveSearch: saveJobSearchForAgent,
     requestSearchAlert,
     decideSearchAlert,
     setScheduleEnabled: (scheduleId, input, { signal }) =>
@@ -225,6 +228,7 @@ function savedManifests(navigate: WebMcpNavigate): readonly ToolManifest<unknown
       ),
     deleteSavedSearch,
     onScheduleCommitted: commitWebMcpSchedule,
+    onSavedSearchCommitted: commitWebMcpSavedSearch,
     onSavedSearchDeleted: commitWebMcpSavedSearchDeletion,
     savedSearchHref: (savedSearch) => searchHrefFromCriteria(savedSearch.criteria),
     onNavigate: navigate,

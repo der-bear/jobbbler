@@ -17,6 +17,7 @@
     "get_comparison",
     "remove_job_from_comparison",
     "add_job_to_comparison",
+    "save_job_search",
     "get_saved_alerts",
     "request_search_alert",
     "decide_search_alert",
@@ -43,6 +44,38 @@
         "kind": "tool_call",
         "tool": "get_saved_alerts",
         "arguments": {}
+      }
+    },
+    {
+      "id": "saved-direct-save-without-email",
+      "category": "direct",
+      "context": {
+        "searchState": {
+          "criteria": {
+            "query": "platform",
+            "workModels": ["remote"],
+            "seniorities": ["senior"],
+            "locations": ["Europe"],
+            "sort": "relevance",
+            "limit": 20
+          }
+        }
+      },
+      "prompt": "Save this exact search as Platform shortlist. Do not email me.",
+      "expected": {
+        "kind": "tool_call",
+        "tool": "save_job_search",
+        "arguments": {
+          "name": "Platform shortlist",
+          "criteria": {
+            "query": "platform",
+            "workModels": ["remote"],
+            "seniorities": ["senior"],
+            "locations": ["Europe"],
+            "sort": "relevance",
+            "limit": 20
+          }
+        }
       }
     },
     {

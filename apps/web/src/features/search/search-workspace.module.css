@@ -70,10 +70,13 @@
 }
 
 .heroSearch:focus-within {
-  border-color: var(--jb-signal);
-  outline: 2px solid var(--jb-focus);
-  outline-offset: 2px;
   box-shadow: 0 16px 44px color-mix(in srgb, var(--color-ink) 8%, transparent);
+}
+
+.heroSearch:has(input:focus-visible) {
+  border-color: var(--jb-focus);
+  outline: 2px solid var(--jb-focus);
+  outline-offset: 0;
 }
 
 .heroField {
@@ -196,9 +199,9 @@
   padding-inline: 9px;
 }
 
-.railSearch:focus-within,
-.railLocation:focus-within {
-  border-color: var(--jb-signal);
+.railSearch:has(input:focus-visible),
+.railLocation:has(input:focus-visible) {
+  border-color: var(--jb-focus);
   outline: 2px solid var(--jb-focus);
   outline-offset: 0;
 }
@@ -294,9 +297,9 @@
 
 .filterRow input:focus-visible,
 .filterRow select:focus-visible {
-  border-color: var(--jb-signal);
+  border-color: var(--jb-focus);
   outline: 2px solid var(--jb-focus);
-  outline-offset: 2px;
+  outline-offset: 0;
 }
 
 .filterRow .railSearch input:focus-visible,
@@ -547,12 +550,11 @@
 }
 
 .jobTitleLink strong {
-  overflow: hidden;
   font-size: 16px;
   font-weight: 650;
   letter-spacing: -0.026em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .jobTitleLink:hover strong {
@@ -570,24 +572,18 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 7px;
-  color: var(--color-ink);
+  gap: 8px;
+  color: var(--color-ink-muted);
   font-size: 11px;
   font-weight: 550;
   line-height: 1.4;
 }
 
-.jobMeta > span {
-  display: inline-flex;
-  align-items: center;
-  min-block-size: 22px;
-  border: 1px solid var(--color-line-strong);
-  border-radius: 999px;
-  color: var(--color-ink-muted);
-  padding-inline: 8px;
-  font-size: 11px;
-  font-weight: 620;
-}
+/*
+ * Work model is the only chip in the row and comes from the design system's
+ * `Chip`; the facts beside it stay plain text so a bordered pill keeps meaning
+ * "control" everywhere.
+ */
 
 .jobSalary {
   display: grid;

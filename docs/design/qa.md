@@ -17,9 +17,9 @@ does not treat screenshots from an earlier build as evidence.
 - Role pages read like documents: title, organization, work model, location,
   salary, source, freshness, evidence, and the next available action appear in
   a predictable order.
-- The global Agent layer is a judge- and developer-facing transparency surface,
+- The global Agent activity panel is a judge- and developer-facing transparency surface,
   not a second product. Activity is the default tab, followed by Tools and
-  Guide. All 28 tools remain registered across navigation; execution still
+  Guide. All 29 tools remain registered across navigation; execution still
   enforces ownership and workflow state.
 - Empty, loading, unavailable, cancelled, user-action, and error states explain
   what happened and what can happen next without exposing private values or
@@ -44,7 +44,7 @@ and submitted:
    invalid URL criteria, unavailable WebMCP, and network or command errors.
 3. Traverse every primary control with the keyboard. Confirm visible focus,
    logical focus order, correct accessible names, and focus containment and
-   return for the mobile Agent view.
+   return for the mobile Agent activity panel.
 4. Check text and interactive-control contrast against the final computed
    colors. Do not treat a screenshot alone as contrast evidence.
 5. Confirm filters and navigation respond without duplicate visible work,
@@ -52,7 +52,7 @@ and submitted:
    behavior separately when assessing performance.
 6. Invoke representative WebMCP search, navigation, alert, and application
    tools. Confirm URL, visible state, Agent Activity, and the authoritative
-   result agree while all 28 tools remain discoverable.
+   result agree while all 29 tools remain discoverable.
 7. Verify the ordinary interface remains usable when WebMCP is absent or tool
    registration fails.
 8. Re-run the deterministic verification, focused browser suite, PostgreSQL

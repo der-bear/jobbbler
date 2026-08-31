@@ -61,12 +61,13 @@ const requirements = applicationFieldDefinitionSchema.array().parse([
     options: [],
   },
   {
-    fieldKey: "motivation",
-    label: "Why this role",
-    description: "A concise note for the hiring team.",
+    fieldKey: "cover_letter",
+    label: "Cover letter",
+    description:
+      "A role-specific letter prepared only from facts you supplied; your CV stays with you and your agent.",
     input: "textarea",
     required: true,
-    sensitive: false,
+    sensitive: true,
     category: "application_answers",
     options: [],
   },
@@ -105,9 +106,27 @@ export const applicationPolicy: Readonly<{
   legalBasis: LegalBasis;
 }> = Object.freeze({
   requirements: Object.freeze(requirements),
-  noticeVersion: "privacy-2026-08-29",
+  noticeVersion: "privacy-2026-08-31",
   legalBasis: "consent",
 });
+
+/**
+ * Keeps pre-release applications usable after the role note became an explicit
+ * cover letter. The content is unchanged; the new policy treats it as private
+ * because it can contain personal career context.
+ */
+export function normalizeLegacyApplicationDraft(draft: ApplicationDraft): ApplicationDraft {
+  if (draft.answers.some(({ fieldKey }) => fieldKey === "cover_letter")) return draft;
+  if (!draft.answers.some(({ fieldKey }) => fieldKey === "motivation")) return draft;
+  return {
+    ...draft,
+    answers: draft.answers.map((answer) =>
+      answer.fieldKey === "motivation"
+        ? { ...answer, fieldKey: "cover_letter", sensitive: true }
+        : answer,
+    ),
+  };
+}
 
 function hasValue(value: unknown): boolean {
   if (value === null || value === undefined) return false;

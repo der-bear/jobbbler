@@ -47,6 +47,43 @@ describe("owner activity feed", () => {
     });
   });
 
+  it("keeps human and service events out of the agent activity feed", async () => {
+    const mergeCommitted = vi.fn();
+    const feed = startOwnerActivityFeed({
+      activities: { mergeCommitted },
+      fetchPage: vi.fn().mockResolvedValue(
+        page({
+          events: [
+            { ...event, actorKind: "human" },
+            {
+              ...event,
+              id: "activity_650e8400-e29b-41d4-a716-446655440000",
+              correlationId: "corr_650e8400-e29b-41d4-a716-446655440000",
+              actorKind: "service",
+            },
+            {
+              ...event,
+              id: "activity_750e8400-e29b-41d4-a716-446655440000",
+              correlationId: "corr_750e8400-e29b-41d4-a716-446655440000",
+              actorKind: "agent",
+            },
+          ],
+        }),
+      ),
+      isVisible: () => true,
+      hasOwnerSession: () => true,
+    });
+
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(mergeCommitted).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: "activity_750e8400-e29b-41d4-a716-446655440000",
+      }),
+    ]);
+    feed.stop();
+  });
+
   it("polls immediately, advances the authoritative cursor, and uses the server interval", async () => {
     const mergeCommitted = vi.fn();
     const fetchPage = vi

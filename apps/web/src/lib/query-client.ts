@@ -1,6 +1,7 @@
 import { type ZodType } from "zod";
 
 import { apiResponseSchema, type ApiErrorCode } from "@jobbbler/contracts";
+import { recordToolRequestCorrelation } from "@jobbbler/webmcp";
 
 export class ApiClientError extends Error {
   readonly code: ApiErrorCode;
@@ -76,7 +77,16 @@ export async function queryApi<T>(
   }
   const parsed = apiResponseSchema(dataSchema).safeParse(payload);
   if (!parsed.success) throw dependencyFailure();
-  if (parsed.data.ok) return parsed.data.data;
+  if (parsed.data.ok) {
+    if (options.signal !== undefined && parsed.data.meta?.requestId !== undefined) {
+      recordToolRequestCorrelation(options.signal, parsed.data.meta.requestId);
+    }
+    return parsed.data.data;
+  }
+
+  if (options.signal !== undefined) {
+    recordToolRequestCorrelation(options.signal, parsed.data.error.requestId);
+  }
 
   throw new ApiClientError({
     code: parsed.data.error.code,

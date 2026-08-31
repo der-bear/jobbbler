@@ -58,19 +58,20 @@ When the journey reaches an application, speed stops being the point.
   application for the chosen role without using personal data or submitting it.
 - Seven stage-specific application tools are discoverable from every page and
   state-gated at execution: each answers with the next safe step when its
-  moment has not arrived. Agent-prepared answers keep their provenance. Once
-  assistance is requested or an agent suggestion exists, the site renders the
-  draft read-only and revisions stay in the external agent client.
+  moment has not arrived. Agent-prepared answers keep their provenance. While
+  a live, application-bound assistance request or delegation exists, the site
+  renders the application read-only and revisions stay in the external agent
+  client. If that authority expires, is declined, or is withdrawn, the person
+  can continue directly on Jobbbler without losing the prepared work.
 - Sharing reviewed data requires explicit permission bound to the exact
   reviewed payload, recipient, purpose, fields, and notice — permission
-  applies only to this exact application. The visible owner review surface
-  presents every exact value and sensitivity marker. The WebMCP JSON result
-  carries only a compact request-bound reference with recipient, purpose,
-  counts, notice, draft version, expiry, and review URL. A compatible agent
-  client may show or observe the current owner-review page before relaying the
-  explicit decision. The server accepts only the exact live request ID and
-  draft version and stores the decision channel as request-bound evidence. It
-  verifies that exact request and unchanged review, not the person's identity.
+  applies only to this exact application. The external agent client receives
+  every completed value and sensitivity marker for the final review, plus an
+  optional first-party review link. This one private result uses a dedicated
+  64 KB bound because the values themselves are the decision. The server
+  accepts only the exact live request ID and draft version and stores the
+  decision channel as request-bound evidence. It verifies that exact request
+  and unchanged review, not the person's identity.
 - The person can withdraw consent through the same agent interface in one tool
   call. Future consent-based processing stops immediately; any lawful
   historical submission receipt remains intact.
@@ -129,7 +130,7 @@ Jobbbler is a TypeScript monorepo with a Next.js web app, domain packages,
 portable SQLite/PostgreSQL storage adapters, connector workers, and an
 accessible shared UI system. Its catalog normalizes policy-controlled job
 records, retains source evidence, and ranks salaries currency-aware (EUR, USD,
-GBP, CAD at pinned rates) with human-readable evidence strings. All 28 focused
+GBP, CAD at pinned rates) with human-readable evidence strings. All 29 focused
 WebMCP tools are registered on every page and gate private or state-specific
 behavior at execution time.
 
@@ -149,27 +150,29 @@ the external agent client presents the request. Only
 request ID can enable short-lived, draft-bound assistance; the same tool can
 withdraw that active authority only for the exact bound request. The agent can
 then propose truthful answers in bounded batches and request one exact
-submission review. The exact field values and sensitivity markers stay on the
-visible owner review surface. `request_submission_review` returns a compact
-request-bound reference with the review URL, recipient, purpose, field and
-sensitivity counts, privacy-notice version, draft version, and expiry; its
-operational result remains within 1.5 KB. The external agent client relays the
-person's decision against that reference. The server accepts a submission
+submission review. `request_submission_review` returns every exact field value
+and sensitivity marker to the already-authorized agent client, together with
+the recipient, purpose, privacy-notice version, request binding, expiry, and an
+optional first-party review URL. Its dedicated 64 KB bound is the deliberate
+exception to compact routine results. The external agent client presents those
+values and relays the person's decision. The server accepts a submission
 decision only when it is bound to the exact request ID and draft version,
 rechecks the unchanged review snapshot, seals the reviewed payload, and
 consumes a short-lived single-use confirmation for the idempotent submit. The
 stored consent receipt records the decision channel as evidence and
 deliberately proves the request and server state, not cryptographic human
-identity. Raw chat, reusable credentials, and exact application values stay
-out of WebMCP JSON results. Stored consent evidence represents those values with
-field keys and a review hash, not the raw values. The same global tool surface
+identity. Raw chat and reusable credentials stay out of WebMCP JSON results.
+Stored consent evidence represents reviewed values with field keys and a
+review hash, not the raw values. The same global tool surface
 lets the person withdraw that consent in one call; future consent-based
 processing stops while historical submission receipts remain honest.
 
-A purely manual application can still finish in the first-party UI. Once
-assistance is requested or an agent-suggested answer exists, the site offers no
-local editing, approval, consent, or submission bypass; server routes require
-revisions and those decisions to be relayed through the external agent client.
+A purely manual application can still finish in the first-party UI. While a
+live assistance request or delegation exists, the site offers no local editing,
+approval, consent, or submission bypass; server routes require revisions and
+those decisions to be relayed through the external agent client. Historical
+agent-written answers stay visibly attributed but do not permanently lock the
+application after that authority ends.
 Pending data grants are reused only for the same decision channel and exact
 request; an incompatible pending grant is withdrawn and replaced.
 
@@ -270,10 +273,10 @@ session, agent session, reviewed payload, recipient, purpose, fields, notice,
 request ID, channel, and affirmative action; no raw chat is retained. An
 application still needs review plus a short-lived single-use confirmation.
 Tool activity and safe errors avoid raw PII, secrets, reusable tokens, and raw
-source HTML. Operational WebMCP results stay within 1.5 KB; only the advisory
-`plan_job_workflow` result may use up to 2 KB. The final-review result carries a
-compact request-bound reference and counts, while exact synthetic application
-values and sensitivity markers stay on the visible owner review surface.
+source HTML. Routine WebMCP results stay within 1.5 KB; larger named bounds are
+used only where the requested content requires them: 2 KB for the planner,
+16 KB for an application index, 20 KB for a full role, and 64 KB for the exact
+private application review shown after application-bound assistance approval.
 
 ## Open source and local run
 

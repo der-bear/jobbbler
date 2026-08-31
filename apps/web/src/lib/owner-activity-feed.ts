@@ -165,7 +165,9 @@ export function startOwnerActivityFeed(
     try {
       const page = await fetchPage(cursor, requestController.signal);
       if (stopped) return;
-      options.activities.mergeCommitted(page.events.map(ownerActivityToToolActivity));
+      options.activities.mergeCommitted(
+        page.events.filter((event) => event.actorKind === "agent").map(ownerActivityToToolActivity),
+      );
       cursor = page.nextCursor;
       failures = 0;
       if (page.hasMore && catchUpPages < maxCatchUpPages) {

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type R
 
 import { ThemeToggle } from "@jobbbler/ui";
 
-import { AgentPanel } from "./agent-panel";
+import { AgentPanel, maximumAgentPanelWidth } from "./agent-panel";
 import { useWebMcp } from "./webmcp-provider";
 
 import styles from "./app-shell.module.css";
@@ -21,6 +21,27 @@ const navigation = [
 function isCurrentRoute(pathname: string, href: string): boolean {
   if (href === "/applications" && pathname.startsWith("/apply/")) return true;
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function PrimaryNavigation({
+  className,
+  pathname,
+}: Readonly<{ className: string | undefined; pathname: string }>) {
+  return (
+    <nav aria-label="Primary navigation" className={`${styles["navigation"]} ${className ?? ""}`}>
+      {navigation.map(({ href, label, icon: Icon }) => (
+        <Link
+          aria-current={isCurrentRoute(pathname, href) ? "page" : undefined}
+          className={styles["navLink"]}
+          href={href}
+          key={href}
+        >
+          <Icon aria-hidden="true" size={17} weight="regular" />
+          <span>{label}</span>
+        </Link>
+      ))}
+    </nav>
+  );
 }
 
 export function AppFooter() {
@@ -66,19 +87,7 @@ export function AppHeaderSurface({
         <span>Jobbbler</span>
         <CircleIcon aria-hidden="true" className={styles["wordmarkDot"]} size={7} weight="fill" />
       </Link>
-      <nav aria-label="Primary navigation" className={styles["navigation"]}>
-        {navigation.map(({ href, label, icon: Icon }) => (
-          <Link
-            aria-current={isCurrentRoute(pathname, href) ? "page" : undefined}
-            className={styles["navLink"]}
-            href={href}
-            key={href}
-          >
-            <Icon aria-hidden="true" size={17} weight="regular" />
-            <span>{label}</span>
-          </Link>
-        ))}
-      </nav>
+      <PrimaryNavigation className={styles["desktopNavigation"]} pathname={pathname} />
       <div className={styles["actions"]}>
         <button
           aria-expanded={agentOpen}
@@ -94,6 +103,7 @@ export function AppHeaderSurface({
         </button>
         <ThemeToggle />
       </div>
+      <PrimaryNavigation className={styles["mobileNavigation"]} pathname={pathname} />
     </header>
   );
 }
@@ -103,17 +113,27 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const webMcp = useWebMcp();
   const [agentPanelOpen, setAgentPanelOpen] = useState(false);
   const [agentPanelWidth, setAgentPanelWidth] = useState(380);
+  const [agentPanelMaximumWidth, setAgentPanelMaximumWidth] = useState(560);
   const [compactAgentPanel, setCompactAgentPanel] = useState(false);
   const agentTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
-    const query = window.matchMedia("(max-width: 1080px)");
+    const query = window.matchMedia("(max-width: 1200px)");
     const update = () => {
       setCompactAgentPanel(query.matches);
+      const maximumWidth = maximumAgentPanelWidth(window.innerWidth);
+      setAgentPanelMaximumWidth(maximumWidth);
+      if (!query.matches) {
+        setAgentPanelWidth((current) => Math.min(current, maximumWidth));
+      }
     };
     update();
     query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
+    window.addEventListener("resize", update);
+    return () => {
+      query.removeEventListener("change", update);
+      window.removeEventListener("resize", update);
+    };
   }, []);
 
   function closeAgentPanel() {
@@ -155,6 +175,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
         </main>
         {agentPanelOpen ? (
           <AgentPanel
+            maximumWidth={agentPanelMaximumWidth}
             modal={compactAgentPanel}
             onClose={closeAgentPanel}
             onWidthChange={setAgentPanelWidth}

@@ -2,7 +2,7 @@
 
 The fixtures under `evals/webmcp/` test whether an external model selects the
 right Jobbbler tool, supplies valid arguments, preserves order, and stops for
-the person's decision. Every fixture exposes the same 28-tool list that the
+the person's decision. Every fixture exposes the same 29-tool list that the
 production page registers on every route. Route and workflow state live in the
 case context; they do not artificially hide competing tools from the model.
 
@@ -45,7 +45,7 @@ decision points.
 
 ## Evaluation method
 
-1. Load the complete 28 manifests and the case's route/state context.
+1. Load the complete 29 manifests and the case's route/state context.
 2. Run direct, paraphrased, ambiguous, wrong-order, and invalid-input prompts.
 3. Score tool selection, argument accuracy, safe sequencing, and refusal to
    invent a human decision.
@@ -56,8 +56,8 @@ decision points.
 
 ## Current deterministic release inventory — 30 August 2026
 
-The checked-in set contains 50 uniquely identified cases against the current
-28-tool surface: 28 direct, 7 paraphrased, 5 ambiguous, 5 wrong-order, and 5
+The checked-in set contains 51 uniquely identified cases against the current
+29-tool surface: 29 direct, 7 paraphrased, 5 ambiguous, 5 wrong-order, and 5
 invalid-input prompts. Every public tool is the expected outcome of at least one
 case; inventory lists alone do not count as coverage. The public application
 cases now use one direct Jobbbler-managed path: `prepare_application` creates or
@@ -69,7 +69,7 @@ form.
 
 Earlier model-tuning and handler-execution runs informed the descriptions,
 schemas, output bounds, and comparison sequencing, but they exercised prior
-tool inventories. They are not presented as results for this 28-tool release
+tool inventories. They are not presented as results for this 29-tool release
 surface. Any published model score must come from a fresh run of these exact
 fixtures. Deterministic suites separately verify schemas, execution,
 cancellation, bounded output, UI synchronization, storage atomicity, and builds.

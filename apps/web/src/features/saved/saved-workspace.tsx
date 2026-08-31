@@ -46,6 +46,7 @@ import { markOwnerSessionStarted } from "@/lib/owner-session-marker";
 import { ApiClientError, queryApi } from "@/lib/query-client";
 import { searchInputToSearchParams } from "@/lib/search-url";
 import {
+  subscribeWebMcpSavedSearch,
   subscribeWebMcpSavedSearchDeletion,
   subscribeWebMcpScheduleCommit,
 } from "@/lib/webmcp-ui-bridge";
@@ -147,6 +148,25 @@ export function scheduleReviewChanges(
 type Status = "loading" | "ready" | "working" | "error";
 
 type StateUpdate<T> = (current: T) => T;
+
+interface SavedWorkspaceCreationBindings {
+  setSavedSearches(update: StateUpdate<readonly SavedSearch[]>): void;
+  onCommitted(savedSearch: SavedSearch): void;
+}
+
+export function subscribeSavedWorkspaceCreation(
+  bindings: SavedWorkspaceCreationBindings,
+): () => void {
+  return subscribeWebMcpSavedSearch((savedSearch) => {
+    flushSync(() => {
+      bindings.setSavedSearches((current) => [
+        savedSearch,
+        ...current.filter(({ id }) => id !== savedSearch.id),
+      ]);
+    });
+    bindings.onCommitted(savedSearch);
+  });
+}
 
 interface SavedWorkspaceDeletionBindings {
   setSavedSearches(update: StateUpdate<readonly SavedSearch[]>): void;
@@ -443,6 +463,21 @@ export function SavedWorkspace({
       cancelled = true;
     };
   }, [createRequested, initialData]);
+
+  useEffect(
+    () =>
+      subscribeSavedWorkspaceCreation({
+        setSavedSearches,
+        onCommitted: () => {
+          toast.show({
+            title: "Search saved by agent",
+            description: "Email updates are off.",
+            tone: "success",
+          });
+        },
+      }),
+    [toast],
+  );
 
   useEffect(
     () =>

@@ -47,6 +47,7 @@ export function normalizeJobSearchCriteria(input: JobSearchInput): JobSearchCrit
     query: parsed.query === undefined ? null : collapseWhitespace(parsed.query),
     categories: uniqueEnumValues(parsed.categories),
     workModels: uniqueEnumValues(parsed.workModels),
+    employmentTypes: uniqueEnumValues(parsed.employmentTypes),
     seniorities: uniqueEnumValues(parsed.seniorities),
     locations: uniqueDisplayValues(parsed.locations?.map(canonicalizeLocation)),
     skills: uniqueDisplayValues(parsed.skills),

@@ -2,12 +2,14 @@ import {
   jobDetailResultSchema,
   jobAlertScheduleSchema,
   jobSearchInputSchema,
+  savedSearchSchema,
   savedSearchDeletionReceiptSchema,
   searchJobsResultSchema,
   type JobDetailResult,
   type JobAlertSchedule,
   type JobSearchCriteria,
   type JobSearchInput,
+  type SavedSearch,
   type SavedSearchDeletionReceipt,
   type SearchJobsResult,
 } from "@jobbbler/contracts";
@@ -15,6 +17,7 @@ import {
 const searchCommitEvent = "jobbbler:webmcp-search-commit";
 const detailCommitEvent = "jobbbler:webmcp-detail-commit";
 const scheduleCommitEvent = "jobbbler:webmcp-schedule-commit";
+const savedSearchCommitEvent = "jobbbler:webmcp-saved-search-commit";
 const savedSearchDeletionCommitEvent = "jobbbler:webmcp-saved-search-deletion-commit";
 
 export interface SearchSurfaceState {
@@ -89,6 +92,24 @@ export function subscribeWebMcpScheduleCommit(
   };
   window.addEventListener(scheduleCommitEvent, handler);
   return () => window.removeEventListener(scheduleCommitEvent, handler);
+}
+
+export function commitWebMcpSavedSearch(savedSearch: SavedSearch): void {
+  window.dispatchEvent(
+    new CustomEvent<SavedSearch>(savedSearchCommitEvent, { detail: savedSearch }),
+  );
+}
+
+export function subscribeWebMcpSavedSearch(
+  listener: (savedSearch: SavedSearch) => void,
+): () => void {
+  const handler = (event: Event) => {
+    if (!(event instanceof CustomEvent)) return;
+    const savedSearch = savedSearchSchema.safeParse(event.detail);
+    if (savedSearch.success) listener(savedSearch.data);
+  };
+  window.addEventListener(savedSearchCommitEvent, handler);
+  return () => window.removeEventListener(savedSearchCommitEvent, handler);
 }
 
 export function commitWebMcpSavedSearchDeletion(receipt: SavedSearchDeletionReceipt): void {

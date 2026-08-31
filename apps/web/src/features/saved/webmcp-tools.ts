@@ -9,6 +9,7 @@ import {
   type DecideSearchAlertInput,
   type DecideSearchAlertResult,
   type JobAlertSchedule,
+  type JobSearchCriteria,
   type RequestSearchAlertInput,
   type RequestSearchAlertResult,
   type SavedSearch,
@@ -183,6 +184,24 @@ const requestAlertInputSchema = {
   required: ["name", "criteria", "recurrence", "email"],
 } as const satisfies JsonSchema;
 
+const saveSearchInputSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    name: {
+      type: "string",
+      description: "Short human-readable name for this saved search.",
+      minLength: 1,
+      maxLength: 100,
+    },
+    criteria: {
+      ...jobSearchToolInputJsonSchema,
+      description: "Raw search_jobs preferences or get_search_state exact criteria.",
+    },
+  },
+  required: ["name", "criteria"],
+} as const satisfies JsonSchema;
+
 const decisionInputSchema = {
   oneOf: [
     {
@@ -236,6 +255,10 @@ const requestAlertInput = z.strictObject({
   recurrence: scheduleRecurrenceSchema,
   email: emailAddressSchema,
 });
+const saveSearchInput = z.strictObject({
+  name: z.string().trim().min(1).max(100),
+  criteria: jobSearchToolInput,
+});
 const decisionInput = z.discriminatedUnion("decision", [
   z.strictObject({
     requestId: entityIdSchema,
@@ -284,6 +307,10 @@ const latestUpdateInputSchema = {
 export interface SavedToolDependencies {
   listSavedSearches(options: Readonly<{ signal: AbortSignal }>): Promise<readonly SavedSearch[]>;
   listSchedules(options: Readonly<{ signal: AbortSignal }>): Promise<readonly JobAlertSchedule[]>;
+  saveSearch(
+    input: Readonly<{ name: string; criteria: JobSearchCriteria }>,
+    options: Readonly<{ signal: AbortSignal }>,
+  ): Promise<SavedSearch>;
   requestSearchAlert(
     input: RequestSearchAlertInput,
     options: Readonly<{ signal: AbortSignal }>,
@@ -303,6 +330,7 @@ export interface SavedToolDependencies {
     options: Readonly<{ signal: AbortSignal }>,
   ): Promise<SavedSearchDeletionReceipt>;
   onScheduleCommitted(schedule: JobAlertSchedule): Promise<void> | void;
+  onSavedSearchCommitted(savedSearch: SavedSearch): Promise<void> | void;
   onSavedSearchDeleted(receipt: SavedSearchDeletionReceipt): Promise<void> | void;
   savedSearchHref(savedSearch: SavedSearch): string;
   onNavigate: WebMcpNavigate;
@@ -772,6 +800,46 @@ export function createSavedToolManifests(
     },
   };
 
+  const saveJobSearch: ToolManifest<unknown, SavedToolOutput> = {
+    name: "save_job_search",
+    purpose: "Save one reusable job search without turning on email updates.",
+    description:
+      "Use when the person says save, remember, or bookmark this search. Save only criteria explicitly supplied in this request or returned by get_search_state(detail=exact). Do not ask for an email: email updates remain off. If the person explicitly asks for notifications, monitoring, or emailed updates, use request_search_alert instead.",
+    inputSchema: saveSearchInputSchema,
+    annotations: { readOnlyHint: false, untrustedContentHint: true },
+    async execute(input, { signal }) {
+      try {
+        const parsed = saveSearchInput.parse(input);
+        const savedSearch = await dependencies.saveSearch(
+          {
+            name: parsed.name,
+            criteria: normalizeJobSearchCriteria(parsed.criteria),
+          },
+          { signal },
+        );
+        await dependencies.onSavedSearchCommitted(savedSearch);
+        return completedWebMcpResult({
+          summary: "Saved this job search. Email updates are off.",
+          data: {
+            savedSearchId: savedSearch.id,
+            name: short(savedSearch.name, 100),
+            emailUpdates: false,
+          },
+          resources: [
+            { type: "saved_search", id: savedSearch.id, label: short(savedSearch.name, 64) },
+          ],
+          facts: [{ key: "email_updates", value: false }],
+        });
+      } catch (error) {
+        return safeWebMcpErrorResult(
+          error,
+          signal,
+          "Provide a short name and the exact search criteria to save. Email is not needed.",
+        );
+      }
+    },
+  };
+
   return [
     getSavedAlerts,
     requestSearchAlert,
@@ -779,5 +847,6 @@ export function createSavedToolManifests(
     setJobAlertState,
     openSavedSearch,
     getLatestSearchUpdate,
+    saveJobSearch,
   ];
 }

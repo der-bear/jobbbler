@@ -23,7 +23,10 @@ import {
   type SafeWebMcpErrorResult,
 } from "@/lib/webmcp-tool-result";
 import type { WebMcpNavigate } from "@/lib/webmcp-navigation";
-import { compactSubmissionReview } from "./submission-review-presentation";
+import {
+  buildSubmissionReviewPresentation,
+  MAX_APPLICATION_SUBMISSION_REVIEW_RESULT_BYTES,
+} from "./submission-review-presentation";
 
 const emptyInputSchema = {
   type: "object",
@@ -34,7 +37,7 @@ const emptyInputSchema = {
 const patchesProperty = {
   type: "array",
   description:
-    "Application answers the agent can prepare from known facts. Ask the person when a required fact is missing; never invent it.",
+    "Application answers the agent can prepare from known facts. For cover_letter, use the full get_job_details result and locally held CV facts; send only the letter, never the CV. Ask for missing facts and never invent them.",
   minItems: 1,
   maxItems: 24,
   items: {
@@ -48,7 +51,8 @@ const patchesProperty = {
       },
       value: {
         type: "string",
-        description: "A truthful answer or draft written from facts the person supplied.",
+        description:
+          "A truthful answer written from supplied facts. A cover_letter should be complete and role-specific, not a generic motivation sentence.",
         maxLength: 10_000,
       },
     },
@@ -337,7 +341,7 @@ function assistanceTool(
     name: "request_application_assistance",
     purpose: "Ask once for short-lived permission to prepare this private application.",
     description:
-      "Request application-bound authority so the agent can read workflow state, prepare truthful answers, and run server safeguards. This does not share candidate data or submit the application. The person still reviews the exact application before submission.",
+      "Request application-bound authority so this agent client can prepare truthful answers, read them back for the final review, and run server safeguards. Nothing is sent to an employer until the person approves the exact completed application.",
     inputSchema: emptyInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -356,7 +360,7 @@ function assistanceTool(
           presentation: {
             title: "Let Jobbbler prepare this application?",
             prompt:
-              "Allow the agent to prepare this private application from facts you provide. Nothing is shared or submitted until you review the exact application.",
+              "Allow this agent client to prepare and privately review this application from facts you provide. Nothing is sent to the employer until you approve the exact result.",
             confirmLabel: "Allow once",
             facts: [
               { key: "Scope", value: "This application only" },
@@ -430,7 +434,7 @@ function updatesTool(
     name: "propose_application_updates",
     purpose: "Prepare several application answers at once from facts the person supplied.",
     description:
-      "Update up to 24 distinct fields in one bounded call. Use known profile facts or ask the person for missing facts; never infer sensitive information. The person sees the resulting application before anything is shared.",
+      "Update up to 24 distinct fields in one bounded call. For cover_letter, combine the full role description with CV facts available locally to the agent, but send Jobbbler only the finished letter. Ask for missing facts, never invent sensitive information, and never upload the CV. The person sees the exact result before anything is shared.",
     inputSchema: patchesInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -456,14 +460,14 @@ function submissionReviewTool(
     name: "request_submission_review",
     purpose: "Ask the person to review and approve one exact completed application.",
     description:
-      "Freeze the exact application on the visible review surface, then return a compact request-bound reference with recipient, purpose, field counts, sensitivity count, privacy notice, version, and expiry. Show the visible review in the agent client before asking for the final decision. This grants no permission and submits nothing.",
+      "Freeze the exact application and return its exact field values to the already-authorized agent client for the final review. Present every value, recipient, purpose, privacy notice, version, and expiry before asking for the decision. The review link is an optional browser fallback; this call submits nothing.",
     inputSchema: emptyInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
       try {
         emptyInput.parse(input);
         const request = await dependencies.requestSubmissionReview({ signal });
-        const compactReview = compactSubmissionReview(request);
+        const reviewPresentation = buildSubmissionReviewPresentation(request);
         return requiresUserActionWebMcpResult({
           summary:
             "The completed application is ready for the person's final review in the agent client.",
@@ -471,8 +475,9 @@ function submissionReviewTool(
           surface: "application_review",
           requestId: request.id,
           nextTool: "decide_application_submission",
-          decisionContext: compactReview.decisionContext,
-          presentation: compactReview.presentation,
+          decisionContext: reviewPresentation.decisionContext,
+          presentation: reviewPresentation.presentation,
+          maximumBytes: MAX_APPLICATION_SUBMISSION_REVIEW_RESULT_BYTES,
         });
       } catch (error) {
         return safeWebMcpErrorResult(error, signal, "Submission review accepts no arguments.");
@@ -669,7 +674,7 @@ const stableApplicationToolDefinitions: readonly StableApplicationToolDefinition
     name: "request_application_assistance",
     purpose: "Ask once for short-lived permission to prepare one private application.",
     description:
-      "Request application-bound preparation authority. This does not disclose candidate data or submit the application, and the person still reviews the exact result.",
+      "Request application-bound authority for this agent client to prepare truthful answers and read them back for final review. Nothing is sent to an employer until the person approves the exact completed application.",
     readOnly: false,
     input: "draft",
   },
@@ -685,7 +690,7 @@ const stableApplicationToolDefinitions: readonly StableApplicationToolDefinition
     name: "propose_application_updates",
     purpose: "Prepare several truthful answers in one identified application.",
     description:
-      "Update up to 24 distinct fields from known facts in one call. Ask for missing facts instead of inventing them; the person sees the result before submission.",
+      "Update up to 24 distinct fields from known facts in one call. For cover_letter, use the full role and local CV context but send only the finished letter. Ask for missing facts instead of inventing them; the person sees the result before submission.",
     readOnly: false,
     input: "patches",
   },
@@ -693,7 +698,7 @@ const stableApplicationToolDefinitions: readonly StableApplicationToolDefinition
     name: "request_submission_review",
     purpose: "Ask the person to review one exact completed application.",
     description:
-      "Freeze the exact application on its visible review surface and return a compact request-bound reference. Show that visible review in the agent client before asking for one final decision. This submits nothing.",
+      "Freeze the exact application and return its exact field values to the already-authorized agent client. Present every value before asking for one final decision. The review link is an optional browser fallback; this submits nothing.",
     readOnly: false,
     input: "draft",
   },

@@ -168,8 +168,10 @@ function expectValidationEnvelope(result: ToolOutput): void {
   });
 }
 
-function expectBoundedJson(result: ToolOutput): void {
-  expect(new TextEncoder().encode(JSON.stringify(result)).byteLength).toBeLessThanOrEqual(1_500);
+function expectBoundedJson(result: ToolOutput, maximumBytes = 1_500): void {
+  expect(new TextEncoder().encode(JSON.stringify(result)).byteLength).toBeLessThanOrEqual(
+    maximumBytes,
+  );
 }
 
 async function expectSafeRejection(execution: Promise<ToolOutput>): Promise<void> {
@@ -278,13 +280,52 @@ describe("route-scoped WebMCP tool manifests", () => {
     expect(searchJobs).toHaveBeenCalledTimes(2);
   });
 
+  it("publishes the complete search vocabulary and exact cursor protocol", async () => {
+    const manifests = createSearchToolManifests({
+      searchJobs: async () => searchResult,
+      getSearchState: () => null,
+      onSearchCommitted: () => undefined,
+      onNavigate: () => undefined,
+    }) as readonly ToolManifest[];
+
+    expect(tool(manifests, "search_jobs").inputSchema).toMatchObject({
+      properties: {
+        employmentTypes: {
+          items: {
+            enum: ["full_time", "part_time", "contract", "freelance", "internship"],
+          },
+        },
+        sort: {
+          enum: ["relevance", "newest", "updated_desc", "salary_desc", "salary_asc"],
+        },
+        cursor: { type: "string" },
+        limit: { minimum: 3, maximum: 3, default: 3 },
+      },
+    });
+
+    const filters = await tool(manifests, "get_search_filters").execute(
+      {},
+      { signal: new AbortController().signal },
+    );
+    expect(filters).toMatchObject({
+      status: "completed",
+      data: {
+        employmentTypes: ["full_time", "part_time", "contract", "freelance", "internship"],
+        sort: ["relevance", "newest", "updated_desc", "salary_desc", "salary_asc"],
+        pagination: { pageSize: 3 },
+      },
+    });
+    expectBoundedJson(filters);
+  });
+
   it("returns three exact job IDs and an opaque continuation cursor within the agent budget", async () => {
     const nextCursor = "cursor_" + "x".repeat(249);
+    const fullRoleTitle = "Senior Infrastructure Engineer, Multi-Tenant Isolation";
     const pagedSearch: SearchJobsResult = {
       ...searchResult,
       criteria: { ...searchResult.criteria, limit: 3 },
       jobs: [
-        { ...firstJob, matchScore: 88, matchEvidence: fit.evidence },
+        { ...firstJob, title: fullRoleTitle, matchScore: 88, matchEvidence: fit.evidence },
         { ...secondJob, matchScore: 84, matchEvidence: fit.evidence },
         { ...thirdJob, matchScore: 80, matchEvidence: fit.evidence },
       ],
@@ -306,7 +347,7 @@ describe("route-scoped WebMCP tool manifests", () => {
     expect(result).toMatchObject({
       status: "completed",
       data: {
-        jobs: [{ id: firstJobId }, { id: secondJobId }, { id: thirdJobId }],
+        jobs: [{ id: firstJobId, title: fullRoleTitle }, { id: secondJobId }, { id: thirdJobId }],
         nextCursor,
       },
     });
@@ -697,9 +738,28 @@ describe("route-scoped WebMCP tool manifests", () => {
   });
 
   it("reads an explicitly identified role without requiring its page to be open", async () => {
+    const completeSummary = [
+      "Why this role exists. The team is replacing a fragile deployment path with a safer platform.",
+      "What you will do. Own the migration, pair with maintainers, and document the operating model.",
+      "What you bring. Deep TypeScript experience is required; PostgreSQL experience is preferred.",
+    ].join("\n\n");
+    const completeJob = {
+      ...secondJob,
+      summary: completeSummary,
+      locations: ["Berlin, Germany", "Hamburg, Germany"],
+      skills: ["TypeScript", "React", "PostgreSQL", "Kubernetes"],
+    };
+    const completeFit = {
+      ...fit,
+      evidence: [
+        "The role title matches platform engineering.",
+        "The work model is remote.",
+        "The requested region is supported.",
+      ],
+    };
     const getJobDetails = vi.fn(async (): Promise<JobDetailResult> => ({
-      job: secondJob,
-      fit,
+      job: completeJob,
+      fit: completeFit,
     }));
     const manifests = createJobDetailToolManifests({
       getJobDetails,
@@ -714,6 +774,17 @@ describe("route-scoped WebMCP tool manifests", () => {
     );
 
     expect(result.status).toBe("completed");
+    expect(result).toMatchObject({
+      data: {
+        title: completeJob.title,
+        organization: completeJob.organizationName,
+        summary: completeSummary,
+        locations: completeJob.locations,
+        skills: completeJob.skills,
+        evidence: completeFit.evidence,
+      },
+    });
+    expectBoundedJson(result, 20_000);
     expect(getJobDetails).toHaveBeenCalledWith(
       { jobId: secondJobId },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
@@ -725,7 +796,7 @@ describe("route-scoped WebMCP tool manifests", () => {
       ...firstJob,
       title: "T".repeat(180),
       organizationName: "O".repeat(160),
-      summary: "S".repeat(2_000),
+      summary: "S".repeat(6_000),
       locations: Array.from({ length: 8 }, (_, index) => `${String(index)}${"L".repeat(118)}`),
       skills: Array.from({ length: 30 }, (_, index) => `${String(index)}${"K".repeat(77)}`),
       source: { ...firstJob.source, label: "P".repeat(80) },
@@ -825,8 +896,10 @@ describe("route-scoped WebMCP tool manifests", () => {
       "completed",
       "completed",
     ]);
-    for (const output of outputs) {
-      expectBoundedJson(output);
-    }
+    expectBoundedJson(searchOutput);
+    expectBoundedJson(searchStateOutput);
+    expectBoundedJson(detailOutput, 20_000);
+    expectBoundedJson(detailComparisonOutput);
+    expectBoundedJson(compareOutput);
   });
 });

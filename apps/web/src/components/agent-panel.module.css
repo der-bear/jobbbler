@@ -1,9 +1,9 @@
 .panel {
   position: sticky;
-  inset-block-start: 68px;
+  inset-block-start: var(--app-header-height, 68px);
   display: flex;
   min-inline-size: 0;
-  block-size: calc(100dvh - 68px);
+  block-size: calc(100dvh - var(--app-header-height, 68px));
   flex-direction: column;
   border-inline-start: 1px solid var(--color-line);
   background: var(--color-canvas);
@@ -31,12 +31,13 @@
 
 .resizer:hover::after,
 .resizer:focus-visible::after {
+  inset-inline-start: 10px;
+  inline-size: 3px;
   background: var(--jb-signal);
 }
 
 .resizer:focus-visible {
-  outline: 3px solid var(--jb-focus);
-  outline-offset: -3px;
+  outline: 0;
 }
 
 .header {
@@ -183,7 +184,7 @@
   }
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1200px) {
   .panel:not([aria-modal="true"]) {
     display: none;
   }
@@ -191,7 +192,7 @@
   .panel {
     position: fixed;
     z-index: 70;
-    inset-block: 60px 0;
+    inset-block: var(--app-header-height, 68px) 0;
     inset-inline: 0;
     inline-size: 100vw;
     block-size: auto;

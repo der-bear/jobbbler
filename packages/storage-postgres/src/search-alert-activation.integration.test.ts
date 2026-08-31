@@ -32,6 +32,7 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL search-alert activation a
         query: null,
         categories: [],
         workModels: [],
+        employmentTypes: [],
         seniorities: [],
         locations: [],
         skills: [],

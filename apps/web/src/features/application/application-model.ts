@@ -43,10 +43,8 @@ export function isLiveApplicationDataGrant(
 }
 
 export function isAgentAssistedApplication(workspace: ApplicationWorkspace, now: string): boolean {
-  return (
-    workspace.delegationRequests.some((delegation) =>
-      isLiveApplicationAssistance(delegation, now),
-    ) || workspace.draft.answers.some(({ provenance }) => provenance === "agent_suggestion")
+  return workspace.delegationRequests.some((delegation) =>
+    isLiveApplicationAssistance(delegation, now),
   );
 }
 

@@ -85,7 +85,8 @@ describe("AgentActivityRail", () => {
     expect(markup).toContain('aria-label="Agent activity log"');
     expect(markup).toContain('aria-live="polite"');
     expect(markup).toContain('aria-busy="true"');
-    expect(markup).toContain("Your decision needed");
+    expect(markup).toContain("Decision requested");
+    expect(markup).not.toContain("Your decision needed");
     expect(markup).toContain("Finding remote product roles in Europe.");
     expect(markup).toContain("<code>search_jobs</code>");
     expect(markup).toContain("Clear history");

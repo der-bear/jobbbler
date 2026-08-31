@@ -3,7 +3,7 @@
 The gallery tells four stories in clean 3:2 captures with real application
 state, no personal information, and labels readable in Devpost crops.
 The checked-in `media/*.png` files were captured from the release interface
-with the same global 28-tool Agent activity panel used by the submission story.
+with the same global 29-tool Agent activity panel used by the submission story.
 
 1. **`media/01-search-webmcp.png` — Search with evidence**
    - Caption: “One agent request becomes explicit filters, ranked evidence, and inspectable results.”

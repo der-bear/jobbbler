@@ -57,6 +57,7 @@ export function createManagedDemoApplicationSubmissionAdapter(
         idempotencyKey: input.idempotencyKey,
         provider: "jobbbler_demo",
         providerReferenceId: createId("demo_submission"),
+        role: { id: input.job.id, title: input.job.title },
         recipientId: presentation.recipientId,
         recipientName: presentation.recipientName,
         payloadHash: input.reviewPayloadHash,

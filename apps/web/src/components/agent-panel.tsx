@@ -24,9 +24,18 @@ import styles from "./agent-panel.module.css";
 const panelTabs = ["activity", "tools", "guide"] as const;
 type PanelTab = (typeof panelTabs)[number];
 
+const MIN_PANEL_WIDTH = 320;
+const MAX_PANEL_WIDTH = 560;
+const MIN_MAIN_WIDTH = 760;
+
+export function maximumAgentPanelWidth(viewportWidth: number): number {
+  return Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, viewportWidth - MIN_MAIN_WIDTH));
+}
+
 interface AgentPanelSurfaceProps {
   readonly activities: readonly ToolActivity[];
   readonly modal?: boolean;
+  readonly maximumWidth?: number;
   readonly onClearActivities: () => Promise<void>;
   readonly onClose: () => void;
   readonly onWidthChange: (width: number) => void;
@@ -76,6 +85,7 @@ function statusIcon(status: WebMcpRegistrationStatus) {
 export function AgentPanelSurface({
   activities,
   modal = false,
+  maximumWidth = MAX_PANEL_WIDTH,
   onClearActivities,
   onClose,
   onWidthChange,
@@ -133,7 +143,9 @@ export function AgentPanelSurface({
     const startX = event.clientX;
     const startWidth = width;
     const onMove = (moveEvent: globalThis.PointerEvent) => {
-      onWidthChange(Math.min(560, Math.max(320, startWidth + startX - moveEvent.clientX)));
+      onWidthChange(
+        Math.min(maximumWidth, Math.max(MIN_PANEL_WIDTH, startWidth + startX - moveEvent.clientX)),
+      );
     };
     const onUp = () => {
       window.removeEventListener("pointermove", onMove);
@@ -146,16 +158,16 @@ export function AgentPanelSurface({
   function resizeWithKeyboard(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === "ArrowLeft") {
       event.preventDefault();
-      onWidthChange(Math.min(560, width + 20));
+      onWidthChange(Math.min(maximumWidth, width + 20));
     } else if (event.key === "ArrowRight") {
       event.preventDefault();
-      onWidthChange(Math.max(320, width - 20));
+      onWidthChange(Math.max(MIN_PANEL_WIDTH, width - 20));
     } else if (event.key === "Home") {
       event.preventDefault();
-      onWidthChange(320);
+      onWidthChange(MIN_PANEL_WIDTH);
     } else if (event.key === "End") {
       event.preventDefault();
-      onWidthChange(560);
+      onWidthChange(maximumWidth);
     }
   }
 
@@ -200,8 +212,8 @@ export function AgentPanelSurface({
       <div
         aria-label="Resize agent panel"
         aria-orientation="vertical"
-        aria-valuemax={560}
-        aria-valuemin={320}
+        aria-valuemax={maximumWidth}
+        aria-valuemin={MIN_PANEL_WIDTH}
         aria-valuenow={width}
         className={styles["resizer"]}
         onKeyDown={resizeWithKeyboard}
@@ -312,11 +324,13 @@ export function AgentPanelSurface({
 }
 
 export function AgentPanel({
+  maximumWidth,
   modal,
   onClose,
   onWidthChange,
   width,
 }: Readonly<{
+  maximumWidth: number;
   modal: boolean;
   onClose: () => void;
   onWidthChange: (width: number) => void;
@@ -326,6 +340,7 @@ export function AgentPanel({
   return (
     <AgentPanelSurface
       activities={webMcp.activities}
+      maximumWidth={maximumWidth}
       modal={modal}
       onClearActivities={webMcp.clearActivities}
       onClose={onClose}

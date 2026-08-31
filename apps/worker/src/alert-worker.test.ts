@@ -103,6 +103,7 @@ function schedulerStorage() {
             query: null,
             categories: [],
             workModels: [],
+            employmentTypes: [],
             seniorities: [],
             locations: [],
             skills: [],

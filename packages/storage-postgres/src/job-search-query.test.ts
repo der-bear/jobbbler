@@ -16,6 +16,7 @@ const criteria: JobSearchQuery["criteria"] = {
   query: "engineer",
   categories: [],
   workModels: [],
+  employmentTypes: [],
   seniorities: [],
   locations: [],
   skills: [],
@@ -83,6 +84,9 @@ describe("PostgreSQL job text search", () => {
         expect(statement).not.toMatch(/SELECT\s+job_id\s+FROM\s+jobbbler\.job_search_documents/iu);
         expect(statement).not.toMatch(/(?:jsonb_|array_)agg/iu);
         expect(statement).toContain("floor(0.5 +");
+        expect(statement).toContain("body->>'employmentType'");
+        expect(statement).toContain("WHEN 'salary_asc'");
+        expect(statement).toContain("WHEN 'updated_desc'");
         expect(statement).toContain("max(ranked.catalog_updated_at)");
         expect(statement).toContain("JOIN jobbbler.job_search_documents AS hydrated");
         expect(values).toContain(3);

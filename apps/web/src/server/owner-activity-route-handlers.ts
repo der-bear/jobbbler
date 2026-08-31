@@ -219,7 +219,7 @@ export async function handleClearOwnerActivityRequest(
     const limited = await clearRateLimit(current.owner.id, requestId, dependencies);
     if (limited !== null) return limited;
     const data = ownerActivityClearResultSchema.parse({
-      clearedCount: await dependencies.activity.clear(current.owner.id),
+      clearedCount: await dependencies.activity.clear(current.owner.id, "agent"),
     });
     return apiSuccessResponse(data, {
       requestId,
@@ -248,6 +248,7 @@ export async function handleListOwnerActivityRequest(
       ownerId: current.owner.id,
       afterSequence,
       limit: input.limit,
+      actorKind: "agent",
     });
     assertOwnedWindow(current.owner.id, afterSequence, window);
 
@@ -257,6 +258,7 @@ export async function handleListOwnerActivityRequest(
         ownerId: current.owner.id,
         afterSequence: null,
         limit: input.limit,
+        actorKind: "agent",
       });
       assertOwnedWindow(current.owner.id, null, window);
     }

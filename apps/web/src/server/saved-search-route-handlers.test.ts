@@ -5,6 +5,7 @@ import type { IdempotencyRecord } from "@jobbbler/storage";
 
 import type { IdentityRouteDependencies } from "./identity-route-handlers";
 import {
+  handleAgentCreateSavedSearchRequest,
   handleAgentDeleteSavedSearchRequest,
   handleAgentSetScheduleEnabledRequest,
   handleCreateSavedSearchRequest,
@@ -198,6 +199,43 @@ describe("saved-search and schedule route handlers", () => {
     );
     expect(list.status).toBe(200);
     expect(current.service.listSavedSearches).toHaveBeenCalledWith(owner.id);
+  });
+
+  it("requires idempotency and attributes a dedicated agent save without email data", async () => {
+    const missingKey = dependencies();
+    const body = { name: "Remote TypeScript", criteria };
+    const rejected = await handleAgentCreateSavedSearchRequest(
+      request("/api/v1/agent/saved-searches", "POST", body),
+      missingKey,
+    );
+    expect(rejected.status).toBe(400);
+    expect(missingKey.service.createSavedSearch).not.toHaveBeenCalled();
+
+    const current = dependencies();
+    const headers = { "idempotency-key": "save-remote-typescript" };
+    const first = await handleAgentCreateSavedSearchRequest(
+      request("/api/v1/agent/saved-searches", "POST", body, headers),
+      current,
+    );
+    const replay = await handleAgentCreateSavedSearchRequest(
+      request("/api/v1/agent/saved-searches", "POST", body, headers),
+      current,
+    );
+
+    expect(first.status).toBe(201);
+    expect(replay.status).toBe(201);
+    const firstPayload = await first.json();
+    expect((await replay.json()).data).toEqual(firstPayload.data);
+    expect(current.service.createSavedSearch).toHaveBeenCalledTimes(1);
+    expect(current.activity?.publish).toHaveBeenCalledTimes(1);
+    expect(current.activity?.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: "save_job_search",
+        actorKind: "agent",
+        safeSummary: "Job search saved to the private workspace.",
+      }),
+    );
+    expect(JSON.stringify(firstPayload)).not.toMatch(/email|endpoint|schedule/iu);
   });
 
   it("previews before activation and keeps preview side-effect free", async () => {

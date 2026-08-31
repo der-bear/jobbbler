@@ -856,7 +856,7 @@ export async function handleRequestSearchAlert(
         if (restoredPut.inserted) {
           await dependencies.activity?.publish({
             ownerId: current.owner.id,
-            correlationId: persistedPayload.requestId,
+            correlationId: apiRequestId,
             kind: "schedule",
             key: "request_search_alert",
             status: "requires_user_action",
@@ -962,7 +962,7 @@ export async function handleRequestSearchAlert(
       resultStored = true;
       await dependencies.activity?.publish({
         ownerId: current.owner.id,
-        correlationId: requestId,
+        correlationId: apiRequestId,
         kind: "schedule",
         key: "request_search_alert",
         status: "requires_user_action",
@@ -1256,7 +1256,7 @@ export async function handleDecideSearchAlert(
       if (stored.inserted) {
         await dependencies.activity?.publish({
           ownerId: current.owner.id,
-          correlationId: payload.requestId,
+          correlationId: apiRequestId,
           kind: "schedule",
           key: "decide_search_alert",
           status: "completed",
@@ -1425,7 +1425,7 @@ export async function handleDecideSearchAlert(
       if (committed.inserted) {
         await dependencies.activity?.publish({
           ownerId: current.owner.id,
-          correlationId: payload.requestId,
+          correlationId: apiRequestId,
           kind: "schedule",
           key: "decide_search_alert",
           status: "completed",

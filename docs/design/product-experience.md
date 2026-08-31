@@ -20,7 +20,8 @@ the same searches and still risk missing the one meaningful change) →
 **solution** (describe it once; a compatible browser agent searches, keeps it
 current, and reports only what changed — no separate MCP server) → **trust**
 (when applying, the flow slows down: exact disclosure, explicit permission,
-final human confirmation) → **technology** (a global Agent layer and WebMCP).
+final human confirmation) → **technology** (a global Agent activity panel and
+WebMCP).
 
 Translation table. Marketing copy uses the right column; the left column
 stays in architecture and design documents.
@@ -28,7 +29,7 @@ stays in architecture and design documents.
 | Architecture term        | Human translation                                  |
 | ------------------------ | -------------------------------------------------- |
 | WebMCP tools             | works with your browser agent                      |
-| stable Agent layer       | your agent can start safely from any page          |
+| stable global tools      | your agent can start safely from any page          |
 | durable scheduler        | keeps checking after you close the page            |
 | search delta             | only tells you what changed                        |
 | guest owner              | no account required                                |
@@ -72,7 +73,7 @@ commands and policies.
   application path, its draft is read-only on the site and its revisions,
   assistance decisions, and submission decisions stay in the external agent
   client. Active assistance remains request-bound and revocable.
-- A compatible browser agent can start on any page with the complete 28-tool
+- A compatible browser agent can start on any page with the complete 29-tool
   set and execute structured actions without simulating DOM clicks. Nine are
   clear entry points; the rest validate their prerequisites when called. The
   same capability set remains discoverable across navigation.
@@ -81,14 +82,14 @@ commands and policies.
   regular worker after the tab closes.
 - The conversation belongs to the external agent client. Jobbbler does not
   embed a second chat surface.
-- A bounded structured `requires_user_action` response gives the external agent
-  client a compact request-bound reference, counts, sensitivity categories,
-  and the owner-review URL. Exact values and their field-level sensitivity
-  markers remain on that visible owner review surface, which a compatible
-  client may show or observe. The person decides in the agent client; Jobbbler
-  binds the decision to the exact request and stores a values hash and
-  versioned server-side consent record without retaining those raw values or
-  claiming cryptographic identity.
+- A structured `requires_user_action` response gives the external agent client
+  the exact completed application, field-level sensitivity markers, recipient,
+  purpose, privacy notice, request binding, and an optional owner-review URL.
+  This is the one intentionally larger private result: those values are the
+  object of the person's decision. Jobbbler binds the decision to the exact
+  request and stores a values hash and versioned server-side consent record
+  without retaining raw values in consent evidence or claiming cryptographic
+  identity.
 
 ## Route experience
 
@@ -98,7 +99,7 @@ execution.
 
 | Route                         | Primary human task                       | Agent tools                                                                                                                                                                                                                                                          | Visible trust feedback                                                                                                                  |
 | ----------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Every page `*`                | One obvious task per screen              | Entry tools: `plan_job_workflow` (advisory only), `get_search_filters`, `search_jobs`, `open_job_details`, `prepare_application`, `get_applications`, `open_jobbbler_page`, `enable_workspace_recovery`, `recover_jobbbler_workspace`                                | The global Agent layer starts with Activity, then Tools and Guide                                                                       |
+| Every page `*`                | One obvious task per screen              | Entry tools: `plan_job_workflow` (advisory only), `get_search_filters`, `search_jobs`, `open_job_details`, `prepare_application`, `get_applications`, `open_jobbbler_page`, `enable_workspace_recovery`, `recover_jobbbler_workspace`                                | The global Agent activity panel starts with Activity, then Tools and Guide                                                              |
 | Search `/`                    | Express an outcome and inspect matches   | Search-area tool `get_search_state`, globally registered like the rest of the catalog and relevant when readable search state exists; its bounded result includes an explicit truncation summary                                                                     | URL, filters, result count, and Agent activity receipts update together                                                                 |
 | Role `/jobs/:jobId`           | Understand one opportunity               | `get_job_details`, `compare_jobs`                                                                                                                                                                                                                                    | Provenance, freshness, known limits, search-fit evidence when criteria exist, and a clear next action                                   |
 | Compare `/compare`            | Inspect an agent-assisted shortlist      | `get_comparison`, `add_job_to_comparison`, `remove_job_from_comparison`                                                                                                                                                                                              | One readable evidence table with differences and missing facts                                                                          |
@@ -111,6 +112,9 @@ Jobbbler uses an editorial utility aesthetic: closer to a well-structured
 document than a dashboard made of cards.
 
 - Typography, spacing, and thin rules create hierarchy.
+- The brand is a solid `Jobbbler` wordmark with three b's and one live dot.
+  The dot is green only when WebMCP is ready and quiet gray otherwise; the
+  wordmark itself never becomes gradient text.
 - Color communicates meaning, action, warning, or failure; it is not
   decoration.
 - A vacancy reads like a document row that expands into evidence and facts.
@@ -133,9 +137,9 @@ An element earns space only when it helps a person read, decide, act,
 understand state, or understand risk. Anything else is removed or placed in an
 explicit disclosure.
 
-## The Agent panel
+## The Agent activity panel
 
-The global Agent layer is available on every page. On desktop it is a
+The global Agent activity panel is available on every page. On desktop it is a
 resizable side panel; on mobile (and after being closed) a compact “Agent
 activity” button opens it. It is a transparency layer, not a competing
 workspace and not a source of authority.
@@ -146,7 +150,7 @@ workspace and not a source of authority.
 - Activity entries are two-level: the human sentence comes first, then the
   technical line — tool name, status, and duration. Running work, required
   approval, and failures surface automatically.
-- The Tools tab shows all 28 tools grouped by outcome and explains that private
+- The Tools tab shows all 29 tools grouped by outcome and explains that private
   actions still require an owned draft and the correct stage.
 - The Guide tab offers “Try it in 10 seconds”, the suggested workflows, and a
   note that `plan_job_workflow` serves the same plans to agents — advisory
@@ -155,7 +159,7 @@ workspace and not a source of authority.
   payloads. Owner activity is a near-real-time projection; the authoritative
   result is always the regular API response and persisted domain state.
 - The ordinary page UI carries the trust feedback, whether or not a visitor
-  opens the Agent layer.
+  opens the Agent activity panel.
 
 ## Challenge presentation
 

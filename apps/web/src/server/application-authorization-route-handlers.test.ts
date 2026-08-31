@@ -1382,22 +1382,6 @@ describe("application authorization route handlers", () => {
       assistedDraft: draft,
       delegations: [{ ...delegation, status: "active" as const, approvedAt: now }],
     },
-    {
-      state: "an agent-suggested answer",
-      assistedDraft: {
-        ...draft,
-        answers: [
-          {
-            fieldKey: "motivation",
-            value: "Agent-prepared note",
-            provenance: "agent_suggestion" as const,
-            sensitive: false,
-            acceptedByHuman: false,
-          },
-        ],
-      },
-      delegations: [],
-    },
   ])("rejects first-party data approval after $state", async ({ assistedDraft, delegations }) => {
     const current = dependencies();
     current.applications.getByOwner = vi.fn(async () => assistedDraft);
@@ -1423,6 +1407,44 @@ describe("application authorization route handlers", () => {
 
     expect(response.status).toBe(403);
     expect(current.richDataGrants.approveCurrent).not.toHaveBeenCalled();
+  });
+
+  it("allows first-party data approval after assistance ends while preserving answer provenance", async () => {
+    const current = dependencies();
+    current.applications.getByOwner = vi.fn(async () => ({
+      ...draft,
+      answers: [
+        {
+          fieldKey: "cover_letter",
+          value: "Agent-prepared note",
+          provenance: "agent_suggestion" as const,
+          sensitive: true,
+          acceptedByHuman: false,
+        },
+      ],
+    }));
+    current.delegations.listByResource = vi.fn(async () => []);
+
+    const response = await handleApproveDataGrantRequest(
+      request(
+        `/api/v1/applications/${draftId}/data-grants/${grantId}/approve`,
+        "POST",
+        {
+          interaction: {
+            channel: "first_party_ui",
+            requestId: grantId,
+            affirmation: "confirmed",
+            evidenceVersion: "agent-interaction-v1",
+          },
+        },
+        { human: true },
+      ),
+      { params: Promise.resolve({ draftId, grantId }) },
+      current,
+    );
+
+    expect(response.status, JSON.stringify(await response.clone().json())).toBe(200);
+    expect(current.richDataGrants.approveCurrent).toHaveBeenCalled();
   });
 
   it("rejects assistance decisions that are not bound to the exact request", async () => {

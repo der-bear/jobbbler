@@ -11,6 +11,7 @@ describe("shareable job-search URL state", () => {
       query: "  platform   engineer ",
       categories: ["security", "software_engineering"],
       workModels: ["hybrid", "remote"],
+      employmentTypes: ["contract", "full_time"],
       seniorities: ["staff", "senior"],
       locations: ["Europe", "Kyiv"],
       skills: ["TypeScript", "PostgreSQL"],
@@ -31,7 +32,7 @@ describe("shareable job-search URL state", () => {
     const parameters = searchInputToSearchParams(input);
 
     expect(parameters.toString()).toBe(
-      "q=platform+engineer&category=security&category=software_engineering&work=hybrid&work=remote&seniority=senior&seniority=staff&location=Europe&location=Kyiv&skill=PostgreSQL&skill=TypeScript&exclude=crypto&exclude=PHP&salary_min=90000&salary_max=160000&currency=EUR&unknown_salary=exclude&posted_within=30&sort=newest&cursor=cursor-v1&limit=12",
+      "q=platform+engineer&category=security&category=software_engineering&work=hybrid&work=remote&employment=contract&employment=full_time&seniority=senior&seniority=staff&location=Europe&location=Kyiv&skill=PostgreSQL&skill=TypeScript&exclude=crypto&exclude=PHP&salary_min=90000&salary_max=160000&currency=EUR&unknown_salary=exclude&posted_within=30&sort=newest&cursor=cursor-v1&limit=12",
     );
     expect(normalizeJobSearchCriteria(searchParamsToInput(parameters))).toEqual(
       normalizeJobSearchCriteria(input),

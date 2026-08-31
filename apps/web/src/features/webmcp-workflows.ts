@@ -12,6 +12,7 @@ import {
 export const workflowGoals = [
   "find_roles",
   "compare_roles",
+  "save_search",
   "monitor_search",
   "prepare_application",
   "enable_recovery",
@@ -38,7 +39,7 @@ interface WorkflowPlan {
   readonly branches?: readonly WorkflowBranch[];
 }
 
-export const workflowVersion = "2.5";
+export const workflowVersion = "2.7";
 export const MAX_WORKFLOW_PLAN_RESULT_BYTES = 2_048;
 
 export const workflowBoundaries: readonly string[] = [
@@ -103,6 +104,29 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
         intent: "Adjust the set as needed",
         tool: "add_job_to_comparison",
         requiredInputs: ["jobId"],
+        humanAction: false,
+      },
+    ],
+  },
+  save_search: {
+    title: "Save a search for later",
+    steps: [
+      {
+        intent: "Run the search worth saving",
+        tool: "search_jobs",
+        requiredInputs: ["known search criteria"],
+        humanAction: false,
+      },
+      {
+        intent: "Read criteria in the exact reusable shape",
+        tool: "get_search_state",
+        requiredInputs: ["detail=exact"],
+        humanAction: false,
+      },
+      {
+        intent: "Save the exact criteria for later. Email updates stay off",
+        tool: "save_job_search",
+        requiredInputs: ["name", "criteria from get_search_state.data.criteria"],
         humanAction: false,
       },
     ],
@@ -175,6 +199,12 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
         humanAction: false,
       },
       {
+        intent: "Read the full role before writing the cover letter",
+        tool: "get_job_details",
+        requiredInputs: ["jobId"],
+        humanAction: false,
+      },
+      {
         intent: "Create or reopen the private application",
         tool: "prepare_application",
         requiredInputs: ["jobId"],
@@ -199,16 +229,18 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
         humanAction: false,
       },
       {
-        intent: "Propose bounded truthful answers",
+        intent: "Prepare truthful answers and a role-specific cover letter",
         tool: "propose_application_updates",
         requiredInputs: ["draftId", "patches: fieldKey + value"],
-        humanAction: "Ask only for missing facts; never invent them.",
+        humanAction:
+          "Use the full role and locally held CV facts; ask for gaps. The CV stays in the agent client.",
       },
       {
         intent: "Present the exact submission review",
         tool: "request_submission_review",
         requiredInputs: ["draftId"],
-        humanAction: "Ask for the final decision in the agent client.",
+        humanAction:
+          "Show every returned field value in the agent client, then ask for the final decision.",
       },
       {
         intent: "Submit once only if approved",
@@ -296,7 +328,7 @@ function preferredTool(goal: WorkflowGoal, route: string): string | null {
   if (goal === "compare_roles" && route === "/compare") return "get_comparison";
   if (goal === "monitor_search" && route === "/saved") return "get_saved_alerts";
   if (goal === "prepare_application" && route === "/jobs/:jobId") {
-    return "prepare_application";
+    return "get_job_details";
   }
   if (goal === "find_roles" && route === "/jobs/:jobId") return "get_job_details";
   return null;

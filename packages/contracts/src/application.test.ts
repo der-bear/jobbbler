@@ -27,6 +27,10 @@ describe("application authorization contracts", () => {
       submission: {
         provider: "jobbbler_demo" as const,
         providerReferenceId: "demo_submission_550e8400-e29b-41d4-a716-446655440000",
+        role: {
+          id: "job_550e8400-e29b-41d4-a716-446655440000",
+          title: "Senior Product Engineer",
+        },
         recipient: {
           id: "org_550e8400-e29b-41d4-a716-446655440000",
           name: "Northstar Systems",
@@ -50,6 +54,12 @@ describe("application authorization contracts", () => {
       applicationReceiptSummarySchema.safeParse({
         ...submitted,
         submission: { ...submitted.submission, providerReferenceId: "" },
+      }).success,
+    ).toBe(false);
+    expect(
+      applicationReceiptSummarySchema.safeParse({
+        ...submitted,
+        submission: { ...submitted.submission, role: undefined },
       }).success,
     ).toBe(false);
   });
@@ -96,7 +106,7 @@ describe("application authorization contracts", () => {
       recipientId: "org_550e8400-e29b-41d4-a716-446655440000",
       purpose: "Submit the reviewed application to Northstar Systems.",
       categories: ["identity", "contact", "application_answers"],
-      fieldKeys: ["full_name", "email", "motivation"],
+      fieldKeys: ["full_name", "email", "cover_letter"],
       documentIds: [],
       payloadHash: "a".repeat(64),
       noticeVersion: "privacy-2026-08-29",
@@ -138,10 +148,10 @@ describe("application authorization contracts", () => {
           sensitive: true,
         },
         {
-          fieldKey: "motivation",
-          label: "Why this role",
+          fieldKey: "cover_letter",
+          label: "Cover letter",
           value: "I build reliable data platforms.",
-          sensitive: false,
+          sensitive: true,
         },
       ],
       noticeVersion: "privacy-2026-08-29",
@@ -169,10 +179,10 @@ describe("application authorization contracts", () => {
         sensitive: true,
       },
       {
-        fieldKey: "motivation",
-        label: "Why this role",
+        fieldKey: "cover_letter",
+        label: "Cover letter",
         value: "I build reliable data platforms.",
-        sensitive: false,
+        sensitive: true,
       },
     ]);
     expect(receipt.channel).toBe("agent_client");

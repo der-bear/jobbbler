@@ -85,6 +85,10 @@ export async function searchPostgresJobs(
           OR search.work_model = ANY(${sql.array(query.criteria.workModels)}::text[])
         )
         AND (
+          ${(query.criteria.employmentTypes ?? []).length === 0}::boolean
+          OR search.body->>'employmentType' = ANY(${sql.array(query.criteria.employmentTypes ?? [])}::text[])
+        )
+        AND (
           ${query.criteria.seniorities.length === 0}::boolean
           OR search.seniority = ANY(${sql.array(query.criteria.seniorities)}::text[])
         )
@@ -286,6 +290,10 @@ export async function searchPostgresJobs(
               ))
             END
           WHEN 'salary_desc' THEN salary_sort
+          WHEN 'salary_asc' THEN
+            CASE WHEN salary_sort < 0 THEN ${Number.MIN_SAFE_INTEGER}::double precision ELSE -salary_sort END
+          WHEN 'updated_desc' THEN
+            floor(extract(epoch FROM catalog_updated_at) * 1000)::double precision
           ELSE 0
         END::double precision AS primary_sort
       FROM dimensions

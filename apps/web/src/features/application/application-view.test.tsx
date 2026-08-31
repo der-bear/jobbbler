@@ -23,10 +23,10 @@ const workspace: ApplicationWorkspace = {
         acceptedByHuman: true,
       },
       {
-        fieldKey: "motivation",
-        value: "A candidate-authored motivation note.",
+        fieldKey: "cover_letter",
+        value: "A candidate-authored cover letter.",
         provenance: "user_entered",
-        sensitive: false,
+        sensitive: true,
         acceptedByHuman: true,
       },
     ],
@@ -45,12 +45,12 @@ const workspace: ApplicationWorkspace = {
       options: [],
     },
     {
-      fieldKey: "motivation",
-      label: "Why this role",
+      fieldKey: "cover_letter",
+      label: "Cover letter",
       description: "A short note for the hiring team.",
       input: "textarea",
       required: true,
-      sensitive: false,
+      sensitive: true,
       category: "application_answers",
       options: [],
     },
@@ -97,7 +97,7 @@ describe("ApplicationView", () => {
         error={null}
         fieldValues={{
           full_name: "Ada Lovelace",
-          motivation: "A candidate-authored motivation note.",
+          cover_letter: "A candidate-authored cover letter.",
         }}
         job={job}
         now={workspace.serverNow}
@@ -161,27 +161,13 @@ describe("ApplicationView", () => {
         ],
       } satisfies ApplicationWorkspace,
     },
-    {
-      state: "an agent-suggested answer",
-      assistedWorkspace: {
-        ...workspace,
-        draft: {
-          ...workspace.draft,
-          answers: workspace.draft.answers.map((answer) =>
-            answer.fieldKey === "motivation"
-              ? { ...answer, provenance: "agent_suggestion" as const, acceptedByHuman: false }
-              : answer,
-          ),
-        },
-      } satisfies ApplicationWorkspace,
-    },
   ])("keeps $state decisions in the external agent client", ({ assistedWorkspace }) => {
     const markup = renderToStaticMarkup(
       <ApplicationView
         busy={false}
         confirmation={null}
         error={null}
-        fieldValues={{ full_name: "Ada Lovelace", motivation: "Candidate facts" }}
+        fieldValues={{ full_name: "Ada Lovelace", cover_letter: "Candidate facts" }}
         job={job}
         now={assistedWorkspace.serverNow}
         onAction={() => undefined}
@@ -207,7 +193,7 @@ describe("ApplicationView", () => {
           busy={false}
           confirmation={null}
           error={null}
-          fieldValues={{ full_name: "Ada Lovelace", motivation: "Candidate facts" }}
+          fieldValues={{ full_name: "Ada Lovelace", cover_letter: "Candidate facts" }}
           job={job}
           now={workspace.serverNow}
           onAction={() => undefined}
@@ -238,6 +224,56 @@ describe("ApplicationView", () => {
     },
   );
 
+  it.each([
+    { status: "revoked" as const, expiresAt: "2026-08-29T10:20:00.000Z" },
+    { status: "active" as const, expiresAt: "2026-08-29T09:59:59.999Z" },
+  ])("offers a clear human continuation after $status agent assistance ends", (delegation) => {
+    const markup = renderToStaticMarkup(
+      <ApplicationView
+        busy={false}
+        confirmation={null}
+        error={null}
+        fieldValues={{ full_name: "Ada Lovelace", cover_letter: "Agent prepared text" }}
+        job={job}
+        now={workspace.serverNow}
+        onAction={() => undefined}
+        onFieldChange={() => undefined}
+        workspace={{
+          ...workspace,
+          draft: {
+            ...workspace.draft,
+            answers: workspace.draft.answers.map((answer) =>
+              answer.fieldKey === "cover_letter"
+                ? {
+                    ...answer,
+                    value: "Agent prepared text",
+                    provenance: "agent_suggestion" as const,
+                  }
+                : answer,
+            ),
+          },
+          delegationRequests: [
+            {
+              id: "delegation_550e8400-e29b-41d4-a716-446655440000",
+              agentSessionId: "agent_session_550e8400-e29b-41d4-a716-446655440000",
+              operations: ["read_application", "edit_application"],
+              purpose: "Prepare this application.",
+              approvedAt: delegation.status === "active" ? "2026-08-29T09:55:00.000Z" : null,
+              ...delegation,
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(markup).toContain("Agent access ended");
+    expect(markup).toContain("Continue here");
+    expect(markup).toContain("Submit to Northstar Systems");
+    expect(markup).toContain("Agent suggestion");
+    expect(markup).not.toContain('readOnly=""');
+    expect(markup).not.toContain("Continue in your agent chat");
+  });
+
   it("reclassifies an expiring request when the mounted server clock advances", () => {
     const expiring: ApplicationWorkspace = {
       ...workspace,
@@ -258,7 +294,7 @@ describe("ApplicationView", () => {
         busy={false}
         confirmation={null}
         error={null}
-        fieldValues={{ full_name: "Ada Lovelace", motivation: "Candidate facts" }}
+        fieldValues={{ full_name: "Ada Lovelace", cover_letter: "Candidate facts" }}
         job={job}
         now="2026-08-29T10:00:01.000Z"
         onAction={() => undefined}
@@ -278,7 +314,7 @@ describe("ApplicationView", () => {
         busy={false}
         confirmation={null}
         error={null}
-        fieldValues={{ full_name: "Ada Lovelace", motivation: "" }}
+        fieldValues={{ full_name: "Ada Lovelace", cover_letter: "" }}
         job={job}
         now={workspace.serverNow}
         onAction={() => undefined}
@@ -287,14 +323,14 @@ describe("ApplicationView", () => {
           ...workspace,
           draft: {
             ...workspace.draft,
-            answers: workspace.draft.answers.filter(({ fieldKey }) => fieldKey !== "motivation"),
+            answers: workspace.draft.answers.filter(({ fieldKey }) => fieldKey !== "cover_letter"),
           },
         }}
       />,
     );
 
     expect(markup).toContain("1 detail needed");
-    expect(markup).toContain("Why this role");
+    expect(markup).toContain("Cover letter");
     expect(markup).toContain("Ask your agent or fill it in here");
     expect(markup).toContain("disabled");
     expect(markup).not.toContain("Approve and continue");
@@ -306,7 +342,7 @@ describe("ApplicationView", () => {
         busy={false}
         confirmation={null}
         error={null}
-        fieldValues={{ full_name: "Ada Lovelace", motivation: "A current answer" }}
+        fieldValues={{ full_name: "Ada Lovelace", cover_letter: "A current answer" }}
         job={job}
         now={workspace.serverNow}
         onAction={() => undefined}
@@ -315,7 +351,7 @@ describe("ApplicationView", () => {
           ...workspace,
           draft: {
             ...workspace.draft,
-            answers: workspace.draft.answers.filter(({ fieldKey }) => fieldKey !== "motivation"),
+            answers: workspace.draft.answers.filter(({ fieldKey }) => fieldKey !== "cover_letter"),
           },
         }}
       />,
@@ -324,6 +360,28 @@ describe("ApplicationView", () => {
     expect(markup).toContain("2 of 2 details ready");
     expect(markup).toContain("Submit to Northstar Systems");
     expect(markup).not.toContain("disabled");
+  });
+
+  it("announces and visibly labels the final submission while it is in progress", () => {
+    const markup = renderToStaticMarkup(
+      <ApplicationView
+        busy
+        confirmation={null}
+        error={null}
+        fieldValues={{ full_name: "Ada Lovelace", cover_letter: "A current answer" }}
+        job={job}
+        now={workspace.serverNow}
+        onAction={() => undefined}
+        onFieldChange={() => undefined}
+        workspace={workspace}
+      />,
+    );
+
+    expect(markup).toContain("Submitting…");
+    expect(markup.match(/aria-busy="true"/gu)).toHaveLength(2);
+    expect(markup).toContain('role="status"');
+    expect(markup).toContain("Submitting your application.");
+    expect(markup).not.toContain("Nothing is sent until this final action succeeds.");
   });
 
   it("leaves an external application as an explicit source-link handoff", () => {
@@ -374,7 +432,7 @@ describe("ApplicationView", () => {
         busy={false}
         confirmation={null}
         error={null}
-        fieldValues={{ full_name: "Ada Lovelace", motivation: "Legacy answer" }}
+        fieldValues={{ full_name: "Ada Lovelace", cover_letter: "Legacy answer" }}
         job={{ ...job, applyMode: "external" }}
         now={workspace.serverNow}
         onAction={() => undefined}
@@ -408,7 +466,7 @@ describe("ApplicationView", () => {
         busy={false}
         confirmation={null}
         error={null}
-        fieldValues={{ full_name: "Ada Lovelace", motivation: "Prepared answer" }}
+        fieldValues={{ full_name: "Ada Lovelace", cover_letter: "Prepared answer" }}
         job={{ ...job, status: "closed" }}
         now={workspace.serverNow}
         onAction={() => undefined}
@@ -504,6 +562,10 @@ describe("ApplicationView", () => {
             submission: {
               provider: "jobbbler_demo",
               providerReferenceId: "demo_submission_550e8400-e29b-41d4-a716-446655440000",
+              role: {
+                id: workspace.draft.jobId,
+                title: "Senior Product Engineer",
+              },
               recipient: {
                 id: "org_550e8400-e29b-41d4-a716-446655440000",
                 name: "Northstar Systems",
@@ -512,9 +574,9 @@ describe("ApplicationView", () => {
               fields: [
                 { fieldKey: "full_name", label: "Full name", value: "Ada Lovelace" },
                 {
-                  fieldKey: "motivation",
-                  label: "Why this role",
-                  value: "A candidate-authored motivation note.",
+                  fieldKey: "cover_letter",
+                  label: "Cover letter",
+                  value: "A candidate-authored cover letter.",
                 },
               ],
             },
@@ -532,14 +594,14 @@ describe("ApplicationView", () => {
     expect(markup).toContain("UTC</time>");
     expect(markup).toContain("<dt>Receipt reference</dt>");
     expect(markup).toContain("demo_submission_550e8400-e29b-41d4-a716-446655440000");
+    expect(markup).toContain("<dt>Role</dt><dd>Senior Product Engineer</dd>");
+    expect(markup).toContain(`<dt>Job ID</dt><dd>${workspace.draft.jobId}</dd>`);
     expect(markup).toContain("Application sent");
     expect(markup).toContain(
       "Read-only copy of the exact fields stored with this Jobbbler demo submission.",
     );
     expect(markup).toContain("<dt>Full name</dt><dd>Ada Lovelace</dd>");
-    expect(markup).toContain(
-      "<dt>Why this role</dt><dd>A candidate-authored motivation note.</dd>",
-    );
+    expect(markup).toContain("<dt>Cover letter</dt><dd>A candidate-authored cover letter.</dd>");
     expect(markup).not.toContain("Mutable organization name");
     expect(markup).not.toContain("Mutable role title");
     expect(markup).not.toContain("Changed Full name");

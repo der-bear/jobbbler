@@ -148,16 +148,12 @@ function AgentAssistanceRequest({
   workspace,
   now,
 }: Pick<ApplicationViewProps, "workspace" | "now">) {
-  const requested = workspace.delegationRequests.find(
-    (delegation) =>
-      delegation.status === "requested" && isLiveApplicationAssistance(delegation, now),
+  const live = workspace.delegationRequests.find((delegation) =>
+    isLiveApplicationAssistance(delegation, now),
   );
+  const requested = live?.status === "requested" ? live : undefined;
   const latest = workspace.delegationRequests.at(-1);
-  const ended =
-    requested === undefined &&
-    latest !== undefined &&
-    (latest.status === "requested" || latest.status === "active") &&
-    !isLiveApplicationAssistance(latest, now);
+  const ended = live === undefined && latest !== undefined;
   if (requested === undefined && !ended) return null;
   return (
     <section aria-labelledby="agent-assistance-heading" className={styles["assistance"]}>
@@ -165,8 +161,11 @@ function AgentAssistanceRequest({
         <p className={styles["eyebrow"]}>Agent preparation</p>
         {ended ? (
           <>
-            <h2 id="agent-assistance-heading">Agent access ended</h2>
-            <p>You can continue here, or ask the agent to request access again.</p>
+            <h2 id="agent-assistance-heading">Continue here</h2>
+            <p>
+              Agent access ended. You can edit and submit here, or ask the agent to request access
+              again.
+            </p>
           </>
         ) : (
           <>
@@ -328,16 +327,29 @@ function ReviewDocument({
             </p>
           </div>
         ) : (
-          <div className={styles["actions"]}>
+          <div aria-busy={busy} className={styles["actions"]}>
             <button
+              aria-busy={busy}
               className={styles["primaryAction"]}
               disabled={busy || !readiness.readyForReview}
               onClick={() => onAction("review_and_submit")}
               type="button"
             >
-              <PaperPlaneTiltIcon aria-hidden="true" /> Submit to {workspace.recipient.name}
+              {busy ? (
+                "Submitting…"
+              ) : (
+                <>
+                  <PaperPlaneTiltIcon aria-hidden="true" /> Submit to {workspace.recipient.name}
+                </>
+              )}
             </button>
-            <p>Nothing is sent until this final action succeeds.</p>
+            {busy ? (
+              <p aria-live="polite" role="status">
+                Submitting your application.
+              </p>
+            ) : (
+              <p>Nothing is sent until this final action succeeds.</p>
+            )}
           </div>
         )}
       </section>
@@ -469,6 +481,14 @@ function CompletePanel({ workspace }: Readonly<{ workspace: ApplicationWorkspace
             <div>
               <dt>Receipt reference</dt>
               <dd>{submission.providerReferenceId}</dd>
+            </div>
+            <div>
+              <dt>Role</dt>
+              <dd>{submission.role.title}</dd>
+            </div>
+            <div>
+              <dt>Job ID</dt>
+              <dd>{submission.role.id}</dd>
             </div>
           </dl>
           <SubmittedApplicationSnapshot fields={submission.fields} />

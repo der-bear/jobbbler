@@ -368,7 +368,7 @@
       "workModel": "flexible",
       "employmentType": "full_time",
       "seniority": "mid",
-      "locations": ["Dublin, Ireland", "Remote Europe"],
+      "locations": ["Dublin, Ireland", "Europe"],
       "skills": ["Python", "APIs", "Technical writing", "Customer support"],
       "salary": {
         "minimum": 58000,
@@ -536,7 +536,7 @@
       "workModel": "flexible",
       "employmentType": "freelance",
       "seniority": "lead",
-      "locations": ["Lisbon, Portugal", "Remote Europe"],
+      "locations": ["Lisbon, Portugal", "Europe"],
       "skills": ["React", "CSS", "Accessibility", "Storybook"],
       "salary": {
         "minimum": 55,
@@ -872,7 +872,7 @@
       "workModel": "flexible",
       "employmentType": "part_time",
       "seniority": "mid",
-      "locations": ["Helsinki, Finland", "Remote Europe"],
+      "locations": ["Helsinki, Finland", "Europe"],
       "skills": ["Documentation", "APIs", "Markdown", "Information architecture"],
       "salary": {
         "minimum": 83000,
@@ -1040,7 +1040,7 @@
       "workModel": "flexible",
       "employmentType": "contract",
       "seniority": "senior",
-      "locations": ["Toronto, Canada", "Remote North America"],
+      "locations": ["Toronto, Canada", "North America"],
       "skills": ["Service design", "User research", "Journey mapping", "Recruiting"],
       "salary": {
         "minimum": 60000,
@@ -1236,7 +1236,7 @@
       "workModel": "hybrid",
       "employmentType": "internship",
       "seniority": "entry",
-      "locations": ["Berlin, Germany", "Remote - Germany"],
+      "locations": ["Berlin, Germany"],
       "skills": ["Python", "SQL", "Git", "REST APIs", "Docker"],
       "salary": {
         "minimum": 24000,
@@ -1292,7 +1292,7 @@
       "workModel": "hybrid",
       "employmentType": "full_time",
       "seniority": "entry",
-      "locations": ["Amsterdam, Netherlands", "Remote - Netherlands"],
+      "locations": ["Amsterdam, Netherlands"],
       "skills": ["JavaScript", "Node.js", "REST APIs", "PostgreSQL", "Git"],
       "salary": {
         "minimum": 40000,
@@ -1320,7 +1320,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "mid",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Berlin, Germany"],
       "skills": ["Go", "PostgreSQL", "gRPC", "Kafka", "Docker"],
       "salary": {
         "minimum": 68000,
@@ -1348,7 +1348,7 @@
       "workModel": "remote",
       "employmentType": "part_time",
       "seniority": "mid",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Amsterdam, Netherlands"],
       "skills": ["Go", "PostgreSQL", "Stripe API", "REST APIs", "Testing"],
       "salary": {
         "minimum": 34000,
@@ -1376,7 +1376,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "mid",
-      "locations": ["Remote - Europe", "Poland"],
+      "locations": ["Europe", "Amsterdam, Netherlands", "Poland"],
       "skills": ["TypeScript", "React", "Node.js", "PostgreSQL", "GraphQL"],
       "salary": {
         "minimum": 62000,
@@ -1432,7 +1432,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Amsterdam, Netherlands"],
       "skills": ["Go", "Kafka", "PostgreSQL", "Kubernetes", "gRPC"],
       "salary": {
         "minimum": 84000,
@@ -1460,7 +1460,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "senior",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Amsterdam, Netherlands"],
       "skills": ["Go", "gRPC", "PostgreSQL", "Kubernetes", "API Design"],
       "salary": {
         "minimum": 75,
@@ -1488,7 +1488,7 @@
       "workModel": "remote",
       "employmentType": "freelance",
       "seniority": "senior",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Berlin, Germany"],
       "skills": ["Python", "SQL", "AWS S3", "Airflow", "PostgreSQL"],
       "salary": {
         "minimum": 78000,
@@ -1516,7 +1516,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "staff",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Berlin, Germany"],
       "skills": ["Go", "Kubernetes", "PostgreSQL", "Kafka", "System Design"],
       "salary": {
         "minimum": 112000,
@@ -1544,7 +1544,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "principal",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Berlin, Germany"],
       "skills": ["Go", "Kafka", "Kubernetes", "PostgreSQL", "Distributed Systems"],
       "salary": {
         "minimum": 128000,
@@ -1628,7 +1628,7 @@
       "workModel": "flexible",
       "employmentType": "full_time",
       "seniority": null,
-      "locations": ["Remote - Europe", "Berlin, Germany"],
+      "locations": ["Berlin, Germany", "Europe"],
       "skills": ["Threat Modeling", "Python", "SAST", "OWASP", "Code Review"],
       "salary": {
         "minimum": 78000,
@@ -1656,7 +1656,7 @@
       "workModel": "hybrid",
       "employmentType": "internship",
       "seniority": "entry",
-      "locations": ["London, United Kingdom", "Remote - United Kingdom"],
+      "locations": ["London, United Kingdom"],
       "skills": ["TypeScript", "Node.js", "Git", "REST APIs", "Testing"],
       "salary": {
         "minimum": 22000,
@@ -1712,7 +1712,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "mid",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Dublin, Ireland"],
       "skills": ["Node.js", "TypeScript", "PostgreSQL", "Redis", "RabbitMQ"],
       "salary": {
         "minimum": 63000,
@@ -1768,7 +1768,7 @@
       "workModel": "remote",
       "employmentType": "part_time",
       "seniority": "mid",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "London, United Kingdom"],
       "skills": ["Node.js", "TypeScript", "PostgreSQL", "CSV/Export Tooling", "REST APIs"],
       "salary": {
         "minimum": 32000,
@@ -1824,7 +1824,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "mid",
-      "locations": ["Remote - Europe", "Portugal"],
+      "locations": ["Europe", "London, United Kingdom", "Portugal"],
       "skills": ["Python", "PostgreSQL", "Stripe API", "REST APIs", "Testing"],
       "salary": {
         "minimum": 59000,
@@ -1852,7 +1852,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "London, United Kingdom"],
       "skills": ["TypeScript", "Kafka", "Event-Driven Architecture", "Node.js", "PostgreSQL"],
       "salary": {
         "minimum": 88000,
@@ -1880,7 +1880,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "senior",
-      "locations": ["Remote - United Kingdom"],
+      "locations": ["United Kingdom", "London, United Kingdom"],
       "skills": ["Python", "PostgreSQL", "ETL", "REST APIs", "Data Migration"],
       "salary": {
         "minimum": 78000,
@@ -1936,7 +1936,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Dublin, Ireland"],
       "skills": ["Node.js", "TypeScript", "PostgreSQL", "Authorization Models", "REST APIs"],
       "salary": {
         "minimum": 85000,
@@ -1992,7 +1992,7 @@
       "workModel": "flexible",
       "employmentType": "freelance",
       "seniority": "senior",
-      "locations": ["Remote - Europe", "Remote - United Kingdom"],
+      "locations": ["London, United Kingdom", "Europe"],
       "skills": ["Kubernetes", "Terraform", "AWS", "CI/CD", "Observability"],
       "salary": {
         "minimum": 68000,
@@ -2166,7 +2166,7 @@
       "workModel": "remote",
       "employmentType": "part_time",
       "seniority": "mid",
-      "locations": ["Remote - United States", "Remote - Canada"],
+      "locations": ["United States", "Canada", "Denver, United States", "Toronto, Canada"],
       "skills": ["TypeScript", "React", "Node.js", "PostgreSQL", "REST APIs"],
       "salary": {
         "minimum": 46000,
@@ -2222,7 +2222,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - Canada", "Remote - United States"],
+      "locations": ["Canada", "United States", "Toronto, Canada", "Denver, United States"],
       "skills": ["C++", "Python", "Optimization Algorithms", "ROS", "Testing"],
       "salary": {
         "minimum": 138000,
@@ -2250,7 +2250,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "senior",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Denver, United States"],
       "skills": ["Python", "Kafka", "Time-Series Databases", "Grafana", "REST APIs"],
       "salary": {
         "minimum": 130000,
@@ -2306,7 +2306,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "staff",
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Toronto, Canada"],
       "skills": ["C++", "Python", "Distributed Systems", "ROS", "System Design"],
       "salary": {
         "minimum": 175000,
@@ -2474,7 +2474,7 @@
       "workModel": "flexible",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - North America", "Denver, United States"],
+      "locations": ["Denver, United States", "North America"],
       "skills": [
         "Network Security",
         "Embedded Security",
@@ -2536,7 +2536,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "mid",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Austin, United States"],
       "skills": ["Go", "Kubernetes", "gRPC", "PostgreSQL", "Testing"],
       "salary": {
         "minimum": 108000,
@@ -2564,7 +2564,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - Europe", "Remote - United States"],
+      "locations": ["Europe", "United States", "Austin, United States"],
       "skills": ["Go", "PostgreSQL", "Kafka", "Distributed Systems", "Testing"],
       "salary": {
         "minimum": 145000,
@@ -2620,7 +2620,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "mid",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Austin, United States"],
       "skills": ["Kubernetes", "Ceph", "Prometheus", "Go", "Incident Response"],
       "salary": {
         "minimum": 115000,
@@ -2676,7 +2676,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "senior",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Austin, United States"],
       "skills": ["Kubernetes", "Go", "Helm", "CI/CD", "Observability"],
       "salary": {
         "minimum": 172000,
@@ -2704,7 +2704,7 @@
       "workModel": "remote",
       "employmentType": "freelance",
       "seniority": "senior",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe"],
       "skills": ["Prometheus", "Grafana", "OpenTelemetry", "Kubernetes", "Go"],
       "salary": {
         "minimum": 85,
@@ -2732,7 +2732,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "staff",
-      "locations": ["Remote - United States", "Remote - Europe"],
+      "locations": ["United States", "Europe", "Austin, United States"],
       "skills": ["Kubernetes", "Distributed Systems", "Chaos Engineering", "Go", "System Design"],
       "salary": {
         "minimum": 178000,
@@ -2890,7 +2890,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "executive",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Austin, United States"],
       "skills": [
         "Security Strategy",
         "Risk Management",
@@ -2924,7 +2924,7 @@
       "workModel": "flexible",
       "employmentType": "full_time",
       "seniority": null,
-      "locations": ["Remote - United States", "Austin, United States"],
+      "locations": ["Austin, United States", "United States"],
       "skills": ["Cloud Security", "AWS", "Kubernetes Security", "Threat Modeling", "Python"],
       "salary": {
         "minimum": 125000,
@@ -2952,7 +2952,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "mid",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "London, United Kingdom"],
       "skills": ["TypeScript", "React", "Node.js", "PostgreSQL", "REST APIs"],
       "salary": {
         "minimum": 58000,
@@ -2980,7 +2980,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - Europe", "Remote - United Kingdom"],
+      "locations": ["Europe", "London, United Kingdom"],
       "skills": ["Go", "PostgreSQL", "gRPC", "Distributed Systems", "Testing"],
       "salary": {
         "minimum": 82000,
@@ -3059,12 +3059,12 @@
       "organizationId": "org_00000017-0000-7000-8000-000000000017",
       "organizationName": "Glasspoint Networks",
       "title": "Infrastructure Engineer, Monitoring (Part-Time)",
-      "summary": "Monitoring coverage across Glasspoint's network infrastructure has lagged behind as the network itself has grown, and this part-time role exists specifically to close that gap. In practice this means building new Grafana dashboards for infrastructure that currently has none, writing small Python scripts to catch conditions the existing alerting misses entirely, and occasionally joining a live incident to help interpret what the dashboards are actually showing to the on-call engineer. Around fifteen hours a week is expected, scheduled flexibly around the core team's working hours rather than fixed to specific days. Solid Prometheus and Grafana experience is what tends to separate strong applicants here along with enough networking background to build dashboards that actually reflect what matters during an incident. The role reports loosely to the staff engineer on the network management platform team, who reviews dashboard designs before they go live but otherwise leaves day-to-day prioritization to whoever holds this seat.",
+      "summary": "Monitoring coverage across Glasspoint's network fell behind as the network itself grew, and this part-time seat exists to close that gap rather than to carry a full roadmap. Two of the last three overnight pages came from infrastructure that had no dashboard at all, which is the specific problem the role starts on.\n\nThe work is building Grafana dashboards for the segments that currently have none, writing small Python checks for conditions the existing alerting misses outright, and occasionally joining a live incident to interpret what a dashboard is actually showing the on-call engineer. First-quarter priorities are already scoped: dashboards for the two unmonitored segments, then automated checks for the alert classes that keep arriving as pages instead of warnings.\n\nSolid production experience with Prometheus and Grafana is what separates strong applicants here, along with enough networking background to build a dashboard that reflects what matters during an incident rather than what is easy to graph. Python is used for the checks, so comfort writing and maintaining small scripts is expected. Prior on-call experience is not required, though it helps when reading someone else's alert at three in the morning.\n\nAround fifteen hours a week, scheduled flexibly around the core team's hours rather than fixed to set days. Fully remote across Europe, with the platform team anchored in Stockholm. The seat reports loosely to the staff engineer on the network management platform, who reviews dashboard designs before they go live and otherwise leaves day-to-day prioritisation to whoever holds it.",
       "categories": ["infrastructure"],
       "workModel": "remote",
       "employmentType": "part_time",
       "seniority": "mid",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Stockholm, Sweden"],
       "skills": ["Prometheus", "Grafana", "Networking", "Python", "Automation"],
       "salary": {
         "minimum": 30000,
@@ -3120,7 +3120,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "senior",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Stockholm, Sweden"],
       "skills": ["Python", "Networking", "Ansible", "BGP", "Automation"],
       "salary": {
         "minimum": 72000,
@@ -3232,7 +3232,7 @@
       "workModel": "flexible",
       "employmentType": "freelance",
       "seniority": "senior",
-      "locations": ["Remote - United Kingdom", "Remote - Europe"],
+      "locations": ["London, United Kingdom", "Europe"],
       "skills": [
         "Network Security",
         "Penetration Testing",
@@ -3362,7 +3362,7 @@
       "workModel": "flexible",
       "employmentType": "full_time",
       "seniority": "director",
-      "locations": ["London, United Kingdom", "Remote - United Kingdom"],
+      "locations": ["London, United Kingdom", "United Kingdom"],
       "skills": [
         "Security Architecture",
         "Compliance",
@@ -3424,7 +3424,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "mid",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Boston, United States"],
       "skills": ["Python", "Kafka", "PostgreSQL", "Elasticsearch", "Testing"],
       "salary": {
         "minimum": 112000,
@@ -3452,7 +3452,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "mid",
-      "locations": ["Remote - United States", "Remote - Canada"],
+      "locations": ["United States", "Canada", "Boston, United States"],
       "skills": ["Python", "REST APIs", "OAuth", "PostgreSQL", "Testing"],
       "salary": {
         "minimum": 100000,
@@ -3480,7 +3480,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "senior",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Boston, United States"],
       "skills": ["Python", "PostgreSQL", "Data Visualization", "REST APIs", "Testing"],
       "salary": {
         "minimum": 140000,
@@ -3508,7 +3508,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Boston, United States"],
       "skills": ["Python", "Rust", "Distributed Systems", "Elasticsearch", "Testing"],
       "salary": {
         "minimum": 148000,
@@ -3564,7 +3564,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Boston, United States"],
       "skills": ["Kubernetes", "AWS", "Terraform", "Distributed Systems", "Security Hardening"],
       "salary": {
         "minimum": 145000,
@@ -3648,7 +3648,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "senior",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Boston, United States"],
       "skills": ["Incident Response", "Digital Forensics", "SIEM", "Threat Hunting", "Scripting"],
       "salary": {
         "minimum": 118000,
@@ -3676,7 +3676,7 @@
       "workModel": "flexible",
       "employmentType": "freelance",
       "seniority": "senior",
-      "locations": ["Remote - United States", "Remote - Canada"],
+      "locations": ["Boston, United States", "United States", "Canada"],
       "skills": [
         "Penetration Testing",
         "Red Teaming",
@@ -3710,7 +3710,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "staff",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Boston, United States"],
       "skills": [
         "Security Architecture",
         "Threat Modeling",
@@ -3812,7 +3812,7 @@
       "workModel": "flexible",
       "employmentType": "full_time",
       "seniority": "director",
-      "locations": ["Boston, United States", "Remote - United States"],
+      "locations": ["Boston, United States", "United States"],
       "skills": [
         "Threat Research",
         "Malware Analysis",
@@ -3881,7 +3881,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "mid",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Amsterdam, Netherlands"],
       "skills": ["dbt", "SQL", "Snowflake", "Data modeling", "ETL pipelines"],
       "salary": {
         "minimum": 58000,
@@ -3909,7 +3909,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": null,
-      "locations": ["Remote - Europe", "Amsterdam, Netherlands"],
+      "locations": ["Europe", "Amsterdam, Netherlands"],
       "skills": ["Python", "PyTorch", "Optimization algorithms", "MLOps", "Docker"],
       "salary": {
         "minimum": 68000,
@@ -3965,7 +3965,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "mid",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Amsterdam, Netherlands"],
       "skills": ["Snowflake", "Airflow", "SQL", "Python", "Access control", "Data governance"],
       "salary": {
         "minimum": 62000,
@@ -4021,7 +4021,7 @@
       "workModel": "hybrid",
       "employmentType": "full_time",
       "seniority": "lead",
-      "locations": ["Amsterdam, Netherlands", "Remote - Europe"],
+      "locations": ["Amsterdam, Netherlands"],
       "skills": ["Python", "MLOps", "Kubernetes", "Docker", "Distributed systems"],
       "salary": {
         "minimum": 100000,
@@ -4133,7 +4133,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "entry",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Amsterdam, Netherlands"],
       "skills": ["SQL", "Product analytics", "Excel", "A/B testing"],
       "salary": {
         "minimum": 45,
@@ -4195,7 +4195,7 @@
       "workModel": "flexible",
       "employmentType": "full_time",
       "seniority": null,
-      "locations": ["Amsterdam, Netherlands", "Remote - Europe"],
+      "locations": ["Amsterdam, Netherlands", "Europe"],
       "skills": ["Process design", "Jira", "Stakeholder communication", "Reporting"],
       "salary": {
         "minimum": 64000,
@@ -4223,7 +4223,7 @@
       "workModel": "remote",
       "employmentType": "freelance",
       "seniority": "mid",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Amsterdam, Netherlands"],
       "skills": ["User interviews", "Survey design", "Research synthesis", "Usability testing"],
       "salary": {
         "minimum": 50,
@@ -4285,7 +4285,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Fort Collins, United States"],
       "skills": ["Python", "PyTorch", "Remote sensing", "Statistics", "MLOps"],
       "salary": {
         "minimum": 158000,
@@ -4375,7 +4375,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Fort Collins, United States"],
       "skills": ["Python", "Kafka", "SQL", "Distributed systems", "MLOps"],
       "salary": {
         "minimum": 152000,
@@ -4431,7 +4431,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "staff",
-      "locations": ["Remote - Global"],
+      "locations": ["Global"],
       "skills": ["Python", "Optimization algorithms", "MLOps", "Hydrology modeling", "PyTorch"],
       "salary": {
         "minimum": 198000,
@@ -4459,7 +4459,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "mid",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Fort Collins, United States"],
       "skills": ["Python", "Computer vision", "PyTorch", "Statistics", "Model evaluation"],
       "salary": {
         "minimum": 90,
@@ -4543,7 +4543,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "entry",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Fort Collins, United States"],
       "skills": ["Python", "PyTorch", "SQL"],
       "salary": {
         "minimum": 90000,
@@ -4599,7 +4599,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "mid",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Fort Collins, United States"],
       "skills": ["Roadmapping", "Product analytics", "Stakeholder communication", "Mobile UX"],
       "salary": {
         "minimum": 70,
@@ -4627,7 +4627,7 @@
       "workModel": "flexible",
       "employmentType": "freelance",
       "seniority": "senior",
-      "locations": ["Remote - United States"],
+      "locations": ["Fort Collins, United States", "United States"],
       "skills": ["User interviews", "Research synthesis", "Usability testing", "Survey design"],
       "salary": {
         "minimum": 80,
@@ -4773,7 +4773,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - UK"],
+      "locations": ["United Kingdom", "London, United Kingdom"],
       "skills": ["Python", "SQL", "Data modeling", "Distributed systems", "ETL pipelines"],
       "salary": {
         "minimum": 76000,
@@ -4919,7 +4919,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "entry",
-      "locations": ["Remote - UK"],
+      "locations": ["United Kingdom", "London, United Kingdom"],
       "skills": ["SQL", "Jira", "Customer discovery", "Roadmapping"],
       "salary": {
         "minimum": 34000,
@@ -4947,7 +4947,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "lead",
-      "locations": ["London, United Kingdom", "Remote - UK"],
+      "locations": ["United Kingdom", "London, United Kingdom"],
       "skills": [
         "Process design",
         "Stakeholder communication",
@@ -4980,7 +4980,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "staff",
-      "locations": ["Remote - UK"],
+      "locations": ["United Kingdom", "London, United Kingdom"],
       "skills": [
         "Accessibility (WCAG)",
         "Product strategy",
@@ -5013,7 +5013,7 @@
       "workModel": "hybrid",
       "employmentType": "full_time",
       "seniority": "principal",
-      "locations": ["Remote - UK", "London, United Kingdom"],
+      "locations": ["London, United Kingdom"],
       "skills": ["Product strategy", "Leadership", "Stakeholder management", "Market analysis"],
       "salary": {
         "minimum": 118000,
@@ -5041,7 +5041,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "senior",
-      "locations": ["Remote - UK"],
+      "locations": ["United Kingdom", "London, United Kingdom"],
       "skills": ["Figma", "Design systems", "Interaction design", "Prototyping"],
       "salary": {
         "minimum": 65,
@@ -5069,7 +5069,7 @@
       "workModel": "remote",
       "employmentType": "part_time",
       "seniority": "mid",
-      "locations": ["Remote - UK"],
+      "locations": ["United Kingdom", "London, United Kingdom"],
       "skills": ["User interviews", "Research synthesis", "Usability testing", "Survey design"],
       "salary": {
         "minimum": 32000,
@@ -5153,7 +5153,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "mid",
-      "locations": ["Remote - Canada"],
+      "locations": ["Canada", "Toronto, Canada"],
       "skills": ["Python", "SQL", "A/B testing", "Statistics", "Causal inference"],
       "salary": {
         "minimum": 108000,
@@ -5265,7 +5265,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Toronto, Canada"],
       "skills": ["Roadmapping", "Stakeholder management", "Product strategy", "Customer discovery"],
       "salary": {
         "minimum": 148000,
@@ -5293,7 +5293,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "entry",
-      "locations": ["Remote - Canada"],
+      "locations": ["Canada", "Toronto, Canada"],
       "skills": ["SQL", "Product analytics", "Excel"],
       "salary": {
         "minimum": 45,
@@ -5405,7 +5405,7 @@
       "workModel": "flexible",
       "employmentType": "internship",
       "seniority": "entry",
-      "locations": ["Toronto, Canada", "Remote - Canada"],
+      "locations": ["Toronto, Canada", "Canada"],
       "skills": ["SQL", "Customer discovery", "Roadmapping"],
       "salary": {
         "minimum": 43000,
@@ -5433,7 +5433,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Toronto, Canada"],
       "skills": ["API design", "Roadmapping", "Compliance", "Stakeholder management"],
       "salary": {
         "minimum": 152000,
@@ -5461,7 +5461,7 @@
       "workModel": "remote",
       "employmentType": "freelance",
       "seniority": "senior",
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Toronto, Canada"],
       "skills": ["User interviews", "Research synthesis", "Survey design", "Usability testing"],
       "salary": {
         "minimum": 132000,
@@ -5545,7 +5545,7 @@
       "workModel": "flexible",
       "employmentType": "full_time",
       "seniority": "entry",
-      "locations": ["Remote - Canada", "Toronto, Canada"],
+      "locations": ["Toronto, Canada", "Canada"],
       "skills": ["Figma", "Prototyping", "Visual design"],
       "salary": {
         "minimum": 55000,
@@ -5573,7 +5573,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "mid",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Berlin, Germany"],
       "skills": ["SQL", "Excel", "Data visualization", "Data governance"],
       "salary": {
         "minimum": 40,
@@ -5601,7 +5601,7 @@
       "workModel": "remote",
       "employmentType": "part_time",
       "seniority": "mid",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Berlin, Germany"],
       "skills": ["dbt", "SQL", "Data modeling", "Data governance"],
       "salary": {
         "minimum": 36000,
@@ -5690,7 +5690,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "mid",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Berlin, Germany"],
       "skills": [
         "Process design",
         "Reporting",
@@ -5723,7 +5723,7 @@
       "workModel": "remote",
       "employmentType": "freelance",
       "seniority": "senior",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Berlin, Germany"],
       "skills": ["Figma", "Design systems", "Interaction design", "Accessibility (WCAG)"],
       "salary": {
         "minimum": 65,
@@ -5840,7 +5840,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "lead",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Berlin, Germany"],
       "skills": ["Figma", "Design systems", "Design tokens", "Healthcare compliance"],
       "salary": {
         "minimum": 92000,
@@ -5929,7 +5929,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "director",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Berlin, Germany"],
       "skills": ["Leadership", "Strategy", "Healthcare compliance", "Design strategy"],
       "salary": {
         "minimum": 128000,
@@ -5957,7 +5957,7 @@
       "workModel": "flexible",
       "employmentType": "internship",
       "seniority": "entry",
-      "locations": ["Berlin, Germany", "Remote - Europe"],
+      "locations": ["Berlin, Germany", "Europe"],
       "skills": ["User interviews", "Survey design", "Participant recruitment"],
       "salary": {
         "minimum": 24000,
@@ -5985,7 +5985,7 @@
       "workModel": "flexible",
       "employmentType": "full_time",
       "seniority": "staff",
-      "locations": ["Remote - Europe", "Berlin, Germany"],
+      "locations": ["Berlin, Germany", "Europe"],
       "skills": ["Figma", "Design systems", "Data visualization", "Stakeholder management"],
       "salary": {
         "minimum": 98000,
@@ -6041,7 +6041,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Austin, United States"],
       "skills": ["Python", "Time-series forecasting", "Statistics", "SQL", "Causal inference"],
       "salary": {
         "minimum": 158000,
@@ -6069,7 +6069,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "mid",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Austin, United States"],
       "skills": ["Python", "PyTorch", "MLOps", "Docker"],
       "salary": {
         "minimum": 75,
@@ -6181,7 +6181,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Dublin, Ireland"],
       "skills": ["Time-series forecasting", "Python", "Statistics", "Weather modeling", "SQL"],
       "salary": {
         "minimum": 70000,
@@ -6265,7 +6265,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "entry",
-      "locations": ["Remote - United States"],
+      "locations": ["United States", "Austin, United States"],
       "skills": ["SQL", "Product analytics", "Excel"],
       "salary": {
         "minimum": 50,
@@ -6377,7 +6377,7 @@
       "workModel": "remote",
       "employmentType": "freelance",
       "seniority": "senior",
-      "locations": ["Remote - Global"],
+      "locations": ["Global"],
       "skills": ["Figma", "Design systems", "Interaction design", "Data visualization"],
       "salary": {
         "minimum": 70000,
@@ -6405,7 +6405,7 @@
       "workModel": "flexible",
       "employmentType": "full_time",
       "seniority": "mid",
-      "locations": ["Remote - Europe", "Dublin, Ireland"],
+      "locations": ["Dublin, Ireland", "Europe"],
       "skills": [
         "User interviews",
         "Usability testing",
@@ -6438,7 +6438,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "mid",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Amsterdam, Netherlands"],
       "skills": ["Playwright", "TypeScript", "CI/CD", "API testing", "Payment gateways"],
       "salary": {
         "minimum": 52000,
@@ -6466,7 +6466,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Berlin, Germany"],
       "skills": [
         "Selenium",
         "Java",
@@ -6568,7 +6568,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "mid",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Berlin, Germany"],
       "skills": ["Postman", "API testing", "Newman", "CI/CD", "Contract testing"],
       "salary": {
         "minimum": 55,
@@ -6596,7 +6596,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "mid",
-      "locations": ["Remote - North America"],
+      "locations": ["North America"],
       "skills": [
         "Technical writing",
         "API documentation",
@@ -6630,7 +6630,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - North America"],
+      "locations": ["North America"],
       "skills": [
         "SDKs",
         "Integration guides",
@@ -6664,7 +6664,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "staff",
-      "locations": ["Remote - North America"],
+      "locations": ["North America"],
       "skills": [
         "Content strategy",
         "Developer experience",
@@ -6732,7 +6732,7 @@
       "workModel": "remote",
       "employmentType": "freelance",
       "seniority": "mid",
-      "locations": ["Remote - Global"],
+      "locations": ["Global"],
       "skills": ["Technical writing", "Markdown", "API reference docs", "Editorial review", "Git"],
       "salary": {
         "minimum": 45,
@@ -6788,7 +6788,7 @@
       "workModel": "flexible",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - Europe"],
+      "locations": ["Berlin, Germany", "Europe"],
       "skills": [
         "Salesforce",
         "Customer success planning",
@@ -6856,7 +6856,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - North America"],
+      "locations": ["North America"],
       "skills": [
         "Salesforce",
         "Technical demos",
@@ -6924,7 +6924,7 @@
       "workModel": "remote",
       "employmentType": "freelance",
       "seniority": null,
-      "locations": ["Remote - Global"],
+      "locations": ["Global"],
       "skills": [
         "Technical writing",
         "Threat research",
@@ -7026,7 +7026,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "senior",
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Austin, United States"],
       "skills": [
         "Salesforce",
         "Enterprise account management",
@@ -7094,7 +7094,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Krakow, Poland"],
       "skills": [
         "Salesforce",
         "Customer success planning",
@@ -7162,7 +7162,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Austin, United States"],
       "skills": [
         "Solution design",
         "RFP support",
@@ -7230,7 +7230,7 @@
       "workModel": "flexible",
       "employmentType": "full_time",
       "seniority": "mid",
-      "locations": ["Remote - Global"],
+      "locations": ["Global"],
       "skills": [
         "Channel partnerships",
         "Solution architecture",
@@ -7264,7 +7264,7 @@
       "workModel": "remote",
       "employmentType": "part_time",
       "seniority": "mid",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Krakow, Poland"],
       "skills": [
         "Sourcing",
         "Interview coordination",
@@ -7298,7 +7298,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Dublin, Ireland"],
       "skills": ["Test automation", "Network protocols", "Python", "CI/CD", "API testing"],
       "salary": {
         "minimum": 58000,
@@ -7326,7 +7326,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "staff",
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Boston, United States"],
       "skills": ["Test strategy", "Automation architecture", "Java", "CI/CD", "Mentoring"],
       "salary": {
         "minimum": 138000,
@@ -7354,7 +7354,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "mid",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Warsaw, Poland"],
       "skills": ["Performance testing", "JMeter", "Load testing", "Network monitoring", "SQL"],
       "salary": {
         "minimum": 60000,
@@ -7438,7 +7438,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "principal",
-      "locations": ["Remote - Global"],
+      "locations": ["Global"],
       "skills": [
         "Public speaking",
         "Developer advocacy",
@@ -7506,7 +7506,7 @@
       "workModel": "remote",
       "employmentType": "freelance",
       "seniority": "mid",
-      "locations": ["Remote - Global"],
+      "locations": ["Global"],
       "skills": [
         "Content strategy",
         "Technical writing",
@@ -7540,7 +7540,7 @@
       "workModel": "flexible",
       "employmentType": "part_time",
       "seniority": "mid",
-      "locations": ["Remote - Europe"],
+      "locations": ["Dublin, Ireland", "Europe"],
       "skills": [
         "Technical writing",
         "API reference docs",
@@ -7574,7 +7574,7 @@
       "workModel": "flexible",
       "employmentType": "full_time",
       "seniority": null,
-      "locations": ["Remote - Europe"],
+      "locations": ["Dublin, Ireland", "Europe"],
       "skills": [
         "Zendesk",
         "SQL",
@@ -7676,7 +7676,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Boston, United States"],
       "skills": [
         "Salesforce",
         "Enterprise sales cycles",
@@ -7902,7 +7902,7 @@
       "workModel": "remote",
       "employmentType": "freelance",
       "seniority": "senior",
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Montreal, Canada"],
       "skills": [
         "SDKs",
         "Sample code",
@@ -8004,7 +8004,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "mid",
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Vancouver, Canada"],
       "skills": ["Support operations", "Data analysis", "SQL", "Reporting", "Process improvement"],
       "salary": {
         "minimum": 62000,
@@ -8100,7 +8100,7 @@
       "workModel": "flexible",
       "employmentType": "full_time",
       "seniority": "lead",
-      "locations": ["Remote - North America"],
+      "locations": ["Montreal, Canada", "North America"],
       "skills": [
         "Recruiting operations",
         "Team leadership",
@@ -8196,7 +8196,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "Dublin, Ireland"],
       "skills": ["Test automation", "Java", "CI/CD", "Regression testing", "Claims workflows"],
       "salary": {
         "minimum": 88000,
@@ -8224,7 +8224,7 @@
       "workModel": "remote",
       "employmentType": "freelance",
       "seniority": "mid",
-      "locations": ["Remote - Global"],
+      "locations": ["Global"],
       "skills": [
         "SDKs",
         "API documentation",
@@ -8292,7 +8292,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - Europe"],
+      "locations": ["Europe", "London, United Kingdom"],
       "skills": [
         "Salesforce",
         "Claims systems",
@@ -8388,7 +8388,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "mid",
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Hartford, United States"],
       "skills": [
         "Sourcing",
         "Boolean search",
@@ -8422,7 +8422,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "senior",
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Hartford, United States"],
       "skills": [
         "Executive search",
         "Stakeholder management",
@@ -8490,7 +8490,7 @@
       "workModel": "flexible",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - Europe"],
+      "locations": ["Dublin, Ireland", "Europe"],
       "skills": [
         "Recruiting operations",
         "Data analysis",
@@ -8620,7 +8620,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "senior",
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Hartford, United States"],
       "skills": [
         "Solution design",
         "RFP support",
@@ -8654,7 +8654,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": null,
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Miami, United States"],
       "skills": [
         "Manual testing",
         "Test case design",
@@ -8688,7 +8688,7 @@
       "workModel": "remote",
       "employmentType": "freelance",
       "seniority": "mid",
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Miami, United States"],
       "skills": [
         "Regression testing",
         "Release management",
@@ -8722,7 +8722,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Miami, United States"],
       "skills": [
         "Technical writing",
         "Public speaking",
@@ -8756,7 +8756,7 @@
       "workModel": "remote",
       "employmentType": "freelance",
       "seniority": "mid",
-      "locations": ["Remote - Global"],
+      "locations": ["Global"],
       "skills": [
         "Sample code",
         "API integrations",
@@ -8926,7 +8926,7 @@
       "workModel": "flexible",
       "employmentType": "full_time",
       "seniority": "entry",
-      "locations": ["Remote - North America"],
+      "locations": ["Miami, United States", "North America"],
       "skills": [
         "Employer branding",
         "Recruitment marketing",
@@ -8960,7 +8960,7 @@
       "workModel": "remote",
       "employmentType": "contract",
       "seniority": "mid",
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Miami, United States"],
       "skills": [
         "Sourcing",
         "Interview coordination",
@@ -8994,7 +8994,7 @@
       "workModel": "remote",
       "employmentType": "full_time",
       "seniority": "senior",
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Miami, United States"],
       "skills": [
         "Solution design",
         "Technical demos",
@@ -9062,7 +9062,7 @@
       "workModel": "flexible",
       "employmentType": "contract",
       "seniority": "senior",
-      "locations": ["Remote - Global"],
+      "locations": ["Global"],
       "skills": [
         "Salesforce",
         "Enterprise account management",
@@ -9096,7 +9096,7 @@
       "workModel": "remote",
       "employmentType": "part_time",
       "seniority": "mid",
-      "locations": ["Remote - North America"],
+      "locations": ["North America", "Miami, United States"],
       "skills": [
         "Revenue operations",
         "Data analysis",

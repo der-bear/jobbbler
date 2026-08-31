@@ -175,8 +175,11 @@ export function AgentGuide() {
             <li>Save a search and report only what changed</li>
             <li>Optionally add an email so applications and saved searches can be recovered</li>
             <li>Restore applications and saved searches with the email and code you provide</li>
-            <li>Prepare truthful answers and a short motivation note from facts you provide</li>
-            <li>Relay your final decision so Jobbbler can send the unchanged application once</li>
+            <li>
+              Prepare truthful answers and a role-specific cover letter; your CV stays with you and
+              your agent
+            </li>
+            <li>Show every completed value before relaying your final submission decision</li>
           </ul>
         </section>
         <section aria-labelledby="guide-control">

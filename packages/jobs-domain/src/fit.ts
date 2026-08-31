@@ -14,7 +14,7 @@ import { normalizeJobSearchCriteria } from "./search-criteria.js";
 export type JobFit = JobFitContract;
 
 const maximumPublicSummaryLength = 600;
-const maximumPublicDetailLength = 2_000;
+const maximumPublicDetailLength = 6_000;
 
 function criteriaFrom(input: JobSearchInput | JobSearchCriteria): JobSearchCriteria {
   if ("unresolvedAssumptions" in input) return jobSearchCriteriaSchema.parse(input);
@@ -25,14 +25,24 @@ export function capUntrustedText(
   value: string,
   maximumLength = maximumPublicSummaryLength,
 ): string {
+  /*
+   * A blank line between paragraphs is meaning, not formatting: a posting that
+   * separates its responsibilities from its requirements loses that structure
+   * for every reader, human or agent, if the break is collapsed into a space.
+   * Every other control character is still replaced, and tag stripping is
+   * unchanged.
+   */
   const withoutActiveContent = value
     .replace(
       /<(?:script|style|iframe|object|embed)\b[^>]*>[\s\S]*?<\/(?:script|style|iframe|object|embed)\s*>/giu,
       " ",
     )
     .replace(/<[^>]*>/gu, " ")
-    .replace(/\p{Cc}/gu, " ")
-    .replace(/\s+/gu, " ")
+    .replace(/\r\n?/gu, "\n")
+    .replace(/\p{Cc}/gu, (character) => (character === "\n" ? character : " "))
+    .replace(/[^\S\n]+/gu, " ")
+    .replace(/ ?\n ?/gu, "\n")
+    .replace(/\n{3,}/gu, "\n\n")
     .trim();
   if (withoutActiveContent.length === 0) return "Details are unavailable.";
   if (withoutActiveContent.length <= maximumLength) return withoutActiveContent;

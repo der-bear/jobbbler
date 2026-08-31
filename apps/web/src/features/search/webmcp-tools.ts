@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   entityIdSchema,
+  employmentTypeSchema,
   jobCategorySchema,
   jobSearchInputSchema,
   salaryPeriodSchema,
@@ -37,7 +38,8 @@ const searchStateInputSchema = {
   properties: {
     detail: {
       type: "string",
-      description: "summary for display; exact for criteria reusable by request_search_alert.",
+      description:
+        "summary for display; exact for criteria reusable by save_job_search or request_search_alert.",
       enum: ["summary", "exact"],
     },
   },
@@ -79,6 +81,15 @@ export const jobSearchToolInputJsonSchema = {
       maxItems: 4,
       items: { type: "string", enum: ["remote", "hybrid", "onsite", "flexible"] },
     },
+    employmentTypes: {
+      type: "array",
+      description: "Employment arrangements that matching roles must use.",
+      maxItems: 5,
+      items: {
+        type: "string",
+        enum: ["full_time", "part_time", "contract", "freelance", "internship"],
+      },
+    },
     seniorities: {
       type: "array",
       description: "Seniority levels to include.",
@@ -106,7 +117,7 @@ export const jobSearchToolInputJsonSchema = {
     },
     skills: {
       type: "array",
-      description: "Required technology skills.",
+      description: "Technology skills to prefer in match ranking.",
       maxItems: 20,
       items: { type: "string", maxLength: 120 },
     },
@@ -137,7 +148,7 @@ export const jobSearchToolInputJsonSchema = {
     sort: {
       type: "string",
       description: "Result ordering.",
-      enum: ["relevance", "newest", "salary_desc"],
+      enum: ["relevance", "newest", "updated_desc", "salary_desc", "salary_asc"],
     },
     cursor: {
       type: "string",
@@ -221,6 +232,7 @@ function compactCriteria(criteria: JobSearchCriteria): JsonValue {
   const omitted = {
     categories: Math.max(0, criteria.categories.length - 2),
     workModels: Math.max(0, criteria.workModels.length - 2),
+    employmentTypes: Math.max(0, (criteria.employmentTypes ?? []).length - 2),
     seniorities: Math.max(0, criteria.seniorities.length - 2),
     locations: Math.max(0, criteria.locations.length - 2),
     skills: Math.max(0, criteria.skills.length - 1),
@@ -243,6 +255,7 @@ function compactCriteria(criteria: JobSearchCriteria): JsonValue {
     query: criteria.query === null ? null : short(criteria.query, 80),
     categories: criteria.categories.slice(0, 2),
     workModels: criteria.workModels.slice(0, 2),
+    employmentTypes: (criteria.employmentTypes ?? []).slice(0, 2),
     seniorities: criteria.seniorities.slice(0, 2),
     locations: criteria.locations.slice(0, 2).map((value) => short(value, 32)),
     skills: criteria.skills.slice(0, 1).map((value) => short(value, 30)),
@@ -268,6 +281,9 @@ function reusableCriteria(criteria: JobSearchCriteria): JsonValue {
     ...(criteria.query === null ? {} : { query: criteria.query }),
     ...(criteria.categories.length === 0 ? {} : { categories: criteria.categories }),
     ...(criteria.workModels.length === 0 ? {} : { workModels: criteria.workModels }),
+    ...((criteria.employmentTypes ?? []).length === 0
+      ? {}
+      : { employmentTypes: criteria.employmentTypes ?? [] }),
     ...(criteria.seniorities.length === 0 ? {} : { seniorities: criteria.seniorities }),
     ...(criteria.locations.length === 0 ? {} : { locations: criteria.locations }),
     ...(criteria.skills.length === 0 ? {} : { skills: criteria.skills }),
@@ -294,7 +310,7 @@ function compactSearchResult(result: SearchJobsResult): JsonValue {
     total: result.total,
     jobs: result.jobs.slice(0, 3).map((job) => ({
       id: job.id,
-      title: short(job.title, 45),
+      title: short(job.title, 80),
       organization: short(job.organizationName, 32),
       location: short(job.locations[0] ?? "Location not stated", 24),
       workModel: job.workModel,
@@ -348,7 +364,7 @@ export function createSearchToolManifests(
     name: "get_search_state",
     purpose: "Read the visible search constraints and result count without rerunning the search.",
     description:
-      "Read the visible filters and result count. Use detail=summary for a bounded explanation, or detail=exact to receive complete criteria in the input shape accepted by request_search_alert. This never runs a new search.",
+      "Read the visible filters and result count. Use detail=summary for a bounded explanation, or detail=exact to receive complete criteria accepted by save_job_search and request_search_alert. This never runs a new search.",
     inputSchema: searchStateInputSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -406,6 +422,7 @@ export function createSearchToolManifests(
           data: {
             categories: [...jobCategorySchema.options],
             workModels: [...workModelSchema.options],
+            employmentTypes: [...employmentTypeSchema.options],
             seniorities: [...senioritySchema.options],
             salary: {
               periods: [...salaryPeriodSchema.options],
@@ -417,7 +434,10 @@ export function createSearchToolManifests(
             locations: "Free text: countries, regions, or cities.",
             skills: "Free text, matched against role skills.",
             postedWithinDays: { minimum: 1, maximum: 365 },
-            limit: { minimum: 1, maximum: 50, default: 20 },
+            pagination: {
+              pageSize: searchJobsPageSize,
+              cursor: "Pass nextCursor back as cursor with every other criterion unchanged.",
+            },
           },
         });
       } catch (error) {

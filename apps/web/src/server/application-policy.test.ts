@@ -11,6 +11,7 @@ import {
   applicationReviewPayloadHash,
   assertRequestedDisclosureMatches,
   normalizeApplicationAnswer,
+  normalizeLegacyApplicationDraft,
 } from "./application-policy";
 
 const draft = {
@@ -28,10 +29,10 @@ const draft = {
       acceptedByHuman: true,
     },
     {
-      fieldKey: "motivation",
-      value: "An agent suggestion",
+      fieldKey: "cover_letter",
+      value: "A role-specific cover letter prepared from candidate-provided facts.",
       provenance: "agent_suggestion" as const,
-      sensitive: false,
+      sensitive: true,
       acceptedByHuman: false,
     },
   ],
@@ -78,10 +79,19 @@ describe("application disclosure policy", () => {
       "email",
       "location",
       "portfolio_url",
-      "motivation",
+      "cover_letter",
       "work_authorization",
     ]);
     expect(applicationPolicy.requirements.filter(({ required }) => required)).toHaveLength(5);
+    expect(
+      applicationPolicy.requirements.find(({ fieldKey }) => fieldKey === "cover_letter"),
+    ).toMatchObject({
+      label: "Cover letter",
+      input: "textarea",
+      required: true,
+      sensitive: true,
+      category: "application_answers",
+    });
     expect(applicationPolicy.noticeVersion).toMatch(/^privacy-/);
     expect(applicationPolicy.legalBasis).toBe("consent");
   });
@@ -130,10 +140,10 @@ describe("application disclosure policy", () => {
         sensitive: true,
       },
       {
-        fieldKey: "motivation",
-        label: "Why this role",
-        value: "An agent suggestion",
-        sensitive: false,
+        fieldKey: "cover_letter",
+        label: "Cover letter",
+        value: "A role-specific cover letter prepared from candidate-provided facts.",
+        sensitive: true,
       },
       {
         fieldKey: "work_authorization",
@@ -143,6 +153,33 @@ describe("application disclosure policy", () => {
       },
     ]);
     expect(after.valuesHash).not.toBe(before.valuesHash);
+  });
+
+  it("maps the former motivation answer to the cover-letter field for existing applications", () => {
+    const legacy = {
+      ...draft,
+      answers: [
+        draft.answers[0]!,
+        {
+          fieldKey: "motivation",
+          value: "A legacy role-specific note.",
+          provenance: "user_entered" as const,
+          sensitive: false,
+          acceptedByHuman: true,
+        },
+      ],
+    };
+
+    expect(normalizeLegacyApplicationDraft(legacy).answers).toEqual([
+      draft.answers[0],
+      {
+        fieldKey: "cover_letter",
+        value: "A legacy role-specific note.",
+        provenance: "user_entered",
+        sensitive: true,
+        acceptedByHuman: true,
+      },
+    ]);
   });
 
   it("binds field labels into the immutable review boundary", () => {
@@ -172,7 +209,7 @@ describe("application disclosure policy", () => {
       applicationReviewFieldSnapshotHash(fields),
     );
     expect(applicationReviewPayloadHash(draft, job)).toBe(
-      "bbfab5f9377f180f35e15fb7a75f923d5d24f5621ab9ebd174583d262975f34b",
+      "938251de01fc74a61551c3eff21d7af34a741f6df5ee325e24f94e0f22b83bf6",
     );
   });
 
@@ -233,10 +270,10 @@ describe("application disclosure policy", () => {
     expect(
       normalizeApplicationAnswer(
         {
-          fieldKey: "motivation",
+          fieldKey: "cover_letter",
           value: "A useful draft",
           provenance: "user_entered",
-          sensitive: false,
+          sensitive: true,
           acceptedByHuman: true,
         },
         "agent",

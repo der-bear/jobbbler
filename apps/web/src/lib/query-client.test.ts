@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
+import { takeToolRequestCorrelation } from "@jobbbler/webmcp";
+
 import { ApiClientError, queryApi } from "./query-client";
 
 const requestId = "req_550e8400-e29b-41d4-a716-446655440000";
@@ -30,6 +32,7 @@ describe("typed API query client", () => {
         signal: controller.signal,
       }),
     );
+    expect(takeToolRequestCorrelation(controller.signal)).toBe(requestId);
   });
 
   it("throws a typed safe error for an API error envelope", async () => {

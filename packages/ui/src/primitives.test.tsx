@@ -10,6 +10,7 @@ import {
   MultiSelect,
   Sheet,
   Skeleton,
+  ThemeToggle,
   ToastProvider,
 } from "./index.js";
 
@@ -69,6 +70,7 @@ describe("Jobbbler UI primitives", () => {
     );
 
     expect(markup).toContain('aria-label="Remove Remote Europe"');
+    expect(markup).not.toContain("jb-chip--static");
     expect(markup).toContain('role="dialog"');
     expect(markup).toContain('aria-modal="true"');
     expect(markup).toContain('aria-hidden="true"');
@@ -91,5 +93,13 @@ describe("Jobbbler UI primitives", () => {
 
     expect(markup).toContain("Mid-level, Senior +1");
     expect(markup).not.toContain("3 selected");
+  });
+
+  it("renders both theme icons so the pre-paint document theme chooses the visible one", () => {
+    const markup = renderToStaticMarkup(<ThemeToggle />);
+
+    expect(markup).toContain('aria-label="Switch to dark theme"');
+    expect(markup).toContain("jb-theme-toggle__light-icon");
+    expect(markup).toContain("jb-theme-toggle__dark-icon");
   });
 });

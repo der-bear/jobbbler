@@ -733,6 +733,7 @@ describe("SQLite application authorization persistence", () => {
       idempotencyKey: "submit-task9-once",
       provider: "jobbbler_demo" as const,
       providerReferenceId: "demo_submission_71000000-0000-7000-8000-000000000011",
+      role: { id: jobId, title: "Platform Engineer" },
       recipientId: grant.recipientId,
       recipientName: "Authorization Lab",
       payloadHash: review.payloadHash,
@@ -761,6 +762,7 @@ describe("SQLite application authorization persistence", () => {
         managedDeliveryId: delivery.id,
         provider: delivery.provider,
         providerReferenceId: delivery.providerReferenceId,
+        role: { id: jobId, title: "Platform Engineer" },
         recipientId: delivery.recipientId,
         recipientName: delivery.recipientName,
         submittedAt: delivery.acknowledgedAt,
@@ -914,6 +916,29 @@ describe("SQLite application authorization persistence", () => {
         confirmationId: confirmation.id,
         confirmationHash: confirmation.confirmationHash,
         grant: { ...grant, version: 0 },
+        delivery,
+        decisionChannel: "first_party_ui",
+        receipt: {
+          ...receipt,
+          submission: {
+            ...receipt.submission,
+            role: { id: jobId, title: "A different role" },
+          },
+        },
+        now,
+      }),
+    ).rejects.toMatchObject({ code: "VALIDATION" });
+
+    await expect(
+      storage.applications.completeSubmission({
+        ownerId,
+        draftId,
+        expectedDraftVersion: reviewed.version,
+        reviewId: review.id,
+        reviewPayloadHash: review.payloadHash,
+        confirmationId: confirmation.id,
+        confirmationHash: confirmation.confirmationHash,
+        grant: { ...grant, version: 0 },
         delivery: { ...delivery, status: "not_acknowledged" as never },
         decisionChannel: "first_party_ui",
         receipt,
@@ -987,6 +1012,28 @@ describe("SQLite application authorization persistence", () => {
     await expect(storage.applications.getManagedDelivery(delivery.id, ownerId)).resolves.toEqual(
       delivery,
     );
+    await expect(
+      storage.applications.completeSubmission({
+        ownerId,
+        draftId,
+        expectedDraftVersion: reviewed.version,
+        reviewId: review.id,
+        reviewPayloadHash: review.payloadHash,
+        confirmationId: confirmation.id,
+        confirmationHash: confirmation.confirmationHash,
+        grant: { ...grant, version: 0 },
+        delivery,
+        decisionChannel: "first_party_ui",
+        receipt: {
+          ...receipt,
+          submission: {
+            ...receipt.submission,
+            role: { id: jobId, title: "A different role" },
+          },
+        },
+        now,
+      }),
+    ).rejects.toMatchObject({ code: "VALIDATION" });
     await expect(
       storage.delegations.insert({
         ...lateAssistance,

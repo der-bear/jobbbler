@@ -8,6 +8,7 @@ describe("normalizeJobSearchCriteria", () => {
       query: "  Senior   TypeScript Engineer  ",
       categories: ["software_engineering", "product", "software_engineering"],
       workModels: ["remote", "remote"],
+      employmentTypes: ["full_time", "contract", "contract"],
       locations: [" Europe ", "europe", " Kyiv "],
       skills: [" TypeScript ", "typescript", "React"],
       excludeKeywords: [" Agency ", "agency"],
@@ -22,6 +23,7 @@ describe("normalizeJobSearchCriteria", () => {
     expect(criteria.query).toBe("Senior TypeScript Engineer");
     expect(criteria.categories).toEqual(["product", "software_engineering"]);
     expect(criteria.workModels).toEqual(["remote"]);
+    expect(criteria.employmentTypes).toEqual(["contract", "full_time"]);
     expect(criteria.locations).toEqual(["Europe", "Kyiv"]);
     expect(criteria.skills).toEqual(["React", "TypeScript"]);
     expect(criteria.excludeKeywords).toEqual(["Agency"]);
@@ -39,6 +41,7 @@ describe("normalizeJobSearchCriteria", () => {
     });
 
     expect(criteria.workModels).toEqual([]);
+    expect(criteria.employmentTypes).toEqual([]);
     expect(criteria.salary).toBeNull();
     expect(criteria.unresolvedAssumptions).toEqual([]);
   });

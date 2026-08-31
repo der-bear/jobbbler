@@ -15,6 +15,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { flushSync } from "react-dom";
 
 import {
+  employmentTypeSchema,
   jobCategorySchema,
   searchJobsResultSchema,
   searchSortSchema,
@@ -24,6 +25,7 @@ import {
   type JobSearchCriteria,
   type JobSearchInput,
   type JobSummary,
+  type EmploymentType,
   type SearchJobsResult,
   type Seniority,
   type ToolActivity,
@@ -35,6 +37,7 @@ import { useWebMcp } from "@/components/webmcp-provider";
 import {
   categoryLabel,
   deviatingEmploymentLabel,
+  employmentLabel,
   locationBesideWorkModel,
   relativeFreshness,
   salaryCardPresentation,
@@ -71,6 +74,7 @@ interface SearchDraft {
   readonly query: string;
   readonly categories: readonly JobCategory[];
   readonly workModels: readonly WorkModel[];
+  readonly employmentTypes: readonly EmploymentType[];
   readonly seniorities: readonly Seniority[];
   readonly location: string;
   readonly postedWithinDays: string;
@@ -85,6 +89,7 @@ function draftFromInput(input: JobSearchInput): SearchDraft {
     query: input.query ?? "",
     categories: input.categories ?? [],
     workModels: input.workModels ?? [],
+    employmentTypes: input.employmentTypes ?? [],
     seniorities: input.seniorities ?? [],
     location: input.locations?.[0] ?? "",
     postedWithinDays: input.postedWithinDays === undefined ? "" : String(input.postedWithinDays),
@@ -105,6 +110,7 @@ function inputFromDraft(draft: SearchDraft): JobSearchInput {
     ...(draft.query.trim().length === 0 ? {} : { query: draft.query.trim() }),
     categories: [...draft.categories],
     workModels: [...draft.workModels],
+    employmentTypes: [...draft.employmentTypes],
     seniorities: [...draft.seniorities],
     locations: draft.location.trim().length === 0 ? [] : [draft.location.trim()],
     ...(draft.postedWithinDays === "" ? {} : { postedWithinDays: Number(draft.postedWithinDays) }),
@@ -164,6 +170,7 @@ function hasMeaningfulSearchCriteria(input: JobSearchInput): boolean {
     (input.query?.trim().length ?? 0) > 0 ||
     (input.categories?.length ?? 0) > 0 ||
     (input.workModels?.length ?? 0) > 0 ||
+    (input.employmentTypes?.length ?? 0) > 0 ||
     (input.seniorities?.length ?? 0) > 0 ||
     (input.locations?.length ?? 0) > 0 ||
     (input.skills?.length ?? 0) > 0 ||
@@ -210,13 +217,26 @@ export function searchWorkspaceHref(input: JobSearchInput, mode: "home" | "catal
   return parameters.size === 0 ? "/jobs" : `/jobs?${parameters.toString()}`;
 }
 
+export function createLatestSearchCommit<TValue>(
+  readValue: () => TValue,
+  readCommit: () => (value: TValue) => void,
+  canCommit: () => boolean = () => true,
+): () => void {
+  return () => {
+    if (!canCommit()) return;
+    readCommit()(readValue());
+  };
+}
+
 function SearchFilters({
   className,
+  committedKey,
   draft,
   onDraftChange,
   onCommit,
 }: Readonly<{
   className?: string;
+  committedKey: string;
   draft: SearchDraft;
   onDraftChange: (next: SearchDraft) => void;
   onCommit: (next: SearchDraft) => void;
@@ -224,8 +244,29 @@ function SearchFilters({
   const advancedFiltersReactId = useId();
   const advancedFiltersId = `advanced-search-filters-${advancedFiltersReactId.replaceAll(":", "")}`;
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const textCommitTimer = useRef<number | null>(null);
+  const composingField = useRef<"query" | "excludeKeywords" | null>(null);
+  const latestDraft = useRef(draft);
+  const latestCommit = useRef(onCommit);
+  const latestCommittedKey = useRef(committedKey);
+  latestDraft.current = draft;
+  latestCommit.current = onCommit;
+  latestCommittedKey.current = committedKey;
+
+  useEffect(
+    () => () => {
+      if (textCommitTimer.current !== null) window.clearTimeout(textCommitTimer.current);
+    },
+    [],
+  );
+  useEffect(() => {
+    if (textCommitTimer.current === null) return;
+    window.clearTimeout(textCommitTimer.current);
+    textCommitTimer.current = null;
+  }, [committedKey]);
   const activeAdvancedFilterCount = [
     draft.workModels.length > 0,
+    draft.employmentTypes.length > 0,
     draft.categories.length > 0,
     draft.seniorities.length > 0,
     draft.postedWithinDays !== "",
@@ -240,10 +281,38 @@ function SearchFilters({
     onCommit({ ...draft, workModels });
   }
 
+  function cancelScheduledTextCommit() {
+    if (textCommitTimer.current === null) return;
+    window.clearTimeout(textCommitTimer.current);
+    textCommitTimer.current = null;
+  }
+
+  function commitTextNow(next: SearchDraft = latestDraft.current) {
+    cancelScheduledTextCommit();
+    latestCommit.current(next);
+  }
+
+  function updateTextField(field: "query" | "excludeKeywords", value: string) {
+    const next = { ...latestDraft.current, [field]: value };
+    latestDraft.current = next;
+    onDraftChange(next);
+    cancelScheduledTextCommit();
+    if (composingField.current === field) return;
+    const scheduledAgainst = latestCommittedKey.current;
+    textCommitTimer.current = window.setTimeout(() => {
+      textCommitTimer.current = null;
+      createLatestSearchCommit(
+        () => latestDraft.current,
+        () => latestCommit.current,
+        () => scheduledAgainst === latestCommittedKey.current,
+      )();
+    }, 280);
+  }
+
   function commitOnEnter(event: React.KeyboardEvent<HTMLInputElement>) {
     if (event.key !== "Enter") return;
     event.preventDefault();
-    onCommit(draft);
+    commitTextNow();
   }
 
   return (
@@ -262,8 +331,16 @@ function SearchFilters({
           <MagnifyingGlassIcon aria-hidden="true" size={15} />
           <input
             maxLength={500}
-            onBlur={() => onCommit(draft)}
-            onChange={(event) => onDraftChange({ ...draft, query: event.target.value })}
+            onBlur={() => commitTextNow()}
+            onChange={(event) => updateTextField("query", event.target.value)}
+            onCompositionEnd={(event) => {
+              composingField.current = null;
+              updateTextField("query", event.currentTarget.value);
+            }}
+            onCompositionStart={() => {
+              composingField.current = "query";
+              cancelScheduledTextCommit();
+            }}
             onKeyDown={commitOnEnter}
             placeholder="Role, skill or company"
             type="search"
@@ -316,6 +393,24 @@ function SearchFilters({
               ))}
             </div>
           </fieldset>
+          <div className={styles["filterRow"]}>
+            <span>Employment type</span>
+            <MultiSelect
+              label="Employment type"
+              onChange={(employmentTypes) =>
+                onCommit({
+                  ...draft,
+                  employmentTypes: employmentTypes as readonly EmploymentType[],
+                })
+              }
+              options={employmentTypeSchema.options.map((value) => ({
+                value,
+                label: employmentLabel(value),
+              }))}
+              placeholder="Any type"
+              selected={draft.employmentTypes}
+            />
+          </div>
           <div className={styles["filterRow"]}>
             <span>Function</span>
             <MultiSelect
@@ -402,8 +497,16 @@ function SearchFilters({
             <span>Exclude</span>
             <input
               maxLength={240}
-              onBlur={() => onCommit(draft)}
-              onChange={(event) => onDraftChange({ ...draft, excludeKeywords: event.target.value })}
+              onBlur={() => commitTextNow()}
+              onChange={(event) => updateTextField("excludeKeywords", event.target.value)}
+              onCompositionEnd={(event) => {
+                composingField.current = null;
+                updateTextField("excludeKeywords", event.currentTarget.value);
+              }}
+              onCompositionStart={() => {
+                composingField.current = "excludeKeywords";
+                cancelScheduledTextCommit();
+              }}
               onKeyDown={commitOnEnter}
               placeholder="agency, crypto"
               value={draft.excludeKeywords}
@@ -718,7 +821,12 @@ export function SearchWorkspace({
 
       {presentation.showFilters ? (
         <aside aria-label="Filters" className={styles["filterRail"]}>
-          <SearchFilters draft={draft} onCommit={commitDraft} onDraftChange={setDraft} />
+          <SearchFilters
+            committedKey={appliedSearch}
+            draft={draft}
+            onCommit={commitDraft}
+            onDraftChange={setDraft}
+          />
         </aside>
       ) : null}
 
@@ -747,7 +855,9 @@ export function SearchWorkspace({
                   >
                     <option value="relevance">Best match</option>
                     <option value="newest">Newest</option>
-                    <option value="salary_desc">Highest salary</option>
+                    <option value="updated_desc">Recently updated</option>
+                    <option value="salary_desc">Salary: high to low</option>
+                    <option value="salary_asc">Salary: low to high</option>
                   </select>
                   <CaretDownIcon aria-hidden="true" size={13} />
                 </span>

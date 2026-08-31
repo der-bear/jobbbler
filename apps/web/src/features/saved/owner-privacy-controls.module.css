@@ -25,7 +25,7 @@
 
 .summary span {
   color: var(--color-ink-subtle);
-  font-size: 8px;
+  font-size: 11px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }
@@ -99,9 +99,9 @@
 }
 
 .form input:focus-visible {
-  border-color: var(--jb-signal);
-  outline: 3px solid var(--jb-focus);
-  outline-offset: 2px;
+  border-color: var(--jb-focus);
+  outline: 2px solid var(--jb-focus);
+  outline-offset: 0;
 }
 
 .form button {
@@ -117,7 +117,9 @@
 
 .form button:disabled {
   cursor: not-allowed;
-  opacity: 0.45;
+  border-color: var(--color-line-strong);
+  background: var(--color-surface-strong);
+  color: var(--color-ink-muted);
 }
 
 .actions {
@@ -142,6 +144,12 @@
   border-color: var(--jb-danger);
   background: var(--jb-danger);
   color: white;
+}
+
+.danger .form button:disabled:not(.quiet) {
+  border-color: var(--color-line-strong);
+  background: var(--color-surface-strong);
+  color: var(--color-ink-muted);
 }
 
 .hint,

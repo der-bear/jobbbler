@@ -7,9 +7,12 @@ import type {
 } from "@jobbbler/contracts";
 
 import type { LatestSearchRun } from "@/lib/latest-run";
-import { commitWebMcpSavedSearchDeletion } from "@/lib/webmcp-ui-bridge";
+import { commitWebMcpSavedSearch, commitWebMcpSavedSearchDeletion } from "@/lib/webmcp-ui-bridge";
 
-import { subscribeSavedWorkspaceDeletion } from "./saved-workspace";
+import {
+  subscribeSavedWorkspaceCreation,
+  subscribeSavedWorkspaceDeletion,
+} from "./saved-workspace";
 
 const now = "2026-08-30T09:00:00.000Z";
 const ownerId = "owner_00000001-0000-7000-8000-000000000001";
@@ -116,6 +119,39 @@ describe("Saved workspace WebMCP deletion reconciliation", () => {
     expect(schedules).toEqual([survivorSchedule]);
     expect([...latestRuns.entries()]).toEqual([[survivor.id, survivorRun]]);
     expect(committed).toEqual(receipt);
+    unsubscribe();
+  });
+});
+
+describe("Saved workspace WebMCP creation reconciliation", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("prepends a newly saved search once and reports the committed record", () => {
+    vi.stubGlobal("window", new EventTarget());
+    const existing = savedSearch(
+      "saved_search_00000001-0000-7000-8000-000000000001",
+      "Platform roles",
+    );
+    const created = savedSearch(
+      "saved_search_00000002-0000-7000-8000-000000000002",
+      "Product roles",
+    );
+    let savedSearches: readonly SavedSearch[] = [existing];
+    let committed: SavedSearch | null = null;
+    const unsubscribe = subscribeSavedWorkspaceCreation({
+      setSavedSearches: (update) => {
+        savedSearches = update(savedSearches);
+      },
+      onCommitted: (savedSearch) => {
+        committed = savedSearch;
+      },
+    });
+
+    commitWebMcpSavedSearch(created);
+    commitWebMcpSavedSearch(created);
+
+    expect(savedSearches).toEqual([created, existing]);
+    expect(committed).toEqual(created);
     unsubscribe();
   });
 });

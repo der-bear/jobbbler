@@ -92,4 +92,21 @@ describe("ApplicationHistory", () => {
     expect(markup).toContain("Browse open roles");
     expect(markup).toContain('href="/jobs"');
   });
+
+  it("offers the existing optional recovery flow when there is no private session", () => {
+    const markup = renderToStaticMarkup(<ApplicationsWorkspace initialItems={null} />);
+
+    expect(markup).toContain("No applications yet");
+    expect(markup).toContain("Been here before?");
+    expect(markup).toContain("Restore with email");
+    expect(markup).toContain('type="email"');
+    expect(markup).not.toContain("Loading your applications");
+  });
+
+  it("keeps recovery out of a signed-in empty application history", () => {
+    const markup = renderToStaticMarkup(<ApplicationsWorkspace initialItems={[]} />);
+
+    expect(markup).toContain("No applications yet");
+    expect(markup).not.toContain("Restore with email");
+  });
 });

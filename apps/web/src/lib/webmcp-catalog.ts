@@ -122,6 +122,11 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
         readOnly: false,
       },
       {
+        name: "save_job_search",
+        purpose: "Save reusable search criteria without asking for email or enabling updates.",
+        readOnly: false,
+      },
+      {
         name: "get_saved_alerts",
         purpose: "List saved searches and their optional update schedules.",
         readOnly: true,

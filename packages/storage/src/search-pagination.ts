@@ -23,6 +23,7 @@ function criteriaFingerprint(criteria: JobSearchCriteria): string {
     query: criteria.query,
     categories: criteria.categories,
     workModels: criteria.workModels,
+    employmentTypes: criteria.employmentTypes ?? [],
     seniorities: criteria.seniorities,
     locations: criteria.locations,
     skills: criteria.skills,

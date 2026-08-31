@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type { RegisteredToolSummary } from "./webmcp-provider";
-import { AgentPanelSurface } from "./agent-panel";
+import { AgentPanelSurface, maximumAgentPanelWidth } from "./agent-panel";
 
 const coreTools: readonly RegisteredToolSummary[] = [
   { name: "plan_job_workflow", purpose: "Plan a safe outcome.", readOnly: true },
@@ -13,6 +13,12 @@ const coreTools: readonly RegisteredToolSummary[] = [
 ];
 
 describe("AgentPanelSurface", () => {
+  it("keeps a readable main column while allowing the full panel on wide screens", () => {
+    expect(maximumAgentPanelWidth(1081)).toBe(321);
+    expect(maximumAgentPanelWidth(1240)).toBe(480);
+    expect(maximumAgentPanelWidth(1440)).toBe(560);
+  });
+
   it("starts with Activity and keeps the technical proof hierarchy obvious", () => {
     const markup = renderToStaticMarkup(
       <AgentPanelSurface
@@ -67,7 +73,7 @@ describe("AgentPanelSurface", () => {
 
     expect(markup).toContain("Preparing agent tools");
     expect(markup).toContain("Capability catalog");
-    expect(markup).toContain("28 tools");
+    expect(markup).toContain("29 tools");
     expect(markup).not.toContain("Active tools");
   });
 

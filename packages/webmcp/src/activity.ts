@@ -12,26 +12,6 @@ function randomId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID()}`;
 }
 
-function nearestLocalActivityIndex(
-  activities: readonly AgentActivity[],
-  committed: AgentActivity,
-): number {
-  const committedStartedAt = Date.parse(committed.startedAt);
-  if (!Number.isFinite(committedStartedAt)) return -1;
-  let nearestIndex = -1;
-  let nearestDistance = 10_001;
-  activities.forEach((candidate, index) => {
-    if (!candidate.id.startsWith("act_") || candidate.toolName !== committed.toolName) return;
-    const candidateStartedAt = Date.parse(candidate.startedAt);
-    if (!Number.isFinite(candidateStartedAt)) return;
-    const distance = Math.abs(candidateStartedAt - committedStartedAt);
-    if (distance > 10_000 || distance >= nearestDistance) return;
-    nearestIndex = index;
-    nearestDistance = distance;
-  });
-  return nearestIndex;
-}
-
 export class AgentActivityStore {
   readonly #clock: ActivityClock;
   readonly #maxItems: number;
@@ -88,11 +68,38 @@ export class AgentActivityStore {
     status: Exclude<AgentActivityStatus, "running">,
     safeSummary: string,
     affectedResourceIds?: readonly string[],
+    correlationId?: string,
   ): void {
     const index = this.#activities.findIndex((activity) => activity.id === id);
     if (index === -1) return;
     const current = this.#activities[index]!;
     if (current.status !== "running") return;
+    const finishedResourceIds = [
+      ...(affectedResourceIds === undefined ? current.affectedResourceIds : affectedResourceIds),
+    ];
+    const committedIndex =
+      correlationId === undefined
+        ? -1
+        : this.#activities.findIndex(
+            (activity, activityIndex) =>
+              activityIndex !== index &&
+              activity.toolName === current.toolName &&
+              activity.correlationId === correlationId,
+          );
+    if (committedIndex !== -1) {
+      const committed = this.#activities[committedIndex]!;
+      const reconciled =
+        committed.affectedResourceIds.length === 0 && finishedResourceIds.length > 0
+          ? { ...committed, affectedResourceIds: finishedResourceIds }
+          : committed;
+      this.#publish(
+        this.#activities.flatMap((activity, activityIndex) => {
+          if (activityIndex === index) return [];
+          return [activityIndex === committedIndex ? reconciled : activity];
+        }),
+      );
+      return;
+    }
     this.#publish(
       this.#activities.map((activity, activityIndex) =>
         activityIndex === index
@@ -101,9 +108,8 @@ export class AgentActivityStore {
               status,
               safeSummary,
               completedAt: this.#clock.now().toISOString(),
-              ...(affectedResourceIds === undefined
-                ? {}
-                : { affectedResourceIds: [...affectedResourceIds] }),
+              affectedResourceIds: finishedResourceIds,
+              ...(correlationId === undefined ? {} : { correlationId }),
             }
           : activity,
       ),
@@ -121,7 +127,7 @@ export class AgentActivityStore {
           (candidate.correlationId === activity.correlationId &&
             candidate.toolName === activity.toolName),
       );
-      const index = exactIndex === -1 ? nearestLocalActivityIndex(next, activity) : exactIndex;
+      const index = exactIndex;
       if (index === -1) {
         next.push(activity);
         changed = true;

@@ -161,6 +161,7 @@ export interface OwnerActivityWindowInput {
   readonly ownerId: string;
   readonly afterSequence: number | null;
   readonly limit: number;
+  readonly actorKind?: OwnerActivityEvent["actorKind"];
 }
 
 export interface OwnerActivityWindow {
@@ -287,6 +288,11 @@ export interface ManagedApplicationSubmissionField {
   readonly sensitive: boolean;
 }
 
+export interface ApplicationRoleSnapshot {
+  readonly id: string;
+  readonly title: string;
+}
+
 export interface ManagedApplicationDeliveryRecord {
   readonly id: string;
   readonly ownerId: string;
@@ -296,6 +302,7 @@ export interface ManagedApplicationDeliveryRecord {
   readonly idempotencyKey: string;
   readonly provider: "jobbbler_demo";
   readonly providerReferenceId: string;
+  readonly role: ApplicationRoleSnapshot;
   readonly recipientId: string;
   readonly recipientName: string;
   readonly payloadHash: string;
@@ -309,6 +316,7 @@ export interface SubmittedApplicationReceiptSnapshot {
   readonly managedDeliveryId: string;
   readonly provider: "jobbbler_demo";
   readonly providerReferenceId: string;
+  readonly role: ApplicationRoleSnapshot;
   readonly recipientId: string;
   readonly recipientName: string;
   readonly submittedAt: string;

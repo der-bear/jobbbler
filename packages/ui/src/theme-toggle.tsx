@@ -35,23 +35,23 @@ export function ThemeToggle({ className, onThemeChange, theme }: ThemeToggleProp
     if (theme === undefined) window.localStorage.setItem("jobbbler-theme", currentTheme);
   }, [currentTheme, theme, uncontrolledTheme]);
 
-  const nextTheme: Theme = currentTheme === "light" ? "dark" : "light";
+  const labelledNextTheme: Theme = currentTheme === "light" ? "dark" : "light";
   return (
     <button
-      aria-label={`Switch to ${nextTheme} theme`}
+      aria-label={`Switch to ${labelledNextTheme} theme`}
       aria-pressed={currentTheme === "dark"}
       className={cx("jb-theme-toggle", className)}
       onClick={() => {
+        const liveTheme: Theme =
+          theme ?? (document.documentElement.dataset["theme"] === "dark" ? "dark" : "light");
+        const nextTheme: Theme = liveTheme === "light" ? "dark" : "light";
         if (theme === undefined) setUncontrolledTheme(nextTheme);
         onThemeChange?.(nextTheme);
       }}
       type="button"
     >
-      {currentTheme === "light" ? (
-        <Moon aria-hidden="true" size={17} />
-      ) : (
-        <Sun aria-hidden="true" size={17} />
-      )}
+      <Moon aria-hidden="true" className="jb-theme-toggle__light-icon" size={17} />
+      <Sun aria-hidden="true" className="jb-theme-toggle__dark-icon" size={17} />
       <span className="jb-sr-only">Current theme: {currentTheme}</span>
     </button>
   );

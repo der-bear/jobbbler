@@ -25,10 +25,10 @@ const workspace: ApplicationWorkspace = {
     version: 0,
     answers: [
       {
-        fieldKey: "motivation",
+        fieldKey: "cover_letter",
         value: "Agent draft",
         provenance: "agent_suggestion",
-        sensitive: false,
+        sensitive: true,
         acceptedByHuman: false,
       },
     ],
@@ -47,12 +47,12 @@ const workspace: ApplicationWorkspace = {
       options: [],
     },
     {
-      fieldKey: "motivation",
-      label: "Why this role",
+      fieldKey: "cover_letter",
+      label: "Cover letter",
       description: "A short note.",
       input: "textarea",
       required: true,
-      sensitive: false,
+      sensitive: true,
       category: "application_answers",
       options: [],
     },
@@ -88,10 +88,10 @@ function reviewedWorkspace(
           acceptedByHuman: true,
         },
         {
-          fieldKey: "motivation",
+          fieldKey: "cover_letter",
           value: "Candidate-authored note",
           provenance: "user_entered",
-          sensitive: false,
+          sensitive: true,
           acceptedByHuman: true,
         },
       ],
@@ -115,7 +115,7 @@ describe("finalizeApplication", () => {
     await expect(
       finalizeApplication({
         workspace,
-        values: { full_name: "Ada Lovelace", motivation: "Agent draft" },
+        values: { full_name: "Ada Lovelace", cover_letter: "Agent draft" },
         request,
         idempotencyKey: "550e8400-e29b-41d4-a716-446655440000",
         interactionChannel: "agent_client",
@@ -130,7 +130,7 @@ describe("finalizeApplication", () => {
     await expect(
       finalizeApplication({
         workspace,
-        values: { full_name: "Ada Lovelace", motivation: "Agent draft" },
+        values: { full_name: "Ada Lovelace", cover_letter: "Agent draft" },
         request,
         idempotencyKey: "550e8400-e29b-41d4-a716-446655440000",
         interactionChannel: "agent_client",
@@ -178,7 +178,7 @@ describe("finalizeApplication", () => {
 
     await finalizeApplication({
       workspace: pending,
-      values: { full_name: "Ada Lovelace", motivation: "Candidate-authored note" },
+      values: { full_name: "Ada Lovelace", cover_letter: "Candidate-authored note" },
       request,
       idempotencyKey: "550e8400-e29b-41d4-a716-446655440000",
       interactionChannel: "agent_client",
@@ -235,7 +235,7 @@ describe("finalizeApplication", () => {
 
     await finalizeApplication({
       workspace: pending,
-      values: { full_name: "Ada Lovelace", motivation: "Candidate-authored note" },
+      values: { full_name: "Ada Lovelace", cover_letter: "Candidate-authored note" },
       request,
       idempotencyKey: "550e8400-e29b-41d4-a716-446655440000",
     });
@@ -274,7 +274,7 @@ describe("finalizeApplication", () => {
 
     await finalizeApplication({
       workspace: pending,
-      values: { full_name: "Ada Lovelace", motivation: "Candidate-authored note" },
+      values: { full_name: "Ada Lovelace", cover_letter: "Candidate-authored note" },
       request,
       idempotencyKey: "550e8400-e29b-41d4-a716-446655440000",
       interactionChannel: "agent_client",
@@ -304,7 +304,7 @@ describe("finalizeApplication", () => {
         state: "draft" as const,
         version: 5,
         answers: pending.draft.answers.map((answer) =>
-          answer.fieldKey === "motivation"
+          answer.fieldKey === "cover_letter"
             ? { ...answer, value: "Materially updated candidate note" }
             : answer,
         ),
@@ -350,7 +350,7 @@ describe("finalizeApplication", () => {
         workspace: pending,
         values: {
           full_name: "Ada Lovelace",
-          motivation: "Materially updated candidate note",
+          cover_letter: "Materially updated candidate note",
         },
         request,
         idempotencyKey: "550e8400-e29b-41d4-a716-446655440000",
@@ -389,10 +389,10 @@ describe("finalizeApplication", () => {
             acceptedByHuman: true,
           },
           {
-            fieldKey: "motivation",
+            fieldKey: "cover_letter",
             value: "Agent draft",
             provenance: "agent_suggestion",
-            sensitive: false,
+            sensitive: true,
             acceptedByHuman: true,
           },
         ],
@@ -429,7 +429,7 @@ describe("finalizeApplication", () => {
 
     const receipt = await finalizeApplication({
       workspace,
-      values: { full_name: "Ada Lovelace", motivation: "Agent draft" },
+      values: { full_name: "Ada Lovelace", cover_letter: "Agent draft" },
       request,
       idempotencyKey: "550e8400-e29b-41d4-a716-446655440000",
       interactionChannel: "agent_client",
@@ -452,7 +452,7 @@ describe("finalizeApplication", () => {
         expectedVersion: 0,
         answers: expect.arrayContaining([
           expect.objectContaining({
-            fieldKey: "motivation",
+            fieldKey: "cover_letter",
             provenance: "agent_suggestion",
             acceptedByHuman: true,
           }),
@@ -503,10 +503,10 @@ describe("finalizeApplication", () => {
             acceptedByHuman: true,
           },
           {
-            fieldKey: "motivation",
+            fieldKey: "cover_letter",
             value: "Agent draft",
             provenance: "agent_suggestion",
-            sensitive: false,
+            sensitive: true,
             acceptedByHuman: true,
           },
         ],
@@ -537,7 +537,7 @@ describe("finalizeApplication", () => {
 
     await finalizeApplication({
       workspace: reviewed,
-      values: { full_name: "Ada Lovelace", motivation: "Agent draft" },
+      values: { full_name: "Ada Lovelace", cover_letter: "Agent draft" },
       request,
       idempotencyKey: "550e8400-e29b-41d4-a716-446655440000",
     });

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { AgentOperation, ApplicationAgentState } from "@jobbbler/contracts";
 
-import { MAX_WEBMCP_RESULT_BYTES, webMcpResultSize } from "@/lib/webmcp-tool-result";
+import { webMcpResultSize } from "@/lib/webmcp-tool-result";
 
 import {
   createApplicationToolManifests,
@@ -11,6 +11,7 @@ import {
   type ApplicationToolDependencies,
   type ApplicationToolReadiness,
 } from "./webmcp-tools";
+import { MAX_APPLICATION_SUBMISSION_REVIEW_RESULT_BYTES } from "./submission-review-presentation";
 
 const base: ApplicationAgentState = {
   draftId: "application_550e8400-e29b-41d4-a716-446655440000",
@@ -100,10 +101,10 @@ function dependencies(
             sensitive: true,
           },
           {
-            fieldKey: "motivation",
-            label: "Why this role",
+            fieldKey: "cover_letter",
+            label: "Cover letter",
             value: "I build reliable data platforms.",
-            sensitive: false,
+            sensitive: true,
           },
           {
             fieldKey: "work_authorization",
@@ -141,6 +142,7 @@ function dependencies(
                 submission: {
                   provider: "jobbbler_demo" as const,
                   providerReferenceId: "demo_submission_750e8400-e29b-41d4-a716-446655440000",
+                  role: { id: state.jobId, title: "Senior Platform Engineer" },
                   recipient: {
                     id: "org_750e8400-e29b-41d4-a716-446655440000",
                     name: "Northstar Systems",
@@ -295,7 +297,7 @@ describe("application WebMCP outcomes", () => {
     const result = await manifests[1]!.execute(
       {
         patches: [
-          { fieldKey: "motivation", value: "A concise, role-specific answer." },
+          { fieldKey: "cover_letter", value: "A concise, role-specific answer." },
           { fieldKey: "portfolio_url", value: "https://example.com/work" },
         ],
       },
@@ -303,7 +305,7 @@ describe("application WebMCP outcomes", () => {
     );
     expect(deps.proposeUpdates).toHaveBeenCalledWith(
       [
-        { fieldKey: "motivation", value: "A concise, role-specific answer." },
+        { fieldKey: "cover_letter", value: "A concise, role-specific answer." },
         { fieldKey: "portfolio_url", value: "https://example.com/work" },
       ],
       { signal },
@@ -313,8 +315,8 @@ describe("application WebMCP outcomes", () => {
     const duplicate = await manifests[1]!.execute(
       {
         patches: [
-          { fieldKey: "motivation", value: "First" },
-          { fieldKey: "motivation", value: "Second" },
+          { fieldKey: "cover_letter", value: "First" },
+          { fieldKey: "cover_letter", value: "Second" },
         ],
       },
       { signal },
@@ -335,9 +337,8 @@ describe("application WebMCP outcomes", () => {
       "propose_application_updates",
       "request_submission_review",
     ]);
-    expect(manifests[2]!.description).toContain("visible review");
-    expect(manifests[2]!.description).toContain("compact request-bound reference");
-    expect(manifests[2]!.description).not.toContain("every exact field value");
+    expect(manifests[2]!.description).toContain("exact field values");
+    expect(manifests[2]!.description).toContain("agent client");
 
     const result = await manifests[2]!.execute({}, { signal: new AbortController().signal });
     expect(result).toMatchObject({
@@ -352,7 +353,10 @@ describe("application WebMCP outcomes", () => {
         reviewHref: `/apply/${ready.draftId}`,
         recipient: "Northstar Systems",
         fieldCount: 4,
-        sensitiveFieldCount: 3,
+        sensitiveFieldCount: 4,
+        fields: expect.arrayContaining([
+          expect.objectContaining({ fieldKey: "email", value: "ada@example.com" }),
+        ]),
         noticeVersion: "privacy-2026-08",
         expiresAt: "2026-08-29T10:05:00.000Z",
       },
@@ -362,12 +366,12 @@ describe("application WebMCP outcomes", () => {
         facts: expect.arrayContaining([
           { key: "Recipient", value: "Northstar Systems" },
           { key: "Fields", value: 4 },
-          { key: "Sensitive fields", value: 3 },
+          { key: "Sensitive fields", value: 4 },
         ]),
       },
     });
-    expect(JSON.stringify(result)).not.toContain("ada@example.com");
-    expect(webMcpResultSize(result)).toBeLessThanOrEqual(MAX_WEBMCP_RESULT_BYTES);
+    expect(JSON.stringify(result)).toContain("ada@example.com");
+    expect(webMcpResultSize(result)).toBeGreaterThan(0);
     expect(names(createApplicationToolManifests(deps))).toEqual([
       "get_application_readiness",
       "propose_application_updates",
@@ -375,7 +379,7 @@ describe("application WebMCP outcomes", () => {
     ]);
   });
 
-  it("keeps a long exact review on the visible owner surface instead of overrunning the agent", async () => {
+  it("returns a long exact review to the authorized agent client within its dedicated bound", async () => {
     const ready = { ...base, completedRequiredFields: 5 };
     const deps = dependencies(ready, [
       "read_application",
@@ -390,10 +394,10 @@ describe("application WebMCP outcomes", () => {
       purpose: "Submit this reviewed application to Northstar Systems.",
       fields: [
         {
-          fieldKey: "motivation",
-          label: "Why this role",
+          fieldKey: "cover_letter",
+          label: "Cover letter",
           value: exactValue,
-          sensitive: false,
+          sensitive: true,
         },
       ],
       noticeVersion: "privacy-2026-08",
@@ -412,13 +416,16 @@ describe("application WebMCP outcomes", () => {
       decisionContext: {
         reviewHref: `/apply/${ready.draftId}`,
         fieldCount: 1,
+        fields: [expect.objectContaining({ fieldKey: "cover_letter", value: exactValue })],
       },
       presentation: {
-        prompt: expect.stringContaining("visible review"),
+        prompt: expect.stringContaining("exact values below"),
       },
     });
-    expect(JSON.stringify(result)).not.toContain(exactValue);
-    expect(webMcpResultSize(result)).toBeLessThanOrEqual(MAX_WEBMCP_RESULT_BYTES);
+    expect(JSON.stringify(result)).toContain(exactValue);
+    expect(webMcpResultSize(result)).toBeLessThanOrEqual(
+      MAX_APPLICATION_SUBMISSION_REVIEW_RESULT_BYTES,
+    );
   });
 
   it("records the exact submission decision in one outcome tool", async () => {

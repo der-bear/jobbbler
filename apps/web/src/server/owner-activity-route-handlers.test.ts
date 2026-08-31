@@ -155,7 +155,7 @@ describe("owner activity route handler", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(response.headers.get("vary")).toContain("Cookie");
-    expect(clear).toHaveBeenCalledWith(owner.id);
+    expect(clear).toHaveBeenCalledWith(owner.id, "agent");
     expect((await response.json()).data).toEqual({ clearedCount: 4 });
   });
 
@@ -198,6 +198,7 @@ describe("owner activity route handler", () => {
       ownerId: owner.id,
       afterSequence: null,
       limit: 25,
+      actorKind: "agent",
     });
     const body = await response.json();
     expect(body.data).toMatchObject({
@@ -258,6 +259,7 @@ describe("owner activity route handler", () => {
       ownerId: owner.id,
       afterSequence: null,
       limit: 50,
+      actorKind: "agent",
     });
   });
 

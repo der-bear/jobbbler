@@ -76,7 +76,7 @@ export const jobSchema = z.strictObject({
   organizationId: entityIdSchema,
   organizationName: z.string().trim().min(1).max(160),
   title: z.string().trim().min(1).max(180),
-  summary: z.string().trim().min(1).max(2_000),
+  summary: z.string().trim().min(1).max(6_000),
   categories: z.array(jobCategorySchema).min(1).max(4),
   workModel: workModelSchema,
   employmentType: employmentTypeSchema,

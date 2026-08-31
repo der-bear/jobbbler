@@ -229,6 +229,10 @@ export function rankJob(job: Job, criteria: JobSearchCriteria, context: RankJobC
   const matchedWorkModels = criteria.workModels.filter((workModel) => workModel === job.workModel);
   const workModel = makeDimension(criteria.workModels, matchedWorkModels, { hard: true });
 
+  const requestedEmploymentTypes = criteria.employmentTypes ?? [];
+  const employmentTypeMatches =
+    requestedEmploymentTypes.length === 0 || requestedEmploymentTypes.includes(job.employmentType);
+
   const matchedSeniorities =
     job.seniority === null
       ? []
@@ -283,6 +287,7 @@ export function rankJob(job: Job, criteria: JobSearchCriteria, context: RankJobC
   const eligible =
     job.status === "open" &&
     exclusions.length === 0 &&
+    employmentTypeMatches &&
     !hardMismatch &&
     !seniorityMismatch &&
     !salaryMismatch &&
@@ -292,6 +297,9 @@ export function rankJob(job: Job, criteria: JobSearchCriteria, context: RankJobC
   if (text.status === "match") evidence.push("Search terms match the job content.");
   if (categories.status === "match") evidence.push("Category matches the requested work.");
   if (workModel.status === "match") evidence.push(`Work model is ${job.workModel}.`);
+  if (requestedEmploymentTypes.length > 0 && employmentTypeMatches) {
+    evidence.push(`Employment type is ${job.employmentType}.`);
+  }
   if (seniority.status === "match") evidence.push(`Seniority is ${job.seniority}.`);
   if (locations.status === "match") evidence.push("Location matches the requested region.");
   if (skills.matched.length > 0) {

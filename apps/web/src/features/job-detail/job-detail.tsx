@@ -25,7 +25,7 @@ import { startApplication } from "@/features/application/start-application";
 import { externalApplicationUrl, supportsJobbblerPreparation } from "./application-capability";
 import {
   compactDate,
-  deviatingEmploymentLabel,
+  employmentLabel,
   locationBesideWorkModel,
   relativeFreshness,
   salaryLabel,
@@ -75,20 +75,13 @@ export function backToSearchHref(criteriaSearch: string): string {
   return `/jobs${criteriaSearch.startsWith("?") ? criteriaSearch : `?${criteriaSearch}`}`;
 }
 
+/* Preserve the author's paragraph structure; never manufacture semantic breaks. */
 export function jobSummaryParagraphs(summary: string): readonly string[] {
-  const sentences = summary
+  return summary
     .trim()
-    .split(/(?<=[.!?])\s+/u)
-    .map((sentence) => sentence.trim())
-    .filter((sentence) => sentence.length > 0);
-
-  if (sentences.length < 3) return [summary.trim()];
-
-  const paragraphs: string[] = [];
-  for (let index = 0; index < sentences.length; index += 2) {
-    paragraphs.push(sentences.slice(index, index + 2).join(" "));
-  }
-  return paragraphs;
+    .split(/\n{2,}/u)
+    .map((paragraph) => paragraph.replace(/\s*\n\s*/gu, " ").trim())
+    .filter((paragraph) => paragraph.length > 0);
 }
 
 function errorMessage(error: unknown): string {
@@ -142,8 +135,11 @@ function JobIdentity({
 }>) {
   const canPrepare = supportsJobbblerPreparation(job);
   const employerApplicationUrl = externalApplicationUrl(job);
-  const factLocations = locationBesideWorkModel(job.locations.join(", "), job.workModel);
-  const factEmployment = deviatingEmploymentLabel(job.employmentType);
+  const normalizedLocations = job.locations
+    .map((location) => locationBesideWorkModel(location, job.workModel))
+    .filter((location): location is string => location !== null);
+  const factLocations = normalizedLocations.length === 0 ? null : normalizedLocations.join(", ");
+  const factEmployment = employmentLabel(job.employmentType);
 
   return (
     <header className={styles["identity"]}>
@@ -167,7 +163,7 @@ function JobIdentity({
             {factLocations}
           </span>
         )}
-        {factEmployment === null ? null : <span>{factEmployment}</span>}
+        <span>{factEmployment}</span>
         <span>
           {job.seniority === null ? "Seniority not stated" : seniorityLabel(job.seniority)}
         </span>

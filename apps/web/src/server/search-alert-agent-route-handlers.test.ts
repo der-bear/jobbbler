@@ -1521,6 +1521,33 @@ describe("agent-native search alert route handlers", () => {
     expect(activity).not.toContain(endpointId);
   });
 
+  it("correlates each durable activity event with the API request that produced it", async () => {
+    const current = createDependencies();
+    const requestResponse = await handleRequestSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/request", requestInput),
+      current.dependencies,
+    );
+    const requestCorrelation = requestResponse.headers.get("x-request-id");
+    const review = await responseData<RequestSearchAlertResult>(requestResponse);
+
+    const decisionResponse = await handleDecideSearchAlert(
+      privateRequest("/api/v1/agent/search-alerts/decision", decisionBody(review)),
+      current.dependencies,
+    );
+    const decisionCorrelation = decisionResponse.headers.get("x-request-id");
+
+    expect(requestCorrelation).not.toBeNull();
+    expect(decisionCorrelation).not.toBeNull();
+    expect(current.activity.publish).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ correlationId: requestCorrelation }),
+    );
+    expect(current.activity.publish).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ correlationId: decisionCorrelation }),
+    );
+  });
+
   it("compensates a definitive delivery rejection before preparing a review", async () => {
     const current = createDependencies();
     current.dependencies.identity.delivery.deliverVerification = vi.fn(async () => {

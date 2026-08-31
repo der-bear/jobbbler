@@ -88,7 +88,11 @@ export function locationSuggestionItems(
     (value) => canonicalizeLocation(value).toLocaleLowerCase("en") === canonicalQuery,
   );
   if (!hasExactSuggestion) {
-    items.push({ kind: "free-text", label: `Use \u201c${queryValue}\u201d`, value: queryValue });
+    items.push({
+      kind: "free-text",
+      label: `Search for \u201c${queryValue}\u201d`,
+      value: queryValue,
+    });
   }
   return items;
 }
@@ -249,7 +253,7 @@ export function LocationCombobox({
       : loadStatus === "error"
         ? "Suggestions unavailable. You can still use your exact text."
         : query.length > 0 && !hasKnownSuggestion
-          ? "No catalog matches. Use your exact location."
+          ? "No listed location matches yet. You can still search this place."
           : null;
 
   return (
@@ -287,7 +291,7 @@ export function LocationCombobox({
             onClick={() => {
               onChange("");
               onCommit("");
-              setOpen(true);
+              setOpen(false);
               setActiveIndex(-1);
             }}
             onMouseDown={(event) => event.preventDefault()}
@@ -333,7 +337,7 @@ export function LocationCombobox({
                 <span>{option.label}</span>
                 {option.kind === "free-text" ? (
                   <span aria-hidden="true" className={styles["optionMeta"]}>
-                    Free text
+                    As typed
                   </span>
                 ) : null}
               </li>

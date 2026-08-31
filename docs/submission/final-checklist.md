@@ -52,9 +52,10 @@
       decision relayed by `decide_application_assistance`, and only then
       `propose_application_updates`.
 - [ ] Confirm the site offers no approval, consent, confirmation, or submission
-      bypass after assistance is requested or an agent-suggested answer exists;
-      it renders that lineage read-only, while a purely manual draft remains
-      editable and may still finish in the first-party UI.
+      bypass while an unexpired assistance request or delegation exists; it
+      renders that live authority read-only, while expired, declined, or
+      withdrawn authority returns control to the first-party UI without erasing
+      the provenance of agent-prepared answers.
 - [ ] Confirm `decide_application_assistance` can withdraw active assistance
       only with its exact live request ID and returns the revoked authority
       state without adding another tool.

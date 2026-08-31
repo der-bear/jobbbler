@@ -51,12 +51,12 @@ const base: ApplicationWorkspace = {
       options: [],
     },
     {
-      fieldKey: "motivation",
-      label: "Why this role",
+      fieldKey: "cover_letter",
+      label: "Cover letter",
       description: "A short note for the hiring team.",
       input: "textarea",
       required: true,
-      sensitive: false,
+      sensitive: true,
       category: "application_answers",
       options: [],
     },
@@ -118,6 +118,7 @@ describe("application presentation model", () => {
             submission: {
               provider: "jobbbler_demo",
               providerReferenceId: "demo_submission_550e8400-e29b-41d4-a716-446655440000",
+              role: { id: base.draft.jobId, title: "Senior Platform Engineer" },
               recipient: base.recipient,
               submittedAt: "2026-08-29T10:03:00.000Z",
               fields: [{ fieldKey: "full_name", label: "Full name", value: "Ada Lovelace" }],
@@ -146,10 +147,10 @@ describe("application presentation model", () => {
         answers: [
           ...base.draft.answers,
           {
-            fieldKey: "motivation",
+            fieldKey: "cover_letter",
             value: "Suggested text",
             provenance: "agent_suggestion",
-            sensitive: false,
+            sensitive: true,
             acceptedByHuman: false,
           },
         ],
@@ -169,7 +170,7 @@ describe("application presentation model", () => {
     expect(applicationReadiness(base)).toEqual({
       completed: 1,
       required: 2,
-      missingFieldKeys: ["motivation"],
+      missingFieldKeys: ["cover_letter"],
       readyForReview: false,
     });
   });
@@ -178,7 +179,7 @@ describe("application presentation model", () => {
     expect(
       applicationReadinessForValues(base, {
         full_name: "Ada Lovelace",
-        motivation: "A role-specific answer",
+        cover_letter: "A role-specific answer",
       }),
     ).toEqual({
       completed: 2,
@@ -190,7 +191,7 @@ describe("application presentation model", () => {
     expect(
       applicationReadinessForValues(base, {
         full_name: "   ",
-        motivation: "A role-specific answer",
+        cover_letter: "A role-specific answer",
       }).missingFieldKeys,
     ).toEqual(["full_name"]);
   });
@@ -199,12 +200,12 @@ describe("application presentation model", () => {
     expect(
       applicationDisclosureForValues(base, {
         full_name: "Ada Lovelace",
-        motivation: "A role-specific answer",
+        cover_letter: "A role-specific answer",
       }),
     ).toEqual({
-      fieldKeys: ["full_name", "motivation"],
+      fieldKeys: ["full_name", "cover_letter"],
       categories: ["identity", "application_answers"],
-      sensitiveFieldKeys: ["full_name"],
+      sensitiveFieldKeys: ["full_name", "cover_letter"],
     });
   });
 
@@ -246,6 +247,38 @@ describe("application presentation model", () => {
       ).toBe("none");
     },
   );
+
+  it.each([
+    { status: "revoked" as const, expiresAt: "2026-08-29T10:15:00.000Z" },
+    { status: "requested" as const, expiresAt: "2026-08-29T10:01:59.999Z" },
+    { status: "active" as const, expiresAt: "2026-08-29T10:01:59.999Z" },
+  ])("allows human takeover of agent suggestions after $status assistance ends", (delegation) => {
+    const endedWorkspace: ApplicationWorkspace = {
+      ...base,
+      draft: {
+        ...base.draft,
+        answers: [
+          {
+            ...base.draft.answers[0]!,
+            provenance: "agent_suggestion",
+            acceptedByHuman: false,
+          },
+        ],
+      },
+      delegationRequests: [
+        {
+          id: "delegation_550e8400-e29b-41d4-a716-446655440000",
+          agentSessionId: "agent_session_550e8400-e29b-41d4-a716-446655440000",
+          operations: ["edit_application"],
+          purpose: "Prepare this application.",
+          approvedAt: delegation.status === "active" ? "2026-08-29T10:01:00.000Z" : null,
+          ...delegation,
+        },
+      ],
+    };
+
+    expect(isAgentAssistedApplication(endedWorkspace, endedWorkspace.serverNow)).toBe(false);
+  });
 
   it("makes a legacy external draft read-only and recommends only active consent withdrawal", () => {
     const external: ApplicationWorkspace = { ...base, applyMode: "external" };

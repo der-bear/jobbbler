@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   currencyCodeSchema,
+  employmentTypeSchema,
   jobCategorySchema,
   jobSummarySchema,
   salaryPeriodSchema,
@@ -13,7 +14,13 @@ const searchTextSchema = z.string().trim().min(1).max(500);
 const filterTextSchema = z.string().trim().min(1).max(120);
 
 export const unknownSalaryPolicySchema = z.enum(["include", "exclude", "only"]);
-export const searchSortSchema = z.enum(["relevance", "newest", "salary_desc"]);
+export const searchSortSchema = z.enum([
+  "relevance",
+  "newest",
+  "updated_desc",
+  "salary_desc",
+  "salary_asc",
+]);
 
 export const salarySearchSchema = z
   .strictObject({
@@ -52,6 +59,7 @@ export const jobSearchInputSchema = z.strictObject({
   query: searchTextSchema.optional(),
   categories: z.array(jobCategorySchema).max(12).optional(),
   workModels: z.array(workModelSchema).max(4).optional(),
+  employmentTypes: z.array(employmentTypeSchema).max(5).optional(),
   seniorities: z.array(senioritySchema).max(9).optional(),
   locations: z.array(filterTextSchema).max(12).optional(),
   skills: z.array(filterTextSchema).max(20).optional(),
@@ -75,6 +83,7 @@ export const jobSearchCriteriaSchema = z.strictObject({
   query: searchTextSchema.nullable(),
   categories: z.array(jobCategorySchema),
   workModels: z.array(workModelSchema),
+  employmentTypes: z.array(employmentTypeSchema).optional(),
   seniorities: z.array(senioritySchema),
   locations: z.array(filterTextSchema),
   skills: z.array(filterTextSchema),

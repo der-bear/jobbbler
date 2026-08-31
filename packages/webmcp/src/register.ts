@@ -2,6 +2,7 @@ import type { AgentActivityStore } from "./activity.js";
 import { toolResourceReferenceSchema } from "@jobbbler/contracts";
 import { isModelContextAvailable } from "./feature-detection.js";
 import { validateToolManifest } from "./manifest.js";
+import { takeToolRequestCorrelation } from "./request-correlation.js";
 import type { ModelContext, RegisteredTool, ToolManifest } from "./types.js";
 
 function isAbortError(error: unknown, signal: AbortSignal): boolean {
@@ -64,20 +65,25 @@ function registeredTool<I, O>(
       try {
         const output = await manifest.execute(input as I, { signal });
         const terminal = terminalActivity(output);
+        const correlationId = takeToolRequestCorrelation(signal);
         activities?.finish(
           activityId ?? "",
           terminal?.status ?? "completed",
           terminal?.summary ?? `Completed ${manifest.purpose}`,
           terminal?.affectedResourceIds,
+          correlationId,
         );
         return output;
       } catch (error) {
+        const correlationId = takeToolRequestCorrelation(signal);
         activities?.finish(
           activityId ?? "",
           isAbortError(error, signal) ? "cancelled" : "failed",
           isAbortError(error, signal)
             ? `Cancelled ${manifest.purpose}`
             : `Failed ${manifest.purpose}`,
+          undefined,
+          correlationId,
         );
         throw error;
       }

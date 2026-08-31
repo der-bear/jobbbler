@@ -247,6 +247,10 @@ const submittedApplicationReceiptSummarySchema = z.strictObject({
   submission: z.strictObject({
     provider: z.literal("jobbbler_demo"),
     providerReferenceId: z.string().trim().min(1).max(160),
+    role: z.strictObject({
+      id: entityIdSchema,
+      title: z.string().trim().min(1).max(180),
+    }),
     recipient: z.strictObject({
       id: entityIdSchema,
       name: z.string().trim().min(1).max(160),

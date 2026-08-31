@@ -704,6 +704,7 @@ describe("SQLite identity persistence", () => {
       managedDeliveryId: "managed_delivery_private",
       provider: "jobbbler_demo",
       providerReferenceId: "demo_submission_private",
+      role: { id: "job_public", title: "Engineer" },
       recipientId: "org_public",
       recipientName: "Public Org",
       submittedAt: now,
@@ -713,9 +714,9 @@ describe("SQLite identity persistence", () => {
       .prepare(
         `INSERT INTO managed_application_deliveries(
           id,owner_id,draft_id,review_id,confirmation_id,idempotency_key,provider,
-          provider_reference_id,recipient_id,recipient_name,payload_hash,fields_json,status,
+          provider_reference_id,role_json,recipient_id,recipient_name,payload_hash,fields_json,status,
           acknowledged_at,created_at
-        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       )
       .run(
         "managed_delivery_private",
@@ -726,6 +727,7 @@ describe("SQLite identity persistence", () => {
         "idempotency",
         "jobbbler_demo",
         "demo_submission_private",
+        JSON.stringify({ id: "job_public", title: "Engineer" }),
         "org_public",
         "Public Org",
         "payload",

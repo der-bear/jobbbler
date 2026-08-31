@@ -91,6 +91,7 @@ function dependencies(
   return {
     listSavedSearches: vi.fn(async () => [savedSearch]),
     listSchedules: vi.fn(async () => [schedule]),
+    saveSearch: vi.fn(async () => savedSearch),
     requestSearchAlert: vi.fn(async () => alertReview),
     decideSearchAlert: vi.fn(async () => approvedAlert),
     setScheduleEnabled: vi.fn(),
@@ -107,6 +108,7 @@ function dependencies(
     })),
     onNavigate: () => undefined,
     onScheduleCommitted: vi.fn(),
+    onSavedSearchCommitted: vi.fn(),
     onSavedSearchDeleted: vi.fn(),
     ...overrides,
   };
@@ -123,6 +125,7 @@ describe("saved-route WebMCP tools", () => {
       "set_job_alert_state",
       "open_saved_search",
       "get_latest_search_update",
+      "save_job_search",
     ]);
     expect(manifests.map(({ annotations }) => annotations.readOnlyHint)).toEqual([
       true,
@@ -131,6 +134,7 @@ describe("saved-route WebMCP tools", () => {
       false,
       false,
       true,
+      false,
     ]);
     expect(manifests[1]!.description).toContain("explicit decision");
     expect(manifests[1]!.description).toContain("Never add filters");
@@ -152,6 +156,66 @@ describe("saved-route WebMCP tools", () => {
     });
     expect(JSON.stringify(result)).not.toContain(schedule.delivery.endpointId);
     expect(new TextEncoder().encode(JSON.stringify(result)).byteLength).toBeLessThanOrEqual(1_500);
+  });
+
+  it("saves reusable criteria without asking for an email or enabling updates", async () => {
+    const saveSearch = vi.fn(async () => savedSearch);
+    const onSavedSearchCommitted = vi.fn();
+    const manifests = createSavedToolManifests(
+      dependencies({ saveSearch, onSavedSearchCommitted }),
+    );
+    const manifest = manifests.find(({ name }) => name === "save_job_search");
+    expect(manifest).toBeDefined();
+    expect(JSON.stringify(manifest?.inputSchema)).not.toMatch(/email|recurrence|schedule/iu);
+    const signal = new AbortController().signal;
+
+    const result = await manifest!.execute(
+      {
+        name: "Senior platform roles",
+        criteria: {
+          query: "  platform  ",
+          workModels: ["remote"],
+          seniorities: ["senior"],
+          locations: ["Europe"],
+        },
+      },
+      { signal },
+    );
+
+    expect(saveSearch).toHaveBeenCalledWith(
+      {
+        name: "Senior platform roles",
+        criteria: {
+          query: "platform",
+          categories: [],
+          workModels: ["remote"],
+          employmentTypes: [],
+          seniorities: ["senior"],
+          locations: ["Europe"],
+          skills: [],
+          excludeKeywords: [],
+          salary: null,
+          postedWithinDays: null,
+          sort: "relevance",
+          cursor: null,
+          limit: 20,
+          unresolvedAssumptions: [],
+        },
+      },
+      { signal },
+    );
+    expect(onSavedSearchCommitted).toHaveBeenCalledWith(savedSearch);
+    expect(result).toMatchObject({
+      status: "completed",
+      summary: "Saved this job search. Email updates are off.",
+      data: {
+        savedSearchId: savedSearch.id,
+        name: savedSearch.name,
+        emailUpdates: false,
+      },
+    });
+    expect(JSON.stringify(result)).not.toMatch(/owner_|email.*@|endpoint|schedule_/iu);
+    expect(webMcpResultSize(result)).toBeLessThanOrEqual(MAX_WEBMCP_RESULT_BYTES);
   });
 
   it("prepares one exact alert review from model-friendly search criteria", async () => {
@@ -181,6 +245,7 @@ describe("saved-route WebMCP tools", () => {
           query: "platform",
           categories: [],
           workModels: ["remote"],
+          employmentTypes: [],
           seniorities: ["senior"],
           locations: ["Europe"],
           skills: [],

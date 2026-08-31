@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { JobSummary, SearchJobsResult, ToolActivity } from "@jobbbler/contracts";
 
 import {
+  createLatestSearchCommit,
   deriveSearchPresentation,
   searchWorkspaceHref,
   shouldPulseResultsForActivity,
@@ -109,6 +110,37 @@ describe("deriveSearchPresentation", () => {
 
     expect(presentation.landing).toBe(false);
     expect(presentation.showFilters).toBe(true);
+  });
+});
+
+describe("deferred text filter commits", () => {
+  it("uses the latest draft and commit callback after an agent replaces the search", () => {
+    let draft = "human typing";
+    const calls: string[] = [];
+    let commit = (value: string) => calls.push(`stale:${value}`);
+    const deferred = createLatestSearchCommit(
+      () => draft,
+      () => commit,
+    );
+
+    draft = "agent result";
+    commit = (value) => calls.push(`latest:${value}`);
+    deferred();
+
+    expect(calls).toEqual(["latest:agent result"]);
+  });
+
+  it("drops a pending human commit after an external search replaces its baseline", () => {
+    const calls: string[] = [];
+    const deferred = createLatestSearchCommit(
+      () => "stale human query",
+      () => (value: string) => calls.push(value),
+      () => false,
+    );
+
+    deferred();
+
+    expect(calls).toEqual([]);
   });
 });
 

@@ -63,6 +63,8 @@ export interface JobDetailToolDependencies {
 
 type JobDetailToolOutput = CompletedWebMcpResult<JsonValue> | SafeWebMcpErrorResult;
 
+const MAX_JOB_DETAIL_RESULT_BYTES = 20_000;
+
 function short(value: string, maximum = 160): string {
   return value.length <= maximum ? value : `${value.slice(0, maximum - 1)}…`;
 }
@@ -70,13 +72,15 @@ function short(value: string, maximum = 160): string {
 function detailData(result: JobDetailResult): JsonValue {
   return {
     id: result.job.id,
-    title: short(result.job.title, 70),
-    organization: short(result.job.organizationName, 50),
-    summary: short(result.job.summary, 120),
+    title: result.job.title,
+    organization: result.job.organizationName,
+    summary: result.job.summary,
+    categories: result.job.categories,
     workModel: result.job.workModel,
-    locations: result.job.locations.slice(0, 1).map((location) => short(location, 40)),
+    employmentType: result.job.employmentType,
+    locations: result.job.locations,
     seniority: result.job.seniority,
-    skills: result.job.skills.slice(0, 3).map((skill) => short(skill, 30)),
+    skills: result.job.skills,
     salary:
       result.job.salary === null
         ? null
@@ -87,8 +91,12 @@ function detailData(result: JobDetailResult): JsonValue {
             period: result.job.salary.period,
           },
     matchScore: result.fit.score,
-    evidence: result.fit.evidence.slice(0, 2).map((item) => short(item, 60)),
-    source: short(result.job.source.label, 60),
+    evidence: result.fit.evidence,
+    caveats: result.fit.caveats,
+    source: result.job.source.label,
+    status: result.job.status,
+    applicationMode: result.job.applyMode,
+    publishedAt: result.job.publishedAt,
     updatedAt: result.job.updatedAt,
   };
 }
@@ -142,7 +150,7 @@ export function createJobDetailToolManifests(
     name: "get_job_details",
     purpose: "Inspect source-backed facts and fit evidence for one explicitly identified role.",
     description:
-      "Read one technology role's provenance, compensation, known unknowns, and fit evidence by Jobbbler ID. It works from any page and changes nothing.",
+      "Read one technology role's full description, requirements, provenance, compensation, known unknowns, and fit evidence by Jobbbler ID. It works from any page and changes nothing.",
     inputSchema: detailInputJsonSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -161,6 +169,7 @@ export function createJobDetailToolManifests(
             },
           ],
           facts: [{ key: "match_score", value: result.fit.score }],
+          maximumBytes: MAX_JOB_DETAIL_RESULT_BYTES,
         });
       } catch (error) {
         return safeWebMcpErrorResult(error, signal, "Provide one valid Jobbbler job ID.");

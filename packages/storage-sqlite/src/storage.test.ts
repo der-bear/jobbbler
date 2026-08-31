@@ -62,6 +62,7 @@ describe("SQLite relevance candidate completeness", () => {
       query: null,
       categories: [],
       workModels: [],
+      employmentTypes: [],
       seniorities: [],
       locations: [],
       skills: ["Rust"],

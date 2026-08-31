@@ -225,7 +225,10 @@ export interface AuditRepository {
 
 export interface OwnerActivityRepository {
   append(record: NewOwnerActivityEventRecord): Promise<OwnerActivityEventRecord>;
-  clear(ownerId: string): Promise<number>;
+  clear(
+    ownerId: string,
+    actorKind?: OwnerActivityEventRecord["event"]["actorKind"],
+  ): Promise<number>;
   listWindow(input: OwnerActivityWindowInput): Promise<OwnerActivityWindow>;
 }
 

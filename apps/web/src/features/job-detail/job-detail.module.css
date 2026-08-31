@@ -138,8 +138,14 @@
   gap: 16px;
 }
 
+/*
+ * Capped measure: the column is wide enough to run 95–116 characters per line,
+ * which costs the reader the start of the next line. 68ch keeps it near the
+ * 65–75 that prose is comfortable at.
+ */
 .summary p {
   margin: 0;
+  max-inline-size: 56ch;
   color: var(--color-ink);
   font-size: 16px;
   line-height: 1.65;

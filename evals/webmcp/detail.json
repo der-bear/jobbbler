@@ -17,6 +17,7 @@
     "get_comparison",
     "remove_job_from_comparison",
     "add_job_to_comparison",
+    "save_job_search",
     "get_saved_alerts",
     "request_search_alert",
     "decide_search_alert",

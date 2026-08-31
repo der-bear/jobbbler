@@ -139,6 +139,7 @@ const emptyCriteria: JobSearchCriteria = {
   query: null,
   categories: [],
   workModels: [],
+  employmentTypes: [],
   seniorities: [],
   locations: [],
   skills: [],
@@ -847,6 +848,26 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
       ).toEqual({ jobs: [], total: 0, nextCursor: null, catalogUpdatedAt: null });
     });
 
+    it("filters by employment type before returning or ranking jobs", async () => {
+      const current = await create();
+      await current.organizations.upsert(organization);
+      const contractJob = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440017",
+        employmentType: "contract" as const,
+      };
+      await current.jobs.upsert(job);
+      await current.jobs.upsert(contractJob);
+
+      await expect(
+        current.jobs.search({
+          criteria: { ...emptyCriteria, employmentTypes: ["contract"] },
+          now,
+          limit: 10,
+        }),
+      ).resolves.toMatchObject({ jobs: [contractJob], total: 1, nextCursor: null });
+    });
+
     it("searches category text from the canonical job document", async () => {
       const current = await create();
       await current.organizations.upsert(organization);
@@ -1034,6 +1055,13 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
           limit: 10,
         }),
       ).resolves.toMatchObject({ jobs: [job, lowerSalary, unknownSalary], total: 3 });
+      await expect(
+        current.jobs.search({
+          criteria: { ...emptyCriteria, sort: "salary_asc" },
+          now,
+          limit: 10,
+        }),
+      ).resolves.toMatchObject({ jobs: [lowerSalary, job, unknownSalary], total: 3 });
 
       const salary = {
         minimum: 120_000,
@@ -1077,6 +1105,27 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
           limit: 10,
         }),
       ).resolves.toMatchObject({ jobs: [unknownSalary], total: 1 });
+    });
+
+    it("sorts by the most recently updated role with stable publication and id tie-breakers", async () => {
+      const current = await create();
+      await current.organizations.upsert(organization);
+      const recentlyUpdated = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440018",
+        publishedAt: "2026-08-20T10:00:00.000Z",
+        updatedAt: "2026-08-30T10:00:00.000Z",
+      };
+      await current.jobs.upsert(job);
+      await current.jobs.upsert(recentlyUpdated);
+
+      await expect(
+        current.jobs.search({
+          criteria: { ...emptyCriteria, sort: "updated_desc" },
+          now: "2026-08-30T12:00:00.000Z",
+          limit: 10,
+        }),
+      ).resolves.toMatchObject({ jobs: [recentlyUpdated, job], total: 2 });
     });
 
     it("sorts salaries by comparable annual EUR value across paginated results", async () => {
@@ -2739,6 +2788,57 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
           },
         }),
       ).rejects.toThrow();
+    });
+
+    it("filters and clears agent activity without touching human activity", async () => {
+      const current = await create();
+      await current.owners.insert(owner);
+      const agent = await current.ownerActivity.append({
+        ownerId: owner.id,
+        event: {
+          id: "activity_650e8400-e29b-41d4-a716-446655440000",
+          schemaVersion: 1,
+          kind: "tool",
+          key: "prepare_application",
+          status: "completed",
+          safeSummary: "Application prepared.",
+          correlationId: "corr_650e8400-e29b-41d4-a716-446655440000",
+          actorKind: "agent",
+          aggregate: { type: "application_draft", version: 1 },
+          occurredAt: now,
+          effects: [{ target: "application", kind: "refresh" }],
+        },
+      });
+      const human = await current.ownerActivity.append({
+        ownerId: owner.id,
+        event: {
+          ...agent.event,
+          id: "activity_750e8400-e29b-41d4-a716-446655440000",
+          key: "submit_application",
+          safeSummary: "Application submitted.",
+          correlationId: "corr_750e8400-e29b-41d4-a716-446655440000",
+          actorKind: "human",
+          aggregate: { type: "application_draft", version: 2 },
+          occurredAt: later,
+        },
+      });
+
+      expect(
+        await current.ownerActivity.listWindow({
+          ownerId: owner.id,
+          afterSequence: null,
+          limit: 10,
+          actorKind: "agent",
+        }),
+      ).toEqual({ events: [agent], hasMore: false, latestSequence: agent.sequence });
+      expect(await current.ownerActivity.clear(owner.id, "agent")).toBe(1);
+      expect(
+        await current.ownerActivity.listWindow({
+          ownerId: owner.id,
+          afterSequence: null,
+          limit: 10,
+        }),
+      ).toEqual({ events: [human], hasMore: false, latestSequence: human.sequence });
     });
   });
 }

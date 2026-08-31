@@ -135,11 +135,13 @@ describe("route tool manifests", () => {
       saved: createSavedToolManifests({
         listSavedSearches: never,
         listSchedules: never,
+        saveSearch: never,
         requestSearchAlert: never,
         decideSearchAlert: never,
         setScheduleEnabled: never,
         deleteSavedSearch: never,
         onScheduleCommitted: () => undefined,
+        onSavedSearchCommitted: () => undefined,
         onSavedSearchDeleted: () => undefined,
         savedSearchHref: () => "/",
         getLatestRun: never,

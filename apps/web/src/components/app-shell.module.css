@@ -1,4 +1,6 @@
 .shell {
+  --app-header-height: 68px;
+
   min-block-size: 100dvh;
   background:
     radial-gradient(
@@ -84,11 +86,10 @@
   display: grid;
   grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr);
   align-items: center;
-  min-block-size: 68px;
+  min-block-size: var(--app-header-height);
   border-block-end: 1px solid var(--color-line);
-  background: color-mix(in srgb, var(--color-canvas) 94%, transparent);
+  background: var(--color-canvas);
   padding-inline: clamp(20px, 3vw, 48px);
-  backdrop-filter: blur(18px);
 }
 
 .wordmark {
@@ -117,6 +118,10 @@
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.mobileNavigation {
+  display: none;
 }
 
 .navLink {
@@ -155,7 +160,7 @@
   gap: 7px;
   border: 1px solid var(--color-line);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-surface) 84%, transparent);
+  background: var(--color-surface);
   color: var(--color-ink-muted);
   padding-inline: 12px;
   font-size: 12px;
@@ -191,9 +196,13 @@
 }
 
 @media (max-width: 800px) {
+  .shell {
+    --app-header-height: 60px;
+  }
+
   .header {
     grid-template-columns: 1fr auto;
-    min-block-size: 60px;
+    min-block-size: var(--app-header-height);
     background: var(--color-canvas);
     padding-inline: 18px;
     backdrop-filter: none;
@@ -203,7 +212,12 @@
     display: none;
   }
 
-  .navigation {
+  .desktopNavigation {
+    display: none;
+  }
+
+  .mobileNavigation {
+    display: flex;
     position: fixed;
     z-index: 50;
     inset-inline: 12px;
@@ -211,10 +225,9 @@
     justify-content: space-around;
     border: 1px solid var(--color-line-strong);
     border-radius: var(--radius-lg);
-    background: color-mix(in srgb, var(--color-surface) 96%, transparent);
+    background: var(--color-surface);
     box-shadow: var(--shadow-floating);
     padding: 6px;
-    backdrop-filter: blur(18px);
   }
 
   .navLink {
@@ -243,7 +256,7 @@
   }
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1200px) {
   .contentFrame[data-agent-open="true"] {
     display: block;
   }

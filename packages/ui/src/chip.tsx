@@ -27,7 +27,7 @@ export function Chip({
   ...props
 }: ChipProps) {
   const content = <span className="jb-chip__label">{children}</span>;
-  const interactive = onClick !== undefined;
+  const interactive = onClick !== undefined || onRemove !== undefined;
   const classes = cx(
     "jb-chip",
     selected && "jb-chip--selected",

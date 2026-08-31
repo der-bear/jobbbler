@@ -318,6 +318,7 @@ function applicationRecord<T>(row: Record<string, unknown>): T {
     "findings_json",
     "operations_json",
     "fields_json",
+    "role_json",
     "categories_json",
     "field_keys_json",
     "document_ids_json",
@@ -365,6 +366,7 @@ function applicationRecord<T>(row: Record<string, unknown>): T {
     findings_json: "findings",
     operations_json: "operations",
     fields_json: "fields",
+    role_json: "role",
     categories_json: "categories",
     field_keys_json: "fieldKeys",
     document_ids_json: "documentIds",
@@ -1175,6 +1177,11 @@ function primarySortValue(entry: RankedJob, sort: JobSearchCriteria["sort"]): nu
   if (sort === "salary_desc") {
     return annualizedSalarySortValue(entry.job.salary);
   }
+  if (sort === "salary_asc") {
+    const salary = annualizedSalarySortValue(entry.job.salary);
+    return salary < 0 ? Number.MIN_SAFE_INTEGER : -salary;
+  }
+  if (sort === "updated_desc") return jobSearchPublishedAtMs(entry.job.updatedAt);
   return 0;
 }
 
@@ -1340,6 +1347,12 @@ function searchJobs(
   if (criteria.workModels.length > 0) {
     where.push(`j.work_model IN (${criteria.workModels.map(() => "?").join(", ")})`);
     parameters.push(...criteria.workModels);
+  }
+
+  const employmentTypes = criteria.employmentTypes ?? [];
+  if (employmentTypes.length > 0) {
+    where.push(`j.employment_type IN (${employmentTypes.map(() => "?").join(", ")})`);
+    parameters.push(...employmentTypes);
   }
 
   if (criteria.seniorities.length > 0) {
@@ -2095,21 +2108,16 @@ function createRepositories(
         input: CompleteApplicationSubmissionInput,
       ): Promise<CompleteApplicationSubmissionResult> {
         const submit = database.transaction(() => {
-          const assertRoleOpen = () => {
-            const role = database
+          const transactionRole = () =>
+            database
               .prepare(
-                `SELECT job.status
+                `SELECT job.id, job.title, job.status
                  FROM application_drafts AS draft
                  JOIN jobs AS job ON job.id = draft.job_id
                  WHERE draft.id=? AND draft.owner_id=?`,
               )
-              .get(input.draftId, input.ownerId) as { readonly status: Job["status"] } | undefined;
-            if (role?.status !== "open")
-              throw new DomainError({
-                code: "CONFLICT",
-                message: "Role closed — nothing submitted.",
-              });
-          };
+              .get(input.draftId, input.ownerId) as
+              Pick<Job, "id" | "title" | "status"> | undefined;
           const existingRow = database
             .prepare(
               "SELECT * FROM application_submission_receipts WHERE owner_id=? AND draft_id=? AND idempotency_key=?",
@@ -2123,11 +2131,25 @@ function createRepositories(
               receipt.confirmationId !== input.confirmationId ||
               receipt.status !== "submitted" ||
               receipt.externalUrl !== null ||
-              receipt.submission == null
+              receipt.submission == null ||
+              input.receipt.status !== "submitted"
             )
               throw new DomainError({
                 code: "CONFLICT",
                 message: "Idempotency key is bound to another submission.",
+              });
+            const role = transactionRole();
+            if (
+              role === undefined ||
+              !isDeepStrictEqual(input.delivery.role, { id: role.id, title: role.title }) ||
+              !isDeepStrictEqual(input.receipt.submission.role, {
+                id: role.id,
+                title: role.title,
+              })
+            )
+              throw new DomainError({
+                code: "VALIDATION",
+                message: "Submission receipt must bind the transaction-bound role snapshot.",
               });
             const deliveryRow = database
               .prepare("SELECT * FROM managed_application_deliveries WHERE id=? AND owner_id=?")
@@ -2141,7 +2163,9 @@ function createRepositories(
             const delivery = applicationRecord<ManagedApplicationDeliveryRecord>(deliveryRow);
             if (
               delivery.status !== "acknowledged" ||
-              delivery.providerReferenceId !== receipt.submission.providerReferenceId
+              delivery.providerReferenceId !== receipt.submission.providerReferenceId ||
+              !isDeepStrictEqual(delivery.role, { id: role.id, title: role.title }) ||
+              !isDeepStrictEqual(receipt.submission.role, delivery.role)
             )
               throw new DomainError({
                 code: "CONFLICT",
@@ -2168,7 +2192,12 @@ function createRepositories(
               code: "CONFLICT",
               message: "A current reviewed draft is required.",
             });
-          assertRoleOpen();
+          const role = transactionRole();
+          if (role?.status !== "open")
+            throw new DomainError({
+              code: "CONFLICT",
+              message: "Role closed — nothing submitted.",
+            });
           if (input.decisionChannel === "first_party_ui") {
             const delegations = database
               .prepare(
@@ -2258,7 +2287,8 @@ function createRepositories(
             });
           const demoJob = database
             .prepare(
-              `SELECT job.organization_id AS recipientId, job.organization_name AS recipientName
+              `SELECT job.id AS roleId, job.title AS roleTitle,
+                      job.organization_id AS recipientId, job.organization_name AS recipientName
                FROM application_drafts AS draft
                JOIN jobs AS job ON job.id = draft.job_id
                WHERE draft.id=? AND draft.owner_id=?
@@ -2266,9 +2296,17 @@ function createRepositories(
                  AND job.source_url IS NULL`,
             )
             .get(input.draftId, input.ownerId) as
-            { readonly recipientId: string; readonly recipientName: string } | undefined;
+            | {
+                readonly roleId: string;
+                readonly roleTitle: string;
+                readonly recipientId: string;
+                readonly recipientName: string;
+              }
+            | undefined;
           if (
             demoJob === undefined ||
+            demoJob.roleId !== role.id ||
+            demoJob.roleTitle !== role.title ||
             demoJob.recipientId !== input.delivery.recipientId ||
             demoJob.recipientName !== input.delivery.recipientName
           )
@@ -2298,6 +2336,7 @@ function createRepositories(
             input.delivery.idempotencyKey !== input.receipt.idempotencyKey ||
             input.delivery.provider !== "jobbbler_demo" ||
             input.delivery.providerReferenceId.trim().length === 0 ||
+            !isDeepStrictEqual(input.delivery.role, { id: role.id, title: role.title }) ||
             input.delivery.recipientId !== input.grant.recipientId ||
             input.delivery.recipientName.trim().length === 0 ||
             input.delivery.payloadHash !== input.reviewPayloadHash ||
@@ -2312,6 +2351,7 @@ function createRepositories(
             submission.managedDeliveryId !== input.delivery.id ||
             submission.provider !== input.delivery.provider ||
             submission.providerReferenceId !== input.delivery.providerReferenceId ||
+            !isDeepStrictEqual(submission.role, input.delivery.role) ||
             submission.recipientId !== input.delivery.recipientId ||
             submission.recipientName !== input.delivery.recipientName ||
             submission.submittedAt !== input.delivery.acknowledgedAt ||
@@ -2325,15 +2365,19 @@ function createRepositories(
             .prepare(
               `INSERT INTO managed_application_deliveries(
                  id,owner_id,draft_id,review_id,confirmation_id,idempotency_key,provider,
-                 provider_reference_id,recipient_id,recipient_name,payload_hash,fields_json,
+                 provider_reference_id,role_json,recipient_id,recipient_name,payload_hash,fields_json,
                  status,acknowledged_at,created_at
                ) VALUES(
                  @id,@ownerId,@draftId,@reviewId,@confirmationId,@idempotencyKey,@provider,
-                 @providerReferenceId,@recipientId,@recipientName,@payloadHash,@fieldsJson,
+                 @providerReferenceId,@roleJson,@recipientId,@recipientName,@payloadHash,@fieldsJson,
                  @status,@acknowledgedAt,@createdAt
                )`,
             )
-            .run({ ...input.delivery, fieldsJson: json(input.delivery.fields) });
+            .run({
+              ...input.delivery,
+              roleJson: json(input.delivery.role),
+              fieldsJson: json(input.delivery.fields),
+            });
           const acknowledgedRow = database
             .prepare("SELECT * FROM managed_application_deliveries WHERE id=? AND owner_id=?")
             .get(input.delivery.id, input.ownerId) as Record<string, unknown> | undefined;
@@ -3176,9 +3220,15 @@ function createRepositories(
         }
         return { sequence, ownerId: record.ownerId, event };
       },
-      async clear(ownerId) {
-        return database.prepare("DELETE FROM owner_activity_events WHERE owner_id = ?").run(ownerId)
-          .changes;
+      async clear(ownerId, actorKind) {
+        if (actorKind === undefined) {
+          return database
+            .prepare("DELETE FROM owner_activity_events WHERE owner_id = ?")
+            .run(ownerId).changes;
+        }
+        return database
+          .prepare("DELETE FROM owner_activity_events WHERE owner_id = ? AND actor_kind = ?")
+          .run(ownerId, actorKind).changes;
       },
       async listWindow(input) {
         if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 100) {
@@ -3193,20 +3243,23 @@ function createRepositories(
         ) {
           throw new DomainError({ code: "VALIDATION", message: "Activity cursor is invalid." });
         }
+        const actorCondition = input.actorKind === undefined ? "" : " AND actor_kind = ?";
+        const parameters =
+          input.actorKind === undefined ? [input.ownerId] : [input.ownerId, input.actorKind];
         const latest = database
           .prepare(
-            "SELECT coalesce(max(sequence), 0) AS sequence FROM owner_activity_events WHERE owner_id = ?",
+            `SELECT coalesce(max(sequence), 0) AS sequence FROM owner_activity_events WHERE owner_id = ?${actorCondition}`,
           )
-          .get(input.ownerId) as { readonly sequence: number };
+          .get(...parameters) as { readonly sequence: number };
         if (input.afterSequence === null) {
           const rows = database
             .prepare(
               `SELECT * FROM owner_activity_events
-               WHERE owner_id = ?
+               WHERE owner_id = ?${actorCondition}
                ORDER BY sequence DESC
                LIMIT ?`,
             )
-            .all(input.ownerId, input.limit) as OwnerActivityRow[];
+            .all(...parameters, input.limit) as OwnerActivityRow[];
           return {
             events: rows.reverse().map(ownerActivityFromRow),
             hasMore: false,
@@ -3216,11 +3269,11 @@ function createRepositories(
         const rows = database
           .prepare(
             `SELECT * FROM owner_activity_events
-             WHERE owner_id = ? AND sequence > ?
+             WHERE owner_id = ?${actorCondition} AND sequence > ?
              ORDER BY sequence
              LIMIT ?`,
           )
-          .all(input.ownerId, input.afterSequence, input.limit + 1) as OwnerActivityRow[];
+          .all(...parameters, input.afterSequence, input.limit + 1) as OwnerActivityRow[];
         return {
           events: rows.slice(0, input.limit).map(ownerActivityFromRow),
           hasMore: rows.length > input.limit,

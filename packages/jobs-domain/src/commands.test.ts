@@ -110,7 +110,7 @@ describe("job discovery commands", () => {
   });
 
   it("returns the complete sanitized stored description from the detail command", async () => {
-    const storedDescription = `${"A".repeat(800)}<script>discard-me</script>${"B".repeat(200)}`;
+    const storedDescription = `${"A".repeat(2_400)}\n\n<script>discard-me</script>${"B".repeat(2_400)}`;
     const command = createGetJobCommand(
       repository({
         getById: vi.fn(async () => ({ ...job, summary: storedDescription })),
@@ -119,8 +119,8 @@ describe("job discovery commands", () => {
 
     const result = await command.execute(context, { jobId: job.id });
 
-    expect(result.job.summary).toBe(`${"A".repeat(800)} ${"B".repeat(200)}`);
-    expect(result.job.summary.length).toBeGreaterThan(600);
+    expect(result.job.summary).toBe(`${"A".repeat(2_400)}\n\n${"B".repeat(2_400)}`);
+    expect(result.job.summary.length).toBeGreaterThan(4_000);
     expect(result.job.summary).not.toContain("discard-me");
     expect(result.job.summary).not.toContain("…");
   });
@@ -153,5 +153,37 @@ describe("job discovery commands", () => {
 
   it("keeps an active-content-only summary safe and non-empty", () => {
     expect(capUntrustedText("<script>untrusted()</script>")).toBe("Details are unavailable.");
+  });
+
+  it("keeps the paragraph breaks a posting writes while still stripping active content", () => {
+    const newline = String.fromCharCode(10);
+    const posting = [
+      "Monitoring coverage fell behind as the network grew.",
+      "You will own the dashboards and the alerting rules.",
+      "<script>steal()</script>Production Prometheus experience is expected.",
+    ].join(`${newline}${newline}`);
+
+    const safe = capUntrustedText(posting, 2_000);
+
+    expect(safe.split(`${newline}${newline}`)).toEqual([
+      "Monitoring coverage fell behind as the network grew.",
+      "You will own the dashboards and the alerting rules.",
+      "Production Prometheus experience is expected.",
+    ]);
+    expect(safe).not.toContain("steal");
+  });
+
+  it("collapses blank-line runs and carriage returns without losing the break itself", () => {
+    const newline = String.fromCharCode(10);
+    const carriageReturn = String.fromCharCode(13);
+    const tab = String.fromCharCode(9);
+
+    expect(capUntrustedText(`A.${newline.repeat(5)}B.`, 2_000)).toBe(`A.${newline}${newline}B.`);
+    expect(
+      capUntrustedText(`A.${carriageReturn}${newline}${carriageReturn}${newline}B.`, 2_000),
+    ).toBe(`A.${newline}${newline}B.`);
+    expect(capUntrustedText(`A.  ${tab} ${newline}${newline}   B.`, 2_000)).toBe(
+      `A.${newline}${newline}B.`,
+    );
   });
 });

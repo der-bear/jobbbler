@@ -198,6 +198,20 @@ describe("rankJob", () => {
     expect(rankJob(baseJob, freshnessCriteria, evaluation).eligible).toBe(true);
   });
 
+  it("treats employment type as an explicit eligibility filter", () => {
+    const contractOnly = normalizeJobSearchCriteria({ employmentTypes: ["contract"] });
+    const fullTimeOrContract = normalizeJobSearchCriteria({
+      employmentTypes: ["contract", "full_time"],
+    });
+
+    const rejected = rankJob(baseJob, contractOnly, evaluation);
+    const accepted = rankJob(baseJob, fullTimeOrContract, evaluation);
+
+    expect(rejected.eligible).toBe(false);
+    expect(accepted.eligible).toBe(true);
+    expect(accepted.evidence).toContain("Employment type is full_time.");
+  });
+
   it("matches a canonical country when the search used its common alias", () => {
     const criteria = normalizeJobSearchCriteria({ locations: ["UK"] });
 

@@ -42,7 +42,7 @@ describe("AgentTools", () => {
     const markup = renderToStaticMarkup(<AgentTools tools={[]} webMcpAvailable={false} />);
 
     expect(markup).toContain("Capability catalog");
-    expect(markup).toContain("28 tools");
+    expect(markup).toContain("29 tools");
     expect(markup).toContain("enable_workspace_recovery");
     expect(markup).toContain("recover_jobbbler_workspace");
     expect(markup).toContain("get_applications");
@@ -73,7 +73,8 @@ describe("AgentGuide", () => {
     expect(markup).toContain("only advises; it never takes action");
     expect(markup).toContain("What the tools handle");
     expect(markup).toContain("What stays with you");
-    expect(markup).toContain("Prepare truthful answers and a short motivation note");
+    expect(markup).toContain("Prepare truthful answers and a role-specific cover letter");
+    expect(markup).toContain("your CV stays with you and your agent");
     expect(markup).toContain(
       "Optionally add an email so applications and saved searches can be recovered",
     );

@@ -239,6 +239,10 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
       idempotencyKey: "submit-postgres-managed-integrity",
       provider: "jobbbler_demo",
       providerReferenceId: "demo-submission-postgres-integrity",
+      role: {
+        id: "job-postgres-managed-integrity",
+        title: "Senior Product Engineer",
+      },
       recipientId: "organization-postgres-managed-integrity",
       recipientName: "Northstar Systems",
       payloadHash: "a".repeat(64),
@@ -267,6 +271,7 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
         managedDeliveryId: delivery.id,
         provider: delivery.provider,
         providerReferenceId: delivery.providerReferenceId,
+        role: delivery.role,
         recipientId: delivery.recipientId,
         recipientName: delivery.recipientName,
         submittedAt: delivery.acknowledgedAt,
@@ -503,6 +508,7 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
           query: "TypeScript",
           categories: [],
           workModels: [],
+          employmentTypes: [],
           seniorities: [],
           locations: [],
           skills: ["Rust"],
@@ -619,6 +625,7 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
         query: "Rust",
         categories: [],
         workModels: [],
+        employmentTypes: [],
         seniorities: [],
         locations: [],
         skills: [],
@@ -663,6 +670,7 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
           query: null,
           categories: [],
           workModels: [],
+          employmentTypes: [],
           seniorities: [],
           locations: [],
           skills: [],
@@ -1153,6 +1161,7 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
       idempotencyKey: "postgres-submit-once",
       provider: "jobbbler_demo" as const,
       providerReferenceId: "demo-submission-postgres-auth",
+      role: { id: job.id, title: job.title },
       recipientId: organizationId,
       recipientName: "PostgreSQL Authorization Lab",
       payloadHash: review.payloadHash,
@@ -1181,6 +1190,7 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
         managedDeliveryId: delivery.id,
         provider: delivery.provider,
         providerReferenceId: delivery.providerReferenceId,
+        role: delivery.role,
         recipientId: delivery.recipientId,
         recipientName: delivery.recipientName,
         submittedAt: delivery.acknowledgedAt,
@@ -1295,6 +1305,28 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
     ).resolves.toMatchObject({ status: "active", consumedAt: null });
     await expect(storage.applications.getLatestReceipt(draftId, ownerId)).resolves.toBeNull();
     await storage.delegations.revoke(lateAssistance.id, ownerId, now);
+    await expect(
+      storage.applications.completeSubmission({
+        ownerId,
+        draftId,
+        expectedDraftVersion: 1,
+        reviewId: review.id,
+        reviewPayloadHash: review.payloadHash,
+        confirmationId: confirmation.id,
+        confirmationHash: confirmation.confirmationHash,
+        grant: submissionGrant,
+        delivery,
+        decisionChannel: "first_party_ui",
+        receipt: {
+          ...receipt,
+          submission: {
+            ...receipt.submission,
+            role: { id: job.id, title: "A different role" },
+          },
+        },
+        now,
+      }),
+    ).rejects.toMatchObject({ code: "VALIDATION" });
     await expect(
       storage.applications.completeSubmission({
         ownerId,
@@ -1451,6 +1483,28 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
         id: "delegation-postgres-after-submission",
       }),
     ).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(
+      storage.applications.completeSubmission({
+        ownerId,
+        draftId,
+        expectedDraftVersion: 1,
+        reviewId: review.id,
+        reviewPayloadHash: review.payloadHash,
+        confirmationId: confirmation.id,
+        confirmationHash: confirmation.confirmationHash,
+        grant: submissionGrant,
+        delivery: committed.delivery,
+        decisionChannel: "first_party_ui",
+        receipt: {
+          ...committed.receipt,
+          submission: {
+            ...committed.receipt.submission,
+            role: { id: job.id, title: "A different role" },
+          },
+        },
+        now,
+      }),
+    ).rejects.toMatchObject({ code: "VALIDATION" });
     await storage.jobs.upsert({
       ...job,
       status: "closed",
@@ -1836,6 +1890,7 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
         query: null,
         categories: [],
         workModels: [],
+        employmentTypes: [],
         seniorities: [],
         locations: [],
         skills: [],

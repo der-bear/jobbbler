@@ -2296,6 +2296,7 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
           const resolveExisting = async (
             existing: ApplicationReceiptRecord,
             draft: ApplicationDraft,
+            job: Job,
           ): Promise<CompleteApplicationSubmissionResult> => {
             if (
               existing.reviewId !== input.reviewId ||
@@ -2306,6 +2307,17 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
               input.receipt.status !== "submitted"
             )
               throw domain("CONFLICT", "Idempotency key is bound to another submission.");
+            if (
+              !isDeepStrictEqual(input.delivery.role, { id: job.id, title: job.title }) ||
+              !isDeepStrictEqual(input.receipt.submission.role, {
+                id: job.id,
+                title: job.title,
+              })
+            )
+              throw domain(
+                "VALIDATION",
+                "Submission receipt must bind the transaction-bound role snapshot.",
+              );
             const delivery = await getForUpdate<ManagedApplicationDeliveryRecord>(
               tx,
               "managed_application_delivery",
@@ -2314,7 +2326,9 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
             if (
               delivery?.ownerId !== input.ownerId ||
               delivery.status !== "acknowledged" ||
-              delivery.providerReferenceId !== existing.submission.providerReferenceId
+              delivery.providerReferenceId !== existing.submission.providerReferenceId ||
+              !isDeepStrictEqual(delivery.role, { id: job.id, title: job.title }) ||
+              !isDeepStrictEqual(existing.submission.role, delivery.role)
             )
               throw domain(
                 "CONFLICT",
@@ -2327,19 +2341,22 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
             const draft = await getForUpdate<ApplicationDraft>(tx, "application", input.draftId);
             if (draft?.ownerId !== input.ownerId)
               throw domain("CONFLICT", "Application draft is unavailable for owner.");
-            return resolveExisting(existing, draft);
+            const job = await getForUpdate<Job>(tx, "job", draft.jobId);
+            if (job === null) throw domain("CONFLICT", "Application role is unavailable.");
+            return resolveExisting(existing, draft, job);
           }
           const draft = await getForUpdate<ApplicationDraft>(tx, "application", input.draftId);
           if (draft?.ownerId !== input.ownerId)
             throw domain("CONFLICT", "Application draft is unavailable for owner.");
+          const job = await getForUpdate<Job>(tx, "job", draft.jobId);
+          if (job === null) throw domain("CONFLICT", "Application role is unavailable.");
           existing = await findExisting();
           if (existing !== undefined) {
-            return resolveExisting(existing, draft);
+            return resolveExisting(existing, draft, job);
           }
           if (draft.version !== input.expectedDraftVersion || draft.state !== "reviewed")
             throw domain("CONFLICT", "A current reviewed draft is required.");
-          const job = await getForUpdate<Job>(tx, "job", draft.jobId);
-          if (job?.status !== "open") throw domain("CONFLICT", "Role closed — nothing submitted.");
+          if (job.status !== "open") throw domain("CONFLICT", "Role closed — nothing submitted.");
           if (input.decisionChannel === "first_party_ui") {
             const delegations = await listByOwnerDraft<AgentDelegationRecord>(
               tx,
@@ -2435,6 +2452,7 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
             input.delivery.idempotencyKey !== input.receipt.idempotencyKey ||
             input.delivery.provider !== "jobbbler_demo" ||
             input.delivery.providerReferenceId.trim().length === 0 ||
+            !isDeepStrictEqual(input.delivery.role, { id: job.id, title: job.title }) ||
             input.delivery.recipientId !== input.grant.recipientId ||
             input.delivery.recipientName.trim().length === 0 ||
             input.delivery.payloadHash !== input.reviewPayloadHash ||
@@ -2449,6 +2467,7 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
             submission.managedDeliveryId !== input.delivery.id ||
             submission.provider !== input.delivery.provider ||
             submission.providerReferenceId !== input.delivery.providerReferenceId ||
+            !isDeepStrictEqual(submission.role, input.delivery.role) ||
             submission.recipientId !== input.delivery.recipientId ||
             submission.recipientName !== input.delivery.recipientName ||
             submission.submittedAt !== input.delivery.acknowledgedAt ||
@@ -2985,11 +3004,17 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
         }
         return { sequence, ownerId: record.ownerId, event };
       },
-      async clear(ownerId) {
-        const rows = await sql<{ readonly sequence: string }[]>`
-          DELETE FROM jobbbler.owner_activity_events
-          WHERE owner_id = ${ownerId}
-          RETURNING sequence::text`;
+      async clear(ownerId, actorKind) {
+        const rows =
+          actorKind === undefined
+            ? await sql<{ readonly sequence: string }[]>`
+                DELETE FROM jobbbler.owner_activity_events
+                WHERE owner_id = ${ownerId}
+                RETURNING sequence::text`
+            : await sql<{ readonly sequence: string }[]>`
+                DELETE FROM jobbbler.owner_activity_events
+                WHERE owner_id = ${ownerId} AND actor_kind = ${actorKind}
+                RETURNING sequence::text`;
         return rows.length;
       },
       async listWindow(input) {
@@ -3002,45 +3027,82 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
         ) {
           throw domain("VALIDATION", "Activity cursor is invalid.");
         }
-        const latestRows = await sql<{ readonly sequence: string }[]>`
-          SELECT coalesce(max(sequence), 0)::text AS sequence
-          FROM jobbbler.owner_activity_events
-          WHERE owner_id = ${input.ownerId}`;
+        const latestRows =
+          input.actorKind === undefined
+            ? await sql<{ readonly sequence: string }[]>`
+                SELECT coalesce(max(sequence), 0)::text AS sequence
+                FROM jobbbler.owner_activity_events
+                WHERE owner_id = ${input.ownerId}`
+            : await sql<{ readonly sequence: string }[]>`
+                SELECT coalesce(max(sequence), 0)::text AS sequence
+                FROM jobbbler.owner_activity_events
+                WHERE owner_id = ${input.ownerId} AND actor_kind = ${input.actorKind}`;
         const latestSequence = Number(latestRows[0]?.sequence ?? "0");
         if (!Number.isSafeInteger(latestSequence) || latestSequence < 0) {
           throw domain("VALIDATION", "Stored activity cursor sequence is invalid.");
         }
         if (input.afterSequence === null) {
-          const rows = await sql<OwnerActivityRow[]>`
-            SELECT sequence::text, id, owner_id, schema_version, kind, activity_key, status,
-                   safe_summary, correlation_id, actor_kind, aggregate_type, aggregate_version,
-                   to_char(
-                     occurred_at AT TIME ZONE 'UTC',
-                     'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
-                   ) AS occurred_at,
-                   effects
-            FROM jobbbler.owner_activity_events
-            WHERE owner_id = ${input.ownerId}
-            ORDER BY sequence DESC
-            LIMIT ${input.limit}`;
+          const rows =
+            input.actorKind === undefined
+              ? await sql<OwnerActivityRow[]>`
+                  SELECT sequence::text, id, owner_id, schema_version, kind, activity_key, status,
+                         safe_summary, correlation_id, actor_kind, aggregate_type,
+                         aggregate_version,
+                         to_char(
+                           occurred_at AT TIME ZONE 'UTC',
+                           'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+                         ) AS occurred_at,
+                         effects
+                  FROM jobbbler.owner_activity_events
+                  WHERE owner_id = ${input.ownerId}
+                  ORDER BY sequence DESC
+                  LIMIT ${input.limit}`
+              : await sql<OwnerActivityRow[]>`
+                  SELECT sequence::text, id, owner_id, schema_version, kind, activity_key, status,
+                         safe_summary, correlation_id, actor_kind, aggregate_type,
+                         aggregate_version,
+                         to_char(
+                           occurred_at AT TIME ZONE 'UTC',
+                           'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+                         ) AS occurred_at,
+                         effects
+                  FROM jobbbler.owner_activity_events
+                  WHERE owner_id = ${input.ownerId} AND actor_kind = ${input.actorKind}
+                  ORDER BY sequence DESC
+                  LIMIT ${input.limit}`;
           return {
             events: rows.reverse().map(ownerActivityFromRow),
             hasMore: false,
             latestSequence,
           };
         }
-        const rows = await sql<OwnerActivityRow[]>`
-          SELECT sequence::text, id, owner_id, schema_version, kind, activity_key, status,
-                 safe_summary, correlation_id, actor_kind, aggregate_type, aggregate_version,
-                 to_char(
-                   occurred_at AT TIME ZONE 'UTC',
-                   'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
-                 ) AS occurred_at,
-                 effects
-          FROM jobbbler.owner_activity_events
-          WHERE owner_id = ${input.ownerId} AND sequence > ${input.afterSequence}
-          ORDER BY sequence
-          LIMIT ${input.limit + 1}`;
+        const rows =
+          input.actorKind === undefined
+            ? await sql<OwnerActivityRow[]>`
+                SELECT sequence::text, id, owner_id, schema_version, kind, activity_key, status,
+                       safe_summary, correlation_id, actor_kind, aggregate_type, aggregate_version,
+                       to_char(
+                         occurred_at AT TIME ZONE 'UTC',
+                         'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+                       ) AS occurred_at,
+                       effects
+                FROM jobbbler.owner_activity_events
+                WHERE owner_id = ${input.ownerId} AND sequence > ${input.afterSequence}
+                ORDER BY sequence
+                LIMIT ${input.limit + 1}`
+            : await sql<OwnerActivityRow[]>`
+                SELECT sequence::text, id, owner_id, schema_version, kind, activity_key, status,
+                       safe_summary, correlation_id, actor_kind, aggregate_type, aggregate_version,
+                       to_char(
+                         occurred_at AT TIME ZONE 'UTC',
+                         'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+                       ) AS occurred_at,
+                       effects
+                FROM jobbbler.owner_activity_events
+                WHERE owner_id = ${input.ownerId} AND actor_kind = ${input.actorKind}
+                  AND sequence > ${input.afterSequence}
+                ORDER BY sequence
+                LIMIT ${input.limit + 1}`;
         return {
           events: rows.slice(0, input.limit).map(ownerActivityFromRow),
           hasMore: rows.length > input.limit,
