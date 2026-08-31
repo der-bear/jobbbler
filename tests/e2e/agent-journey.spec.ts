@@ -134,9 +134,8 @@ test.describe("agent journey through the live WebMCP surface", () => {
     await expect.poll(() => registeredToolNames(page)).toEqual([...allSiteTools]);
     await expect(page.getByRole("button", { name: /Agent activity/ })).toHaveAttribute(
       "aria-expanded",
-      "false",
+      "true",
     );
-    await page.getByRole("button", { name: /Agent activity/ }).click();
     await expect(
       page.getByRole("complementary", { name: "What your agent is doing" }),
     ).toBeVisible();
@@ -244,9 +243,8 @@ test.describe("agent journey through the live WebMCP surface", () => {
 
     await expect(page.getByRole("button", { name: /Agent activity/ })).toHaveAttribute(
       "aria-expanded",
-      "false",
+      "true",
     );
-    await page.getByRole("button", { name: /Agent activity/ }).click();
     await expect(
       page.getByRole("complementary", { name: "What your agent is doing" }),
     ).toBeVisible();
