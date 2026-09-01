@@ -5,6 +5,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -32,6 +33,7 @@ export interface ToastContextValue {
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null);
+const TRANSIENT_TOAST_DURATION_MS = 5_000;
 
 function ToastIcon({ tone }: { readonly tone: ToastTone }) {
   if (tone === "success") return <CheckCircle aria-hidden="true" weight="fill" />;
@@ -42,15 +44,35 @@ function ToastIcon({ tone }: { readonly tone: ToastTone }) {
 export function ToastProvider({ children }: { readonly children: ReactNode }) {
   const [toasts, setToasts] = useState<readonly ToastRecord[]>([]);
   const nextToastId = useRef(0);
-  const dismiss = useCallback(
-    (id: number) => setToasts((current) => current.filter((toast) => toast.id !== id)),
+  const toastTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
+  const dismiss = useCallback((id: number) => {
+    const timer = toastTimers.current.get(id);
+    if (timer !== undefined) clearTimeout(timer);
+    toastTimers.current.delete(id);
+    setToasts((current) => current.filter((toast) => toast.id !== id));
+  }, []);
+  const show = useCallback(
+    (toast: ToastInput) => {
+      nextToastId.current += 1;
+      const id = nextToastId.current;
+      const tone = toast.tone ?? "info";
+      setToasts((current) => [...current, { ...toast, id, tone }]);
+      if (tone === "success" || tone === "info") {
+        toastTimers.current.set(
+          id,
+          setTimeout(() => dismiss(id), TRANSIENT_TOAST_DURATION_MS),
+        );
+      }
+    },
+    [dismiss],
+  );
+  useEffect(
+    () => () => {
+      for (const timer of toastTimers.current.values()) clearTimeout(timer);
+      toastTimers.current.clear();
+    },
     [],
   );
-  const show = useCallback((toast: ToastInput) => {
-    nextToastId.current += 1;
-    const id = nextToastId.current;
-    setToasts((current) => [...current, { ...toast, id, tone: toast.tone ?? "info" }]);
-  }, []);
   const value = useMemo(() => ({ dismiss, show }), [dismiss, show]);
 
   return (

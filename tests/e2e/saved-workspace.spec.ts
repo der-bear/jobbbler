@@ -48,6 +48,18 @@ test.describe("saved-search ownership workspace", () => {
     }
   });
 
+  test("removes a transient save confirmation after it has been read", async ({ page }) => {
+    await page.goto("/saved?q=platform&work=remote&create=1");
+    await page.clock.install();
+
+    await page.getByRole("button", { name: "Save search" }).click();
+
+    const confirmation = page.getByRole("status").filter({ hasText: "Search saved" });
+    await expect(confirmation).toBeVisible();
+    await page.clock.fastForward(5_001);
+    await expect(confirmation).toBeHidden();
+  });
+
   test("removes one exact saved search without deleting the private workspace", async ({
     page,
   }) => {
