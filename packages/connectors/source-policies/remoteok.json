@@ -1,7 +1,7 @@
 {
   "version": 1,
   "sourceKey": "remoteok",
-  "enabled": true,
+  "enabled": false,
   "allowedPurposes": ["job_discovery"],
   "minimumPollIntervalSeconds": 43200,
   "requestTimeoutMs": 10000,
@@ -19,5 +19,5 @@
   "sourceUrl": "https://remoteok.com/api",
   "termsUrl": "https://remoteok.com/legal",
   "userAgent": "Jobbbler/0.1",
-  "notes": "Cache centrally, poll at most twice per day, show a followed Remote OK backlink anywhere its records appear, and never use its logo."
+  "notes": "Connector retained for governed evaluation, but live ingestion is disabled for the challenge release. If a future deployment enables it after a rights review, cache centrally, poll at most twice per day, show a followed Remote OK backlink anywhere its records appear, and never use its logo."
 }

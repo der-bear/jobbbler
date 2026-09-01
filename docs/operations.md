@@ -8,7 +8,15 @@ The web server and worker independently select SQLite when `DATABASE_URL` is abs
 
 Run database migrations as a credentialed deployment step, not from the browser. PostgreSQL cutover, deterministic export/import verification, and the restriction on reverse import are in [PostgreSQL cutover and rollback](operations/postgres-cutover-and-rollback.md).
 
-The worker has explicit catalog, alert, and combined modes. Use `all_service` when both catalog ingestion and alert delivery are intended. Work items persist leases and bounded retries; monitor lease conflicts, retry outcomes, and provider failures in the deployment log platform rather than treating those mechanisms as a complete operational guarantee.
+The worker has explicit catalog, alert, and combined modes. The challenge
+release runs `alert_service` and all checked-in live-source policies are
+disabled, so the canonical fictional catalog cannot be silently mixed with
+upstream listings. Production also resolves an omitted mode to `alert_service`.
+Catalog and combined modes are reserved for a future deployment with an
+explicitly reviewed enabled policy. Work items persist leases and bounded
+retries; monitor lease conflicts, retry outcomes, and provider failures in the
+deployment log platform rather than treating those mechanisms as a complete
+operational guarantee.
 
 ## Health, logs, and log-derived metrics
 

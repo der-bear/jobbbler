@@ -6,7 +6,15 @@ The detailed connector contract, current source posture, completeness rules, and
 
 ## Current operating posture
 
-The checked-in policy enables Jobicy and Remote OK under their stated posture and attribution requirements. Arbeitnow is present for evaluation but disabled for production until written permission and policy review are complete. Fixtures are fictional and can exercise the connector boundary without contacting an upstream source.
+The challenge release uses only the checked-in fictional Jobbbler catalog. The
+Jobicy, Remote OK, and Arbeitnow connectors remain implemented and tested, but
+all three checked-in policies are disabled. A production worker therefore
+cannot silently mix an upstream listing into the 300 managed demo roles.
+
+Connector fixtures exercise the same normalization and governance boundary in
+tests without contacting an upstream source. Enabling any live source requires
+an intentional reviewed policy change, a rights and attribution review, and a
+separate bounded deployment verification.
 
 An enabled connector is not a promise that an upstream service is available, complete, current, or licensed for a new purpose. Source data retains its attribution and canonical link, and untrusted source text is not rendered as trusted HTML or interpreted as an instruction.
 
@@ -18,7 +26,10 @@ Only a successful complete run can age unseen listings. Partial, failed, cancell
 
 The worker keeps immutable source identity, hashes, normalization outcomes, and job-version evidence. Raw source payloads are stored separately and are purged after the source policy's retention period, leaving metadata and hashes needed to explain the catalog decision. Raw payloads are not sent to WebMCP, activity projections, or public job rendering.
 
-Retention cleanup runs from the catalog worker path. Keep a catalog-capable worker running when source-payload retention is required; an alert-only service does not replace that catalog maintenance work.
+Retention cleanup runs from the catalog worker path. The challenge release has
+no retained upstream payloads and runs an alert-only worker. A future deployment
+that intentionally enables a source must also operate the catalog retention
+path.
 
 ## Connector kill switch and source incidents
 
@@ -34,4 +45,8 @@ Use the following sequence when a source changes terms, rate limits, returns mal
 
 ## During demonstrations and judging
 
-Use fixture ingestion for a deterministic demo. Live ingestion remains explicit, policy-gated, and dependent on upstream availability and the operator's network. Jobbbler does not claim a public hosted feed, provider quota, or continuous upstream availability for a judging period. For deployment and worker-mode guidance, see [Operations](operations.md).
+Seed the canonical fixture catalog for every demonstration. Live ingestion is
+outside the challenge-release operating posture. Jobbbler does not claim a
+public hosted feed, provider quota, or continuous upstream availability for the
+judging period. For deployment and worker-mode guidance, see
+[Operations](operations.md).

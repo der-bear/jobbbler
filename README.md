@@ -161,8 +161,8 @@ flowchart LR
   Domain --> Storage[Portable repository contracts]
   Storage --> SQLite[(SQLite local)]
   Storage --> Postgres[(Supabase PostgreSQL production)]
-  Worker[Lease-based catalog and alert workers] --> Domain
-  Worker --> Sources[Policy-controlled job sources]
+  Connectors[Disabled-by-default source connectors] --> Worker[Lease-based worker]
+  Worker --> Domain
   API --> Activity[Sanitized owner activity projection]
   Activity --> Browser
 ```
@@ -170,7 +170,10 @@ flowchart LR
 The monorepo keeps contracts, domains, storage adapters, connectors, WebMCP
 lifecycle, workers, UI primitives, and the Next.js application independent.
 SQLite and PostgreSQL implement the same behavioral repository contracts.
-External network work is performed outside database transactions.
+The challenge release serves one deterministic 300-role fictional catalog;
+live source policies are disabled. The connector boundary remains tested for
+future governed deployments, and external network work stays outside database
+transactions.
 
 More detail: [architecture index](docs/architecture/README.md),
 [source governance](docs/architecture/source-ingestion.md),
@@ -194,13 +197,12 @@ Requirements: Node.js 24 and pnpm 11.19.0.
 cp .env.example .env
 pnpm install --frozen-lockfile
 pnpm db:seed
-pnpm ingest -- --source all --limit 50
 pnpm dev
 ```
 
-Open the local URL printed by Next.js. Fixture ingestion is the default and
-does not contact upstream providers. Live ingestion is always explicit
-(`pnpm ingest:live`) and remains governed by the checked-in source policies.
+Open the local URL printed by Next.js. Seeding restores the canonical 300-role,
+30-company fictional catalog and does not contact an upstream provider. Live
+source ingestion is disabled in every checked-in policy for this release.
 
 SQLite is the zero-service development default. Set `DATABASE_URL` for
 PostgreSQL/Supabase; the server selects the PostgreSQL adapter without
@@ -210,12 +212,16 @@ exposing that connection string to the browser. See
 ## Workers
 
 ```bash
-# Run one deterministic catalog and alert cycle
-JOBBBLER_WORKER_MODE=all_once pnpm dev:worker
+# Run one bounded saved-search alert cycle
+JOBBBLER_WORKER_MODE=alert_once pnpm dev:worker
 
-# Run the recurring service
-JOBBBLER_WORKER_MODE=all_service pnpm dev:worker
+# Run the recurring saved-search service
+JOBBBLER_WORKER_MODE=alert_service pnpm dev:worker
 ```
+
+Production also defaults to `alert_service` when no worker mode is provided.
+Catalog and combined modes remain explicit operator tools and still cannot make
+a source request while the checked-in source policies are disabled.
 
 Local email delivery defaults to an explicit capture adapter. Production
 delivery requires a configured provider, a verified owner endpoint, and

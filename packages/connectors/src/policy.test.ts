@@ -37,7 +37,7 @@ const basePolicy: SourcePolicy = {
 };
 
 describe("source policy", () => {
-  it("validates every checked-in policy and keeps ambiguous Arbeitnow disabled", async () => {
+  it("validates every checked-in policy and keeps challenge-release live sources disabled", async () => {
     const policies = await Promise.all(
       ["jobicy", "remoteok", "arbeitnow"].map(async (source) => {
         const path = fileURLToPath(new URL(`${source}.json`, policyDirectory));
@@ -53,10 +53,17 @@ describe("source policy", () => {
       required: true,
       followedLinkRequired: true,
     });
-    expect(policies.find(({ sourceKey }) => sourceKey === "arbeitnow")).toMatchObject({
-      enabled: false,
-      commercialUse: "requires_permission",
-    });
+    expect(policies).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ sourceKey: "jobicy", enabled: false }),
+        expect.objectContaining({ sourceKey: "remoteok", enabled: false }),
+        expect.objectContaining({
+          sourceKey: "arbeitnow",
+          enabled: false,
+          commercialUse: "requires_permission",
+        }),
+      ]),
+    );
     expect(getBuiltInSourcePolicies()).toEqual(policies);
   });
 

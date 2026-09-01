@@ -1,7 +1,7 @@
 {
   "version": 1,
   "sourceKey": "jobicy",
-  "enabled": true,
+  "enabled": false,
   "allowedPurposes": ["job_discovery"],
   "minimumPollIntervalSeconds": 21600,
   "requestTimeoutMs": 10000,
@@ -19,5 +19,5 @@
   "sourceUrl": "https://jobicy.com/api/v2/remote-jobs",
   "termsUrl": "https://jobicy.com/jobs-rss-feed",
   "userAgent": "Jobbbler/0.1",
-  "notes": "Cache centrally, poll at most four times per day, preserve Jobicy attribution and canonical URLs."
+  "notes": "Connector retained for governed evaluation, but live ingestion is disabled for the challenge release. If a future deployment enables it after a rights review, cache centrally, poll at most four times per day, and preserve Jobicy attribution and canonical URLs."
 }

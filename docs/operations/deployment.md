@@ -38,7 +38,7 @@ Then start the recurring worker service and the web service behind the trusted i
 ```bash
 docker run --rm \
   --env-file .env.production \
-  --env JOBBBLER_WORKER_MODE=all_service \
+  --env JOBBBLER_WORKER_MODE=alert_service \
   jobbbler-worker:local
 
 docker run --rm \
@@ -46,6 +46,10 @@ docker run --rm \
   jobbbler-web:local
 ```
 
-Through the public HTTPS ingress, wait for `GET /api/health/live`, then `GET /api/health/ready` to report `driver: "postgres"`, the release migration count, and the expected catalog counts. Work leases make normal worker retries safe, but source polling and notification delivery remain controlled by the checked-in policies and delivery provider configuration.
+Through the public HTTPS ingress, wait for `GET /api/health/live`, then
+`GET /api/health/ready` to report `driver: "postgres"`, the release migration
+count, exactly 300 jobs and 30 organizations. Work leases make normal worker
+retries safe. The release worker evaluates saved searches and notification
+delivery only; every checked-in live-source policy is disabled.
 
 For SQLite-only development, omit `DATABASE_URL` and mount a writable `/app/.data` volume. Production PostgreSQL deployments do not need a SQLite volume.

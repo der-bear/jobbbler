@@ -27,6 +27,10 @@ async function loadPolicy(sourceKey: "jobicy" | "remoteok" | "arbeitnow"): Promi
   return sourcePolicySchema.parse(await loadJson(new URL(`${sourceKey}.json`, policyRoot)));
 }
 
+async function loadEnabledPolicy(sourceKey: "jobicy" | "remoteok"): Promise<SourcePolicy> {
+  return sourcePolicySchema.parse({ ...(await loadPolicy(sourceKey)), enabled: true });
+}
+
 describe("connector ingestion orchestration", () => {
   afterEach(async () => {
     await Promise.all(
@@ -44,7 +48,7 @@ describe("connector ingestion orchestration", () => {
 
   it("persists a bounded source run and makes a later replay idempotent", async () => {
     const storage = await createStorage();
-    const policy = await loadPolicy("jobicy");
+    const policy = await loadEnabledPolicy("jobicy");
     const body = await loadJson(new URL("jobicy/page-1.json", fixtureRoot));
     const fetch = vi.fn(async () => Response.json(body, { headers: { etag: '"jobicy-v1"' } }));
     const connector = createJobicyConnector({ policy, fetch });
@@ -102,7 +106,7 @@ describe("connector ingestion orchestration", () => {
 
   it("treats a conditional 304 as unchanged instead of aging every listing", async () => {
     const storage = await createStorage();
-    const policy = await loadPolicy("jobicy");
+    const policy = await loadEnabledPolicy("jobicy");
     const body = await loadJson(new URL("jobicy/page-1.json", fixtureRoot));
     const fetch = vi
       .fn()
@@ -140,7 +144,7 @@ describe("connector ingestion orchestration", () => {
 
   it("ages listings only after two complete empty source snapshots", async () => {
     const storage = await createStorage();
-    const policy = await loadPolicy("jobicy");
+    const policy = await loadEnabledPolicy("jobicy");
     const body = await loadJson(new URL("jobicy/page-1.json", fixtureRoot));
     const emptyBody = { apiVersion: "2.0", status: "success", jobCount: 0, jobs: [] };
     const fetch = vi
@@ -204,7 +208,7 @@ describe("connector ingestion orchestration", () => {
 
   it("keeps ingestion authoritative when optional event publication fails", async () => {
     const storage = await createStorage();
-    const policy = await loadPolicy("jobicy");
+    const policy = await loadEnabledPolicy("jobicy");
     const body = await loadJson(new URL("jobicy/page-1.json", fixtureRoot));
     const connector = createJobicyConnector({ policy, fetch: async () => Response.json(body) });
     const onEvent = vi.fn(async () => {
@@ -233,8 +237,8 @@ describe("connector ingestion orchestration", () => {
 
   it("isolates one source failure so the remaining connectors still run", async () => {
     const storage = await createStorage();
-    const remoteOkPolicy = await loadPolicy("remoteok");
-    const jobicyPolicy = await loadPolicy("jobicy");
+    const remoteOkPolicy = await loadEnabledPolicy("remoteok");
+    const jobicyPolicy = await loadEnabledPolicy("jobicy");
     const jobicyBody = await loadJson(new URL("jobicy/page-1.json", fixtureRoot));
     const failingFetch = vi.fn(async () => new Response("unavailable", { status: 503 }));
     const succeedingFetch = vi.fn(async () => Response.json(jobicyBody));

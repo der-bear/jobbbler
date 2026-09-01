@@ -8,14 +8,11 @@ import { jobbblerUserAgent } from "@jobbbler/core-domain";
 import { runAlertDeliveryBatch, runAlertScheduler } from "./alert-worker.js";
 import { createAlertDeliverySender } from "./alert-sender.js";
 import { runLeasedConnectorBatch } from "./catalog-worker.js";
-import {
-  recordWorkerCycle,
-  safeWorkerLogError,
-  type ObservableWorkerMode,
-} from "./observability.js";
+import { recordWorkerCycle, safeWorkerLogError } from "./observability.js";
 import { runRecurringService } from "./service-loop.js";
 import { runSearchAlertRetention } from "./search-alert-retention.js";
 import { createConfiguredWorkerStorage } from "./storage.js";
+import { resolveWorkerMode, runsAlerts, runsCatalog, runsOnce } from "./worker-mode.js";
 
 const logger = pino({
   name: "jobbbler-worker",
@@ -56,50 +53,8 @@ function workBucket(connector: JobConnector, now: string): string {
   return String(Math.floor(Date.parse(now) / interval));
 }
 
-type WorkerMode = ObservableWorkerMode | "idle";
-
-function workerMode(value: string): WorkerMode {
-  if (
-    value === "catalog_once" ||
-    value === "catalog_service" ||
-    value === "alert_once" ||
-    value === "alert_service" ||
-    value === "all_once" ||
-    value === "all_service" ||
-    value === "idle"
-  ) {
-    return value;
-  }
-  throw new Error("Unsupported JOBBBLER_WORKER_MODE.");
-}
-
-function runsCatalog(mode: WorkerMode): boolean {
-  return (
-    mode === "catalog_once" ||
-    mode === "catalog_service" ||
-    mode === "all_once" ||
-    mode === "all_service"
-  );
-}
-
-function runsAlerts(mode: WorkerMode): boolean {
-  return (
-    mode === "alert_once" ||
-    mode === "alert_service" ||
-    mode === "all_once" ||
-    mode === "all_service"
-  );
-}
-
-function runsOnce(mode: WorkerMode): boolean {
-  return mode.endsWith("_once");
-}
-
 async function main(): Promise<void> {
-  const mode = workerMode(
-    process.env["JOBBBLER_WORKER_MODE"] ??
-      (process.env["NODE_ENV"] === "production" ? "all_service" : "idle"),
-  );
+  const mode = resolveWorkerMode(process.env);
   if (mode === "idle") {
     logger.info(
       { mode },

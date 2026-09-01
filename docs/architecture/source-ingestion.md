@@ -18,13 +18,17 @@ The worker checks the versioned source policy before any request. The policy con
 
 ## Current source posture
 
-| Source    | Production posture | Polling ceiling                             | Display requirement                                                                     |
-| --------- | ------------------ | ------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Jobicy    | Enabled            | Once per 6 hours                            | Show Jobicy attribution and the canonical listing URL                                   |
-| Remote OK | Enabled            | Once per 12 hours                           | Show a followed Remote OK backlink wherever its data appears; do not use its logo       |
-| Arbeitnow | Disabled           | Once per 24 hours in an approved evaluation | Connector is testable, but production use requires written permission and policy review |
+| Source    | Challenge-release posture | Guardrail if a future reviewed deployment enables it                      |
+| --------- | ------------------------- | ------------------------------------------------------------------------- |
+| Jobicy    | Disabled                  | At most once per 6 hours; preserve attribution and the canonical URL      |
+| Remote OK | Disabled                  | At most once per 12 hours; followed backlink required; never use its logo |
+| Arbeitnow | Disabled                  | Written permission and policy review required before any production use   |
 
-Checked-in fixtures are fictional and exercise every connector without making an upstream request. Live ingestion requires an explicit `--live` invocation and still passes through the same policy gate.
+The product catalog is the checked-in fictional set of 300 Jobbbler-managed
+roles. Connector fixtures exercise every source adapter in automated tests
+without making an upstream request. An explicit `--live` invocation is still
+blocked by the checked-in policies; command-line intent never overrides source
+governance.
 
 ## Evidence and idempotency
 
@@ -47,20 +51,24 @@ An unseen listing becomes `possibly_closed` after one complete miss and `closed`
 
 ## Operations
 
-Use fixture mode for deterministic local verification:
+Use the canonical demo catalog for deterministic local verification:
 
 ```bash
 pnpm db:seed
-pnpm ingest -- --source all --limit 50
 pnpm db:restore-verify
 ```
 
-Live source access is deliberate:
+Verify the dormant connector boundary offline:
 
 ```bash
-pnpm ingest:live -- --source jobicy --limit 50
+pnpm --filter @jobbbler/connectors test
+pnpm --filter @jobbbler/worker test
 ```
 
-Production runs `JOBBBLER_WORKER_MODE=catalog_service`. It performs a cycle immediately and then every `JOBBBLER_WORKER_INTERVAL_SECONDS` (five minutes by default), so expired raw payloads are purged on schedule even when no source is due. Deterministic work buckets and persisted policy state prevent the service cadence from over-polling upstream sources. `catalog_once` remains available for an infrastructure scheduler or a bounded operational run.
+Production runs `JOBBBLER_WORKER_MODE=alert_service`; this is also the safe
+production default when the variable is omitted. Catalog and combined modes
+remain available only for a future deployment that deliberately enables a
+reviewed source policy. Deterministic work buckets and persisted policy state
+then prevent the service cadence from over-polling that source.
 
 The worker emits a redacted event for run start, each accepted or rejected record, policy blocks, completion, and failure. The realtime projection may visualize these events, but repository state remains authoritative.

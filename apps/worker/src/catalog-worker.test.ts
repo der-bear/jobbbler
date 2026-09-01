@@ -30,7 +30,10 @@ describe("leased catalog worker", () => {
     const directory = await mkdtemp(join(tmpdir(), "jobbbler-catalog-worker-"));
     temporaryDirectories.push(directory);
     const storage = createSqliteStorage(join(directory, "jobbbler.sqlite"));
-    const policy = sourcePolicySchema.parse(await json(new URL("jobicy.json", policyRoot)));
+    const policy = sourcePolicySchema.parse({
+      ...((await json(new URL("jobicy.json", policyRoot))) as object),
+      enabled: true,
+    });
     const body = await json(new URL("jobicy/page-1.json", fixtureRoot));
     const connector = createJobicyConnector({
       policy,
