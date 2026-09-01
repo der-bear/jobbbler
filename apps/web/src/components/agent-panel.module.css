@@ -1,13 +1,36 @@
+/*
+ * Top to bottom, beside the header rather than under it. As a sticky block
+ * starting at the header line, the panel was a lid over the content while the
+ * header ran on above it at full width; as a full-height column it is a second
+ * region of the window, and the header narrows to the region that is left.
+ */
 .panel {
-  position: sticky;
-  inset-block-start: var(--app-header-height, 68px);
+  position: fixed;
+  z-index: 45;
+  inset-block: 0;
+  inset-inline-end: 0;
   display: flex;
   min-inline-size: 0;
-  block-size: calc(100dvh - var(--app-header-height, 68px));
+  inline-size: var(--agent-panel-size, 380px);
+  block-size: 100dvh;
   flex-direction: column;
   border-inline-start: 1px solid var(--color-line);
-  background: var(--color-canvas);
+  /*
+   * The same glass as the header, for the same reason: an opaque slab beside
+   * the product reads as a second application, while a translucent one reads
+   * as a layer over it. Saturation is what keeps the blurred canvas green
+   * instead of grey.
+   */
+  background: color-mix(in srgb, var(--color-canvas) 78%, transparent);
+  backdrop-filter: saturate(170%) blur(28px);
+  -webkit-backdrop-filter: saturate(170%) blur(28px);
   animation: panel-in var(--jb-duration-base) var(--ease-standard) both;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .panel {
+    background: var(--color-canvas);
+  }
 }
 
 .resizer {
@@ -56,7 +79,8 @@
 
 .header h2 {
   margin: 0;
-  font-size: 17px;
+  /* Top of the panel's own ladder: 22 / 18 / 15 / 13 / 12. */
+  font-size: var(--jb-type-heading);
   font-weight: 670;
   letter-spacing: -0.035em;
 }
@@ -145,7 +169,7 @@
 
 .tabs button[aria-selected="true"] {
   border-block-end-color: var(--jb-signal);
-  color: var(--color-ink);
+  color: var(--color-signal-strong);
 }
 
 .tabs button:focus-visible,
@@ -184,7 +208,7 @@
   }
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1080px) {
   .panel:not([aria-modal="true"]) {
     display: none;
   }
@@ -198,6 +222,19 @@
     block-size: auto;
     border-block-start: 1px solid var(--color-line);
     box-shadow: var(--shadow-floating);
+  }
+
+  /*
+   * Below this width the panel stops being a rail beside the product and
+   * becomes a sheet over it. Glass is the wrong material for that: at 74% the
+   * job list stayed legible straight through the panel. A sheet has to be
+   * opaque — the translucency only reads as a layer when there is content
+   * beside it, not underneath it.
+   */
+  .panel {
+    background: var(--color-canvas);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   .resizer {

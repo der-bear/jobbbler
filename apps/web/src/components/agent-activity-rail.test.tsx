@@ -136,12 +136,15 @@ describe("AgentActivityRail", () => {
     expect(markup).not.toContain("Copy prompt");
   });
 
-  it("offers a direct path to the guide from an empty panel", () => {
-    const markup = renderToStaticMarkup(
-      <AgentActivityRail activities={[]} onOpenGuide={() => undefined} webMcpStatus="ready" />,
-    );
+  it("leaves the route to the guide to the tab beside it", () => {
+    const markup = renderToStaticMarkup(<AgentActivityRail activities={[]} webMcpStatus="ready" />);
 
-    expect(markup).toContain("Open guide");
+    /*
+     * The panel header already carries a Guide tab. A button in the empty state
+     * was a second control for the same destination, an inch away from the
+     * first.
+     */
+    expect(markup).not.toContain("Open guide");
   });
 
   it("groups repeated identical calls so the judge timeline stays readable", () => {

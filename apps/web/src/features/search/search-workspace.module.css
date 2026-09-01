@@ -5,10 +5,16 @@
  */
 .workspace {
   display: grid;
-  grid-template-columns: minmax(250px, 290px) minmax(0, 940px);
+  grid-template-columns: minmax(288px, 328px) minmax(0, 940px);
   grid-template-rows: auto 1fr;
   justify-content: center;
-  min-block-size: calc(100dvh - 69px);
+  /*
+   * Header and footer, not just the header. Reserving a full viewport minus
+   * 69px and then placing a 68px footer underneath left every short page
+   * scrolling by exactly the height of the footer, with nothing down there to
+   * scroll to.
+   */
+  min-block-size: calc(100dvh - var(--app-header-height, 68px) - var(--app-footer-height, 68px));
 }
 
 .workspace[data-landing="true"] {
@@ -19,22 +25,57 @@
   grid-template-rows: 1fr;
 }
 
+/*
+ * A solid rule across the full width cut straight through the canvas wash and
+ * read as the gradient failing rather than as a divider. The hairline below
+ * fades out at both ends, so the sections still separate but the background
+ * stays continuous.
+ */
 .hero {
+  position: relative;
   grid-column: 1 / -1;
   display: grid;
   justify-items: center;
-  gap: 16px;
-  border-block-end: 1px solid var(--color-line);
-  padding: clamp(26px, 4vw, 44px) clamp(24px, 4vw, 64px) clamp(24px, 3vw, 34px);
+  /*
+   * The title and its sentence are one block; the search field is the next
+   * thing. One uniform 16px gap between all three said they were three equal
+   * items, so the field had no more separation from the sentence than the
+   * sentence had from the title it belongs to.
+   */
+  gap: var(--jb-rhythm-1);
+  padding: clamp(26px, 4vw, 44px) var(--jb-page-gutter) clamp(24px, 3vw, 34px);
   transition:
     padding var(--jb-duration-base) var(--ease-standard),
     gap var(--jb-duration-base) var(--ease-standard);
 }
 
+.hero::after {
+  content: "";
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline: clamp(24px, 12vw, 200px);
+  block-size: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-line) 22%,
+    var(--color-line) 78%,
+    transparent
+  );
+}
+
+/*
+ * Air above, a section break below — not the same figure twice.
+ *
+ * A 440px minimum height around 180px of content centred the block and left
+ * 120px of nothing under the search field, which the results section then
+ * added its own 40px to. Nearly two hundred pixels read as a hole rather than
+ * as breathing room, and it pushed the first role below the fold.
+ */
 .workspace[data-landing="true"] .hero {
-  min-block-size: clamp(300px, 42vh, 440px);
+  min-block-size: clamp(260px, 32vh, 380px);
   align-content: center;
-  padding-block: clamp(56px, 10vw, 108px);
+  padding-block: clamp(52px, 8vw, 96px) clamp(32px, 4vw, 56px);
 }
 
 .hero h1 {
@@ -54,22 +95,35 @@
 }
 
 .heroSearch {
+  margin-block-start: var(--jb-rhythm-3);
   display: flex;
   inline-size: min(680px, 100%);
   align-items: center;
   gap: 4px;
   border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-pill);
-  background: var(--color-surface);
+  background: var(--jb-glass-float);
+  backdrop-filter: var(--jb-glass-blur-float);
+  -webkit-backdrop-filter: var(--jb-glass-blur-float);
   padding: 4px 4px 4px 16px;
-  box-shadow: 0 16px 44px color-mix(in srgb, var(--color-ink) 6%, transparent);
+  /*
+   * Two layers, tinted. One 44px blur of near-black over a green-tinted canvas
+   * turned the ground under the field grey — the contact shadow gives the edge
+   * definition and the soft one gives the lift, and both carry the hue of the
+   * surface they fall on.
+   */
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--jb-signal-shadow) 7%, transparent),
+    0 14px 34px color-mix(in srgb, var(--jb-signal-shadow) 9%, transparent);
   transition:
     inline-size var(--jb-duration-base) var(--ease-standard),
     box-shadow var(--motion-fast) var(--ease-standard);
 }
 
 .heroSearch:focus-within {
-  box-shadow: 0 16px 44px color-mix(in srgb, var(--color-ink) 8%, transparent);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--jb-signal-shadow) 9%, transparent),
+    0 14px 34px color-mix(in srgb, var(--jb-signal-shadow) 13%, transparent);
 }
 
 .heroSearch:has(input:focus-visible) {
@@ -146,10 +200,27 @@
   transform: translateY(-1px);
 }
 
+/*
+ * The rail stays with the results. Scrolling a long list used to leave a tall
+ * empty column beside it and put every filter out of reach until the reader
+ * scrolled back up.
+ *
+ * It carries its own scroll because the filters run taller than a short
+ * viewport. That is safe for the location suggestions: the listbox bleeds
+ * 12px sideways out of its field, and the rail's own gutter is wider than
+ * that, so it never reaches the clipping edge.
+ */
 .filterRail {
+  position: sticky;
+  inset-block-start: var(--app-header-height, 68px);
   grid-row: 1;
+  align-self: start;
+  max-block-size: calc(100dvh - var(--app-header-height, 68px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   border-inline-end: 1px solid var(--color-line);
-  padding: clamp(22px, 3vw, 32px) clamp(20px, 2vw, 32px) 48px;
+  padding: clamp(22px, 3vw, 32px) var(--jb-page-gutter) 48px;
 }
 
 .railTitle {
@@ -179,7 +250,7 @@
 }
 
 .resetFilters:hover {
-  background: var(--color-surface-subtle);
+  background: var(--jb-hover-surface);
   color: var(--color-ink);
 }
 
@@ -294,7 +365,7 @@
 
 .choiceRow button[aria-pressed="true"] {
   border-color: var(--jb-signal);
-  background: var(--color-surface-subtle);
+  background: color-mix(in srgb, var(--jb-signal-tint) 12%, transparent);
   color: var(--color-signal-strong);
 }
 
@@ -360,7 +431,7 @@
   min-inline-size: 0;
   inline-size: 100%;
   max-inline-size: 1100px;
-  padding: clamp(26px, 3vw, 40px) clamp(24px, 4vw, 64px) 56px;
+  padding: clamp(26px, 3vw, 40px) var(--jb-page-gutter) 56px;
 }
 
 /*
@@ -417,7 +488,7 @@
 .resultsHeader h1,
 .resultsHeader h2 {
   margin: 0;
-  font-size: 19px;
+  font-size: var(--jb-type-heading-sm);
   font-weight: 590;
   letter-spacing: -0.035em;
 }
@@ -472,9 +543,9 @@
   justify-content: center;
   gap: 7px;
   min-block-size: 36px;
-  border: 1px solid var(--color-line-strong);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: transparent;
+  background: var(--color-surface-subtle);
   color: var(--color-ink);
   font-size: var(--jb-type-caption);
   font-weight: 620;
@@ -495,16 +566,44 @@
   animation: result-enter var(--jb-duration-base) var(--ease-standard) both;
 }
 
+/*
+ * The stagger used to stop after the third row, so rows four and beyond all
+ * landed together — three rows moved, then a block appeared. Eight steps of
+ * 22ms read as one continuous gesture and still finish inside 400ms with the
+ * row animation itself.
+ */
 .resultList .jobResult:nth-child(2) {
-  animation-delay: 35ms;
+  animation-delay: 22ms;
 }
 
 .resultList .jobResult:nth-child(3) {
-  animation-delay: 70ms;
+  animation-delay: 44ms;
 }
 
-.resultList .jobResult:nth-child(n + 4) {
-  animation-delay: 105ms;
+.resultList .jobResult:nth-child(4) {
+  animation-delay: 66ms;
+}
+
+.resultList .jobResult:nth-child(5) {
+  animation-delay: 88ms;
+}
+
+.resultList .jobResult:nth-child(6) {
+  animation-delay: 110ms;
+}
+
+.resultList .jobResult:nth-child(7) {
+  animation-delay: 132ms;
+}
+
+.resultList .jobResult:nth-child(n + 8) {
+  animation-delay: 154ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .resultList .jobResult {
+    animation: none;
+  }
 }
 
 .resultList[data-loading="true"] {
@@ -518,10 +617,32 @@
   padding-block-start: 16px;
 }
 
+/*
+ * Frosted, not tinted. The card fill matches the canvas in the light theme, so
+ * what separates the pane from the page is the blur: the signal lattice goes
+ * smooth inside the card and stays a crisp dot grid around it.
+ */
 .resultList[data-layout="cards"] .jobResult {
   overflow: hidden;
   border: 1px solid var(--color-line);
   border-radius: var(--jb-radius-md);
+  background: var(--jb-glass-fill-strong);
+  backdrop-filter: var(--jb-glass-blur);
+  -webkit-backdrop-filter: var(--jb-glass-blur);
+}
+
+/*
+ * Hover raises the same material rather than swapping it for an opaque fill,
+ * which would make the glass blink off under the pointer.
+ */
+.resultList[data-layout="cards"] .jobResult:hover {
+  background: var(--jb-glass-hover);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .resultList[data-layout="cards"] .jobResult {
+    background: var(--color-surface);
+  }
 }
 
 .resultList[data-layout="cards"] .jobSummary {
@@ -548,10 +669,19 @@
 .jobResult {
   position: relative;
   border-block-end: 1px solid var(--color-line);
+  transition:
+    background var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
 }
 
+/*
+ * No border tint on a list row. A separator is shared between two rows, so
+ * colouring one leaves a single green line hanging in a column of grey ones —
+ * it reads as a stray rule rather than as a highlight. The quiet fill and the
+ * title taking the signal colour already carry the state.
+ */
 .jobResult:hover {
-  background: var(--color-surface-subtle);
+  background: var(--jb-hover-surface);
 }
 
 .jobTitleLink::after {
@@ -647,7 +777,7 @@
 }
 
 .saveAlertLink:hover {
-  background: var(--color-surface-subtle);
+  background: var(--jb-hover-surface);
 }
 
 .skeletonList {
@@ -668,8 +798,13 @@
   display: block;
   block-size: 12px;
   border-radius: var(--radius-sm);
-  background: var(--color-surface-subtle);
-  animation: skeletonPulse 1.5s ease-in-out infinite;
+  background:
+    linear-gradient(100deg, transparent 26%, var(--jb-skeleton-sheen) 48%, transparent 72%),
+    var(--jb-skeleton-base);
+  background-size:
+    220% 100%,
+    auto;
+  animation: skeletonSweep 1.4s var(--ease-standard) infinite;
 }
 
 .skeletonRow span:nth-child(2) {
@@ -732,7 +867,7 @@
 
 .emptyState h3 {
   margin: 18px 0 7px;
-  font-size: 19px;
+  font-size: var(--jb-type-heading-sm);
 }
 
 .emptyState p {
@@ -755,12 +890,6 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-
-@keyframes skeletonPulse {
-  50% {
-    opacity: 0.48;
-  }
 }
 
 @keyframes result-enter {
@@ -965,5 +1094,25 @@
 
   .advancedSummary svg {
     transition: none;
+  }
+}
+
+@keyframes skeletonSweep {
+  from {
+    background-position:
+      150% 0,
+      0 0;
+  }
+
+  to {
+    background-position:
+      -50% 0,
+      0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonRow span {
+    animation: none;
   }
 }

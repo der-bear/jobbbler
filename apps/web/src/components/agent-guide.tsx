@@ -162,8 +162,8 @@ export function AgentGuide() {
         </ol>
         <AgentExamplePrompt className={styles["prompt"]} promptClassName={styles["promptText"]} />
         <p className={styles["planner"]}>
-          Not sure where to begin? Your agent can ask Jobbbler for a safe step-by-step plan. The
-          planner only advises; it never takes action.
+          Your agent can also ask for a safe step-by-step plan. The planner only advises; it never
+          takes action.
         </p>
       </section>
 
@@ -192,11 +192,6 @@ export function AgentGuide() {
           </ul>
         </section>
       </div>
-
-      <p className={styles["panelNote"]}>
-        Activity shows what happened. Tools shows every capability and the actions that need a
-        decision.
-      </p>
 
       <details className={styles["technicalDetails"]}>
         <summary>Technical details</summary>

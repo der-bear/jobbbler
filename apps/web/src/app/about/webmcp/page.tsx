@@ -33,7 +33,7 @@ const outcomeSteps = [
   },
   {
     title: "Apply",
-    copy: "Every role in this demo supports Apply on Jobbbler. The agent asks for short-lived permission to prepare one application. When it is ready, your final yes means Jobbbler records your consent, submits that unchanged application once, and saves a receipt. If you say no, nothing is shared or sent.",
+    copy: "The agent prepares one application and waits. Nothing is sent until you say yes.",
   },
 ] as const;
 
@@ -118,9 +118,12 @@ export default function WebMcpAboutPage() {
           </div>
           <p className={styles["controlNote"]}>
             <ShieldCheckIcon aria-hidden="true" size={18} />
-            Opening Jobbbler alone gives an agent no new authority to use your private data or
-            submit anything. Preparation permission is short-lived and limited to one application.
-            Submission requires a second, explicit decision in the same agent chat.
+            Every role in this demo supports Apply on Jobbbler. Opening the site alone gives an
+            agent no new authority to use your private data or submit anything: it must first ask
+            for short-lived permission to prepare one application, and submission requires a second,
+            explicit decision in the same agent chat. On your final yes, Jobbbler records your
+            consent, submits that unchanged application once, and saves a receipt. If you say no,
+            nothing is shared or sent.
           </p>
         </div>
       </section>
@@ -163,7 +166,7 @@ export default function WebMcpAboutPage() {
 
       <footer className={styles["footer"]}>
         <p>
-          Browse roles yourself, or use the example request to start the same search in your agent
+          Browse roles yourself, or copy the example request and start the same search in your agent
           chat.
         </p>
         <div className={styles["footerActions"]}>
@@ -171,7 +174,7 @@ export default function WebMcpAboutPage() {
             Browse open roles <ArrowRightIcon aria-hidden="true" size={16} />
           </Link>
           <a className={styles["secondaryAction"]} href="#one-request">
-            Use the example request
+            See the example request
           </a>
         </div>
       </footer>

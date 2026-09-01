@@ -305,7 +305,6 @@ export function AgentPanelSurface({
           activities={activities}
           onClearHistory={onClearActivities}
           onHistoryCleared={() => tabRefs.current.activity?.focus()}
-          onOpenGuide={() => selectTab("guide", true)}
           webMcpStatus={status}
         />
       </div>

@@ -2,7 +2,6 @@
 
 import {
   ArrowClockwiseIcon,
-  ArrowRightIcon,
   CheckCircleIcon,
   WarningCircleIcon,
   XIcon,
@@ -22,7 +21,6 @@ export interface AgentActivityRailProps {
   readonly maxItems?: number;
   readonly onClearHistory?: () => Promise<void>;
   readonly onHistoryCleared?: () => void;
-  readonly onOpenGuide?: () => void;
   readonly webMcpStatus: WebMcpRegistrationStatus;
 }
 
@@ -153,7 +151,6 @@ export function AgentActivityRail({
   maxItems = 4,
   onClearHistory,
   onHistoryCleared,
-  onOpenGuide,
   webMcpStatus,
 }: AgentActivityRailProps) {
   const [confirmingClear, setConfirmingClear] = useState(false);
@@ -194,16 +191,6 @@ export function AgentActivityRail({
         <div className={styles["empty"]} role="status">
           <p>{emptyCopy.title}</p>
           <span>{emptyCopy.detail}</span>
-          {onOpenGuide === undefined ? null : (
-            <Button
-              onClick={onOpenGuide}
-              size="sm"
-              trailingIcon={<ArrowRightIcon aria-hidden="true" size={14} />}
-              variant="quiet"
-            >
-              Open guide
-            </Button>
-          )}
         </div>
       ) : (
         <>

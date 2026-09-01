@@ -1,7 +1,13 @@
+/*
+ * Wide enough not to be centred inside the content area. At 980px this page
+ * was narrower than the column it sits in, so the auto margins added forty
+ * pixels a side and its text alone missed the spine the wordmark and the
+ * copyright line share.
+ */
 .page {
-  max-inline-size: 980px;
+  max-inline-size: var(--jb-page-max);
   margin-inline: auto;
-  padding: clamp(40px, 6vw, 76px) clamp(20px, 5vw, 60px) 88px;
+  padding: var(--jb-page-top) var(--jb-page-gutter) var(--jb-page-bottom);
 }
 
 .hero {
@@ -9,11 +15,15 @@
   padding-block-end: clamp(40px, 6vw, 64px);
 }
 
+/*
+ * This page is public, so its labels follow the product voice rather than the
+ * agent panel's. Monospace stays inside the panel, where it marks tool names
+ * as literal strings; out here it only reads as developer decoration.
+ */
 .eyebrow,
 .sectionHeading > p {
   margin: 0;
   color: var(--jb-signal);
-  font-family: var(--jb-font-mono);
   font-size: var(--jb-type-caption);
   font-weight: 650;
   letter-spacing: 0.1em;
@@ -84,7 +94,6 @@
 .promptLabel {
   margin: 0 0 10px;
   color: var(--color-ink-muted);
-  font-family: var(--jb-font-mono);
   font-size: var(--jb-type-caption);
   font-weight: 650;
   letter-spacing: 0.08em;
@@ -98,13 +107,31 @@
   font-weight: 560;
 }
 
+/*
+ * Columns, not a grid of rows.
+ *
+ * As a two-column grid every pair shared a row height, so one long capability
+ * stretched its row and left a hole beside the short one next to it — the
+ * apply entry ran four times the height of its row-mate. Flowing the items
+ * down two masonry-style columns lets each keep its own height and the two
+ * columns end within a line of each other.
+ */
 .steps {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 24px;
+  columns: 2;
+  column-gap: 24px;
   margin: 26px 0 0;
   padding: 0;
   list-style: none;
+}
+
+.steps li {
+  break-inside: avoid;
+}
+
+@media (max-width: 760px) {
+  .steps {
+    columns: 1;
+  }
 }
 
 .steps li {
@@ -155,7 +182,9 @@
   border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-lg);
   padding: 20px;
-  background: var(--color-surface-raised);
+  background: var(--jb-glass-fill-strong);
+  backdrop-filter: var(--jb-glass-blur);
+  -webkit-backdrop-filter: var(--jb-glass-blur);
   box-shadow: 0 14px 40px color-mix(in srgb, var(--color-ink) 5%, transparent);
 }
 

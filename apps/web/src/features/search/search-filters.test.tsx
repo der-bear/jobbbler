@@ -35,7 +35,8 @@ describe("SearchFilters", () => {
     expect(markup).toContain('aria-expanded="false"');
     expect(markup).toContain('aria-controls="advanced-search-filters-');
     expect(markup).toContain("More filters");
-    expect(markup).toContain("Optional");
+    /* No qualifier beside it — every filter on this page is optional. */
+    expect(markup).not.toContain("Optional");
     expect(markup).toContain("Work model");
     expect(markup).toContain("Employment type");
     expect(markup).toContain("Minimum salary");

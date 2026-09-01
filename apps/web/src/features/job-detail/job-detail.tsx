@@ -30,7 +30,7 @@ import {
   employmentLabel,
   locationBesideWorkModel,
   relativeFreshness,
-  salaryLabel,
+  salaryCardPresentation,
   seniorityLabel,
   titleWithoutEmploymentSuffix,
   workModelLabel,
@@ -58,8 +58,14 @@ const dimensionLabels: Readonly<Record<keyof JobFit["dimensions"], string>> = {
   freshness: "Freshness",
 };
 
+/*
+ * Names the object without repeating it. Interpolating the title made the
+ * button as wide as the headline above it, and dragged in the "(Part-Time)"
+ * suffix that the rest of the product strips. "This role" is unambiguous on a
+ * page that shows exactly one.
+ */
 export function applicationActionLabel(job: Pick<Job, "applyMode">): string {
-  return job.applyMode === "external" ? "Apply on employer site" : "Apply";
+  return job.applyMode === "external" ? "Apply on employer site" : "Apply for this role";
 }
 
 export function hasMeaningfulSearchCriteria(criteriaSearch: string): boolean {
@@ -141,6 +147,10 @@ function JobIdentity({
     .map((location) => locationBesideWorkModel(location, job.workModel))
     .filter((location): location is string => location !== null);
   const factLocations = normalizedLocations.length === 0 ? null : normalizedLocations.join(", ");
+  const salaryPresentation = salaryCardPresentation(
+    job.salary,
+    displayCurrencyFromSearch(criteriaSearch),
+  );
   const factEmployment = employmentLabel(job.employmentType);
 
   return (
@@ -169,8 +179,15 @@ function JobIdentity({
         <span>
           {job.seniority === null ? "Seniority not stated" : seniorityLabel(job.seniority)}
         </span>
+        {/*
+          One character instead of a sentence. The long conversion note was
+          noise on the page, but a figure quietly rewritten from dollars into
+          euros should not read as the number the employer published — the
+          approximation mark says so without taking a line.
+        */}
         <span className={styles["factSalary"]}>
-          {salaryLabel(job.salary, displayCurrencyFromSearch(criteriaSearch))}
+          {salaryPresentation.explanation === null ? "" : "≈ "}
+          {salaryPresentation.label}
         </span>
       </div>
       <div className={styles["actions"]}>
@@ -200,15 +217,20 @@ function JobIdentity({
           </span>
         )}
       </div>
-      <section aria-labelledby="about-role" className={styles["description"]}>
-        <h2 id="about-role">About the role</h2>
-        <div className={styles["summary"]}>
-          {jobSummaryParagraphs(job.summary).map((paragraph, index) => (
-            <p key={`${String(index)}-${paragraph.slice(0, 32)}`}>{paragraph}</p>
-          ))}
-        </div>
-      </section>
     </header>
+  );
+}
+
+function RoleDescription({ job }: Readonly<{ job: Job }>) {
+  return (
+    <section aria-labelledby="about-role" className={styles["description"]}>
+      <h2 id="about-role">About the role</h2>
+      <div className={styles["summary"]}>
+        {jobSummaryParagraphs(job.summary).map((paragraph, index) => (
+          <p key={`${String(index)}-${paragraph.slice(0, 32)}`}>{paragraph}</p>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -333,22 +355,29 @@ function DetailContent({
         job={result.job}
         onStartApplication={onStartApplication}
       />
-      <FitEvidence criteriaSearch={criteriaSearch} fit={result.fit} />
-      <section className={styles["roleFacts"]}>
-        <div>
-          <h2>Skills</h2>
+      <div className={styles["article"]}>
+        <div className={styles["articleMain"]}>
+          <RoleDescription job={result.job} />
+          <FitEvidence criteriaSearch={criteriaSearch} fit={result.fit} />
         </div>
-        <div className={styles["skills"]}>
-          {result.job.skills.length === 0 ? (
-            <p className={styles["unknown"]}>No skills were listed by the source.</p>
-          ) : (
-            result.job.skills.map((skill, index) => (
-              <span key={`${String(index)}-${skill}`}>{skill}</span>
-            ))
-          )}
-        </div>
-      </section>
-      <SourceAndFreshness job={result.job} />
+        <aside className={styles["articleAside"]}>
+          <section className={styles["roleFacts"]}>
+            <div>
+              <h2>Skills</h2>
+            </div>
+            <div className={styles["skills"]}>
+              {result.job.skills.length === 0 ? (
+                <p className={styles["unknown"]}>No skills were listed by the source.</p>
+              ) : (
+                result.job.skills.map((skill, index) => (
+                  <span key={`${String(index)}-${skill}`}>{skill}</span>
+                ))
+              )}
+            </div>
+          </section>
+          <SourceAndFreshness job={result.job} />
+        </aside>
+      </div>
     </article>
   );
 }

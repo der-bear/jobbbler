@@ -18,6 +18,7 @@ import {
   relativeFreshness,
   salaryLabel,
   seniorityLabel,
+  titleWithoutEmploymentSuffix,
   workModelLabel,
 } from "@/lib/job-format";
 import { ApiClientError, queryApi } from "@/lib/query-client";
@@ -52,7 +53,7 @@ function JobHeading({
 }: Readonly<{ criteriaSearch: string; job: Job; removeHref: string }>) {
   return (
     <div className={styles["jobHeading"]}>
-      <h2>{job.title}</h2>
+      <h2>{titleWithoutEmploymentSuffix(job.title, job.employmentType)}</h2>
       <p>{job.organizationName}</p>
       <div className={styles["jobActions"]}>
         <Link

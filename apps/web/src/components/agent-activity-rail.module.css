@@ -114,10 +114,22 @@
   line-height: 1.5;
 }
 
+/*
+ * A quiet button keeps its padding — that padding is what you hover — but
+ * hangs back into the margin by the same amount, so its label lines up with
+ * the text above instead of sitting indented for no visible reason. Zeroing
+ * the padding instead, which is what it used to do, shrank the target to the
+ * width of the words.
+ */
+.empty button,
+.historySummary button,
+.historyActions > button {
+  margin-inline-start: -10px;
+}
+
 .empty button {
   min-block-size: 36px;
   margin-block-start: 10px;
-  padding-inline: 0;
 }
 
 .historyActions {
@@ -137,11 +149,9 @@
 
 .historySummary button {
   min-block-size: 36px;
-  padding-inline: 0;
 }
 
 .historyActions > button {
-  padding-inline: 0;
   color: var(--color-ink-muted);
 }
 

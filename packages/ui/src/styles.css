@@ -68,7 +68,6 @@ button:disabled {
 .jb-button--secondary:disabled,
 .jb-button--quiet:disabled,
 .jb-button--danger:disabled {
-  border-color: var(--jb-border);
   color: var(--jb-text-muted);
 }
 .jb-button--sm {
@@ -86,20 +85,34 @@ button:disabled {
   padding: 0.75rem 1.125rem;
 }
 .jb-button--primary {
-  background: var(--jb-signal);
+  background: var(--jb-signal-gradient);
   color: var(--jb-signal-contrast);
 }
 .jb-button--primary:hover:not(:disabled) {
   background: var(--jb-signal-strong);
 }
+/*
+ * Three roles, three grounds, no outlines.
+ *
+ * The product had reached twenty-one distinct button styles: two border widths
+ * in two colours, and the same action drawn as a pill on one page and a
+ * rectangle on the next. An outline is the weakest way to say "control" — it
+ * adds a line to every screen and still reads as secondary to a fill. So the
+ * fill carries the rank instead: signal for the primary action, a quiet grey
+ * for the secondary, nothing at all for the third.
+ */
 .jb-button--secondary {
-  background: var(--jb-surface);
-  border-color: var(--jb-border-strong);
+  background: var(--jb-surface-muted);
+  border-color: transparent;
   color: var(--jb-text);
 }
-.jb-button--secondary:hover:not(:disabled),
+.jb-button--secondary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--jb-signal-tint) 10%, var(--jb-surface-muted));
+}
+
 .jb-button--quiet:hover:not(:disabled) {
-  background: var(--jb-surface-muted);
+  /* Translucent, so a quiet button on a frosted pane keeps the pane. */
+  background: var(--jb-glass-hover);
 }
 .jb-button--quiet {
   background: transparent;
@@ -190,8 +203,18 @@ button.jb-chip {
   font-size: var(--jb-type-caption);
   font-weight: 620;
 }
+/*
+ * Translucent, not pre-mixed.
+ *
+ * The fill used to be blended with the surface colour at author time, which
+ * baked one specific backdrop into it. Sitting on a row that changes colour on
+ * hover, the chip then stayed a fixed patch and lost its relationship to what
+ * was behind it. An alpha fill composites against whatever it actually lands
+ * on — plain row, hovered row, card, panel — so the tint stays proportional
+ * and the label keeps the same contrast everywhere.
+ */
 .jb-chip--signal {
-  background: color-mix(in srgb, var(--jb-signal) 10%, var(--jb-surface));
+  background: color-mix(in srgb, var(--jb-signal-tint) 22%, transparent);
   color: var(--jb-signal-strong);
 }
 .jb-chip__remove,
@@ -265,7 +288,7 @@ button.jb-chip {
   padding: 0;
 }
 .jb-dialog::backdrop {
-  background: rgb(12 24 16 / 52%);
+  background: var(--jb-scrim);
 }
 .jb-dialog__surface {
   background: var(--jb-surface);
@@ -283,7 +306,7 @@ button.jb-chip {
   padding: 1.25rem 1.25rem 1rem;
 }
 .jb-dialog__title {
-  font-size: 1.125rem;
+  font-size: var(--jb-type-heading-sm);
   letter-spacing: -0.025em;
   margin: 0;
 }
@@ -319,9 +342,20 @@ button.jb-chip {
   min-height: 100dvh;
 }
 
+/*
+ * A sweep rather than a pulse: a bar that fades in and out reads as something
+ * blinking at you, while a highlight travelling across it reads as work in
+ * progress. It also never dips in contrast, so nothing flickers toward
+ * invisibility mid-cycle.
+ */
 .jb-skeleton {
-  animation: jb-pulse 1.2s var(--jb-ease) infinite alternate;
-  background: var(--jb-surface-strong);
+  animation: jb-skeleton-sweep 1.4s var(--jb-ease) infinite;
+  background:
+    linear-gradient(100deg, transparent 26%, var(--jb-skeleton-sheen) 48%, transparent 72%),
+    var(--jb-skeleton-base);
+  background-size:
+    220% 100%,
+    auto;
   border-radius: var(--jb-radius-sm);
   display: block;
   height: 0.875rem;
@@ -527,7 +561,7 @@ button.jb-chip {
   flex: 0 0 auto;
   place-items: center;
   border: 1px solid var(--jb-border-strong);
-  border-radius: 3px;
+  border-radius: var(--jb-radius-sm);
   color: var(--jb-signal-contrast);
 }
 
@@ -598,7 +632,7 @@ button.jb-chip {
   border: 2px solid var(--jb-surface);
   border-radius: var(--jb-radius-pill);
   background: var(--jb-signal);
-  box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
+  box-shadow: 0 1px 4px var(--jb-scrim-shadow);
 }
 
 .jb-range::-moz-range-thumb {
@@ -613,4 +647,95 @@ button.jb-chip {
   outline: var(--jb-focus-width) solid var(--jb-focus);
   outline-offset: var(--jb-focus-offset);
   border-radius: var(--jb-radius-pill);
+}
+
+@keyframes jb-skeleton-sweep {
+  from {
+    background-position:
+      150% 0,
+      0 0;
+  }
+
+  to {
+    background-position:
+      -50% 0,
+      0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jb-skeleton {
+    animation: none;
+  }
+}
+
+/*
+ * A native select and a custom resizer both fell through the focus styling:
+ * the select because it was never given a rule, the resizer because a div with
+ * a tabindex gets no ring by default. Both are reachable by keyboard, so both
+ * need to show where the keyboard is.
+ */
+select:focus-visible,
+[role="separator"]:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: var(--jb-focus-offset);
+  border-radius: var(--jb-radius-sm);
+}
+
+/*
+ * Hover moves the border toward the signal, not the fill.
+ *
+ * Raising the background is the blunt instrument — it shifts a whole block and
+ * on a light theme it reads as the surface getting dirty. A border tinting
+ * toward the accent says "this is live" with a two-pixel line, which is both
+ * quieter and more legible. The fill still moves, but only just.
+ */
+:root {
+  --jb-hover-surface: color-mix(in srgb, var(--jb-signal-tint) 1.5%, var(--color-surface-subtle));
+  --jb-hover-line: color-mix(in srgb, var(--jb-signal) 26%, var(--color-line));
+}
+
+/*
+ * One glass material, in two intensities.
+ *
+ * `float` is for panes with the product moving behind them — the header, the
+ * agent panel, popovers, sheets. `fill-strong` is for panes that sit in the
+ * flow: cards and section containers.
+ *
+ * In the light theme the surface and the canvas are the same white, so the
+ * alpha alone would change nothing. The property that actually reads as glass
+ * is the blur: the signal lattice goes smooth inside the pane and stays a
+ * crisp dot grid around it. Text still has a floor to stand on, because at
+ * these alphas the pane is far closer to its surface than to the canvas.
+ */
+:root {
+  --jb-glass-fill: color-mix(in srgb, var(--color-surface) 66%, transparent);
+  --jb-glass-fill-strong: color-mix(in srgb, var(--color-surface) 74%, transparent);
+  --jb-glass-float: color-mix(in srgb, var(--color-surface) 66%, transparent);
+  --jb-glass-hover: color-mix(in srgb, var(--jb-hover-surface) 74%, transparent);
+  /*
+   * A single stop of light across the top of a filled button. Two percent is
+   * enough to give the surface a direction without turning it into a bevel —
+   * flat next to it reads as unfinished, anything stronger reads as 2011.
+   */
+  --jb-signal-gradient: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--jb-signal) 94%, white) 0%,
+    var(--jb-signal) 62%
+  );
+  --jb-glass-blur: saturate(170%) blur(12px);
+  --jb-glass-blur-float: saturate(165%) blur(24px);
+}
+
+.jb-glass {
+  background: var(--jb-glass-fill);
+  backdrop-filter: var(--jb-glass-blur);
+  -webkit-backdrop-filter: var(--jb-glass-blur);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .jb-glass {
+    background: var(--color-surface);
+  }
 }

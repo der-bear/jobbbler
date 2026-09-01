@@ -85,8 +85,12 @@ describe("AgentGuide", () => {
     );
     expect(markup).toContain("Consent to process your data");
     expect(markup).toContain("right to withdraw it");
-    expect(markup).toContain("Activity shows what happened");
-    expect(markup).toContain("Tools shows every capability");
+    /*
+     * The guide no longer narrates the two tabs sitting directly above it. That
+     * sentence explained a control the reader is looking at, which is the kind
+     * of line that makes an explainer feel long without making it clearer.
+     */
+    expect(markup).not.toContain("Activity shows what happened");
     expect(markup).toContain("Technical details");
     expect(markup).toContain("no separate MCP server to");
     expect(markup).not.toContain("managed internal role");

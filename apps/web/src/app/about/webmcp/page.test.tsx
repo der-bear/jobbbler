@@ -47,7 +47,7 @@ describe("WebMCP explanation", () => {
     expect(markup).toContain('href="/jobs"');
     expect(markup).toContain("Browse open roles");
     expect(markup).toContain('href="#one-request"');
-    expect(markup).toContain("Use the example request");
+    expect(markup).toContain("See the example request");
     expect(markup).not.toContain("managed internal role");
     expect(markup).not.toContain("validated employer page");
     expect(markup).not.toContain("browser-registered tools");

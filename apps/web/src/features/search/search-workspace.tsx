@@ -411,11 +411,14 @@ function SearchFilters({
           type="button"
         >
           <span>More filters</span>
-          <span>
-            {activeAdvancedFilterCount === 0
-              ? "Optional"
-              : `${String(activeAdvancedFilterCount)} active`}
-          </span>
+          {/*
+           * Nothing when nothing is set. It used to say "Optional" there, which
+           * is true of every filter on the page and so told the reader nothing;
+           * the count, when there is one, is the thing worth carrying.
+           */}
+          {activeAdvancedFilterCount === 0 ? null : (
+            <span>{`${String(activeAdvancedFilterCount)} active`}</span>
+          )}
           <CaretDownIcon aria-hidden="true" size={14} />
         </button>
         <div
@@ -1034,7 +1037,12 @@ export function SearchWorkspace({
           </div>
         ) : null}
 
-        {result !== null ? (
+        {/*
+          A catalog with no matching rows has no freshness to report, so the
+          line is omitted rather than filled in. Saying nothing is honest;
+          saying "just now" was not.
+        */}
+        {result !== null && result.catalogUpdatedAt !== null ? (
           <footer className={styles["resultsFooter"]}>
             <span>
               <ClockIcon aria-hidden="true" size={15} />

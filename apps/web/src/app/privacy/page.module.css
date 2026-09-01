@@ -1,7 +1,7 @@
 .page {
   max-inline-size: 1120px;
   margin-inline: auto;
-  padding: clamp(46px, 7vw, 96px) clamp(20px, 5vw, 72px) 112px;
+  padding: var(--jb-page-top) var(--jb-page-gutter) var(--jb-page-bottom);
 }
 
 .hero {

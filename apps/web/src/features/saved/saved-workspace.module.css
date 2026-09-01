@@ -1,17 +1,39 @@
+/*
+ * Capped like every other page. The inner sections were bounded but the
+ * workspace itself was not, so above 1900px this page kept widening while its
+ * sibling stopped — the two drifted apart exactly where a large monitor would
+ * show them side by side.
+ */
 .workspace {
-  min-block-size: calc(100dvh - 69px);
-  padding: clamp(34px, 5vw, 72px) clamp(20px, 5vw, 72px) 72px;
+  max-inline-size: var(--jb-page-max-wide);
+  min-block-size: calc(100dvh - var(--app-header-height, 68px) - var(--app-footer-height, 68px));
+  margin-inline: auto;
+  padding: var(--jb-page-top) var(--jb-page-gutter) var(--jb-page-bottom);
 }
 
+/*
+ * Same header as /applications, to the pixel.
+ *
+ * The two pages are a pair — one tab apart — and they were built with
+ * different column ratios, a gap nearly three times wider, a different
+ * vertical alignment and no shared breakpoint, so switching between them moved
+ * the heading and re-flowed the sentence beside it. The values here are the
+ * ones /applications already uses.
+ */
 .intro {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.65fr);
-  gap: clamp(36px, 8vw, 112px);
-  align-items: start;
-  max-inline-size: 1440px;
+  gap: clamp(18px, 2.4vw, 40px);
+  align-items: baseline;
+  max-inline-size: var(--jb-page-max-wide);
   margin-inline: auto;
   border-block-end: 1px solid var(--color-line);
-  padding-block-end: clamp(34px, 5vw, 60px);
+  padding-block-end: clamp(30px, 5vw, 48px);
+}
+
+@media (min-width: 1100px) {
+  .intro {
+    grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+  }
 }
 
 .eyebrow {
@@ -29,8 +51,8 @@
   color: var(--color-ink);
   font-size: var(--jb-page-title-size);
   font-weight: 540;
-  letter-spacing: -0.055em;
-  line-height: 1.02;
+  letter-spacing: var(--jb-page-title-tracking);
+  line-height: var(--jb-page-title-leading);
   text-wrap: balance;
 }
 
@@ -38,12 +60,20 @@
   max-inline-size: 61ch;
   margin: 0;
   color: var(--color-ink-muted);
-  font-size: clamp(14px, 1.3vw, 17px);
+  /* The type scale, not a literal — /applications sets the same sentence from
+     this token, and the two ran 17px against 15px. */
+  font-size: var(--jb-type-body-sm);
   line-height: 1.65;
 }
 
 .identityCard {
   border-block-start: 2px solid var(--jb-signal);
+  /*
+   * Opaque on purpose. In the light theme the surface and the canvas are the
+   * same white, so the glass fill left this card with no ground of its own —
+   * it lost its shape and read as loose text under a green rule. A card in the
+   * flow needs to be a card.
+   */
   background: var(--color-surface-subtle);
   padding: 21px;
 }
@@ -88,7 +118,7 @@
   display: grid;
   grid-template-columns: minmax(320px, 0.72fr) minmax(0, 1.28fr);
   gap: clamp(32px, 5vw, 72px);
-  max-inline-size: 1440px;
+  max-inline-size: var(--jb-page-max-wide);
   margin: clamp(38px, 5vw, 68px) auto 0;
 }
 
@@ -122,8 +152,15 @@
 
 .sectionHeading {
   align-items: flex-start;
+  margin-block-end: clamp(18px, 2vw, 26px);
 }
 
+/*
+ * A section heading needs air under it. There were four pixels between this
+ * title and the card below — the descenders very nearly touched the border,
+ * so the two read as one accidental block rather than as a heading and its
+ * content.
+ */
 .sectionHeading h2 {
   margin: 8px 0 0;
   color: var(--color-ink);
@@ -558,7 +595,7 @@
 
 .savedCard h3 {
   margin: 11px 0 0;
-  font-size: 18px;
+  font-size: var(--jb-type-heading-sm);
   font-weight: 620;
   letter-spacing: -0.03em;
 }
@@ -649,24 +686,36 @@
 }
 
 /*
- * The empty state is framed as a placeholder panel with a next step, so the
- * section reads as one block instead of stranded text in an open column.
+ * An empty state is a finished screen, not a slot waiting to be filled.
+ *
+ * The dashed outline said the opposite — it is the idiom of a drop target or a
+ * placeholder, so the page read as unbuilt. And stretched across the full
+ * column it left the text pinned to one corner of a very wide box. A quiet
+ * filled surface at a readable width states the same thing without either
+ * problem.
  */
 .empty {
   display: grid;
+  max-inline-size: 46rem;
   min-block-size: 210px;
   align-content: center;
   justify-items: start;
-  border: 1px dashed var(--color-line-strong);
+  border: 1px solid var(--color-line);
   border-radius: var(--radius-lg);
-  padding: clamp(24px, 4vw, 40px);
+  /*
+   * No colour wash here. The neutral already carries a trace of the accent in
+   * its hue, which is the whole point of the shifted palette — tinting the
+   * surface on top of that reads as a mint block rather than as restraint.
+   */
+  background: var(--color-surface-subtle);
+  padding: clamp(28px, 4vw, 44px);
   color: var(--color-ink-subtle);
 }
 
 .empty h3 {
   margin: 14px 0 7px;
   color: var(--color-ink);
-  font-size: 18px;
+  font-size: var(--jb-type-heading-sm);
 }
 
 .empty p {
@@ -709,7 +758,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  max-inline-size: 1440px;
+  max-inline-size: var(--jb-page-max-wide);
   margin: 18px auto 0;
   border: 1px solid color-mix(in srgb, var(--jb-danger) 34%, var(--color-line));
   border-radius: var(--radius-sm);
@@ -728,13 +777,13 @@
   block-size: 8px;
   border-radius: 50%;
   background: var(--jb-signal);
-  animation: pulse 1.2s ease-in-out infinite alternate;
-}
-
-@keyframes pulse {
-  to {
-    opacity: 0.25;
-  }
+  background:
+    linear-gradient(100deg, transparent 26%, var(--jb-skeleton-sheen) 48%, transparent 72%),
+    var(--jb-skeleton-base);
+  background-size:
+    220% 100%,
+    auto;
+  animation: skeletonSweep 1.4s var(--ease-standard) infinite;
 }
 
 @media (max-width: 900px) {
@@ -768,10 +817,6 @@
     padding-inline: 20px;
   }
 
-  .intro h1 {
-    font-size: clamp(36px, 11vw, 52px);
-  }
-
   .sectionHeading {
     flex-direction: column;
   }
@@ -802,6 +847,26 @@
   .savedActions {
     align-items: stretch;
     flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading span {
+    animation: none;
+  }
+}
+
+@keyframes skeletonSweep {
+  from {
+    background-position:
+      150% 0,
+      0 0;
+  }
+
+  to {
+    background-position:
+      -50% 0,
+      0 0;
   }
 }
 

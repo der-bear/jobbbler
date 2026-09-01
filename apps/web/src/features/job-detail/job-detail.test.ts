@@ -92,7 +92,7 @@ describe("job-detail application entry", () => {
 
   it("tells people when the employer site owns the final application", () => {
     expect(applicationActionLabel(job)).toBe("Apply on employer site");
-    expect(applicationActionLabel({ ...job, applyMode: "internal" })).toBe("Apply");
+    expect(applicationActionLabel({ ...job, applyMode: "internal" })).toBe("Apply for this role");
     expect(externalApplicationUrl(job)).toBe("https://jobs.example.test/opening/42");
     expect(
       externalApplicationUrl({
@@ -241,7 +241,7 @@ describe("job-detail fit explanation", () => {
     const titleIndex = markup.indexOf("Senior Product Engineer");
     const remoteIndex = markup.indexOf(">Remote</span>");
     const locationIndex = markup.indexOf(">Berlin, Germany</span>");
-    const applyIndex = markup.indexOf(">Apply<");
+    const applyIndex = markup.indexOf("Apply for this role");
     expect(backIndex).toBeGreaterThanOrEqual(0);
     expect(titleIndex).toBeGreaterThanOrEqual(0);
     expect(remoteIndex).toBeGreaterThanOrEqual(0);

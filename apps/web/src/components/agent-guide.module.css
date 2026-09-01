@@ -13,10 +13,16 @@
   color: var(--color-ink);
 }
 
+/*
+ * The panel runs one ladder and every rank has to sit below the one above it:
+ * panel title 22, section 18, category 15, tool name 13, gloss 12. The section
+ * heading was set at 15 while the categories listed under it ran at 18, so a
+ * group out-ranked the heading that introduced it.
+ */
 .guide h3 {
-  font-size: var(--jb-type-body-sm);
-  font-weight: 680;
-  letter-spacing: -0.015em;
+  font-size: var(--jb-type-heading-sm);
+  font-weight: 670;
+  letter-spacing: -0.025em;
 }
 
 .promise {
@@ -69,12 +75,22 @@
   font-size: var(--jb-type-label);
 }
 
+/*
+ * The prompt is something you take away and paste, so it reads as a block you
+ * can pick up. A bare rule down its left side made it an indented paragraph —
+ * the same shape a pull quote uses — with the copy button loose underneath.
+ */
 .prompt {
   display: grid;
-  gap: 10px;
-  margin: 2px 0 0;
+  gap: 12px;
+  margin: 4px 0 0;
+  border: 1px solid var(--color-line);
   border-inline-start: 2px solid var(--jb-signal);
-  padding: 3px 0 3px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--jb-glass-fill-strong);
+  backdrop-filter: var(--jb-glass-blur);
+  -webkit-backdrop-filter: var(--jb-glass-blur);
+  padding: 14px 15px;
 }
 
 .promptText {
@@ -101,18 +117,33 @@
   align-content: start;
 }
 
+/*
+ * These lists were rendering with no marker at all, so they read as loose
+ * indented sentences. A short dash in the accent is the least a list can have
+ * and still be one.
+ */
 .guideColumns ul {
   display: grid;
   gap: 6px;
   margin: 0;
-  padding-inline-start: 15px;
+  list-style: none;
+  padding-inline-start: 0;
   color: var(--color-ink-muted);
   font-size: var(--jb-type-label);
   line-height: 1.5;
 }
 
-.guideColumns li::marker {
-  color: var(--color-line-strong);
+.guideColumns li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.guideColumns li::before {
+  content: "";
+  margin-block-start: 0.62em;
+  block-size: 1px;
+  background: color-mix(in srgb, var(--jb-signal) 55%, var(--color-line-strong));
 }
 
 .panelNote {
@@ -210,9 +241,14 @@
   gap: 2px;
 }
 
+/*
+ * The category names the group; it sits one step under the section heading and
+ * one step over the tool names inside it.
+ */
 .groupHeading strong {
   color: var(--color-ink);
-  font-size: var(--jb-type-label);
+  font-size: var(--jb-type-body-sm);
+  letter-spacing: -0.015em;
   font-weight: 670;
 }
 
@@ -225,16 +261,26 @@
   white-space: nowrap;
 }
 
+/*
+ * A count, not a code. Set in the monospace face at label size it read as
+ * something you could type, and the pill stood as tall as the tool names
+ * beside it — a running total does not need that much of the eye.
+ */
 .groupCount {
   display: grid;
-  min-inline-size: 24px;
-  min-block-size: 24px;
+  min-inline-size: 20px;
+  min-block-size: 20px;
   place-items: center;
   border-radius: var(--radius-pill);
   background: var(--color-surface-subtle);
-  color: var(--color-ink-muted);
-  font-family: var(--jb-font-mono);
+  /*
+   * The ratio was already fine at 5.2:1 — what made the number hard to read was
+   * its weight: twelve pixels of regular monospace inside a pale pill. Size and
+   * weight do the work here, not more colour.
+   */
+  color: var(--color-ink);
   font-size: var(--jb-type-caption);
+  font-weight: 650;
 }
 
 .capabilityGroup[open] .groupCount {
@@ -271,20 +317,27 @@
   font-weight: 620;
 }
 
+/*
+ * The tool name is the entry, its sentence is the gloss — the hierarchy was
+ * the other way round. The name sat in muted grey at twelve pixels while the
+ * description under it ran larger and darker, so the list read as prose with
+ * a label attached rather than as a catalogue of names.
+ */
 .guide code {
   overflow: hidden;
-  color: var(--color-ink-muted);
+  color: var(--color-ink);
   font-family: var(--jb-font-mono);
-  font-size: var(--jb-type-caption);
+  font-size: var(--jb-type-label);
+  font-weight: 650;
   line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .toolList p {
-  margin: 1px 0 0;
+  margin: 3px 0 0;
   color: var(--color-ink-muted);
-  font-size: var(--jb-type-ui);
+  font-size: var(--jb-type-caption);
   line-height: 1.5;
 }
 
@@ -295,20 +348,33 @@
   font-weight: 650;
 }
 
+/*
+ * A control, drawn as one. It was a bare green line of text carrying a 44px
+ * tap target, so it sat in a block of empty space with nothing to explain the
+ * gap — it read as misaligned rather than as a button. Same secondary shape
+ * the rest of the product uses.
+ */
 .moreLink {
   display: inline-flex;
   align-items: center;
   justify-self: start;
   gap: 7px;
-  min-block-size: 44px;
-  color: var(--color-signal-strong);
+  min-block-size: 40px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+  color: var(--color-ink);
+  padding: 8px 14px;
   font-size: var(--jb-type-label);
   font-weight: 630;
   text-decoration: none;
+  transition:
+    background var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
 }
 
 .moreLink:hover {
-  text-decoration: underline;
+  background: color-mix(in srgb, var(--jb-signal-tint) 10%, var(--color-surface-subtle));
 }
 
 .moreLink:focus-visible {

@@ -67,7 +67,13 @@ export function createSearchJobsCommand(
         jobs: summaries,
         total: page.total,
         nextCursor: page.nextCursor,
-        catalogUpdatedAt: page.catalogUpdatedAt ?? now.toISOString(),
+        /*
+         * Passed through untouched. Coalescing an unknown timestamp to `now`
+         * turned "we do not know" into "just updated" — a freshness claim the
+         * product cannot support, shown precisely when a search returns
+         * nothing and the person is already wondering whether it works.
+         */
+        catalogUpdatedAt: page.catalogUpdatedAt,
         warnings: [],
       });
     },

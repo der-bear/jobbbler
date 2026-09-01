@@ -1,4 +1,14 @@
 :root {
+  /*
+   * Neutrals sit in the accent's hue family, not beside it.
+   *
+   * They used to be warm — hue 45–60°, inherited from a Notion-like palette —
+   * while the signal is green at 141°. An 80–90° gap is what makes a grey
+   * surface look dirty over a green wash: the eye reads a yellow patch on a
+   * green field. Every neutral below is the same lightness it was, moved to
+   * 145° at very low saturation. Individually the shift is invisible;
+   * together the page finally reads as one palette.
+   */
   --jb-font-ui: var(--font-manrope, Manrope, ui-sans-serif, system-ui, sans-serif);
   --jb-font-mono: var(--font-ibm-plex-mono, ui-monospace, "SFMono-Regular", monospace);
   /*
@@ -11,20 +21,29 @@
   --jb-type-ui: 0.875rem;
   --jb-type-body-sm: 0.9375rem;
   --jb-type-body: 1rem;
+  /*
+   * The scale used to stop at 16px, so every section heading invented its own
+   * size — 17, 18, 19 and 22 appeared across eleven rules in nine files. These
+   * three steps close the gap between body copy and the page title, which is
+   * where headings actually live.
+   */
+  --jb-type-heading-sm: 1.125rem;
+  --jb-type-heading: 1.375rem;
+  --jb-type-heading-lg: 1.625rem;
   --jb-canvas: #ffffff;
   --jb-surface: #ffffff;
-  --jb-surface-muted: #f6f6f4;
-  --jb-surface-strong: #ececea;
-  --jb-text: #37352f;
-  --jb-text-muted: #6b6a65;
-  --jb-border: #e9e9e7;
-  --jb-border-strong: #94938e;
-  --jb-signal: #1e6a39;
-  --jb-signal-strong: #15532d;
+  --jb-surface-muted: #f8faf9;
+  --jb-surface-strong: #eef2f0;
+  --jb-text: #303633;
+  --jb-text-muted: #646c67;
+  --jb-border: #e6eae8;
+  --jb-border-strong: #8c9790;
+  --jb-signal: #107f3e;
+  --jb-signal-strong: #0b6531;
   --jb-signal-contrast: #ffffff;
   --jb-danger: #a63c35;
   --jb-warning: #8a5d10;
-  --jb-focus: #0b6f47;
+  --jb-focus: #0b6f37;
   --jb-focus-width: 2px;
   --jb-focus-offset: 2px;
   /*
@@ -34,10 +53,16 @@
    */
   --jb-signal-disabled: #e4eae6;
   --jb-signal-disabled-contrast: #55625b;
+  /* Overlay scrim and its shadow, so no component paints its own black. */
+  --jb-scrim: rgb(12 24 16 / 52%);
+  --jb-scrim-shadow: rgb(0 0 0 / 0.25);
   --jb-radius-sm: 4px;
   --jb-radius-md: 8px;
   --jb-radius-lg: 12px;
   --jb-radius-pill: 999px;
+  /* The ink shadows are cast in — green-leaning, so they do not grey the
+     tinted ground they fall on. */
+  --jb-signal-shadow: #142218;
   --jb-shadow-raised: 0 12px 32px rgb(20 34 24 / 12%);
   --jb-toast-bg: #242521;
   --jb-toast-text: #ffffff;
@@ -45,9 +70,74 @@
   --jb-toast-success: #8be2a8;
   --jb-toast-warning: #ffd27c;
   --jb-toast-danger: #ffaaa0;
+  /*
+   * One page geometry for the whole product.
+   *
+   * Sibling pages had drifted apart on every measurable axis — /saved ran a
+   * 1440px fluid column at a 72px gutter, /applications a fixed 1040px at 66,
+   * and their titles disagreed on letter-spacing and line-height as well. The
+   * tokens below are the single source for all of it.
+   */
+  /*
+   * A vertical rhythm, so gaps stop being invented per block. The detail
+   * header ran 12 / 6 / 26 between its own four elements — no relationship
+   * between any two of them. These four steps cover everything from a label
+   * over its value to one section against the next.
+   */
+  --jb-rhythm-1: 8px;
+  --jb-rhythm-2: 16px;
+  --jb-rhythm-3: clamp(22px, 2.4vw, 30px);
+  --jb-rhythm-4: clamp(34px, 4vw, 52px);
+  --jb-page-max: 1240px;
+  --jb-page-max-wide: 1440px;
+  /*
+   * The same inset the shell uses for the wordmark and the copyright line, so
+   * content sits on the brand's own spine. Pages had drifted to 29, 52, 72, 100
+   * and 118 — and the filter rail at 29 actually overhung the logo, the one
+   * element in the product sticking out past its own mark.
+   */
+  --jb-page-gutter: clamp(20px, 3vw, 48px);
+  --jb-page-top: clamp(34px, 5vw, 72px);
+  --jb-page-bottom: 96px;
   --jb-page-title-size: clamp(2.25rem, 4.2vw, 3.25rem);
-  --jb-duration-fast: 140ms;
-  --jb-duration-base: 180ms;
+  --jb-page-title-tracking: -0.055em;
+  --jb-page-title-leading: 1.02;
+  /*
+   * Two steps that are actually distinguishable. 140 and 180 sat close enough
+   * together that a panel moved at the speed of a checkbox and read as a jump.
+   * Both stay well under the ~350ms where motion starts to feel sluggish.
+   */
+  /*
+   * One loading fill for the whole product. The sheen carries a trace of the
+   * signal so a skeleton sitting in the canvas wash belongs to it rather than
+   * reading as a grey patch laid on green.
+   */
+  /*
+   * The canvas wash carries different weight per theme. Low-alpha green over
+   * white turns grey-green — the muddiness reads as a stain rather than as
+   * light — so the light theme runs the lights and the grain far quieter than
+   * dark, where the same colour sits cleanly against a dark ground.
+   */
+  /*
+   * A separate green for tints, and it has to be a light one.
+   *
+   * `--jb-signal` is deep enough to carry text on white, and mixing that into
+   * a near-white surface produces olive — the colour reads as dirt rather than
+   * as a tint. This one is bright and clean at high lightness, so 3–6% of it
+   * lifts a surface without dulling it. It is never used for text.
+   */
+  --jb-signal-tint: #4fd88f;
+  --jb-canvas-light-opacity: 0.085;
+  --jb-canvas-grain-opacity: 0.13;
+  /*
+   * A loading screen is mostly these bars, so a neutral grey is the one time
+   * the product shows a colour that is not its own. Tinted, they read as the
+   * page arriving rather than as placeholder chrome.
+   */
+  --jb-skeleton-base: color-mix(in srgb, var(--jb-signal-tint) 8%, var(--jb-surface-muted));
+  --jb-skeleton-sheen: color-mix(in srgb, var(--jb-signal-tint) 12%, var(--jb-surface-strong));
+  --jb-duration-fast: 130ms;
+  --jb-duration-base: 220ms;
   --jb-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 
   --color-canvas: var(--jb-canvas);
@@ -80,16 +170,19 @@
 }
 
 :root[data-theme="dark"] {
-  --jb-canvas: #191919;
-  --jb-surface: #1f1f1f;
-  --jb-surface-muted: #262625;
-  --jb-surface-strong: #333330;
-  --jb-text: #e8e8e6;
-  --jb-text-muted: #a3a29e;
-  --jb-border: #333331;
-  --jb-border-strong: #6f6f6b;
-  --jb-signal: #70c98e;
-  --jb-signal-strong: #8adba5;
+  --jb-canvas: #181a19;
+  --jb-signal-tint: #6ee0a2;
+  --jb-canvas-light-opacity: 0.15;
+  --jb-canvas-grain-opacity: 0.55;
+  --jb-surface: #1e201f;
+  --jb-surface-muted: #242725;
+  --jb-surface-strong: #2f3431;
+  --jb-text: #e6e8e7;
+  --jb-text-muted: #9ea3a0;
+  --jb-border: #2e3531;
+  --jb-border-strong: #67726c;
+  --jb-signal: #66d695;
+  --jb-signal-strong: #91e3b3;
   --jb-signal-contrast: #102116;
   --jb-danger: #ff9b91;
   --jb-warning: #f5c46f;

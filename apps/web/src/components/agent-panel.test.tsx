@@ -56,7 +56,9 @@ describe("AgentPanelSurface", () => {
     expect(markup).toContain(
       "Start a task in a compatible agent client. Each Jobbbler tool call will appear here.",
     );
-    expect(markup).toContain("Open guide");
+    /* The Guide tab in the header is the route there; a button beside it was a
+       second control for the same destination. */
+    expect(markup).not.toContain("Open guide");
   });
 
   it("keeps the full catalog visible without claiming tools are active while registration prepares", () => {

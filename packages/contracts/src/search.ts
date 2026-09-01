@@ -101,7 +101,13 @@ export const searchJobsResultSchema = z.strictObject({
   jobs: z.array(jobSummarySchema),
   total: z.number().int().nonnegative(),
   nextCursor: z.string().max(256).nullable(),
-  catalogUpdatedAt: z.iso.datetime({ offset: true }),
+  /*
+   * Nullable, because an empty result set genuinely has no catalog timestamp.
+   * The worker, the latest-run schema and the storage port all already model
+   * it that way; only this outward contract insisted on a value, which forced
+   * the command to invent one.
+   */
+  catalogUpdatedAt: z.iso.datetime({ offset: true }).nullable(),
   warnings: z.array(z.string().max(240)).max(12),
 });
 

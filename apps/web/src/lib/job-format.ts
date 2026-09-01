@@ -138,11 +138,22 @@ export function deviatingEmploymentLabel(value: EmploymentType): string | null {
  * it ("… Monitoring (Part-Time)") sheds the suffix. That parenthetical is also
  * what pushed titles past the truncation boundary on narrow screens.
  */
-export function titleWithoutEmploymentSuffix(title: string, value: EmploymentType): string {
+export function titleWithoutEmploymentSuffix(title: string, value?: EmploymentType): string {
   if (value === "full_time") return title;
-  const label = employmentLabels[value].replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
-  const stripped = title.replace(new RegExp(`\\s*\\(\\s*${label}\\s*\\)\\s*$`, "iu"), "").trim();
-  return stripped.length > 0 ? stripped : title;
+  /*
+   * The employment type is optional because not every surface carries it: the
+   * applications list, for one, holds only the stored title. Without it the
+   * suffix is matched against every known label instead, which strips the same
+   * parenthetical and keeps one role named one way across the whole product.
+   */
+  const candidates =
+    value === undefined ? Object.values(employmentLabels) : [employmentLabels[value]];
+  for (const candidate of candidates) {
+    const label = candidate.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+    const stripped = title.replace(new RegExp(`\\s*\\(\\s*${label}\\s*\\)\\s*$`, "iu"), "").trim();
+    if (stripped !== title.trim() && stripped.length > 0) return stripped;
+  }
+  return title;
 }
 
 function amount(value: number, currency: string, compact: boolean): string {

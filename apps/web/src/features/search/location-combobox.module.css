@@ -59,7 +59,9 @@
   overflow: hidden;
   border: 1px solid var(--color-line-strong);
   border-radius: var(--jb-radius-md);
-  background: var(--color-surface);
+  background: var(--jb-glass-float);
+  backdrop-filter: var(--jb-glass-blur-float);
+  -webkit-backdrop-filter: var(--jb-glass-blur-float);
   box-shadow: var(--shadow-floating);
 }
 

@@ -1,8 +1,9 @@
 .workspace,
 .state {
+  container: article / inline-size;
   max-inline-size: 1120px;
   margin-inline: auto;
-  padding: clamp(32px, 5vw, 76px) clamp(20px, 4vw, 52px) 88px;
+  padding: var(--jb-page-top) var(--jb-page-gutter) var(--jb-page-bottom);
 }
 
 .identity,
@@ -27,7 +28,7 @@
 .titleRow h1,
 .state h1 {
   max-inline-size: 17ch;
-  margin: 12px 0 6px;
+  margin: var(--jb-rhythm-3) 0 var(--jb-rhythm-1);
   color: var(--color-ink);
   font-size: clamp(34px, 5vw, 64px);
   font-weight: 540;
@@ -49,7 +50,13 @@
 .skeleton span {
   display: block;
   border-radius: var(--radius-sm);
-  background: var(--color-surface-subtle);
+  background:
+    linear-gradient(100deg, transparent 26%, var(--jb-skeleton-sheen) 48%, transparent 72%),
+    var(--jb-skeleton-base);
+  background-size:
+    220% 100%,
+    auto;
+  animation: skeletonSweep 1.4s var(--ease-standard) infinite;
 }
 
 .skeletonTitle {
@@ -95,7 +102,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 7px 18px;
-  margin-block: 26px 0;
+  margin-block: var(--jb-rhythm-3) 0;
   color: var(--color-ink-muted);
   font-size: var(--jb-type-label);
 }
@@ -120,15 +127,154 @@
   font-weight: 650;
 }
 
-.description {
-  max-inline-size: 78ch;
-  margin-block-start: clamp(32px, 5vw, 52px);
+/*
+ * The conversion note travels with the salary, so it uses tokens rather than
+ * literals and reads correctly in both themes without a second rule.
+ */
+.salaryNote {
+  max-inline-size: 62ch;
+  margin: 10px 0 0;
+  color: var(--color-ink-muted);
+  font-size: var(--jb-type-caption);
+  line-height: 1.5;
 }
 
+/*
+ * Above 1180px the role splits into a reading column and a facts rail.
+ *
+ * The prose was capped at a comfortable measure while its section still
+ * claimed the full width, so roughly four hundred pixels sat empty beside
+ * every paragraph for the length of the page. The facts and the apply action
+ * now occupy that space and stay in view while the description is read.
+ * Below the breakpoint they return above the text, which is the right order
+ * on a phone.
+ */
+/*
+ * Above 1180px the role becomes a reading column with a facts rail beside it.
+ *
+ * The prose is capped at a comfortable measure, so the section around it was
+ * carrying four hundred empty pixels down the length of the page while skills
+ * and provenance sat in full-width bands below the fold. Moving them into the
+ * rail fills that space with the things a reader actually cross-checks while
+ * reading, and keeps them in view. Below the breakpoint everything stacks in
+ * the original order.
+ */
+.article {
+  display: grid;
+  gap: clamp(30px, 4vw, 60px);
+  /*
+   * The identity block above already ends with its own 48px of padding, so a
+   * second full-sized margin here stacked to 105px between the apply button
+   * and the first heading.
+   */
+  margin-block-start: clamp(14px, 1.6vw, 22px);
+}
+
+/*
+ * The rail needs room, and the viewport is not what supplies it.
+ *
+ * A plain viewport query kept the two-column layout at 1440 even with the
+ * agent panel open, where the article had 974px and spent it on one
+ * column whose prose is capped at 53ch, so a third of it stood empty. The container
+ * query measures what the article has been given, so opening the panel folds
+ * the rail away on its own. The viewport guard on top of it is the second
+ * condition the user asked for: below 1280 the role reads as one column even
+ * when nothing else is competing for the width.
+ */
+@media (min-width: 1280px) {
+  @container article (min-width: 900px) {
+    .article {
+      grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
+      align-items: start;
+    }
+
+    .articleAside {
+      position: sticky;
+      inset-block-start: calc(var(--app-header-height, 68px) + 28px);
+      display: grid;
+      gap: clamp(24px, 3vw, 36px);
+    }
+
+    /* In the rail these stop being full-width bands. */
+    .articleAside .roleFacts,
+    .articleAside .provenanceSection {
+      grid-template-columns: 1fr;
+      gap: 14px;
+      padding-block: 0;
+      border-block-end: 0;
+    }
+
+    /*
+     * Stacked in a narrow rail the two blocks would run together, so the second
+     * one takes a rule above it. In the wide layout each section already had its
+     * own bottom border doing that job.
+     */
+    .articleAside .provenanceSection {
+      border-block-start: 1px solid var(--color-line);
+      padding-block-start: clamp(20px, 2.4vw, 28px);
+    }
+
+    .articleAside .provenanceList {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .articleAside .sourceNote {
+      grid-column: auto;
+    }
+  }
+}
+
+/*
+ * The description sits inside the identity block, not inside `.article`, so it
+ * carries its own separation from the apply button above it. Losing this left
+ * a 34px heading pressed directly against a button.
+ */
+.articleMain {
+  display: grid;
+  gap: clamp(28px, 4vw, 46px);
+  min-inline-size: 0;
+}
+
+/*
+ * Without the rail, the role reads as a band: the heading sits in the label
+ * column and the prose in the content column, exactly like Skills and About
+ * this posting below it. Left as a plain block it was a 730px column of text
+ * with four hundred empty pixels beside it, on a page whose other two sections
+ * were already using that width — the same section shape, three different
+ * layouts. The rail layout overrides this back to a block, where the column is
+ * narrow enough that a label band would not fit.
+ */
+.description {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(0, 1.7fr);
+  gap: 34px;
+}
+
+/*
+ * In the rail layout the reading column is ~616px — a label band has no room
+ * there, so the description goes back to a plain block. This has to sit after
+ * the base rule above: declared as part of the earlier block it was overridden
+ * straight back to a grid, and the band turned up inside the narrow column.
+ */
+@media (min-width: 1280px) {
+  @container article (min-width: 900px) {
+    .description {
+      display: block;
+      max-inline-size: 78ch;
+    }
+  }
+}
+
+/*
+ * The description is the page. Its heading was set at 28px while "Skills" and
+ * "About this posting" — the two least consequential blocks — ran at 34px, so
+ * the metadata out-ranked the job itself.
+ */
 .description h2 {
   margin: 0 0 18px;
   color: var(--color-ink);
-  font-size: clamp(20px, 2.4vw, 28px);
+  font-size: clamp(23px, 3vw, 34px);
   font-weight: 560;
   letter-spacing: -0.035em;
 }
@@ -159,8 +305,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 16px 24px;
-  margin-block-start: 28px;
+  gap: var(--jb-rhythm-2) 24px;
+  margin-block-start: var(--jb-rhythm-4);
 }
 
 .backLink,
@@ -187,7 +333,7 @@
   border-radius: var(--radius-sm);
   padding: 8px 13px;
   color: var(--jb-signal-contrast);
-  background: var(--jb-signal);
+  background: var(--jb-signal-gradient);
   cursor: pointer;
 }
 
@@ -228,7 +374,7 @@
 .provenanceSection h2 {
   margin: 8px 0 0;
   color: var(--color-ink);
-  font-size: clamp(23px, 3vw, 34px);
+  font-size: clamp(20px, 2.4vw, 28px);
   font-weight: 560;
   letter-spacing: -0.05em;
 }
@@ -356,7 +502,7 @@
 }
 
 .state {
-  min-block-size: calc(100dvh - 69px);
+  min-block-size: calc(100dvh - var(--app-header-height, 68px) - var(--app-footer-height, 68px));
 }
 
 .state h1 {
@@ -375,6 +521,7 @@
     text-align: start;
   }
 
+  .description,
   .evidenceGrid,
   .roleFacts,
   .provenanceSection {
@@ -390,5 +537,25 @@
 @media (max-width: 500px) {
   .provenanceList {
     grid-template-columns: 1fr;
+  }
+}
+
+@keyframes skeletonSweep {
+  from {
+    background-position:
+      150% 0,
+      0 0;
+  }
+
+  to {
+    background-position:
+      -50% 0,
+      0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton span {
+    animation: none;
   }
 }

@@ -103,9 +103,10 @@
   outline-offset: var(--jb-focus-offset);
 }
 
+/* A fill states the control; the outline around it was one line doing nothing. */
 .form button {
   min-block-size: 39px;
-  border: 1px solid var(--color-line-strong);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: var(--color-ink);
   color: var(--color-surface);
@@ -135,14 +136,20 @@
   color: var(--color-ink-muted);
 }
 
+/*
+ * The divider stays neutral. A rust-coloured rule above a section heading
+ * reads as an error state on a page where nothing has gone wrong — the danger
+ * colour belongs on the button that performs the destructive act, not on the
+ * furniture around it.
+ */
 .danger {
-  border-block-start-color: color-mix(in srgb, var(--jb-danger) 40%, var(--color-line));
+  border-block-start-color: var(--color-line);
 }
 
 .danger .form button:not(.quiet) {
   border-color: var(--jb-danger);
   background: var(--jb-danger);
-  color: white;
+  color: var(--jb-signal-contrast);
 }
 
 .danger .form button:disabled:not(.quiet) {
