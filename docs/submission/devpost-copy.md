@@ -25,10 +25,10 @@ agent opens Jobbbler — a complete, conventional job portal that works fine
 without any agent — and discovers what the site can do on its own. No separate
 MCP server is installed or declared.
 
-The site describes itself instead of making the agent guess. Its global Agent
-layer is available from every page, so an agent can safely start a search,
-open a role, or navigate to the relevant workspace before it uses contextual
-tools. The agent reads the accepted filter vocabulary through
+The site describes itself instead of making the agent guess. Its global agent
+activity panel is available from every page, so an agent can safely start a
+search, open a role, or navigate to the relevant workspace before it uses
+contextual tools. The agent reads the accepted filter vocabulary through
 `get_search_filters`, composes a valid search with `search_jobs`, and the
 visible URL, filters, and results update on the real page. The search is saved
 once; after the tab closes, Jobbbler's own server keeps checking on schedule —
@@ -108,7 +108,7 @@ server requests without claiming identity proof.
 
 `plan_job_workflow` is an optional advisory tool. It returns recommended safe
 steps for the agent's current Jobbbler context and is advisory only — it plans, it
-never acts. The global Agent layer makes the same story visible to people in a
+never acts. The global agent activity panel makes the same story visible to people in a
 plain hierarchy: Activity shows what happened, Tools groups the discoverable
 capabilities, and Guide explains how to begin from an external agent client.
 `get_search_state` also makes bounded output honest by explicitly reporting
@@ -215,7 +215,7 @@ request; an incompatible pending grant is withdrawn and replaced.
   while preserving the separate assistance and final-submission decisions.
 - Search, comparison, saved searches, and a managed fictional application
   connect into one coherent journey.
-- The global Agent layer — Activity, Tools, and Guide — makes tool work
+- The global agent activity panel — Activity, Tools, and Guide — makes tool work
   understandable without turning the portal into a developer console.
 - Progressive identity and verified-email alerts preserve a low-friction start
   while supporting durable ownership.

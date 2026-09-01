@@ -53,7 +53,11 @@ import { searchInputToSearchParams, searchParamsToInput } from "@/lib/search-url
 import { publishSearchSurfaceState, subscribeWebMcpSearchCommit } from "@/lib/webmcp-ui-bridge";
 
 import { CurrencySelector, isDisplayCurrency, type DisplayCurrency } from "./currency-selector";
-import { defaultSearch, type InitialSearchState } from "./initial-search-state";
+import {
+  defaultSearch,
+  invalidSearchFiltersMessage,
+  type InitialSearchState,
+} from "./initial-search-state";
 import { LocationCombobox } from "./location-combobox";
 
 import styles from "./search-workspace.module.css";
@@ -760,7 +764,7 @@ export function SearchWorkspace({
       } catch {
         activeSearch.current?.abort();
         requestSequence.current += 1;
-        setError("Some search filters are invalid. Adjust them and search again.");
+        setError(invalidSearchFiltersMessage);
         setStatus("error");
       }
     };
@@ -848,6 +852,14 @@ export function SearchWorkspace({
     setDraft((current) => ({ ...current, sort }));
     void runSearch(next, "push");
   }
+
+  function clearInvalidFilters() {
+    setApplied(defaultSearch);
+    setDraft(draftFromInput(defaultSearch));
+    void runSearch(defaultSearch, "replace");
+  }
+
+  const invalidFilters = error === invalidSearchFiltersMessage;
 
   return (
     <div className={styles["workspace"]} data-landing={String(presentation.landing)}>
@@ -953,15 +965,18 @@ export function SearchWorkspace({
               <p>{error}</p>
             </div>
             <button
-              onClick={() =>
-                failedPageCursor === null
-                  ? void runSearch(applied, "replace")
-                  : void loadMore(failedPageCursor)
-              }
+              onClick={() => {
+                if (invalidFilters) {
+                  clearInvalidFilters();
+                  return;
+                }
+                if (failedPageCursor === null) void runSearch(applied, "replace");
+                else void loadMore(failedPageCursor);
+              }}
               type="button"
             >
-              <ArrowClockwiseIcon aria-hidden="true" size={16} />
-              Retry
+              {invalidFilters ? null : <ArrowClockwiseIcon aria-hidden="true" size={16} />}
+              {invalidFilters ? "Clear filters" : "Retry"}
             </button>
           </div>
         ) : null}

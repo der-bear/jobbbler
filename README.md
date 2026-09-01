@@ -9,7 +9,8 @@ same filters, and still risk missing the one meaningful change — a new role, a
 salary revision, a posting that quietly closed.
 
 Jobbbler answers that with a plain, typography-first job portal for technology
-roles: search, filters, saved alerts, and one deliberate application at a time.
+roles: search, filters, saved searches with optional email updates, and one
+deliberate application at a time.
 Describe what you want once, in plain words, to a compatible browser agent; the
 agent runs the search on the real site, the server keeps checking after you
 close the page, and the next answer contains only what changed. When it is time
@@ -19,9 +20,9 @@ decision bound to that unchanged application. The ordinary site remains a
 complete manual alternative and a readable record of what was submitted.
 
 The technology that makes this possible is WebMCP — no separately installed or
-declared MCP server. A global Agent layer is available on every page: the same
-29 focused tools stay discoverable across navigation, while private and
-workflow-specific actions enforce IDs, ownership, and state when executed.
+declared MCP server. A global agent activity panel is available on every page:
+the same 29 focused tools stay discoverable across navigation, while private
+and workflow-specific actions enforce IDs, ownership, and state when executed.
 
 > Not an AI job board. A proof that any data-rich website can become safely
 > operable by an external browser agent — without a separate MCP server,
@@ -36,14 +37,14 @@ Built for the OpenAI WebMCP Challenge.
   salary semantics, known limits, and search-fit evidence stay visible in the
   interface. Salary ranking is currency-aware (EUR, USD, GBP, and CAD at pinned
   rates) and explains itself with evidence strings.
-- **Global agent layer.** Twenty-nine focused tools for search, roles,
-  comparison, saved alerts, and applications — all registered on every page,
-  so navigation never costs an agent a capability. State-gated tools answer
-  with a clear next step when
+- **Global agent activity.** Twenty-nine focused tools for search, roles,
+  comparison, saved searches, optional updates, and applications — all
+  registered on every page, so navigation never costs an agent a capability.
+  State-gated tools answer with a clear next step when
   their moment has not arrived, and the site describes itself — an agent can
   read accepted filter vocabulary and request a safe workflow instead of
   guessing.
-- **Observable agent work.** The Agent layer uses a clear **Activity**,
+- **Observable agent work.** The agent activity panel uses a clear **Activity**,
   **Tools**, **Guide** hierarchy. It shows readiness, the current tools, and
   human-readable activity without taking over the normal portal. Every activity
   entry leads with a human sentence, followed by the tool name, status, and
@@ -72,10 +73,10 @@ Built for the OpenAI WebMCP Challenge.
 
 ## Product tour
 
-| Find once                                                                                                                          | Stay updated                                                                            | Apply with control                                                                                                                     |
-| ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Search and live filters — chips, multi-selects, and a minimum-salary selector — with every result opening as a readable role page. | Save the exact query, preview the timing, verify your email, and see only what changed. | Review one exact document-like draft on the visible owner surface; the sealed payload submits exactly once after the bound decision.   |
-| Evidence, trade-offs, and source freshness stay on the role page.                                                                  | Pause or resume checking without exposing an address or credential to WebMCP.           | Agent-prepared answers keep their provenance; assisted drafts are read-only on the site and revised through the external agent client. |
+| Find once                                                                                                                          | Stay updated                                                                        | Apply with control                                                                                                                     |
+| ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Search and live filters — chips, multi-selects, and a minimum-salary selector — with every result opening as a readable role page. | Save the exact query; optionally add verified email updates; see only what changed. | Review one exact document-like draft on the visible owner surface; the sealed payload submits exactly once after the bound decision.   |
+| Evidence, trade-offs, and source freshness stay on the role page.                                                                  | Pause or resume checking without exposing an address or credential to WebMCP.       | Agent-prepared answers keep their provenance; assisted drafts are read-only on the site and revised through the external agent client. |
 
 ## WebMCP surface
 

@@ -25,6 +25,6 @@ with the same global 29-tool Agent activity panel used by the submission story.
   tools, secrets, real applicants, or real employer branding.
 - Keep synthetic organization names visible where a demo application is shown.
 - Verify that each image corresponds to a feature currently available in the
-  submitted build — including the global Agent layer and its current three-tab
+  submitted build — including the global agent activity panel and its current three-tab
   hierarchy.
 - Re-read every caption and alt text against the images before upload.

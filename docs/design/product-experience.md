@@ -152,9 +152,9 @@ workspace and not a source of authority.
   approval, and failures surface automatically.
 - The Tools tab shows all 29 tools grouped by outcome and explains that private
   actions still require an owned draft and the correct stage.
-- The Guide tab offers “Try it in 10 seconds”, the suggested workflows, and a
-  note that `plan_job_workflow` serves the same plans to agents — advisory
-  only.
+- The Guide tab starts with “Start in your agent chat”, the suggested
+  workflows, and a note that `plan_job_workflow` serves the same plans to
+  agents — advisory only.
 - Summaries stay redacted and never expose reusable credentials or private
   payloads. Owner activity is a near-real-time projection; the authoritative
   result is always the regular API response and persisted domain state.

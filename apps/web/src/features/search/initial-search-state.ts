@@ -5,6 +5,9 @@ export const defaultSearch: JobSearchInput = {
   limit: 20,
 };
 
+export const invalidSearchFiltersMessage =
+  "Some search filters are invalid. Adjust them and search again.";
+
 export interface InitialSearchState {
   readonly input: JobSearchInput;
   readonly result: SearchJobsResult | null;

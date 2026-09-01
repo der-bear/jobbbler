@@ -18,9 +18,9 @@
 
 - [ ] Verify WebMCP in a supported browser context using the real registered
       tools.
-- [ ] Verify the global Agent layer on more than one route: the same 29 focused
-      imperative tools stay registered everywhere, and state-gated tools
-      answer with a clear next step when they are not ready.
+- [ ] Verify the global agent activity panel on more than one route: the same
+      29 focused imperative tools stay registered everywhere, and state-gated
+      tools answer with a clear next step when they are not ready.
 - [ ] Record actual registration/readiness, tool activity, search, compare,
       saved alert, and application boundaries.
 - [ ] Demonstrate the agent-native alert pair from the external client:
@@ -78,7 +78,7 @@
 
 - [ ] Keep final video below three minutes, with intelligible audio and
       visible UI at normal playback speed.
-- [ ] Confirm gallery screenshots show the current global Agent layer — the
+- [ ] Confirm gallery screenshots show the current global agent activity panel — the
       Activity / Tools / Guide tab order, current readiness state, and Tools
       groups Find / Inspect and compare / Alerts / Apply — not an older rail.
 - [ ] Re-run `pnpm verify`, the focused E2E suite, and the local PostgreSQL

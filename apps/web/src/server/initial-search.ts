@@ -9,6 +9,7 @@ import {
 
 import {
   defaultSearch,
+  invalidSearchFiltersMessage,
   type InitialSearchState,
   type PageSearchParams,
 } from "@/features/search/initial-search-state";
@@ -61,7 +62,7 @@ export async function loadInitialSearch(
     return {
       input: defaultSearch,
       result: null,
-      error: "Some search filters are invalid. Adjust them and search again.",
+      error: invalidSearchFiltersMessage,
     };
   }
 

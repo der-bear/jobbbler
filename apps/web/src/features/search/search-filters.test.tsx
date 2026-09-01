@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
+import { invalidSearchFiltersMessage } from "./initial-search-state";
 import { SearchWorkspace } from "./search-workspace";
 
 const initialSearch = {
@@ -42,5 +43,20 @@ describe("SearchFilters", () => {
     expect(markup).not.toContain("Save alert");
     expect(markup).toContain("Recently updated");
     expect(markup).toContain("Salary: low to high");
+  });
+
+  it("offers a useful reset instead of retrying an invalid URL forever", () => {
+    const markup = renderToStaticMarkup(
+      <SearchWorkspace
+        initialSearch={{
+          ...initialSearch,
+          error: invalidSearchFiltersMessage,
+        }}
+        mode="catalog"
+      />,
+    );
+
+    expect(markup).toContain("Clear filters");
+    expect(markup).not.toContain(">Retry<");
   });
 });
