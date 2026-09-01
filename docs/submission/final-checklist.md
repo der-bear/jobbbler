@@ -88,6 +88,9 @@
       contract suite on the final code revision and record the fresh numbers:
       934 deterministic tests, 42/42 browser journeys, and 103/103 PostgreSQL
       contract tests on the 1 September release candidate.
+- [x] Build the web and worker Docker targets from a clean isolated context;
+      verify that both runtime images use the non-root `jobbbler` user and that
+      the worker image contains the checked-in PostgreSQL and SQLite migrations.
 - [x] Validate gallery image crops, captions, alt text, dimensions, and
       file-size limits on Devpost.
 - [ ] Recapture all four gallery crops on the final interface, then revalidate

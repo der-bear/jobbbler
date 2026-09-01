@@ -40,6 +40,10 @@ The 1 September 2026 release-candidate check on the current tree recorded:
 
 - `pnpm verify`: formatting, lint, every workspace typecheck, 934 deterministic
   tests, and both production builds passed;
+- isolated clean-context Docker builds completed for both release targets; the
+  web and worker runtime images use Node 24, run as the non-root `jobbbler`
+  user (UID 1001), and the worker image contains both migration sets through
+  PostgreSQL `0019` and SQLite `0025`;
 - Playwright: 42/42 browser journeys passed;
 - PostgreSQL: 103/103 repository, concurrency, migration, and RLS contract
   tests passed in a disposable local database that was removed after the run;
