@@ -493,6 +493,37 @@ test.describe("mobile and reduced-motion public search", () => {
       .toBe(true);
   });
 
+  test("keeps the primary navigation readable at the narrowest supported width", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 700 });
+    await page.goto("/");
+
+    const navigation = page.getByRole("navigation", { name: "Primary navigation" }).filter({
+      visible: true,
+    });
+    await expect(navigation.getByRole("link", { name: "Open roles" })).toBeVisible();
+    await expect(navigation.getByRole("link", { name: "Saved searches" })).toBeVisible();
+    await expect(navigation.getByRole("link", { name: "My applications" })).toBeVisible();
+
+    for (const label of ["Roles", "Saved", "Applications"] as const) {
+      const visibleLabel = navigation.getByText(label, { exact: true });
+      await expect(visibleLabel).toBeVisible();
+      await expect
+        .poll(async () =>
+          visibleLabel.evaluate((element) => {
+            const lineHeight = Number.parseFloat(getComputedStyle(element).lineHeight);
+            return element.getBoundingClientRect().height <= lineHeight * 1.1;
+          }),
+        )
+        .toBe(true);
+    }
+
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+      .toBe(true);
+  });
+
   test("stacks comparison facts with role context instead of hiding them in a wide table", async ({
     page,
   }) => {

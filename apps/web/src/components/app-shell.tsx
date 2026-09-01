@@ -13,9 +13,14 @@ import { useWebMcp } from "./webmcp-provider";
 import styles from "./app-shell.module.css";
 
 const navigation = [
-  { href: "/jobs", label: "Open roles", icon: BriefcaseIcon },
-  { href: "/saved", label: "Saved searches", icon: BookmarkSimpleIcon },
-  { href: "/applications", label: "My applications", icon: FileTextIcon },
+  { href: "/jobs", label: "Open roles", mobileLabel: "Roles", icon: BriefcaseIcon },
+  { href: "/saved", label: "Saved searches", mobileLabel: "Saved", icon: BookmarkSimpleIcon },
+  {
+    href: "/applications",
+    label: "My applications",
+    mobileLabel: "Applications",
+    icon: FileTextIcon,
+  },
 ] as const;
 
 function isCurrentRoute(pathname: string, href: string): boolean {
@@ -29,15 +34,21 @@ function PrimaryNavigation({
 }: Readonly<{ className: string | undefined; pathname: string }>) {
   return (
     <nav aria-label="Primary navigation" className={`${styles["navigation"]} ${className ?? ""}`}>
-      {navigation.map(({ href, label, icon: Icon }) => (
+      {navigation.map(({ href, label, mobileLabel, icon: Icon }) => (
         <Link
           aria-current={isCurrentRoute(pathname, href) ? "page" : undefined}
+          aria-label={label}
           className={styles["navLink"]}
           href={href}
           key={href}
         >
           <Icon aria-hidden="true" size={17} weight="regular" />
-          <span>{label}</span>
+          <span aria-hidden="true" className={styles["desktopLabel"]}>
+            {label}
+          </span>
+          <span aria-hidden="true" className={styles["mobileLabel"]}>
+            {mobileLabel}
+          </span>
         </Link>
       ))}
     </nav>

@@ -124,6 +124,10 @@
   display: none;
 }
 
+.mobileLabel {
+  display: none;
+}
+
 .navLink {
   display: inline-flex;
   align-items: center;
@@ -232,10 +236,20 @@
 
   .navLink {
     flex: 1;
+    min-inline-size: 0;
     flex-direction: column;
     gap: 2px;
     font-size: var(--jb-type-ui);
-    padding: 6px 10px;
+    padding: 6px 4px;
+  }
+
+  .mobileNavigation .desktopLabel {
+    display: none;
+  }
+
+  .mobileNavigation .mobileLabel {
+    display: block;
+    white-space: nowrap;
   }
 
   .actions {
