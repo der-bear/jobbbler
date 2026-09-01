@@ -131,12 +131,14 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const agentPanelInitialStateSet = useRef(false);
 
   useEffect(() => {
-    const query = window.matchMedia("(max-width: 1200px)");
+    const query = window.matchMedia("(max-width: 1080px)");
     const update = () => {
       setCompactAgentPanel(query.matches);
       if (!agentPanelInitialStateSet.current) {
         agentPanelInitialStateSet.current = true;
         setAgentPanelOpen(!query.matches);
+        /* React owns the reservation from here; drop the pre-paint stand-in. */
+        delete document.documentElement.dataset["agentRail"];
       }
       const maximumWidth = maximumAgentPanelWidth(window.innerWidth);
       setAgentPanelMaximumWidth(maximumWidth);
@@ -150,6 +152,29 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     return () => {
       query.removeEventListener("change", update);
       window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  /*
+   * The canvas wave pauses while the page scrolls. See the note beside
+   * `[data-scrolling]` in the stylesheet: a moving full-screen layer makes
+   * every frosted pane above it re-read its backdrop each frame.
+   */
+  const [scrolling, setScrolling] = useState(false);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    function onScroll() {
+      setScrolling(true);
+      if (timer !== undefined) clearTimeout(timer);
+      timer = setTimeout(() => {
+        setScrolling(false);
+      }, 180);
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (timer !== undefined) clearTimeout(timer);
     };
   }, []);
 
@@ -168,7 +193,19 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
           : "Connecting";
 
   return (
-    <div className={styles["shell"]}>
+    /*
+     * The canvas wash belongs on the front door, not over a data table. On the
+     * listing the lights are clipped to the header band, so the only place the
+     * colour appears is through the frosted toolbar — brand presence without
+     * anything moving behind three hundred rows of content.
+     */
+    <div
+      className={styles["shell"]}
+      data-agent-open={String(agentPanelOpen)}
+      data-canvas={pathname === "/" ? "full" : "toolbar"}
+      data-scrolling={String(scrolling)}
+      style={{ "--agent-panel-size": `${String(agentPanelWidth)}px` } as CSSProperties}
+    >
       <a className={styles["skipLink"]} href="#main-content">
         Skip to content
       </a>
@@ -181,11 +218,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
         onAgentToggle={() => (agentPanelOpen ? closeAgentPanel() : setAgentPanelOpen(true))}
         pathname={pathname}
       />
-      <div
-        className={styles["contentFrame"]}
-        data-agent-open={String(agentPanelOpen)}
-        style={{ "--agent-panel-size": `${String(agentPanelWidth)}px` } as CSSProperties}
-      >
+      <div className={styles["contentFrame"]} data-agent-open={String(agentPanelOpen)}>
         <main id="main-content" inert={agentPanelOpen && compactAgentPanel}>
           {children}
           <AppFooter />

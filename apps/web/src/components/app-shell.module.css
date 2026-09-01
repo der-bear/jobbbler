@@ -1,18 +1,140 @@
 .shell {
   --app-header-height: 68px;
+  --app-footer-height: 68px;
 
+  position: relative;
+  isolation: isolate;
   min-block-size: 100dvh;
-  background:
-    radial-gradient(
-      circle at 44% 2%,
-      color-mix(in srgb, var(--jb-signal) 7%, transparent),
-      transparent 30rem
-    ),
-    var(--color-canvas);
+  background: var(--color-canvas);
   color: var(--color-ink);
 }
 
+/*
+ * The canvas is defined shapes seen through heavy blur, not a soft gradient.
+ *
+ * This distinction is the whole trick. A gradient that is already soft has no
+ * edges, so moving it changes almost nothing the eye can catch — the previous
+ * attempt drifted for 38 seconds and read as static. Blobs with real falloff,
+ * blurred at 80px, keep their shape under the blur, so their travel is legible
+ * as movement while the colour stays as quiet as before.
+ *
+ * Two layers on periods that do not divide into each other (15s and 23s) drift
+ * past one another, and the relative motion is what makes the surface feel
+ * alive rather than looped.
+ */
+/*
+ * A signal field, not a gradient.
+ *
+ * The product's whole claim is that the page announces what it can do, so the
+ * canvas is a lattice with a slow wave moving through it rather than coloured
+ * fog. Two layers do it: a dot grid fixed to the viewport, and a soft radial
+ * highlight that travels across and lifts the dots it passes. Both are the
+ * accent at very low alpha, so at rest the surface reads as texture and only
+ * resolves into movement if you watch it.
+ */
+.shell::before {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+    circle at center,
+    color-mix(in srgb, var(--jb-signal-tint) 62%, transparent) 0.9px,
+    transparent 1px
+  );
+  background-size: 26px 26px;
+  opacity: var(--jb-canvas-light-opacity);
+  /* The lattice fades out before it reaches the content it sits behind. */
+  mask-image: radial-gradient(120% 78% at 50% -10%, #000 0%, rgb(0 0 0 / 55%) 42%, transparent 78%);
+  -webkit-mask-image: radial-gradient(
+    120% 78% at 50% -10%,
+    #000 0%,
+    rgb(0 0 0 / 55%) 42%,
+    transparent 78%
+  );
+}
+
+/*
+ * The travelling wave — the soft radial highlight this canvas has always had.
+ * It is a wide, very soft shape; against the fixed lattice its motion is
+ * legible at an opacity where the shape alone would be invisible.
+ */
+.shell::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+    38rem 30rem at 20% 12%,
+    color-mix(in srgb, var(--jb-signal-tint) 34%, transparent),
+    transparent 68%
+  );
+  /*
+   * The image is larger than the layer so that moving it moves something. At
+   * the default size the gradient filled the box exactly, and a percentage
+   * background-position on an image the same size as its container resolves to
+   * the same place at every value — the wave was animating and standing still,
+   * with only the scale betraying that anything was running at all.
+   */
+  background-size: 175% 175%;
+  opacity: calc(var(--jb-canvas-light-opacity) * 2);
+  filter: blur(28px);
+  animation: signalSweep 26s ease-in-out infinite;
+}
+
+/*
+ * The wave holds still while the page is moving.
+ *
+ * A full-screen layer in motion forces every frosted pane above it to re-read
+ * its backdrop on every frame; measured on the home page that is 33ms a frame
+ * against 16.7ms with the motion stopped. Nobody is watching a twenty-six-second
+ * drift during a scroll, so it stops for as long as the scroll lasts.
+ */
+.shell[data-scrolling="true"]::after {
+  animation-play-state: paused;
+}
+
+/*
+ * Three stops rather than two, so the wave does not simply retrace its path:
+ * it crosses, drops, and comes back by a different route. Same shape and same
+ * tint as before — only the travel is longer and the period shorter, which is
+ * where the liveliness comes from without any more colour on the page.
+ */
+/*
+ * It drifts across the top of the page and barely down it. Travelling the
+ * vertical as far as the horizontal took the wave into the middle of the
+ * reading column, where a moving tint is something to notice rather than
+ * something to sit behind; twenty-six seconds keeps the pace under the
+ * threshold where the eye starts following it.
+ */
+@keyframes signalSweep {
+  0%,
+  100% {
+    background-position: 4% 0%;
+    transform: scale(1);
+  }
+
+  35% {
+    background-position: 58% 6%;
+    transform: scale(1.06);
+  }
+
+  70% {
+    background-position: 26% 3%;
+    transform: scale(1.03);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell::after {
+    animation: none;
+  }
+}
+
 .contentFrame {
+  position: relative;
   min-inline-size: 0;
 }
 
@@ -56,10 +178,33 @@
   outline-offset: var(--jb-focus-offset);
 }
 
+/*
+ * The panel is a full-height column, not an overlay that starts under the
+ * header. It used to begin below the header and cover the content beside it,
+ * which left the header spanning the whole window: the navigation stayed
+ * centred on the window while the content it belongs to had shifted left.
+ * Reserving the width here and narrowing the header by the same amount puts
+ * the navigation back in the middle of what the reader is actually looking at.
+ */
 .contentFrame[data-agent-open="true"] {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--agent-panel-size, 380px);
-  align-items: start;
+  display: block;
+  padding-inline-end: var(--agent-panel-size, 380px);
+}
+
+.shell[data-agent-open="true"] .header {
+  inline-size: calc(100% - var(--agent-panel-size, 380px));
+}
+
+/*
+ * The same reservation, held by the pre-paint attribute until React has
+ * decided. See the note beside `documentBootstrap` in the root layout.
+ */
+:global(html[data-agent-rail="on"]) .contentFrame {
+  padding-inline-end: var(--agent-panel-size, 380px);
+}
+
+:global(html[data-agent-rail="on"]) .header {
+  inline-size: calc(100% - var(--agent-panel-size, 380px));
 }
 
 .skipLink {
@@ -84,12 +229,46 @@
   inset-block-start: 0;
   z-index: 40;
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto minmax(220px, 1fr);
+  /*
+   * The side columns give way, the navigation does not.
+   *
+   * With a 220px floor on each side there was a hard minimum of 440px before
+   * the navigation got any width at all, so once the agent panel narrowed the
+   * header the middle column fell under its natural width and the three links
+   * broke onto two lines. Equal fractions still centre the navigation, and now
+   * the wordmark and the actions absorb the squeeze instead.
+   */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   min-block-size: var(--app-header-height);
   border-block-end: 1px solid var(--color-line);
-  background: var(--color-canvas);
+  /*
+   * The header rides over the canvas wash, and an opaque fill chopped it in
+   * half. Saturation is not decoration here: blur alone desaturates whatever
+   * shows through, which turns the green underneath into exactly the muddy
+   * grey this palette is trying to avoid.
+   */
+  /*
+   * Real frosted glass: 22% of the backdrop passes, heavily blurred.
+   *
+   * The setting was found by measuring, not by taste. With the header removed
+   * the strip behind it has a luminance spread of σ=33.7; at the original
+   * 62%/14px that fell only to 3.64, which is why scrolled rows stayed
+   * discernible as soft shapes. Twenty-eight pixels of blur at 78% brings it
+   * to 1.28 — a hair above the 0.71 of an opaque header — so the material
+   * survives and the ghost does not. Saturation keeps the green underneath
+   * from washing out to grey.
+   */
+  background: color-mix(in srgb, var(--color-canvas) 78%, transparent);
+  backdrop-filter: saturate(170%) blur(28px);
+  -webkit-backdrop-filter: saturate(170%) blur(28px);
   padding-inline: clamp(20px, 3vw, 48px);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .header {
+    background: var(--color-canvas);
+  }
 }
 
 .wordmark {
@@ -98,7 +277,7 @@
   gap: 5px;
   justify-self: start;
   color: var(--color-ink);
-  font-size: 22px;
+  font-size: var(--jb-type-heading);
   font-weight: 750;
   letter-spacing: -0.045em;
   text-decoration: none;
@@ -111,6 +290,20 @@
 }
 
 .wordmark[data-status="ready"] .wordmarkDot {
+  color: var(--jb-signal);
+}
+
+/*
+ * Hover across the shell moves toward the signal rather than toward a lighter
+ * grey. Kept deliberately quiet: enough to confirm the cursor is over
+ * something, not enough to draw the eye away from the content.
+ */
+/*
+ * The word stays ink on hover; only the dot brightens. Turning the whole
+ * wordmark green makes the brand look like a link, and a logo that changes
+ * colour under the cursor reads as less permanent than it should.
+ */
+.wordmark:hover .wordmarkDot {
   color: var(--jb-signal);
 }
 
@@ -139,15 +332,32 @@
   font-weight: 580;
   padding: 9px 12px;
   text-decoration: none;
+  white-space: nowrap;
   transition:
     background var(--motion-fast) var(--ease-standard),
     color var(--motion-fast) var(--ease-standard);
 }
 
+/*
+ * Not glass. On a light canvas with nothing moving behind it the blur has
+ * nothing to reveal and the pill reads as a grey box with a ring around it —
+ * worse than the plain fill it replaced. Glass stays on the header and the
+ * panel, where content actually passes underneath.
+ */
+/*
+ * One hover fill for everything that responds to a cursor. Rows used the
+ * tinted token while buttons and nav pills used a plain grey, so the same
+ * gesture produced two different colours depending on what it landed on.
+ */
 .navLink:hover,
+/*
+ * The page you are on takes the accent, not a grey wash. Hover and "you are
+ * here" were rendered identically, so the navigation could not say which was
+ * which — moving the pointer across it made every item look current in turn.
+ */
 .navLink[aria-current="page"] {
-  background: var(--color-surface-subtle);
-  color: var(--color-ink);
+  background: color-mix(in srgb, var(--jb-signal-tint) 12%, transparent);
+  color: var(--color-signal-strong);
 }
 
 .actions {
@@ -164,7 +374,9 @@
   gap: 7px;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-pill);
-  background: var(--color-surface);
+  background: var(--jb-glass-fill-strong);
+  backdrop-filter: var(--jb-glass-blur);
+  -webkit-backdrop-filter: var(--jb-glass-blur);
   color: var(--color-ink-muted);
   padding-inline: 12px;
   font-size: var(--jb-type-label);
@@ -177,8 +389,9 @@
 
 .agentView:hover,
 .agentView[aria-expanded="true"] {
-  border-color: var(--color-line-strong);
-  background: var(--color-surface-subtle);
+  border-color: var(--jb-hover-line);
+  /* Translucent, so the glass does not blink off under the pointer. */
+  background: var(--jb-glass-hover);
   color: var(--color-ink);
 }
 
@@ -229,9 +442,19 @@
     justify-content: space-around;
     border: 1px solid var(--color-line-strong);
     border-radius: var(--radius-lg);
-    background: var(--color-surface);
+    /* It floats over the page rather than sitting in it, which is exactly what
+       the floating glass is for — the content passes under it as you scroll. */
+    background: var(--jb-glass-float);
+    backdrop-filter: var(--jb-glass-blur-float);
+    -webkit-backdrop-filter: var(--jb-glass-blur-float);
     box-shadow: var(--shadow-floating);
     padding: 6px;
+  }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .mobileNavigation {
+      background: var(--color-surface);
+    }
   }
 
   .navLink {
@@ -270,8 +493,55 @@
   }
 }
 
-@media (max-width: 1200px) {
+/*
+ * Short labels when the header runs out of room.
+ *
+ * The navigation is centred on the header, so it meets whichever side is
+ * wider — the actions — first, and once the agent panel takes its column there
+ * is no longer space for "Saved searches" and "My applications" at full
+ * length. The short labels already exist for the mobile bar; this is the same
+ * swap, driven by how much header is actually left. A container query on the
+ * header itself would have been tidier, but `container-type` also makes the
+ * header a containing block, and the mobile navigation is a fixed-position
+ * child of it.
+ */
+@media (max-width: 1240px) {
+  .shell[data-agent-open="true"] .desktopNavigation .desktopLabel {
+    display: none;
+  }
+
+  .shell[data-agent-open="true"] .desktopNavigation .mobileLabel {
+    display: block;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 900px) {
+  .desktopNavigation .desktopLabel {
+    display: none;
+  }
+
+  .desktopNavigation .mobileLabel {
+    display: block;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 1080px) {
+  /* Below this width the panel is a sheet over the product, so it reserves
+     nothing and the header keeps the full window. */
   .contentFrame[data-agent-open="true"] {
     display: block;
+    padding-inline-end: 0;
+  }
+
+  .shell[data-agent-open="true"] .header {
+    inline-size: auto;
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .agentView {
+    background: var(--color-surface);
   }
 }

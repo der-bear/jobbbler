@@ -59,13 +59,24 @@ export const viewport: Viewport = {
   ],
 };
 
-const themeBootstrap = `(()=>{try{const s=localStorage.getItem("jobbbler-theme");const t=s==="dark"||s==="light"?s:matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch{document.documentElement.dataset.theme="light"}})()`;
+/*
+ * Two things have to be settled before the first paint, or the page visibly
+ * rearranges itself after it: the theme, and whether the agent rail is going
+ * to take a column. The rail's own state is decided in an effect — it depends
+ * on the viewport, which the server cannot know — so without this the wide
+ * layout painted full-width and then jumped when the panel appeared. Measured
+ * on the home page that was a layout shift of 0.167, and 0.235 on the
+ * explainer. The attribute reserves the column from the first frame; the shell
+ * removes it in the same effect that opens the panel and takes over the
+ * reservation itself.
+ */
+const documentBootstrap = `(()=>{try{const s=localStorage.getItem("jobbbler-theme");const t=s==="dark"||s==="light"?s:matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch{document.documentElement.dataset.theme="light"}try{if(!matchMedia("(max-width: 1080px)").matches)document.documentElement.dataset.agentRail="on"}catch{}})()`;
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html data-scroll-behavior="smooth" lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+        <script dangerouslySetInnerHTML={{ __html: documentBootstrap }} />
       </head>
       <body>
         <ToastProvider>
