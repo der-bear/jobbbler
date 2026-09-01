@@ -38,7 +38,7 @@
 }
 
 .clearButton:hover {
-  background: var(--jb-state-hover);
+  background: var(--jb-hover-surface);
   color: var(--color-ink);
 }
 
@@ -103,7 +103,7 @@
 
 .options > [role="option"]:hover,
 .options > [role="option"][aria-selected="true"] {
-  background: var(--color-surface-subtle);
+  background: var(--jb-hover-surface);
   color: var(--color-ink);
 }
 

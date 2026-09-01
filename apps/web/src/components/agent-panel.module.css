@@ -98,7 +98,7 @@
 }
 
 .close:hover {
-  background: var(--jb-state-hover);
+  background: var(--jb-hover-surface);
   color: var(--color-ink);
 }
 
@@ -168,7 +168,7 @@
 }
 
 .tabs button:hover:not([aria-selected="true"]) {
-  background: var(--jb-state-hover);
+  background: var(--jb-hover-surface);
   color: var(--color-ink);
 }
 

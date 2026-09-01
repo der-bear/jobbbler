@@ -86,7 +86,7 @@
       groups Find / Inspect and compare / Alerts / Apply — not an older rail.
 - [x] Re-run `pnpm verify`, the focused E2E suite, and the local PostgreSQL
       contract suite on the final code revision and record the fresh numbers:
-      957 deterministic tests and 50/50 browser journeys on the 2 September
+      958 deterministic tests and 50/50 browser journeys on the 2 September
       release candidate; 103/103 PostgreSQL contract tests in the 1 September
       infrastructure rehearsal.
 - [x] Build the web and worker Docker targets from a clean isolated context;

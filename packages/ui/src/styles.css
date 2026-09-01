@@ -111,8 +111,7 @@ button:disabled {
 }
 
 .jb-button--quiet:hover:not(:disabled) {
-  background:
-    linear-gradient(var(--jb-state-hover), var(--jb-state-hover)), var(--jb-glass-control);
+  background: var(--jb-hover-surface);
 }
 .jb-button--quiet {
   background: var(--jb-glass-control);
@@ -172,7 +171,7 @@ button:disabled {
 
 .jb-chip {
   align-items: center;
-  background: var(--jb-veil-control);
+  background: transparent;
   border: var(--jb-stroke-control) solid var(--jb-border-chip);
   border-radius: var(--jb-radius-pill);
   color: var(--jb-text);
@@ -199,7 +198,7 @@ button.jb-chip {
 .jb-chip--static {
   min-height: 1.375rem;
   border: 0;
-  background: var(--jb-surface-muted);
+  background: var(--jb-hover-surface);
   color: var(--jb-text-muted);
   padding: 0 0.5625rem;
   font-size: var(--jb-type-caption);
@@ -217,8 +216,7 @@ button.jb-chip {
  */
 .jb-chip:is(button, a):hover {
   border-color: var(--jb-state-line);
-  background:
-    linear-gradient(var(--jb-state-hover), var(--jb-state-hover)), var(--jb-glass-control);
+  background: var(--jb-hover-surface);
 }
 
 .jb-chip--signal {
@@ -240,13 +238,12 @@ button.jb-chip {
 }
 .jb-chip__remove:hover,
 .jb-icon-button:hover {
-  background: var(--jb-state-hover);
+  background: var(--jb-hover-surface);
 }
 
 .jb-theme-toggle:hover {
   border-color: var(--jb-state-line);
-  background:
-    linear-gradient(var(--jb-state-hover), var(--jb-state-hover)), var(--jb-glass-fill-strong);
+  background: var(--jb-hover-surface);
 }
 
 /* Keep focus as one readable ring instead of an outline outside a second edge. */
@@ -572,7 +569,7 @@ button.jb-chip {
 }
 
 .jb-multiselect__option:hover {
-  background: var(--jb-state-hover);
+  background: var(--jb-hover-surface);
 }
 
 .jb-multiselect__option[aria-selected="true"] {

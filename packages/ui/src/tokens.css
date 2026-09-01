@@ -161,14 +161,17 @@
   --jb-glass-fill-strong: color-mix(in srgb, var(--jb-surface) 86%, transparent);
   --jb-glass-float: color-mix(in srgb, var(--jb-surface) 72%, transparent);
   --jb-glass-sheet: color-mix(in srgb, var(--jb-canvas) 90%, transparent);
-  --jb-glass-hover: color-mix(in srgb, var(--jb-signal-tint) 5%, var(--jb-glass-fill));
   --jb-glass-blur-control: saturate(145%) blur(8px);
   --jb-glass-blur: saturate(155%) blur(14px);
   --jb-glass-blur-float: saturate(165%) blur(26px);
   --jb-glass-blur-sheet: saturate(160%) blur(34px);
 
-  /* Shared interaction layers keep hover and selection green, never teal. */
-  --jb-hover-surface: color-mix(in srgb, var(--jb-signal-tint) 2%, var(--jb-surface-muted));
+  /*
+   * Hover is a quiet material change; selection is the green state. Reusing
+   * the neutral badge veil stops a row, chip, and secondary action from
+   * producing three different colours for the same pointer gesture.
+   */
+  --jb-hover-surface: var(--jb-veil-control-subtle);
   --jb-hover-line: color-mix(in srgb, var(--jb-signal) 26%, var(--jb-border));
   --jb-state-hover: var(--jb-state-shift);
   --jb-state-line: color-mix(in srgb, var(--jb-signal) 30%, var(--jb-border-strong));

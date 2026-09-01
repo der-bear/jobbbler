@@ -432,7 +432,7 @@
  * item up as though it were the current page.
  */
 .navLink:hover {
-  background: var(--jb-state-hover);
+  background: var(--jb-hover-surface);
   color: var(--color-ink);
 }
 
@@ -476,9 +476,7 @@
 
 .agentView:hover {
   border-color: var(--jb-state-line);
-  /* The layer goes over the glass, not instead of it. */
-  background:
-    linear-gradient(var(--jb-state-hover), var(--jb-state-hover)), var(--jb-glass-fill-strong);
+  background: var(--jb-hover-surface);
 }
 
 /* An open control still answers the pointer; the selected fill alone left it

@@ -195,7 +195,7 @@
 
 .stateActions a:hover,
 .stateLink:hover {
-  background: var(--jb-state-hover);
+  background: var(--jb-hover-surface);
 }
 
 .fitNotes {

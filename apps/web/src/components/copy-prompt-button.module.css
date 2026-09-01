@@ -20,7 +20,7 @@
 
 .button:hover {
   border-color: var(--jb-state-line);
-  background: linear-gradient(var(--jb-state-hover), var(--jb-state-hover)), var(--jb-veil-control);
+  background: var(--jb-hover-surface);
   color: var(--color-ink);
 }
 

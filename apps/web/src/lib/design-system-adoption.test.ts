@@ -139,4 +139,33 @@ describe("design system adoption", () => {
       ".jb-theme-toggle:focus-visible {\n  border-color: transparent;\n  outline-offset: -2px;",
     );
   });
+
+  it("uses the neutral badge surface for chips, quiet actions, and role-card hover", async () => {
+    const tokens = await readFile(join(uiRoot, "tokens.css"), "utf8");
+    const uiStyles = await readFile(join(uiRoot, "styles.css"), "utf8");
+    const search = await readFile(
+      join(sourceRoot, "features/search/search-workspace.module.css"),
+      "utf8",
+    );
+    const saved = await readFile(
+      join(sourceRoot, "features/saved/saved-workspace.module.css"),
+      "utf8",
+    );
+
+    expect(tokens).toContain("--jb-hover-surface: var(--jb-veil-control-subtle);");
+    expect(uiStyles).toMatch(/\.jb-chip \{[^}]*background: transparent;/u);
+    expect(uiStyles).toMatch(
+      /\.jb-button--quiet:hover:not\(:disabled\) \{\s*background: var\(--jb-hover-surface\);/u,
+    );
+    expect(search).toMatch(/\.choiceRow button \{[^}]*background: transparent;/u);
+    expect(search).toMatch(
+      /\.choiceRow button:hover \{[^}]*background: var\(--jb-hover-surface\);/u,
+    );
+    expect(
+      search.match(/\.jobResult:hover \{\s*background: var\(--jb-hover-surface\);/gu),
+    ).toHaveLength(2);
+    expect(saved).toContain(
+      ".secondaryButton:hover,\n.quietButton:hover {\n  background: var(--jb-hover-surface);",
+    );
+  });
 });

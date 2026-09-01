@@ -352,7 +352,7 @@
 .choiceRow button {
   border: var(--jb-stroke-control) solid var(--jb-border-chip);
   border-radius: var(--radius-pill);
-  background: var(--jb-veil-control-subtle);
+  background: transparent;
   color: var(--color-ink-muted);
   font-size: var(--jb-type-caption);
   padding: 5px 11px;
@@ -360,8 +360,7 @@
 
 .choiceRow button:hover {
   border-color: var(--jb-state-line);
-  background:
-    linear-gradient(var(--jb-state-hover), var(--jb-state-hover)), var(--jb-veil-control-subtle);
+  background: var(--jb-hover-surface);
   color: var(--color-ink);
 }
 
@@ -698,7 +697,7 @@
  * which would make the glass blink off under the pointer.
  */
 .resultList[data-layout="cards"] .jobResult:hover {
-  background: var(--jb-glass-hover);
+  background: var(--jb-hover-surface);
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
@@ -743,7 +742,7 @@
  * title taking the signal colour already carry the state.
  */
 .jobResult:hover {
-  background: var(--jb-glass-hover);
+  background: var(--jb-hover-surface);
 }
 
 .jobTitleLink::after {

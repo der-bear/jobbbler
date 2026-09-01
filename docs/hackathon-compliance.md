@@ -54,7 +54,7 @@ choices:
 The fresh 2 September 2026 release-candidate check on the current tree
 recorded:
 
-- `pnpm verify`: formatting, lint, every workspace typecheck, 957 deterministic
+- `pnpm verify`: formatting, lint, every workspace typecheck, 958 deterministic
   tests, and both production builds passed;
 - Playwright: 50/50 browser journeys passed, including the complete
   agent-prepared application flow, saved-search schedules, location
