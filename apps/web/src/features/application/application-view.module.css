@@ -105,7 +105,7 @@
   align-items: flex-start;
   gap: 8px;
   margin: 22px 0 0;
-  border-inline-start: 2px solid var(--color-danger, #b84f45);
+  border-inline-start: 2px solid var(--color-danger);
   padding: 10px 14px;
   color: var(--color-ink);
   background: var(--color-surface-soft);
@@ -142,13 +142,22 @@
   margin-block-start: 0;
 }
 
+/*
+ * "5 details needed" was set in the signal colour — the same green the page
+ * uses for everything that has gone right. Work still to do is not an
+ * achievement; only the ready state earns the accent.
+ */
 .completion {
   flex: 0 0 auto;
   margin: 0;
-  color: var(--jb-signal);
+  color: var(--color-ink-muted);
   font-size: var(--jb-type-caption);
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.completion[data-ready="true"] {
+  color: var(--jb-signal);
 }
 
 .sectionIntro {
@@ -159,10 +168,36 @@
   line-height: 1.65;
 }
 
+/*
+ * Two columns for the short answers, full width for the long one.
+ *
+ * A name, an email and a city are each a few words, and stacking six of them
+ * in one column made the form look longer than the work it asks for and left
+ * the cover letter — the only answer that needs room — sharing the same narrow
+ * measure as a postcode.
+ */
 .fields {
   display: grid;
-  gap: 22px;
+  gap: 22px 28px;
   margin-block-start: 34px;
+}
+
+@media (min-width: 680px) {
+  .fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .field[data-wide="true"] {
+    grid-column: 1 / -1;
+  }
+}
+
+/*
+ * The cover letter is the one place a person writes rather than fills in, and
+ * five rows of it meant scrolling a box to reread your own paragraph.
+ */
+.field[data-wide="true"] textarea {
+  min-block-size: 220px;
 }
 
 .saveStatus {
@@ -208,8 +243,9 @@
   inline-size: 13px;
 }
 
-.field > p {
-  margin: 0;
+/* Under the control it belongs to, close enough to read as its footnote. */
+.fieldHint {
+  margin: 7px 0 0;
   color: var(--color-ink-subtle);
   font-size: var(--jb-type-label);
   line-height: 1.5;
@@ -233,9 +269,49 @@
   resize: vertical;
 }
 
-.field[data-missing="true"] {
-  border-inline-start: 2px solid var(--jb-signal);
+/*
+ * An empty field is not an error until someone has tried to submit. Every
+ * required field carried a green bar from the moment the page opened, which
+ * marked the whole form at once and marked it in the colour of success.
+ */
+.field[data-invalid="true"] {
+  border-inline-start: 2px solid var(--jb-danger);
   padding-inline-start: 14px;
+}
+
+.field[data-invalid="true"] input,
+.field[data-invalid="true"] textarea,
+.field[data-invalid="true"] select {
+  border-color: color-mix(in srgb, var(--jb-danger) 55%, var(--color-line-strong));
+}
+
+.fieldError {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 7px 0 0;
+  color: var(--jb-danger);
+  font-size: var(--jb-type-label);
+}
+
+.fieldError svg {
+  flex: 0 0 auto;
+}
+
+/*
+ * The label carries the exception, not the rule: with every field but one
+ * required, marking the required ones is noise and marking the odd one out is
+ * information. The note above the fields states the rule once.
+ */
+.optionalMark {
+  color: var(--color-ink-subtle);
+  font-weight: 500;
+}
+
+.requiredNote {
+  margin: 22px 0 0;
+  color: var(--color-ink-muted);
+  font-size: var(--jb-type-label);
 }
 
 .field input:focus-visible,
@@ -301,7 +377,7 @@
 .primaryLink {
   border-color: var(--jb-signal);
   color: var(--jb-signal-contrast);
-  background: var(--jb-signal);
+  background: var(--jb-signal-gradient);
 }
 
 .secondaryLink {
@@ -412,21 +488,29 @@
   align-items: baseline;
   gap: 12px;
   margin-block-start: 22px;
-  border-block: 1px solid var(--color-line);
+  border-block: 1px solid color-mix(in srgb, var(--jb-danger) 30%, var(--color-line));
   padding-block: 12px;
   color: var(--color-ink-muted);
   font-size: var(--jb-type-label);
 }
 
 .missingSummary strong {
-  color: var(--color-ink);
+  color: var(--jb-danger);
 }
 
+/*
+ * A 2px signal rule across the full width made this read as a warning strip.
+ * It is a plain statement of what leaves the page, and the shield beside the
+ * heading already carries the meaning — the frame can be a hairline.
+ */
 .sharingSummary {
   margin-block-start: 38px;
-  border-block-start: 2px solid var(--jb-signal);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
   padding: 20px 22px;
-  background: color-mix(in srgb, var(--color-surface-soft) 82%, transparent);
+  background: var(--jb-glass-fill-strong);
+  backdrop-filter: var(--jb-glass-blur);
+  -webkit-backdrop-filter: var(--jb-glass-blur);
 }
 
 .sharingTitle {
@@ -449,7 +533,7 @@
 .sharingTitle h3 {
   margin: 5px 0 0;
   color: var(--color-ink);
-  font-size: 17px;
+  font-size: var(--jb-type-heading-sm);
   font-weight: 620;
   letter-spacing: -0.025em;
 }
@@ -532,7 +616,7 @@
   inline-size: 34px;
   block-size: 34px;
   margin-block-end: 18px;
-  color: var(--color-danger, #b84f45);
+  color: var(--color-danger);
 }
 
 .submittedSnapshot {
@@ -544,7 +628,7 @@
 .submittedSnapshot h3 {
   margin: 0;
   color: var(--color-ink);
-  font-size: 17px;
+  font-size: var(--jb-type-heading-sm);
   font-weight: 620;
   letter-spacing: -0.025em;
 }
@@ -666,9 +750,9 @@
   .actions button,
   .primaryLink {
     transition:
-      border-color 160ms ease,
-      background-color 160ms ease,
-      color 160ms ease;
+      border-color var(--motion-fast) var(--ease-standard),
+      background-color var(--motion-fast) var(--ease-standard),
+      color var(--motion-fast) var(--ease-standard);
   }
 }
 

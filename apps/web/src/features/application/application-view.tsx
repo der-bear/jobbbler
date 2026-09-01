@@ -1,16 +1,17 @@
 import {
   ArrowLeftIcon,
   CheckCircleIcon,
-  PaperPlaneTiltIcon,
   PencilSimpleIcon,
   ShieldCheckIcon,
   WarningCircleIcon,
 } from "@phosphor-icons/react";
 import Link from "next/link";
+import { useState } from "react";
 
 import type { ApplicationWorkspace, Job } from "@jobbbler/contracts";
 
 import { externalApplicationUrl } from "@/features/job-detail/application-capability";
+import { titleWithoutEmploymentSuffix } from "@/lib/job-format";
 
 import {
   applicationDisclosureForValues,
@@ -73,6 +74,7 @@ function ApplicationField({
   fieldValues,
   fieldKey,
   readOnly,
+  showErrors,
   onFieldChange,
   onFieldCommit,
 }: Readonly<{
@@ -80,6 +82,7 @@ function ApplicationField({
   fieldValues: Readonly<Record<string, string>>;
   fieldKey: string;
   readOnly: boolean;
+  showErrors?: boolean;
   onFieldChange(fieldKey: string, value: string): void;
   onFieldCommit?(fieldKey: string, value: string): void;
 }>) {
@@ -98,32 +101,63 @@ function ApplicationField({
       onFieldCommit?.(field.fieldKey, event.currentTarget.value),
   };
 
+  const empty = (fieldValues[field.fieldKey] ?? "").trim() === "";
+  const invalid = showErrors === true && field.required && empty;
+  const describedBy = [`${shared.id}-description`, invalid ? `${shared.id}-error` : null]
+    .filter((id) => id !== null)
+    .join(" ");
+
   return (
     <div
       className={styles["field"]}
-      data-missing={field.required && (fieldValues[field.fieldKey] ?? "").trim() === ""}
+      data-invalid={invalid}
+      data-missing={field.required && empty}
+      data-wide={field.input === "textarea"}
     >
       <div className={styles["fieldLabel"]}>
-        <label htmlFor={shared.id}>{field.label}</label>
+        <label htmlFor={shared.id}>
+          {field.label}
+          {/*
+           * Requiredness has to be readable on the field itself. It used to
+           * share one badge slot with provenance and privacy, and privacy won
+           * the chain — every required field is also sensitive, so "Required"
+           * never rendered and the form never said which answers it needed.
+           * Marking the exceptions is the quieter half of that: the note above
+           * the fields says everything else is required.
+           */}
+          {field.required ? null : <span className={styles["optionalMark"]}> · optional</span>}
+        </label>
+        {/*
+         * Only provenance goes here now. "Private" sat on five of the six
+         * fields, which told the reader nothing about any of them — and the
+         * block above the button already names the exact list that leaves,
+         * which is the same promise stated once and precisely.
+         */}
         <span>
           {answer?.provenance === "agent_suggestion" ? (
             <>
               <PencilSimpleIcon aria-hidden="true" /> Agent suggestion
             </>
-          ) : field.sensitive ? (
-            "Private"
-          ) : field.required ? (
-            "Required"
-          ) : (
-            "Optional"
-          )}
+          ) : null}
         </span>
       </div>
-      <p>{field.description}</p>
       {field.input === "textarea" ? (
-        <textarea {...shared} maxLength={10_000} readOnly={readOnly} rows={5} />
+        <textarea
+          {...shared}
+          aria-describedby={describedBy}
+          aria-invalid={invalid}
+          maxLength={10_000}
+          readOnly={readOnly}
+          rows={5}
+        />
       ) : field.input === "select" ? (
-        <select {...shared} aria-readonly={readOnly} disabled={readOnly}>
+        <select
+          {...shared}
+          aria-describedby={describedBy}
+          aria-invalid={invalid}
+          aria-readonly={readOnly}
+          disabled={readOnly}
+        >
           <option value="">Choose one</option>
           {field.options.map((option) => (
             <option key={option} value={option}>
@@ -134,12 +168,30 @@ function ApplicationField({
       ) : (
         <input
           {...shared}
+          aria-describedby={describedBy}
+          aria-invalid={invalid}
           autoComplete={field.fieldKey === "email" ? "email" : "off"}
           maxLength={500}
           readOnly={readOnly}
           type={field.input}
         />
       )}
+      {/*
+       * The help sits under its control, not between the label and it. Above,
+       * it pushed a line of grey text into the gap that ties a label to its
+       * field, so every field read as three loose things instead of one.
+       */}
+      <p className={styles["fieldHint"]} id={`${shared.id}-description`}>
+        {field.description}
+      </p>
+      {invalid ? (
+        <p className={styles["fieldError"]} id={`${shared.id}-error`}>
+          <WarningCircleIcon aria-hidden="true" />
+          {field.input === "select"
+            ? "Choose one to continue."
+            : `Fill in your ${field.label.toLowerCase()} to continue.`}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -201,6 +253,12 @@ function ReviewDocument({
   | "onFieldCommit"
   | "onAction"
 >) {
+  /*
+   * Errors appear once the person has tried to submit, not while they are
+   * still typing their name. Before that the form stays quiet; after it, every
+   * unanswered field says so on the field itself.
+   */
+  const [showErrors, setShowErrors] = useState(false);
   const readiness = applicationReadinessForValues(workspace, fieldValues);
   const disclosure = applicationDisclosureForValues(workspace, fieldValues);
   const agentAssisted = isAgentAssistedApplication(workspace, now);
@@ -221,7 +279,7 @@ function ReviewDocument({
             <p className={styles["eyebrow"]}>In progress</p>
             <h2 id="review-heading">Application details</h2>
           </div>
-          <p className={styles["completion"]}>
+          <p className={styles["completion"]} data-ready={readiness.readyForReview}>
             {readiness.readyForReview
               ? `${String(readiness.completed)} of ${String(readiness.required)} details ready`
               : `${String(missingFields.length)} ${missingFields.length === 1 ? "detail" : "details"} needed`}
@@ -237,27 +295,28 @@ function ReviewDocument({
               : "Ask your agent or fill it in here. You only need to resolve the items that are missing."}
         </p>
 
-        {missingFields.length === 0 ? null : (
-          <div aria-label="Missing application details" className={styles["missingSummary"]}>
-            <strong>Still needed</strong>
+        {/*
+         * This used to stand there from the moment the page opened, listing
+         * every field as "still needed" before anyone had typed a character —
+         * a warning about not having done something yet. Now it only answers
+         * a failed submit, and the fields themselves carry the rest.
+         */}
+        {showErrors && missingFields.length > 0 ? (
+          <div className={styles["missingSummary"]} role="alert">
+            <strong>Still missing</strong>
             <span>{missingFields.map(({ label }) => label).join(" · ")}</span>
           </div>
-        )}
+        ) : null}
 
-        <div className={styles["fields"]}>
-          {workspace.requirements.map((field) => (
-            <ApplicationField
-              fieldKey={field.fieldKey}
-              fieldValues={fieldValues}
-              key={field.fieldKey}
-              onFieldChange={onFieldChange}
-              {...(onFieldCommit === undefined ? {} : { onFieldCommit })}
-              readOnly={agentAssisted}
-              workspace={workspace}
-            />
-          ))}
-        </div>
-
+        {/*
+         * Both house rules sit above the fields: what has to be answered, and
+         * what happens to an answer once it is typed. The saving line used to
+         * be underneath the last field, where it arrives after the fact.
+         */}
+        <p className={styles["requiredNote"]}>
+          Everything here is needed unless it says optional.
+          {agentAssisted ? null : " Each answer saves when you move to the next one."}
+        </p>
         {agentAssisted ? null : (
           <p aria-live="polite" className={styles["saveStatus"]}>
             {saveState === "saving"
@@ -266,17 +325,56 @@ function ReviewDocument({
                 ? "Changes could not be saved. Leave the field again to retry."
                 : saveState === "saved"
                   ? "Changes saved."
-                  : "Changes save when you leave a field."}
+                  : ""}
           </p>
         )}
+
+        {/*
+         * A real form, so Enter submits and the browser treats this as one
+         * thing. The submit button lives outside the section and reaches it
+         * through its `form` attribute.
+         */}
+        <form
+          className={styles["fields"]}
+          id="application-form"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (busy) return;
+            if (!readiness.readyForReview) {
+              setShowErrors(true);
+              const first = readiness.missingFieldKeys[0];
+              if (first !== undefined) document.getElementById(`application-${first}`)?.focus();
+              return;
+            }
+            onAction("review_and_submit");
+          }}
+        >
+          {/*
+           * Short answers first, the written one last. In source order the
+           * cover letter sits mid-list, and once it spans both columns the
+           * field after it is stranded alone beside an empty cell.
+           */}
+          {[...workspace.requirements]
+            .sort((a, b) => Number(a.input === "textarea") - Number(b.input === "textarea"))
+            .map((field) => (
+              <ApplicationField
+                fieldKey={field.fieldKey}
+                fieldValues={fieldValues}
+                key={field.fieldKey}
+                onFieldChange={onFieldChange}
+                {...(onFieldCommit === undefined ? {} : { onFieldCommit })}
+                readOnly={agentAssisted}
+                showErrors={showErrors}
+                workspace={workspace}
+              />
+            ))}
+        </form>
 
         <section aria-labelledby="sharing-heading" className={styles["sharingSummary"]}>
           <div className={styles["sharingTitle"]}>
             <ShieldCheckIcon aria-hidden="true" weight="fill" />
-            <div>
-              <p className={styles["eyebrow"]}>Before submission</p>
-              <h3 id="sharing-heading">What this application will send</h3>
-            </div>
+            <h3 id="sharing-heading">What this application will send</h3>
           </div>
           <dl className={styles["permissionGrid"]}>
             <div>
@@ -289,14 +387,20 @@ function ReviewDocument({
                 {disclosedLabels.length === 0 ? "No information yet" : disclosedLabels.join(" · ")}
               </dd>
             </div>
-            <div>
-              <dt>Your control</dt>
-              <dd>
-                {agentAssisted
-                  ? "Your agent can submit only this unchanged application after your final decision."
-                  : "Nothing is sent until you choose to submit this exact application."}
-              </dd>
-            </div>
+            {/*
+             * Only when an agent is involved. The plain case said the same
+             * thing the line under the submit button says, one screen-inch
+             * apart; the agent case makes a claim nothing else on the page
+             * makes, so it stays.
+             */}
+            {agentAssisted ? (
+              <div>
+                <dt>Your control</dt>
+                <dd>
+                  Your agent can submit only this unchanged application after your final decision.
+                </dd>
+              </div>
+            ) : null}
           </dl>
           <Link className={styles["privacyLink"]} href="/privacy">
             Read our privacy notice
@@ -314,21 +418,20 @@ function ReviewDocument({
           </div>
         ) : (
           <div aria-busy={busy} className={styles["actions"]}>
+            {/*
+             * Enabled even when the form is incomplete. A greyed-out button
+             * cannot say what is wrong: pressing it is how a person asks, and
+             * the answer belongs on the fields that are empty.
+             */}
             <button
               aria-describedby="application-submit-guidance"
               aria-busy={busy}
               className={styles["primaryAction"]}
-              disabled={busy || !readiness.readyForReview}
-              onClick={() => onAction("review_and_submit")}
-              type="button"
+              disabled={busy}
+              form="application-form"
+              type="submit"
             >
-              {busy ? (
-                "Submitting…"
-              ) : (
-                <>
-                  <PaperPlaneTiltIcon aria-hidden="true" /> Submit to {workspace.recipient.name}
-                </>
-              )}
+              {busy ? "Submitting…" : `Submit to ${workspace.recipient.name}`}
             </button>
             {busy ? (
               <p aria-live="polite" id="application-submit-guidance" role="status">
@@ -598,7 +701,13 @@ export function ApplicationView({
                   ? "Role closed — nothing submitted."
                   : legacyExternalDraft
                     ? "Older external application"
-                    : `Application for ${job.title}`}
+                    : /*
+                       * The employment type already has its own place on the
+                       * role, and every other surface strips it out of the
+                       * title. Left in, this heading read "Application for
+                       * Infrastructure Engineer, Monitoring (Part-Time)".
+                       */
+                      `Application for ${titleWithoutEmploymentSuffix(job.title, job.employmentType)}`}
         </h1>
         <p className={styles["heroSub"]}>
           {submittedReceipt !== null

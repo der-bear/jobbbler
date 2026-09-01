@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { applicationListSchema, type ApplicationListItem } from "@jobbbler/contracts";
 
 import { OwnerPrivacyControls } from "@/features/saved/owner-privacy-controls";
+import { titleWithoutEmploymentSuffix } from "@/lib/job-format";
 import { ApiClientError, queryApi } from "@/lib/query-client";
 import { hasOwnerSessionMarker, markOwnerSessionStarted } from "@/lib/owner-session-marker";
 
@@ -80,11 +81,20 @@ export function ApplicationHistory({
   return (
     <section aria-labelledby="applications-title" className={styles["page"]}>
       <header className={styles["header"]}>
-        <h1 id="applications-title">My applications</h1>
-        <p>
-          Applications prepared on Jobbbler, whether you started them here or asked an agent to
-          help. Open one to see its status or receipt.
-        </p>
+        {/*
+         * Title and sentence stack, as they do on /saved. The two pages are one
+         * tab apart and this sentence used to sit beside the title here and
+         * under it there, so it changed place when you switched between them.
+         * /saved cannot move it — its right column holds the access card — so
+         * this is the side that gives.
+         */}
+        <div>
+          <h1 id="applications-title">My applications</h1>
+          <p className={styles["lede"]}>
+            Applications prepared on Jobbbler, whether you started them here or asked an agent to
+            help. Open one to see its status or receipt.
+          </p>
+        </div>
       </header>
 
       {items.length === 0 ? (
@@ -104,7 +114,7 @@ export function ApplicationHistory({
           {items.map((item) => (
             <li className={styles["row"]} key={item.draftId}>
               <div className={styles["role"]}>
-                <h2>{item.job.title}</h2>
+                <h2>{titleWithoutEmploymentSuffix(item.job.title)}</h2>
                 <p>{item.job.organizationName}</p>
               </div>
               <div className={styles["state"]}>

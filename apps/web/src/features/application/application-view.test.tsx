@@ -391,8 +391,20 @@ describe("ApplicationView", () => {
     expect(markup).toContain("1 detail needed");
     expect(markup).toContain("Cover letter");
     expect(markup).toContain("Ask your agent or fill it in here");
-    expect(markup).toContain("disabled");
     expect(markup).not.toContain("Approve and continue");
+
+    /*
+     * The submit button stays live while the form is incomplete. It used to be
+     * switched off, which left the person with a dead control and no statement
+     * of what was missing; pressing it is how they ask, and the answer lands on
+     * the empty fields. The guidance line still names the count up front.
+     */
+    expect(markup).toContain("Complete 1 required detail before submitting.");
+    expect(markup).not.toContain("disabled");
+
+    /* And nothing is flagged as an error before anyone has tried to submit. */
+    expect(markup).not.toContain('aria-invalid="true"');
+    expect(markup).toContain("Everything here is needed unless it says optional.");
   });
 
   it("enables submission as soon as the visible required fields are complete", () => {
@@ -444,7 +456,7 @@ describe("ApplicationView", () => {
   });
 
   it.each([
-    ["idle" as const, "Changes save when you leave a field."],
+    ["idle" as const, "Each answer saves when you move to the next one."],
     ["saving" as const, "Saving changes…"],
     ["saved" as const, "Changes saved."],
   ])("states the actual field-save behavior when saveState is %s", (saveState, message) => {

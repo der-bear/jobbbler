@@ -1,13 +1,35 @@
 .page {
-  max-inline-size: 1040px;
-  min-block-size: calc(100dvh - 69px);
+  max-inline-size: var(--jb-page-max-wide);
+  min-block-size: calc(100dvh - var(--app-header-height, 68px) - var(--app-footer-height, 68px));
   margin-inline: auto;
-  padding: clamp(42px, 7vw, 88px) clamp(20px, 5vw, 56px) 112px;
+  padding: var(--jb-page-top) var(--jb-page-gutter) var(--jb-page-bottom);
 }
 
+/*
+ * Above 1100px the description sits beside the title instead of under it: the
+ * heading is set at up to 52px and a single stacked column left the right half
+ * of the measure empty while the two blocks fought for the same narrow lane.
+ * Below that width they stack, which is the right order on a phone anyway.
+ */
 .header {
-  max-inline-size: 620px;
+  display: grid;
+  gap: clamp(18px, 2.4vw, 40px);
+  /*
+   * Baseline, not end. Aligning the boxes pushed the title 11px lower than the
+   * identical title on /saved, so switching between the two tabs made the
+   * heading jump. Sharing a baseline holds them level and reads better as
+   * typography besides.
+   */
+  align-items: baseline;
+  /* The rule under the header that /saved already had. */
+  border-block-end: 1px solid var(--color-line);
   padding-block-end: clamp(30px, 5vw, 48px);
+}
+
+@media (min-width: 1100px) {
+  .header {
+    grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+  }
 }
 
 .eyebrow {
@@ -20,16 +42,43 @@
 }
 
 .header h1 {
-  margin: 12px 0 12px;
+  /*
+   * The gap under the title has to scale with it. A flat 12px sat correctly
+   * under a 36px heading and far too tight under the 52px it reaches on a wide
+   * screen.
+   */
+  /* Same figures as the identical title on /saved. */
+  margin: 16px 0 18px;
+  max-inline-size: 15ch;
   color: var(--color-ink);
   font-size: var(--jb-page-title-size);
   font-weight: 540;
-  letter-spacing: -0.064em;
-  line-height: 1;
+  letter-spacing: var(--jb-page-title-tracking);
+  line-height: var(--jb-page-title-leading);
 }
 
-.header > p:last-child,
+/*
+ * The same empty state as /saved. These two pages are siblings and were
+ * reading as different products: one framed its empty state in a surface with
+ * a border, the other left it as bare text on the canvas.
+ */
+.empty {
+  display: grid;
+  max-inline-size: 46rem;
+  min-block-size: 210px;
+  align-content: center;
+  justify-items: start;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--jb-glass-fill-strong);
+  backdrop-filter: var(--jb-glass-blur);
+  -webkit-backdrop-filter: var(--jb-glass-blur);
+  padding: clamp(28px, 4vw, 44px);
+}
+
+.lede,
 .empty > p {
+  max-inline-size: 61ch;
   margin: 0;
   color: var(--color-ink-muted);
   font-size: var(--jb-type-body-sm);
@@ -60,7 +109,7 @@
 .empty h2 {
   margin: 0;
   color: var(--color-ink);
-  font-size: 17px;
+  font-size: var(--jb-type-heading-sm);
   font-weight: 620;
   letter-spacing: -0.025em;
   line-height: 1.25;
@@ -102,7 +151,37 @@
   font-size: var(--jb-type-caption);
 }
 
-.rowLink,
+/*
+ * The way into an application is a button, not a line of text.
+ *
+ * Every row ended in a bare label and an arrow, which reads as an annotation
+ * on the row rather than as the control that opens it — the one thing a person
+ * comes to this page to do. It takes the same secondary treatment as the retry
+ * button below, so the page has one button shape.
+ */
+.rowLink {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 7px;
+  min-block-size: 40px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-subtle);
+  color: var(--color-ink);
+  padding: 8px 14px;
+  font-size: var(--jb-type-label);
+  font-weight: 650;
+  text-decoration: none;
+  transition:
+    background var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+}
+
+.rowLink:hover {
+  background: color-mix(in srgb, var(--jb-signal-tint) 10%, var(--color-surface-subtle));
+}
+
 .primaryLink {
   display: inline-flex;
   align-items: center;
@@ -137,13 +216,10 @@
 .primaryLink,
 .retry {
   margin-block-start: 24px;
-}
-
-.retry {
   min-block-size: 40px;
-  border: 1px solid var(--color-line-strong);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  background: var(--color-surface-subtle);
   color: var(--color-ink);
   padding: 8px 14px;
   font-size: var(--jb-type-label);
@@ -160,19 +236,32 @@
   display: block;
   block-size: 76px;
   border-block-end: 1px solid var(--color-line);
-  background: linear-gradient(
-    100deg,
-    transparent 30%,
-    color-mix(in srgb, var(--color-surface-subtle) 70%, transparent) 50%,
-    transparent 70%
-  );
-  background-size: 220% 100%;
-  animation: application-loading 1.4s ease-in-out infinite;
+  background:
+    linear-gradient(100deg, transparent 26%, var(--jb-skeleton-sheen) 48%, transparent 72%),
+    var(--jb-skeleton-base);
+  background-size:
+    220% 100%,
+    auto;
+  animation: application-loading 1.4s var(--ease-standard) infinite;
 }
 
 @keyframes application-loading {
+  from {
+    background-position:
+      150% 0,
+      0 0;
+  }
+
   to {
-    background-position: -220% 0;
+    background-position:
+      -50% 0,
+      0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading span {
+    animation: none;
   }
 }
 
