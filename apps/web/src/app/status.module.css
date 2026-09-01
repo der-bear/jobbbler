@@ -1,0 +1,93 @@
+/*
+ * The two dead ends a router can hand you — a page that is not there, and a
+ * page that failed — share one shape, because they are the same moment for the
+ * reader: something did not work, here is what happened, here is the way on.
+ * It is the shape the role page already uses when a role has gone.
+ */
+.state {
+  display: grid;
+  align-content: center;
+  max-inline-size: var(--jb-page-max);
+  min-block-size: calc(100dvh - var(--app-header-height, 68px) - var(--app-footer-height, 68px));
+  margin-inline: auto;
+  padding: var(--jb-page-top) var(--jb-page-gutter) var(--jb-page-bottom);
+}
+
+.state h1 {
+  max-inline-size: 17ch;
+  margin: 0;
+  color: var(--color-ink);
+  font-size: var(--jb-page-title-size);
+  font-weight: 540;
+  letter-spacing: var(--jb-page-title-tracking);
+  line-height: var(--jb-page-title-leading);
+  text-wrap: balance;
+}
+
+.detail {
+  max-inline-size: 52ch;
+  margin: var(--jb-rhythm-3) 0 0;
+  color: var(--color-ink-muted);
+  font-size: var(--jb-type-body-sm);
+  line-height: 1.65;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--jb-rhythm-2);
+  margin-block-start: var(--jb-rhythm-4);
+}
+
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-block-size: 44px;
+  border-radius: var(--radius-sm);
+  font-size: var(--jb-type-ui);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.primary {
+  border: 1px solid var(--jb-signal);
+  background: var(--jb-signal-gradient);
+  color: var(--jb-signal-contrast);
+  padding: 8px 14px;
+}
+
+.primary:hover {
+  background: var(--color-signal-strong);
+}
+
+.secondary {
+  border: 1px solid transparent;
+  background: var(--color-surface-subtle);
+  color: var(--color-ink);
+  padding: 8px 14px;
+  cursor: pointer;
+  transition:
+    background var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+}
+
+.secondary:hover {
+  background: color-mix(in srgb, var(--jb-signal-tint) 10%, var(--color-surface-subtle));
+}
+
+.primary:focus-visible,
+.secondary:focus-visible {
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: var(--jb-focus-offset);
+}
+
+/* A support handle, not a stack trace: enough to match a report to a log. */
+.reference {
+  margin: var(--jb-rhythm-3) 0 0;
+  color: var(--color-ink-subtle);
+  font-family: var(--jb-font-mono);
+  font-size: var(--jb-type-caption);
+}
