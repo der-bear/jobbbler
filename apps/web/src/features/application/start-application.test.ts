@@ -38,6 +38,26 @@ describe("startApplication", () => {
     expect(marker.markOwnerSessionStarted).toHaveBeenCalledWith(undefined);
   });
 
+  it("does not complete until the application workspace navigation commits", async () => {
+    const request = vi.fn().mockResolvedValue({ draft, disposition: "created" });
+    let releaseNavigation!: () => void;
+    const navigation = new Promise<void>((resolve) => {
+      releaseNavigation = resolve;
+    });
+    const navigate = vi.fn(() => navigation);
+    let settled = false;
+
+    const starting = startApplication(draft.jobId, { request, navigate }).then((result) => {
+      settled = true;
+      return result;
+    });
+
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledOnce());
+    expect(settled).toBe(false);
+    releaseNavigation();
+    await expect(starting).resolves.toEqual({ draft, disposition: "created" });
+  });
+
   it("creates a private owner session on demand and retries once", async () => {
     const request = vi
       .fn()

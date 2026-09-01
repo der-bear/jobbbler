@@ -5,7 +5,7 @@
 }
 
 .hero {
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   padding-block-end: clamp(22px, 2.5vw, 32px);
 }
 
@@ -64,7 +64,7 @@
   gap: 0;
   margin: 0;
   padding: 18px 0;
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   list-style: none;
 }
 
@@ -105,10 +105,10 @@
   align-items: flex-start;
   gap: 8px;
   margin: 22px 0 0;
-  border-inline-start: 2px solid var(--color-danger);
+  border-inline-start: var(--jb-stroke-control) solid var(--color-danger);
   padding: 10px 14px;
   color: var(--color-ink);
-  background: var(--color-surface-soft);
+  background: var(--jb-veil-subtle);
   font-size: var(--jb-type-ui);
   line-height: 1.5;
 }
@@ -259,7 +259,7 @@
   border-radius: var(--radius-sm);
   padding: 11px 12px;
   color: var(--color-ink);
-  background: var(--color-surface);
+  background: var(--jb-veil-control);
   font: inherit;
   font-size: var(--jb-type-body-sm);
   line-height: 1.5;
@@ -275,7 +275,7 @@
  * marked the whole form at once and marked it in the colour of success.
  */
 .field[data-invalid="true"] {
-  border-inline-start: 2px solid var(--jb-danger);
+  border-inline-start: var(--jb-stroke-control) solid var(--jb-danger);
   padding-inline-start: 14px;
 }
 
@@ -404,7 +404,7 @@
   display: grid;
   grid-template-columns: minmax(120px, 0.55fr) minmax(0, 1fr);
   gap: 22px;
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   padding-block: 14px;
 }
 
@@ -438,17 +438,19 @@
   align-items: flex-start;
   gap: 10px;
   margin: 22px 0 0;
-  border-block-start: 2px solid var(--jb-signal);
+  border-block-start: var(--jb-stroke-control) solid var(--jb-signal);
   padding: 14px;
   color: var(--color-ink-muted);
-  background: var(--color-surface-soft);
+  background: var(--jb-veil-subtle);
+  backdrop-filter: var(--jb-glass-blur);
+  -webkit-backdrop-filter: var(--jb-glass-blur);
   font-size: var(--jb-type-label);
   line-height: 1.55;
 }
 
 .technicalDetails {
   margin-block-start: 14px;
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   color: var(--color-ink-muted);
   font-size: var(--jb-type-label);
 }
@@ -488,7 +490,8 @@
   align-items: baseline;
   gap: 12px;
   margin-block-start: 22px;
-  border-block: 1px solid color-mix(in srgb, var(--jb-danger) 30%, var(--color-line));
+  border-block: var(--jb-stroke-structure) solid
+    color-mix(in srgb, var(--jb-danger) 30%, var(--color-line));
   padding-block: 12px;
   color: var(--color-ink-muted);
   font-size: var(--jb-type-label);
@@ -505,7 +508,7 @@
  */
 .sharingSummary {
   margin-block-start: 38px;
-  border: 1px solid var(--color-line);
+  border: var(--jb-stroke-structure) solid var(--color-line);
   border-radius: var(--radius-sm);
   padding: 20px 22px;
   background: var(--jb-glass-fill-strong);
@@ -513,16 +516,22 @@
   -webkit-backdrop-filter: var(--jb-glass-blur);
 }
 
+/*
+ * The eyebrow above the heading is gone, so there is nothing left for the icon
+ * to hang from — it sat pinned to the top of a single line and read as too
+ * small for the words beside it. Centred and sized to the heading, it sits on
+ * the line instead of above it.
+ */
 .sharingTitle {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
 }
 
 .sharingTitle > svg {
   flex: 0 0 auto;
-  inline-size: 20px;
-  margin-block-start: 2px;
+  inline-size: 22px;
+  block-size: 22px;
   color: var(--jb-signal);
 }
 
@@ -621,7 +630,7 @@
 
 .submittedSnapshot {
   margin-block-start: 34px;
-  border-block-start: 2px solid var(--jb-signal);
+  border-block-start: var(--jb-stroke-control) solid var(--jb-signal);
   padding-block-start: 20px;
 }
 
@@ -651,12 +660,12 @@
 
 .trustRail {
   align-self: start;
-  border-block-start: 2px solid var(--jb-signal);
+  border-block-start: var(--jb-stroke-control) solid var(--jb-signal);
 }
 
 .trustRail > div {
   position: relative;
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   padding: 20px 0 20px 34px;
 }
 

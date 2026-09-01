@@ -37,6 +37,7 @@
   --jb-text: #303633;
   --jb-text-muted: #646c67;
   --jb-border: #e6eae8;
+  --jb-border-chip: color-mix(in srgb, var(--jb-border-strong) 82%, var(--jb-border));
   --jb-border-strong: #8c9790;
   --jb-signal: #107f3e;
   --jb-signal-strong: #0b6531;
@@ -56,6 +57,15 @@
   /* Overlay scrim and its shadow, so no component paints its own black. */
   --jb-scrim: rgb(12 24 16 / 52%);
   --jb-scrim-shadow: rgb(0 0 0 / 0.25);
+  /*
+   * Two stroke weights, and a rule for which is which. A structural line —
+   * a divider, the edge of a card — is there to separate, so it takes the
+   * hairline; anything you can click takes a full pixel, because its edge is
+   * part of the target. Nothing gets two lines: a bordered thing inside a
+   * bordered thing drops the inner one.
+   */
+  --jb-stroke-structure: 0.5px;
+  --jb-stroke-control: 1px;
   --jb-radius-sm: 4px;
   --jb-radius-md: 8px;
   --jb-radius-lg: 12px;
@@ -126,7 +136,66 @@
    * as a tint. This one is bright and clean at high lightness, so 3–6% of it
    * lifts a surface without dulling it. It is never used for text.
    */
-  --jb-signal-tint: #4fd88f;
+  --jb-signal-tint: #63d88a;
+  /*
+   * The state layer moves away from the ground it sits on: darker on a light
+   * theme, lighter on a dark one. Defined per theme rather than blended,
+   * because a blend mode makes the result depend on whatever happens to be
+   * behind — which is exactly the thing that loses contrast.
+   */
+  --jb-state-shift: color-mix(in srgb, var(--jb-signal) 7%, transparent);
+
+  /*
+   * Material scale. Controls obscure almost everything behind them, in-flow
+   * surfaces retain a little context, floating panes retain more, and a modal
+   * sheet restores a strong reading floor while keeping the frosted effect.
+   * Blur intensity rises with the distance from the document plane.
+   */
+  --jb-veil-surface: color-mix(in srgb, var(--jb-surface) 84%, transparent);
+  --jb-veil-subtle: color-mix(in srgb, var(--jb-surface-muted) 84%, transparent);
+  --jb-veil-strong: color-mix(in srgb, var(--jb-surface-strong) 88%, transparent);
+  --jb-veil-control: color-mix(in srgb, var(--jb-surface) 94%, transparent);
+  --jb-veil-control-subtle: color-mix(in srgb, var(--jb-surface-muted) 92%, transparent);
+  --jb-glass-control: color-mix(in srgb, var(--jb-surface-muted) 88%, transparent);
+  --jb-glass-fill: color-mix(in srgb, var(--jb-surface) 80%, transparent);
+  --jb-glass-fill-strong: color-mix(in srgb, var(--jb-surface) 86%, transparent);
+  --jb-glass-float: color-mix(in srgb, var(--jb-surface) 72%, transparent);
+  --jb-glass-sheet: color-mix(in srgb, var(--jb-canvas) 90%, transparent);
+  --jb-glass-hover: color-mix(in srgb, var(--jb-signal-tint) 5%, var(--jb-glass-fill));
+  --jb-glass-blur-control: saturate(145%) blur(8px);
+  --jb-glass-blur: saturate(155%) blur(14px);
+  --jb-glass-blur-float: saturate(165%) blur(26px);
+  --jb-glass-blur-sheet: saturate(160%) blur(34px);
+
+  /* Shared interaction layers keep hover and selection green, never teal. */
+  --jb-hover-surface: color-mix(in srgb, var(--jb-signal-tint) 2%, var(--jb-surface-muted));
+  --jb-hover-line: color-mix(in srgb, var(--jb-signal) 26%, var(--jb-border));
+  --jb-state-hover: var(--jb-state-shift);
+  --jb-state-line: color-mix(in srgb, var(--jb-signal) 30%, var(--jb-border-strong));
+  --jb-state-active: color-mix(in srgb, var(--jb-signal-tint) 15%, transparent);
+  --jb-state-active-line: color-mix(in srgb, var(--jb-signal) 48%, var(--jb-border-chip));
+  --jb-state-active-ink: var(--jb-signal-strong);
+
+  --jb-action-gradient: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--jb-text) 95%, white) 0%,
+    var(--jb-text) 62%
+  );
+  --jb-action-gradient-hover: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--jb-text) 84%, white) 0%,
+    color-mix(in srgb, var(--jb-text) 90%, white) 62%
+  );
+  --jb-signal-gradient: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--jb-signal) 97%, white) 0%,
+    var(--jb-signal) 62%
+  );
+  --jb-signal-gradient-hover: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--jb-signal-strong) 96%, white) 0%,
+    var(--jb-signal-strong) 62%
+  );
   --jb-canvas-light-opacity: 0.085;
   --jb-canvas-grain-opacity: 0.13;
   /*
@@ -171,7 +240,8 @@
 
 :root[data-theme="dark"] {
   --jb-canvas: #181a19;
-  --jb-signal-tint: #6ee0a2;
+  --jb-signal-tint: #75df9a;
+  --jb-state-shift: color-mix(in srgb, var(--jb-signal-tint) 10%, transparent);
   --jb-canvas-light-opacity: 0.15;
   --jb-canvas-grain-opacity: 0.55;
   --jb-surface: #1e201f;

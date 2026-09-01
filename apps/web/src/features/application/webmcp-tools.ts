@@ -358,14 +358,17 @@ function assistanceTool(
           requestId: request.id,
           nextTool: "decide_application_assistance",
           presentation: {
-            title: "Let Jobbbler prepare this application?",
+            title: "Allow this agent to help with this application?",
             prompt:
-              "Allow this agent client to prepare and privately review this application from facts you provide. Nothing is sent to the employer until you approve the exact result.",
+              "The agent can fill in answers using facts you provide and prepare the completed application for review. It cannot submit anything until you approve that exact application.",
             confirmLabel: "Allow once",
             facts: [
               { key: "Scope", value: "This application only" },
-              { key: "Purpose", value: request.purpose },
-              { key: "Allowed actions", value: request.operations.join(", ") },
+              {
+                key: "Can do",
+                value: "Fill in answers and prepare the completed application for your review",
+              },
+              { key: "Cannot do", value: "Submit anything without your final approval" },
               { key: "Expires", value: request.expiresAt },
             ],
           },

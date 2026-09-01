@@ -84,4 +84,59 @@ describe("design system adoption", () => {
       [],
     );
   });
+
+  it("keeps custom secondary actions dark on hover", async () => {
+    const secondaryActions = [
+      join(sourceRoot, "components/agent-guide.module.css"),
+      join(sourceRoot, "features/application/application-list.module.css"),
+      join(sourceRoot, "app/status.module.css"),
+    ];
+
+    for (const path of secondaryActions) {
+      const css = await readFile(path, "utf8");
+      expect(css, `${path} must use the shared dark secondary hover`).toContain(
+        "background: var(--jb-action-gradient-hover);",
+      );
+    }
+  });
+
+  it("keeps panel dividers and marketing actions on the shared stroke and radius scale", async () => {
+    const panel = await readFile(join(sourceRoot, "components/agent-panel.module.css"), "utf8");
+    const about = await readFile(join(sourceRoot, "app/about/webmcp/page.module.css"), "utf8");
+
+    expect(panel).toContain("inline-size: var(--jb-stroke-structure);");
+    expect(panel).toContain("inline-size: var(--jb-stroke-control);");
+    expect(panel).not.toContain("inline-size: 3px;");
+    expect(panel).toContain(
+      ".tabs button:focus-visible {\n  outline: var(--jb-stroke-control) solid var(--jb-focus);",
+    );
+    expect(panel).toContain(
+      '.tabs button[aria-selected="true"]:focus-visible {\n  border-block-end-color: transparent;',
+    );
+    expect(about).toContain("border-radius: var(--radius-sm);");
+    expect(about).not.toContain("border-radius: var(--radius-pill);");
+  });
+
+  it("reserves extra status colors for completion and real errors", async () => {
+    const applications = await readFile(
+      join(sourceRoot, "features/application/application-list.module.css"),
+      "utf8",
+    );
+
+    expect(applications).not.toContain("color: var(--color-warning);");
+    expect(applications).toContain(
+      '.state > span[data-state="submitted"] {\n  color: var(--color-signal-strong);',
+    );
+    expect(applications).toContain(
+      '.state > span[data-state="failed"] {\n  color: var(--color-danger);',
+    );
+  });
+
+  it("draws one focus ring on the bordered theme control", async () => {
+    const uiStyles = await readFile(join(uiRoot, "styles.css"), "utf8");
+
+    expect(uiStyles).toContain(
+      ".jb-theme-toggle:focus-visible {\n  border-color: transparent;\n  outline-offset: -2px;",
+    );
+  });
 });

@@ -11,7 +11,7 @@ import { ApiClientError, queryApi, type QueryApiOptions } from "@/lib/query-clie
 
 interface StartApplicationDependencies {
   readonly request: <T>(url: string, schema: ZodType<T>, options?: QueryApiOptions) => Promise<T>;
-  navigate(href: string): void;
+  navigate(href: string): Promise<void> | void;
 }
 
 const defaultDependencies: Pick<StartApplicationDependencies, "request"> = {
@@ -49,7 +49,7 @@ export async function startApplication(
     result = await createDraft(jobId, dependencies.request, options.signal);
   }
   markOwnerSessionStarted(sessionExpiresAt);
-  dependencies.navigate(`/apply/${encodeURIComponent(result.draft.id)}`);
+  await dependencies.navigate(`/apply/${encodeURIComponent(result.draft.id)}`);
   return result;
 }
 

@@ -30,7 +30,8 @@ export default function PrivacyPage() {
         <h1>Privacy, without the fine-print maze.</h1>
         <p>
           Jobbbler keeps searches simple and asks only when a feature needs personal data. An email
-          is optional. Application data stays tied to one application and one clear decision.
+          is optional. Application data stays tied to one application. Preparing and submitting it
+          each require a clear decision.
         </p>
       </header>
 

@@ -187,16 +187,15 @@ describe("application WebMCP outcomes", () => {
       requestId: delegationRequestId,
       nextTool: "decide_application_assistance",
       presentation: {
-        title: "Let Jobbbler prepare this application?",
+        title: "Allow this agent to help with this application?",
         confirmLabel: "Allow once",
         facts: [
           { key: "Scope", value: "This application only" },
-          { key: "Purpose", value: "Prepare this application with the candidate." },
           {
-            key: "Allowed actions",
-            value:
-              "read_application, edit_application, validate_application, review_application, request_data_consent, request_confirmation, submit_application",
+            key: "Can do",
+            value: "Fill in answers and prepare the completed application for your review",
           },
+          { key: "Cannot do", value: "Submit anything without your final approval" },
           { key: "Expires", value: "2026-08-29T10:15:00.000Z" },
         ],
       },
@@ -211,6 +210,7 @@ describe("application WebMCP outcomes", () => {
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
     expect(JSON.stringify(result)).not.toContain("token");
+    expect(JSON.stringify(result)).not.toContain("edit_application");
   });
 
   it("records the assistance decision from the agent client before exposing edits", async () => {

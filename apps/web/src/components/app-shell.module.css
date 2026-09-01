@@ -1,3 +1,33 @@
+/*
+ * Diagnostic only — see `debugGrid` in app-shell.tsx. Painted on the page
+ * ground, so a translucent pane shows it through and an opaque one does not.
+ */
+.shell[data-debug-grid="on"] {
+  background-image:
+    repeating-linear-gradient(0deg, rgb(220 0 120 / 42%) 0 1px, transparent 1px 12px),
+    repeating-linear-gradient(90deg, rgb(220 0 120 / 42%) 0 1px, transparent 1px 12px);
+  background-attachment: fixed;
+}
+
+/*
+ * The header and the panel blur what is behind them, and a 12px grid under a
+ * 24px blur smears into flat colour — which reads as "opaque" when the pane is
+ * in fact glass. Their own copy sits behind their fill, coarse enough to
+ * survive the blur, so what you see through them is the grid rather than the
+ * memory of one.
+ */
+.shell[data-debug-grid="on"] .header::before,
+.shell[data-debug-grid="on"] :global(aside[aria-label="What your agent is doing"])::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(0deg, rgb(220 0 120 / 55%) 0 1.5px, transparent 1.5px 36px),
+    repeating-linear-gradient(90deg, rgb(220 0 120 / 55%) 0 1.5px, transparent 1.5px 36px);
+}
+
 .shell {
   --app-header-height: 68px;
   --app-footer-height: 68px;
@@ -32,6 +62,27 @@
  * accent at very low alpha, so at rest the surface reads as texture and only
  * resolves into movement if you watch it.
  */
+/*
+ * The canvas belongs to a hero, and to the top of one.
+ *
+ * A working screen — a filtered list, a role, an application — is a document,
+ * and a tint drifting behind its body competes with the content for the same
+ * attention. Only the two pages that open with a hero carry it, and there it
+ * is clipped to the band that hero occupies; everywhere else stays white.
+ */
+.shell[data-canvas="none"]::before,
+.shell[data-canvas="none"]::after {
+  display: none;
+}
+
+.shell[data-canvas="hero"]::before,
+.shell[data-canvas="hero"]::after {
+  block-size: 430px;
+  inset-block-end: auto;
+  mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / 38%) 55%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / 38%) 55%, transparent 100%);
+}
+
 .shell::before {
   content: "";
   position: fixed;
@@ -79,7 +130,7 @@
    * with only the scale betraying that anything was running at all.
    */
   background-size: 175% 175%;
-  opacity: calc(var(--jb-canvas-light-opacity) * 2);
+  opacity: calc(var(--jb-canvas-light-opacity) * 2.5);
   filter: blur(28px);
   animation: signalSweep 26s ease-in-out infinite;
 }
@@ -113,17 +164,17 @@
   0%,
   100% {
     background-position: 4% 0%;
-    transform: scale(1);
+    transform: scale(1) skewX(0deg);
   }
 
   35% {
     background-position: 58% 6%;
-    transform: scale(1.06);
+    transform: scale(1.14) skewX(-4deg);
   }
 
   70% {
     background-position: 26% 3%;
-    transform: scale(1.03);
+    transform: scale(0.94) skewX(5deg);
   }
 }
 
@@ -138,8 +189,34 @@
   min-inline-size: 0;
 }
 
+/*
+ * The footer is pinned to the bottom of <main>, whatever <main> contains.
+ *
+ * A min-height alone was not enough: on /saved the workspace unmounts for a
+ * few milliseconds during hydration, and in that window the footer was the
+ * only child — it sat at the top of a 752px box, directly under the header,
+ * and then dropped 900px when the page came back. Measured at 375px that was
+ * a layout shift of 0.34, the worst on the site. As a flex column with the
+ * footer pushed to the end, an empty <main> still keeps the footer where it
+ * will end up.
+ */
 .contentFrame > main {
+  display: flex;
+  flex-direction: column;
+  inline-size: 100%;
   min-inline-size: 0;
+  min-block-size: calc(100dvh - var(--app-header-height, 68px));
+}
+
+/* Auto inline margins on a centered route root opt a flex item out of stretch.
+   Give every page root an explicit track so the footer layout cannot collapse
+   document-like pages to their min-content width. */
+.contentFrame > main > :not(.siteFooter) {
+  inline-size: 100%;
+}
+
+.contentFrame > main > .siteFooter {
+  margin-block-start: auto;
 }
 
 .siteFooter {
@@ -148,7 +225,7 @@
   justify-content: space-between;
   gap: 18px;
   min-block-size: 68px;
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   padding-inline: clamp(20px, 3vw, 48px);
   color: var(--color-ink-subtle);
   font-size: var(--jb-type-caption);
@@ -241,7 +318,7 @@
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   min-block-size: var(--app-header-height);
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   /*
    * The header rides over the canvas wash, and an opaque fill chopped it in
    * half. Saturation is not decoration here: blur alone desaturates whatever
@@ -259,9 +336,9 @@
    * survives and the ghost does not. Saturation keeps the green underneath
    * from washing out to grey.
    */
-  background: color-mix(in srgb, var(--color-canvas) 78%, transparent);
-  backdrop-filter: saturate(170%) blur(28px);
-  -webkit-backdrop-filter: saturate(170%) blur(28px);
+  background: var(--jb-glass-fill-strong);
+  backdrop-filter: var(--jb-glass-blur-float);
+  -webkit-backdrop-filter: var(--jb-glass-blur-float);
   padding-inline: clamp(20px, 3vw, 48px);
 }
 
@@ -349,15 +426,19 @@
  * tinted token while buttons and nav pills used a plain grey, so the same
  * gesture produced two different colours depending on what it landed on.
  */
-.navLink:hover,
 /*
- * The page you are on takes the accent, not a grey wash. Hover and "you are
- * here" were rendered identically, so the navigation could not say which was
- * which — moving the pointer across it made every item look current in turn.
+ * Hover and "you are here" are different statements and must look different.
+ * They shared one rule, so running the pointer across the navigation lit each
+ * item up as though it were the current page.
  */
+.navLink:hover {
+  background: var(--jb-state-hover);
+  color: var(--color-ink);
+}
+
 .navLink[aria-current="page"] {
-  background: color-mix(in srgb, var(--jb-signal-tint) 12%, transparent);
-  color: var(--color-signal-strong);
+  background: var(--jb-state-active);
+  color: var(--jb-state-active-ink);
 }
 
 .actions {
@@ -372,12 +453,18 @@
   min-block-size: 44px;
   align-items: center;
   gap: 7px;
-  border: 1px solid var(--color-line);
+  /*
+   * At rest it is the theme toggle beside it — same fill, same edge, so the
+   * pair reads as one control group. Open, it is an active chip: the state it
+   * reports is "this is on", which is what a filled chip means everywhere else
+   * in the product.
+   */
+  border: var(--jb-stroke-control) solid var(--color-line-strong);
   border-radius: var(--radius-pill);
   background: var(--jb-glass-fill-strong);
   backdrop-filter: var(--jb-glass-blur);
   -webkit-backdrop-filter: var(--jb-glass-blur);
-  color: var(--color-ink-muted);
+  color: var(--color-ink);
   padding-inline: 12px;
   font-size: var(--jb-type-label);
   font-weight: 620;
@@ -387,12 +474,25 @@
     color var(--motion-fast) var(--ease-standard);
 }
 
-.agentView:hover,
+.agentView:hover {
+  border-color: var(--jb-state-line);
+  /* The layer goes over the glass, not instead of it. */
+  background:
+    linear-gradient(var(--jb-state-hover), var(--jb-state-hover)), var(--jb-glass-fill-strong);
+}
+
+/* An open control still answers the pointer; the selected fill alone left it
+   feeling stuck. */
+.agentView[aria-expanded="true"]:hover {
+  border-color: var(--jb-state-active-line);
+  background: linear-gradient(var(--jb-state-hover), var(--jb-state-hover)), var(--jb-state-active);
+}
+
 .agentView[aria-expanded="true"] {
-  border-color: var(--jb-hover-line);
-  /* Translucent, so the glass does not blink off under the pointer. */
-  background: var(--jb-glass-hover);
-  color: var(--color-ink);
+  /* The chip's own values, so the two greens on screen are one green. */
+  border-color: var(--jb-state-active-line);
+  background: var(--jb-state-active);
+  color: var(--jb-state-active-ink);
 }
 
 .agentView[data-status="error"] {
@@ -407,7 +507,7 @@
   place-items: center;
   border: 1px solid var(--color-line-strong);
   border-radius: 50%;
-  background: var(--color-surface);
+  background: var(--jb-veil-control);
   color: var(--color-ink);
   font: 600 12px/1 var(--font-sans);
 }
@@ -420,9 +520,10 @@
   .header {
     grid-template-columns: 1fr auto;
     min-block-size: var(--app-header-height);
-    background: var(--color-canvas);
+    background: var(--jb-glass-sheet);
     padding-inline: 18px;
-    backdrop-filter: none;
+    backdrop-filter: var(--jb-glass-blur-sheet);
+    -webkit-backdrop-filter: var(--jb-glass-blur-sheet);
   }
 
   .avatar {
@@ -438,9 +539,9 @@
     position: fixed;
     z-index: 50;
     inset-inline: 12px;
-    inset-block-end: 12px;
+    inset-block-end: max(12px, env(safe-area-inset-bottom));
     justify-content: space-around;
-    border: 1px solid var(--color-line-strong);
+    border: var(--jb-stroke-structure) solid var(--color-line);
     border-radius: var(--radius-lg);
     /* It floats over the page rather than sitting in it, which is exactly what
        the floating glass is for — the content passes under it as you scroll. */
@@ -480,11 +581,13 @@
   }
 
   .siteFooter {
-    min-block-size: 110px;
+    min-block-size: 164px;
     flex-direction: column;
     align-items: flex-start;
     justify-content: center;
-    padding-block-end: 72px;
+    /* Keep every footer link above the floating navigation and the device's
+       home indicator instead of letting the two interaction layers overlap. */
+    padding-block: 24px calc(96px + env(safe-area-inset-bottom));
   }
 
   .agentView {
@@ -505,7 +608,7 @@
  * header a containing block, and the mobile navigation is a fixed-position
  * child of it.
  */
-@media (max-width: 1240px) {
+@media (max-width: 1600px) {
   .shell[data-agent-open="true"] .desktopNavigation .desktopLabel {
     display: none;
   }

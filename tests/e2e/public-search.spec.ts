@@ -194,6 +194,23 @@ test.describe("public job search workspace", () => {
     );
   });
 
+  test("keeps the how-it-works explanation readable beside the default agent panel", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto("/about/webmcp");
+
+    await expect(
+      page.getByRole("complementary", { name: "What your agent is doing" }),
+    ).toBeVisible();
+    const section = page.getByRole("region", { name: "Built into the site" });
+    const accountNote = section.locator("p").filter({ hasText: "No account is needed" });
+    await expect(accountNote).toBeVisible();
+    const bounds = await accountNote.boundingBox();
+
+    expect(bounds?.width ?? 0).toBeGreaterThanOrEqual(280);
+  });
+
   test("keeps every catalog result reachable without replacing earlier pages", async ({ page }) => {
     await page.goto("/jobs");
 
@@ -208,6 +225,29 @@ test.describe("public job search workspace", () => {
     await expect(roles).toHaveCount(40);
     await expect(roles.first()).toHaveAttribute("aria-label", firstRoleName ?? "");
     await expect(page.getByText(/40 of \d+ matching jobs loaded/i)).toBeAttached();
+  });
+
+  test("keeps mobile result rows inside the viewport", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/jobs");
+
+    const roles = page.getByRole("article");
+    await expect(roles.first()).toBeVisible();
+    const geometry = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      rows: [...document.querySelectorAll<HTMLElement>("article")].map((row) => {
+        const bounds = row.getBoundingClientRect();
+        return { left: bounds.left, right: bounds.right };
+      }),
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+
+    expect(geometry.scrollWidth).toBe(geometry.clientWidth);
+    expect(geometry.rows.length).toBeGreaterThan(0);
+    for (const row of geometry.rows) {
+      expect(row.left).toBeGreaterThanOrEqual(0);
+      expect(row.right).toBeLessThanOrEqual(geometry.clientWidth);
+    }
   });
 
   test("keeps comparison agent-driven without adding controls to ordinary search", async ({
@@ -417,6 +457,13 @@ test.describe("public job search workspace", () => {
     await expect(page).toHaveURL(/\/jobs\/[^/?#]+/);
     await expect.poll(() => new URL(page.url()).searchParams.get("salary_min")).toBe("100000");
     await expect(page.getByRole("heading", { name: seededRole.title })).toBeVisible();
+    await expect
+      .poll(async () => {
+        const workspace = page.getByRole("article");
+        const box = await workspace.boundingBox();
+        return box?.width ?? 0;
+      })
+      .toBeGreaterThan(700);
     await expect(page.getByRole("region", { name: "How it fits your search" })).toContainText(
       "Work model is remote.",
     );
@@ -450,6 +497,18 @@ test.describe("public job search workspace", () => {
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await expect(page.getByRole("button", { name: "Switch to light theme" })).toBeVisible();
+  });
+
+  test("keeps pointer-selected agent tabs free of a keyboard-only focus ring", async ({ page }) => {
+    await page.goto("/about/webmcp");
+
+    const guideTab = page.getByRole("tab", { name: "Guide" });
+    await guideTab.click();
+
+    await expect(guideTab).toHaveAttribute("aria-selected", "true");
+    await expect
+      .poll(() => guideTab.evaluate((element) => getComputedStyle(element).outlineStyle))
+      .toBe("none");
   });
 
   test("remains usable when WebMCP is unavailable", async ({ page }) => {

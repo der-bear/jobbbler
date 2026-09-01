@@ -1007,19 +1007,18 @@ export async function handleDecideSubmissionReviewRequest(
       createdAt: now,
       expiresAt: new Date(Date.parse(now) + 365 * 24 * 60 * 60_000).toISOString(),
     });
-    await publishAuthorizationActivity(dependencies, {
-      ownerId: human.ownerId,
-      requestId,
-      key: "decide_application_submission",
-      status: "completed",
-      safeSummary:
-        parsed.decision === "approved"
-          ? "Exact application disclosure approved through the agent client."
-          : "Application disclosure declined through the agent client.",
-      actorKind: activityActorKind(parsed.interaction.channel),
-      draftVersion: acceptedDraftVersion,
-      occurredAt: now,
-    });
+    if (parsed.decision === "declined") {
+      await publishAuthorizationActivity(dependencies, {
+        ownerId: human.ownerId,
+        requestId,
+        key: "decide_application_submission",
+        status: "completed",
+        safeSummary: "Application disclosure declined through the agent client.",
+        actorKind: activityActorKind(parsed.interaction.channel),
+        draftVersion: acceptedDraftVersion,
+        occurredAt: now,
+      });
+    }
     return apiSuccessResponse(submissionDecisionReceipt(decision), {
       requestId,
     });

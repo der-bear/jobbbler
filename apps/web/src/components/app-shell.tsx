@@ -29,11 +29,16 @@ function isCurrentRoute(pathname: string, href: string): boolean {
 }
 
 function PrimaryNavigation({
+  blocked = false,
   className,
   pathname,
-}: Readonly<{ className: string | undefined; pathname: string }>) {
+}: Readonly<{ blocked?: boolean; className: string | undefined; pathname: string }>) {
   return (
-    <nav aria-label="Primary navigation" className={`${styles["navigation"]} ${className ?? ""}`}>
+    <nav
+      aria-label="Primary navigation"
+      className={`${styles["navigation"]} ${className ?? ""}`}
+      inert={blocked || undefined}
+    >
       {navigation.map(({ href, label, mobileLabel, icon: Icon }) => (
         <Link
           aria-current={isCurrentRoute(pathname, href) ? "page" : undefined}
@@ -52,6 +57,19 @@ function PrimaryNavigation({
         </Link>
       ))}
     </nav>
+  );
+}
+
+export function MobilePrimaryNavigation({
+  blocked = false,
+  pathname,
+}: Readonly<{ blocked?: boolean; pathname: string }>) {
+  return (
+    <PrimaryNavigation
+      blocked={blocked}
+      className={styles["mobileNavigation"]}
+      pathname={pathname}
+    />
   );
 }
 
@@ -115,7 +133,6 @@ export function AppHeaderSurface({
         </button>
         <ThemeToggle />
       </div>
-      <PrimaryNavigation className={styles["mobileNavigation"]} pathname={pathname} />
     </header>
   );
 }
@@ -153,6 +170,30 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
       query.removeEventListener("change", update);
       window.removeEventListener("resize", update);
     };
+  }, []);
+
+  /*
+   * A diagnostic grid, development only.
+   *
+   * Paints a grid on the page ground: translucent surfaces show it through,
+   * opaque ones hide it, so which is which stops being a matter of opinion.
+   * Toggled from the console, because the search page rewrites its own query
+   * string and drops any key it does not recognise:
+   *
+   *   localStorage.setItem("jobbbler-debug-grid", "1"); location.reload()
+   *   localStorage.removeItem("jobbbler-debug-grid"); location.reload()
+   *
+   * Gated on the development build, so it cannot reach a deployment.
+   */
+  const [debugGrid, setDebugGrid] = useState(false);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    try {
+      setDebugGrid(localStorage.getItem("jobbbler-debug-grid") === "1");
+    } catch {
+      setDebugGrid(false);
+    }
   }, []);
 
   /*
@@ -202,7 +243,8 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
     <div
       className={styles["shell"]}
       data-agent-open={String(agentPanelOpen)}
-      data-canvas={pathname === "/" ? "full" : "toolbar"}
+      data-canvas={pathname === "/" || pathname === "/about/webmcp" ? "hero" : "none"}
+      data-debug-grid={debugGrid ? "on" : undefined}
       data-scrolling={String(scrolling)}
       style={{ "--agent-panel-size": `${String(agentPanelWidth)}px` } as CSSProperties}
     >
@@ -218,6 +260,13 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
         onAgentToggle={() => (agentPanelOpen ? closeAgentPanel() : setAgentPanelOpen(true))}
         pathname={pathname}
       />
+      {/*
+       * Keep the fixed mobile navigation outside the frosted header. A
+       * backdrop-filter establishes a containing block for fixed descendants;
+       * nesting the bar inside the header therefore pinned it to the bottom of
+       * the 60px header instead of the bottom of the viewport.
+       */}
+      <MobilePrimaryNavigation blocked={agentPanelOpen && compactAgentPanel} pathname={pathname} />
       <div className={styles["contentFrame"]} data-agent-open={String(agentPanelOpen)}>
         <main id="main-content" inert={agentPanelOpen && compactAgentPanel}>
           {children}

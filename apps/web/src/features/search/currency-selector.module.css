@@ -13,7 +13,7 @@
   min-inline-size: 0;
   min-block-size: 40px;
   border: 0;
-  border-inline-start: 1px solid var(--color-line);
+  border-inline-start: var(--jb-stroke-structure) solid var(--color-line);
   background: transparent;
   color: var(--color-ink-subtle);
   font-size: var(--jb-type-caption);

@@ -1,7 +1,8 @@
+import { readFile } from "node:fs/promises";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import { AppFooter, AppHeaderSurface } from "./app-shell";
+import { AppFooter, AppHeaderSurface, MobilePrimaryNavigation } from "./app-shell";
 
 describe("AppHeaderSurface", () => {
   it("keeps human navigation simple and exposes one clear Agent activity control", () => {
@@ -52,5 +53,44 @@ describe("AppHeaderSurface", () => {
     expect(markup).toContain("Privacy");
     expect(markup).toContain("Source code");
     expect(markup).toContain("© 2026 Jobbbler");
+  });
+});
+
+describe("AppShell layout", () => {
+  it("renders the fixed mobile navigation independently from the frosted header", () => {
+    const markup = renderToStaticMarkup(<MobilePrimaryNavigation pathname="/saved" />);
+
+    expect(markup).toContain('aria-label="Primary navigation"');
+    expect(markup).toContain('aria-current="page"');
+    expect(markup).toContain('href="/saved"');
+    expect(markup).toContain("Applications");
+  });
+
+  it("keeps centered route workspaces stretched inside the flex main", async () => {
+    const css = await readFile(new URL("./app-shell.module.css", import.meta.url), "utf8");
+
+    expect(css).toMatch(/\.contentFrame\s*>\s*main\s*\{[^}]*inline-size:\s*100%;/su);
+    expect(css).toMatch(
+      /\.contentFrame\s*>\s*main\s*>\s*:not\(\.siteFooter\)\s*\{[^}]*inline-size:\s*100%;/su,
+    );
+  });
+
+  it("shortens navigation before an open agent rail can crowd the header", async () => {
+    const css = await readFile(new URL("./app-shell.module.css", import.meta.url), "utf8");
+
+    expect(css).toMatch(
+      /@media\s*\(max-width:\s*1600px\)[\s\S]*?\.shell\[data-agent-open="true"\][\s\S]*?\.desktopLabel\s*\{[^}]*display:\s*none;/u,
+    );
+  });
+
+  it("keeps the mobile footer clear of the fixed navigation", async () => {
+    const css = await readFile(new URL("./app-shell.module.css", import.meta.url), "utf8");
+
+    expect(css).toMatch(
+      /\.mobileNavigation\s*\{[^}]*inset-block-end:\s*max\(12px,\s*env\(safe-area-inset-bottom\)\);/su,
+    );
+    expect(css).toMatch(
+      /\.siteFooter\s*\{[^}]*padding-block:\s*24px\s+calc\(96px\s*\+\s*env\(safe-area-inset-bottom\)\);/su,
+    );
   });
 });

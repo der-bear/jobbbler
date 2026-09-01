@@ -54,12 +54,12 @@
   grid-template-columns: 22px minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   padding-block: 8px;
 }
 
 .guideSteps li:last-child {
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
 }
 
 .guideSteps span {
@@ -84,8 +84,8 @@
   display: grid;
   gap: 12px;
   margin: 4px 0 0;
-  border: 1px solid var(--color-line);
-  border-inline-start: 2px solid var(--jb-signal);
+  border: var(--jb-stroke-structure) solid var(--color-line);
+  border-inline-start: var(--jb-stroke-control) solid var(--jb-signal);
   border-radius: var(--radius-sm);
   background: var(--jb-glass-fill-strong);
   backdrop-filter: var(--jb-glass-blur);
@@ -109,7 +109,7 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   padding-block-start: 20px;
 }
 
@@ -151,7 +151,7 @@
 }
 
 .technicalDetails {
-  border-block: 1px solid var(--color-line);
+  border-block: var(--jb-stroke-structure) solid var(--color-line);
   padding-block: 10px;
 }
 
@@ -177,7 +177,7 @@
 }
 
 .planner {
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   padding-block-start: 12px;
 }
 
@@ -208,7 +208,7 @@
 }
 
 .capabilityGroup {
-  border-block: 1px solid var(--color-line);
+  border-block: var(--jb-stroke-structure) solid var(--color-line);
 }
 
 .capabilityGroup + .capabilityGroup {
@@ -247,7 +247,7 @@
  */
 .groupHeading strong {
   color: var(--color-ink);
-  font-size: var(--jb-type-body-sm);
+  font-size: var(--jb-type-ui);
   letter-spacing: -0.015em;
   font-weight: 670;
 }
@@ -295,16 +295,23 @@
   list-style: none;
 }
 
+/*
+ * Quieter rules and room on the right. Every entry was fenced top and bottom
+ * by a full-strength line and ran flush to the panel edge, so the list read as
+ * a table rather than as a set of names you scan.
+ */
 .toolList > li {
   position: relative;
   display: grid;
   gap: 3px;
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid
+    color-mix(in srgb, var(--color-line) 62%, transparent);
   padding-block: 11px;
+  padding-inline-end: 14px;
 }
 
 .toolList > li:last-child {
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
 }
 
 .toolHeading {
@@ -362,8 +369,8 @@
   min-block-size: 40px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: var(--color-surface-subtle);
-  color: var(--color-ink);
+  background: var(--jb-action-gradient);
+  color: var(--color-canvas);
   padding: 8px 14px;
   font-size: var(--jb-type-label);
   font-weight: 630;
@@ -374,7 +381,8 @@
 }
 
 .moreLink:hover {
-  background: color-mix(in srgb, var(--jb-signal-tint) 10%, var(--color-surface-subtle));
+  border-color: transparent;
+  background: var(--jb-action-gradient-hover);
 }
 
 .moreLink:focus-visible {

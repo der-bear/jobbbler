@@ -51,23 +51,34 @@ choices:
 
 ## Current release evidence
 
-The 1 September 2026 release-candidate check on the current tree recorded:
+The fresh 2 September 2026 release-candidate check on the current tree
+recorded:
 
-- `pnpm verify`: formatting, lint, every workspace typecheck, 935 deterministic
+- `pnpm verify`: formatting, lint, every workspace typecheck, 957 deterministic
   tests, and both production builds passed;
-- isolated clean-context Docker builds completed for both release targets; the
-  web and worker runtime images use Node 24, run as the non-root `jobbbler`
-  user (UID 1001), and the worker image contains both migration sets through
-  PostgreSQL `0019` and SQLite `0025`;
-- Playwright: 44/44 browser journeys passed;
-- PostgreSQL: 103/103 repository, concurrency, migration, and RLS contract
-  tests passed in a disposable local database that was removed after the run;
+- Playwright: 50/50 browser journeys passed, including the complete
+  agent-prepared application flow, saved-search schedules, location
+  autocomplete, keyboard navigation, responsive layouts, and reduced motion;
+- the release SQLite database contained exactly 300 `jobbbler_demo` roles and
+  its backup/restore integrity check passed with the same 300-role catalog;
 - live WebMCP in the supported in-app browser: 29 unique tools were discovered
   on both `/` and `/saved`; `get_search_filters` and `get_saved_alerts` executed
   successfully, and an unavailable owner application returned a bounded
   `NOT_FOUND` result instead of pretending to succeed;
 - model routing checks: Luna low effort 50/50 and Terra low effort 10/10;
 - production dependency audit: no known production vulnerabilities;
+- design-system contracts keep normal text and action states at WCAG AA
+  contrast in both themes, prohibit two-pixel component borders, and route
+  compact typography, radii, and frosted materials through shared tokens.
+
+The infrastructure rehearsal on 1 September 2026 additionally recorded:
+
+- isolated clean-context Docker builds for both release targets; the web and
+  worker runtime images use Node 24, run as the non-root `jobbbler` user (UID
+  1001), and the worker image contains both migration sets through PostgreSQL
+  `0019` and SQLite `0025`;
+- PostgreSQL: 103/103 repository, concurrency, migration, and RLS contract
+  tests passed in a disposable local database that was removed after the run;
 - read-only Supabase inspection: all 19 checked-in PostgreSQL migrations are
   present, the `jobbbler` schema contains 300 demo roles, RLS is enabled on its
   tables, and the security advisor reports no findings.

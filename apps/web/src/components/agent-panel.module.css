@@ -14,16 +14,16 @@
   inline-size: var(--agent-panel-size, 380px);
   block-size: 100dvh;
   flex-direction: column;
-  border-inline-start: 1px solid var(--color-line);
+  border-inline-start: var(--jb-stroke-structure) solid var(--color-line);
   /*
    * The same glass as the header, for the same reason: an opaque slab beside
    * the product reads as a second application, while a translucent one reads
    * as a layer over it. Saturation is what keeps the blurred canvas green
    * instead of grey.
    */
-  background: color-mix(in srgb, var(--color-canvas) 78%, transparent);
-  backdrop-filter: saturate(170%) blur(28px);
-  -webkit-backdrop-filter: saturate(170%) blur(28px);
+  background: var(--jb-glass-fill-strong);
+  backdrop-filter: var(--jb-glass-blur-float);
+  -webkit-backdrop-filter: var(--jb-glass-blur-float);
   animation: panel-in var(--jb-duration-base) var(--ease-standard) both;
 }
 
@@ -46,16 +46,16 @@
 .resizer::after {
   position: absolute;
   inset-block: 0;
-  inset-inline-start: 11px;
-  inline-size: 1px;
+  inset-inline-start: 50%;
+  inline-size: var(--jb-stroke-structure);
   background: var(--color-line);
   content: "";
+  transform: translateX(-50%);
 }
 
 .resizer:hover::after,
 .resizer:focus-visible::after {
-  inset-inline-start: 10px;
-  inline-size: 3px;
+  inline-size: var(--jb-stroke-control);
   background: var(--jb-signal);
 }
 
@@ -66,7 +66,7 @@
 .header {
   display: grid;
   gap: 14px;
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   padding: 20px 22px 16px;
 }
 
@@ -98,7 +98,7 @@
 }
 
 .close:hover {
-  background: var(--color-surface-subtle);
+  background: var(--jb-state-hover);
   color: var(--color-ink);
 }
 
@@ -149,14 +149,14 @@
 .tabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   padding-inline: 14px;
 }
 
 .tabs button {
   min-block-size: 44px;
   border: 0;
-  border-block-end: 2px solid transparent;
+  border-block-end: var(--jb-stroke-control) solid transparent;
   background: transparent;
   color: var(--color-ink-muted);
   font-size: var(--jb-type-label);
@@ -167,12 +167,25 @@
   color: var(--color-ink);
 }
 
-.tabs button[aria-selected="true"] {
-  border-block-end-color: var(--jb-signal);
-  color: var(--color-signal-strong);
+.tabs button:hover:not([aria-selected="true"]) {
+  background: var(--jb-state-hover);
+  color: var(--color-ink);
 }
 
-.tabs button:focus-visible,
+.tabs button[aria-selected="true"] {
+  border-block-end-color: var(--jb-signal);
+  color: var(--jb-state-active-ink);
+}
+
+.tabs button:focus-visible {
+  outline: var(--jb-stroke-control) solid var(--jb-focus);
+  outline-offset: calc(-1 * var(--jb-stroke-control));
+}
+
+.tabs button[aria-selected="true"]:focus-visible {
+  border-block-end-color: transparent;
+}
+
 .content:focus-visible,
 .close:focus-visible {
   outline: var(--jb-focus-width) solid var(--jb-focus);
@@ -220,21 +233,15 @@
     inset-inline: 0;
     inline-size: 100vw;
     block-size: auto;
-    border-block-start: 1px solid var(--color-line);
+    border-block-start: var(--jb-stroke-structure) solid var(--color-line);
     box-shadow: var(--shadow-floating);
   }
 
-  /*
-   * Below this width the panel stops being a rail beside the product and
-   * becomes a sheet over it. Glass is the wrong material for that: at 74% the
-   * job list stayed legible straight through the panel. A sheet has to be
-   * opaque — the translucency only reads as a layer when there is content
-   * beside it, not underneath it.
-   */
+  /* A stronger frosted sheet keeps the covered page from competing with copy. */
   .panel {
-    background: var(--color-canvas);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    background: var(--jb-glass-sheet);
+    backdrop-filter: var(--jb-glass-blur-sheet);
+    -webkit-backdrop-filter: var(--jb-glass-blur-sheet);
   }
 
   .resizer {

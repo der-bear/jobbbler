@@ -11,7 +11,7 @@
   align-items: end;
   justify-content: space-between;
   gap: 24px;
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   padding-block-end: 22px;
 }
 
@@ -46,7 +46,7 @@
 
 .tableScroll {
   overflow-x: auto;
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
 }
 
 .mobileComparison {
@@ -62,7 +62,7 @@
 
 .comparisonTable th,
 .comparisonTable td {
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   padding: 18px 20px;
   text-align: start;
   vertical-align: top;
@@ -115,7 +115,7 @@
 
 .comparisonActions {
   justify-content: flex-end;
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   padding-block: 10px;
 }
 
@@ -160,24 +160,42 @@
   margin-block-start: 18px;
 }
 
-.stateActions a {
-  margin-block-start: 0;
-}
-
 .stateActions button {
   min-block-size: 44px;
-  border: 1px solid var(--color-line-strong);
+  /* Secondary rank — this was the last outline control left on the site. */
+  border: var(--jb-stroke-control) solid transparent;
   border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-ink);
-  padding-inline: 12px;
+  background: var(--jb-action-gradient);
+  color: var(--color-canvas);
+  padding-inline: 14px;
   font: inherit;
   font-size: var(--jb-type-label);
   font-weight: 650;
+  cursor: pointer;
 }
 
 .stateActions button:hover {
-  background: var(--color-surface-subtle);
+  background: var(--jb-action-gradient-hover);
+}
+
+/* Tertiary: a link drawn as the quiet control it is, with a real target. */
+.stateActions a,
+.stateLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-block-size: 44px;
+  border-radius: var(--radius-sm);
+  padding-inline: 12px;
+  color: var(--color-ink);
+  font-size: var(--jb-type-label);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.stateActions a:hover,
+.stateLink:hover {
+  background: var(--jb-state-hover);
 }
 
 .fitNotes {
@@ -255,7 +273,7 @@
 
   .mobileComparison {
     display: grid;
-    border-block-end: 1px solid var(--color-line);
+    border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   }
 
   .mobileComparison article {
@@ -263,7 +281,7 @@
   }
 
   .mobileComparison article + article {
-    border-block-start: 1px solid var(--color-line);
+    border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   }
 
   .mobileComparison dl {
@@ -276,7 +294,7 @@
     display: grid;
     grid-template-columns: minmax(112px, 0.42fr) minmax(0, 1fr);
     gap: 14px;
-    border-block-start: 1px solid var(--color-line);
+    border-block-start: var(--jb-stroke-structure) solid var(--color-line);
     padding-block: 14px;
   }
 

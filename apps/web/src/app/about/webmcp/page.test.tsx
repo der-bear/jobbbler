@@ -20,29 +20,21 @@ describe("WebMCP explanation", () => {
     expect(markup).toContain("Compare");
     expect(markup).toContain("Monitor");
     expect(markup).toContain("Apply");
-    expect(markup).toContain("See what happened");
-    expect(markup).toContain("Open Agent activity");
+    expect(markup).toContain("A window into the agent layer");
+    expect(markup).toContain("shows judges and developers");
+    expect(markup).toContain("Everyday visitors can ignore it");
     expect(markup).not.toContain("Agent view");
     expect(markup).toContain("The conversation stays in your agent app");
     expect(markup).toContain("No account is needed to search");
     expect(markup).toContain("Jobbbler keeps checking after the tab closes");
-    expect(markup).toContain(
-      "Optionally add an email so applications and saved searches can be recovered",
-    );
-    expect(markup).toContain(
-      "Restore applications and saved searches with the email and one-time code you provide",
-    );
     expect(markup).toContain("You stay in control");
     expect(markup).toContain("Stays with you");
-    expect(markup).toContain("short-lived permission to prepare one application");
-    expect(markup).toContain(
-      "Jobbbler records your consent, submits that unchanged application once",
-    );
-    expect(markup).toContain("If you say no, nothing is shared or sent");
+    expect(markup).toContain("records consent to process the answers for that application");
+    expect(markup).toContain("applies only to the unchanged application and recipient");
+    expect(markup).toContain("If you say no at either step");
     expect(markup).toContain("Every role in this demo supports Apply on Jobbbler");
     expect(markup).not.toContain("For other roles");
     expect(markup).not.toContain("employer&#x27;s website");
-    expect(markup).toContain("requires a second, explicit decision in the same agent chat");
     expect(markup).not.toContain("active workspace");
     expect(markup).toContain('href="/jobs"');
     expect(markup).toContain("Browse open roles");

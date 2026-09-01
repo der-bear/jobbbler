@@ -113,8 +113,8 @@
    * surface they fall on.
    */
   box-shadow:
-    0 1px 2px color-mix(in srgb, var(--jb-signal-shadow) 7%, transparent),
-    0 14px 34px color-mix(in srgb, var(--jb-signal-shadow) 9%, transparent);
+    0 1px 2px color-mix(in srgb, var(--jb-signal-shadow) 6%, transparent),
+    0 6px 16px color-mix(in srgb, var(--jb-signal-shadow) 6%, transparent);
   transition:
     inline-size var(--jb-duration-base) var(--ease-standard),
     box-shadow var(--motion-fast) var(--ease-standard);
@@ -122,8 +122,8 @@
 
 .heroSearch:focus-within {
   box-shadow:
-    0 1px 2px color-mix(in srgb, var(--jb-signal-shadow) 9%, transparent),
-    0 14px 34px color-mix(in srgb, var(--jb-signal-shadow) 13%, transparent);
+    0 1px 2px color-mix(in srgb, var(--jb-signal-shadow) 8%, transparent),
+    0 6px 16px color-mix(in srgb, var(--jb-signal-shadow) 9%, transparent);
 }
 
 .heroSearch:has(input:focus-visible) {
@@ -185,7 +185,7 @@
 .heroSearch > button {
   border: 0;
   border-radius: var(--radius-pill);
-  background: var(--jb-signal);
+  background: var(--jb-signal-gradient);
   color: var(--jb-signal-contrast);
   font-size: var(--jb-type-ui);
   font-weight: 650;
@@ -196,7 +196,7 @@
 }
 
 .heroSearch > button:hover {
-  background: var(--jb-signal-strong);
+  background: var(--jb-signal-gradient-hover);
   transform: translateY(-1px);
 }
 
@@ -219,7 +219,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  border-inline-end: 1px solid var(--color-line);
+  border-inline-end: var(--jb-stroke-structure) solid var(--color-line);
   padding: clamp(22px, 3vw, 32px) var(--jb-page-gutter) 48px;
 }
 
@@ -294,7 +294,7 @@
   gap: 7px;
   border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  background: var(--jb-veil-control);
   padding-inline: 9px;
 }
 
@@ -350,29 +350,72 @@
 }
 
 .choiceRow button {
-  border: 1px solid var(--color-line);
+  border: var(--jb-stroke-control) solid var(--jb-border-chip);
   border-radius: var(--radius-pill);
-  background: transparent;
+  background: var(--jb-veil-control-subtle);
   color: var(--color-ink-muted);
   font-size: var(--jb-type-caption);
   padding: 5px 11px;
 }
 
 .choiceRow button:hover {
-  border-color: var(--color-line-strong);
+  border-color: var(--jb-state-line);
+  background:
+    linear-gradient(var(--jb-state-hover), var(--jb-state-hover)), var(--jb-veil-control-subtle);
   color: var(--color-ink);
 }
 
 .choiceRow button[aria-pressed="true"] {
-  border-color: var(--jb-signal);
-  background: color-mix(in srgb, var(--jb-signal-tint) 12%, transparent);
-  color: var(--color-signal-strong);
+  border-color: var(--jb-state-active-line);
+  background: var(--jb-state-active);
+  color: var(--jb-state-active-ink);
 }
 
+.choiceRow button[aria-pressed="true"]:hover {
+  background: linear-gradient(var(--jb-state-hover), var(--jb-state-hover)), var(--jb-state-active);
+}
+
+/*
+ * The four native selects in the rail draw one caret each, and each browser
+ * draws its own — a different glyph, a different grey, a different inset from
+ * the sort control beside the results, which already carries a custom caret.
+ * The wrappers position one caret in the ink the rest of the rail uses; the
+ * select itself gives up its native chrome and keeps the room for it.
+ */
 .filterRow {
+  position: relative;
   display: grid;
   gap: 6px;
   padding-block: 9px;
+}
+
+.filterRow select,
+.salaryInput select {
+  appearance: none;
+  padding-inline-end: 32px;
+}
+
+.filterRow:has(> select)::after,
+.salaryInput::after {
+  content: "";
+  position: absolute;
+  inset-inline-end: 11px;
+  inline-size: 12px;
+  block-size: 12px;
+  background: var(--color-ink-muted);
+  pointer-events: none;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 6l5 5 5-5' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+/* The select is the last row of its label; 9px of label padding plus half of
+   the 36px control minus half the glyph centres it on the control. */
+.filterRow:has(> select)::after {
+  inset-block-end: 21px;
+}
+
+.salaryInput::after {
+  inset-block-end: 12px;
 }
 
 .filterRow > span:first-child {
@@ -388,7 +431,7 @@
   border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-sm);
   outline: 0;
-  background: var(--color-surface);
+  background: var(--jb-veil-control);
   color: var(--color-ink);
   padding: 7px 10px;
   font-size: var(--jb-type-ui);
@@ -420,6 +463,7 @@
 }
 
 .salaryInput {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr;
   align-items: center;
@@ -449,7 +493,7 @@
 .resultsHeader {
   position: relative;
   align-items: flex-end;
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   padding-block-end: 18px;
 }
 
@@ -508,7 +552,7 @@
   align-items: center;
   border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  background: var(--jb-veil-control);
 }
 
 .sortSelect select {
@@ -542,10 +586,15 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
+  /*
+   * Matched to the sort control it sits beside. The two are one row of
+   * toolbar controls, and they were drawn with different fills and different
+   * weights of edge, so the row read as two unrelated things.
+   */
   min-block-size: 36px;
-  border: 1px solid transparent;
+  border: var(--jb-stroke-control) solid var(--color-line-strong);
   border-radius: var(--radius-sm);
-  background: var(--color-surface-subtle);
+  background: var(--jb-veil-control);
   color: var(--color-ink);
   font-size: var(--jb-type-caption);
   font-weight: 620;
@@ -560,6 +609,19 @@
 .resultList {
   opacity: 1;
   transition: opacity var(--motion-fast) var(--ease-standard);
+}
+
+/*
+ * A highlighted row needs room around the words it highlights: without a
+ * horizontal pad the fill began at the first letter and ended at the last.
+ * The negative margin buys that room without moving the text, which stays
+ * aligned with the heading above. Rows only — the card layout has gaps and a
+ * border of its own, and a negative margin there closes the grid up.
+ */
+.resultList:not([data-layout="cards"]) .jobResult {
+  margin-inline: calc(var(--jb-rhythm-2) * -1);
+  border-radius: var(--radius-sm);
+  padding-inline: var(--jb-rhythm-2);
 }
 
 .resultList .jobResult {
@@ -624,7 +686,7 @@
  */
 .resultList[data-layout="cards"] .jobResult {
   overflow: hidden;
-  border: 1px solid var(--color-line);
+  border: var(--jb-stroke-structure) solid var(--color-line);
   border-radius: var(--jb-radius-md);
   background: var(--jb-glass-fill-strong);
   backdrop-filter: var(--jb-glass-blur);
@@ -668,7 +730,7 @@
 
 .jobResult {
   position: relative;
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   transition:
     background var(--motion-fast) var(--ease-standard),
     border-color var(--motion-fast) var(--ease-standard);
@@ -681,7 +743,7 @@
  * title taking the signal colour already carry the state.
  */
 .jobResult:hover {
-  background: var(--jb-hover-surface);
+  background: var(--jb-glass-hover);
 }
 
 .jobTitleLink::after {
@@ -758,7 +820,7 @@
 .landingFooter {
   display: flex;
   justify-content: flex-end;
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   padding-block: 18px;
 }
 
@@ -790,7 +852,7 @@
   align-items: center;
   gap: 22px;
   min-block-size: 92px;
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   padding: 18px 20px;
 }
 
@@ -849,7 +911,8 @@
 }
 
 .errorState button:hover {
-  background: color-mix(in srgb, var(--jb-toast-text) 88%, transparent);
+  border-color: var(--jb-state-line);
+  background: linear-gradient(var(--jb-state-hover), var(--jb-state-hover)), var(--jb-veil-control);
 }
 
 .emptyState {
@@ -857,7 +920,7 @@
   justify-items: start;
   min-block-size: 340px;
   align-content: center;
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   padding: 32px 20px;
 }
 
@@ -941,7 +1004,7 @@
 
   .heroLocation {
     flex: 1 1 100%;
-    border-block-start: 1px solid var(--color-line);
+    border-block-start: var(--jb-stroke-structure) solid var(--color-line);
     padding-block-start: 3px;
   }
 
@@ -954,13 +1017,13 @@
 
   .filterRail {
     border-inline-end: 0;
-    border-block-end: 1px solid var(--color-line);
+    border-block-end: var(--jb-stroke-structure) solid var(--color-line);
     padding: 20px 20px 18px;
   }
 
   .advancedFilters {
     margin-block-start: 4px;
-    border-block-start: 1px solid var(--color-line);
+    border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   }
 
   .advancedSummary {
@@ -1028,6 +1091,15 @@
     grid-template-columns: minmax(0, 1fr) auto;
     min-block-size: 104px;
     padding: 17px 20px;
+  }
+
+  /* Desktop rows borrow 16px on each side so their hover surface can breathe
+     without moving the aligned copy. Mobile rows already carry a full 20px
+     content inset, so that borrowed width only creates horizontal scrolling. */
+  .resultList:not([data-layout="cards"]) .jobResult {
+    margin-inline: 0;
+    border-radius: 0;
+    padding-inline: 0;
   }
 
   .jobSalary {

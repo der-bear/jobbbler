@@ -807,56 +807,77 @@ describe("application authorization route handlers", () => {
     });
   });
 
-  it.each([
-    {
-      decision: "approved",
-      safeSummary: "Exact application disclosure approved through the agent client.",
-    },
-    {
-      decision: "declined",
-      safeSummary: "Application disclosure declined through the agent client.",
-    },
-  ] as const)(
-    "attributes the exact $decision submission decision to the agent-client invocation channel",
-    async ({ decision, safeSummary }) => {
-      const current = dependencies();
-      const review = await handleCreateSubmissionReviewRequest(
-        request(`/api/v1/applications/${draftId}/consent`, "POST", undefined, { agent: true }),
-        draftContext,
-        current,
-      );
-      expect(review.status).toBe(201);
+  it("does not publish an intermediate completion before an approved application is submitted", async () => {
+    const current = dependencies();
+    const review = await handleCreateSubmissionReviewRequest(
+      request(`/api/v1/applications/${draftId}/consent`, "POST", undefined, { agent: true }),
+      draftContext,
+      current,
+    );
+    expect(review.status).toBe(201);
 
-      const response = await handleDecideSubmissionReviewRequest(
-        request(
-          `/api/v1/applications/${draftId}/consent/${consentRequestId}`,
-          "POST",
-          {
-            expectedVersion: draft.version,
-            decision,
-            interaction: {
-              channel: "agent_client",
-              requestId: consentRequestId,
-              affirmation: decision,
-              evidenceVersion: "agent-interaction-v1",
-            },
+    const response = await handleDecideSubmissionReviewRequest(
+      request(
+        `/api/v1/applications/${draftId}/consent/${consentRequestId}`,
+        "POST",
+        {
+          expectedVersion: draft.version,
+          decision: "approved",
+          interaction: {
+            channel: "agent_client",
+            requestId: consentRequestId,
+            affirmation: "approved",
+            evidenceVersion: "agent-interaction-v1",
           },
-          { human: true },
-        ),
-        { params: Promise.resolve({ draftId, requestId: consentRequestId }) },
-        current,
-      );
+        },
+        { human: true },
+      ),
+      { params: Promise.resolve({ draftId, requestId: consentRequestId }) },
+      current,
+    );
 
-      expect(response.status).toBe(200);
-      expectPublishedActivity(current, response, {
-        kind: "authorization",
-        key: "decide_application_submission",
-        safeSummary,
-        actorKind: "agent",
-        draftVersion: draft.version,
-      });
-    },
-  );
+    expect(response.status).toBe(200);
+    expect(current.activity?.publish).not.toHaveBeenCalled();
+  });
+
+  it("attributes a declined submission decision to the agent-client invocation channel", async () => {
+    const current = dependencies();
+    const review = await handleCreateSubmissionReviewRequest(
+      request(`/api/v1/applications/${draftId}/consent`, "POST", undefined, { agent: true }),
+      draftContext,
+      current,
+    );
+    expect(review.status).toBe(201);
+
+    const response = await handleDecideSubmissionReviewRequest(
+      request(
+        `/api/v1/applications/${draftId}/consent/${consentRequestId}`,
+        "POST",
+        {
+          expectedVersion: draft.version,
+          decision: "declined",
+          interaction: {
+            channel: "agent_client",
+            requestId: consentRequestId,
+            affirmation: "declined",
+            evidenceVersion: "agent-interaction-v1",
+          },
+        },
+        { human: true },
+      ),
+      { params: Promise.resolve({ draftId, requestId: consentRequestId }) },
+      current,
+    );
+
+    expect(response.status).toBe(200);
+    expectPublishedActivity(current, response, {
+      kind: "authorization",
+      key: "decide_application_submission",
+      safeSummary: "Application disclosure declined through the agent client.",
+      actorKind: "agent",
+      draftVersion: draft.version,
+    });
+  });
 
   it("rejects agent-client consent evidence that is not bound to an interaction request", async () => {
     const current = dependencies();

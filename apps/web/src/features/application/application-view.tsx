@@ -157,6 +157,10 @@ function ApplicationField({
           aria-invalid={invalid}
           aria-readonly={readOnly}
           disabled={readOnly}
+          onChange={(event) => {
+            onFieldChange(field.fieldKey, event.currentTarget.value);
+            onFieldCommit?.(field.fieldKey, event.currentTarget.value);
+          }}
         >
           <option value="">Choose one</option>
           {field.options.map((option) => (
@@ -292,7 +296,7 @@ function ReviewDocument({
               : "Your agent still needs information. Answer in your agent app; this page stays read-only while assistance is active."
             : readiness.readyForReview
               ? "Everything required is ready. Edit anything that does not sound like you."
-              : "Ask your agent or fill it in here. You only need to resolve the items that are missing."}
+              : "Fill in the missing details below."}
         </p>
 
         {/*
@@ -314,8 +318,8 @@ function ReviewDocument({
          * be underneath the last field, where it arrives after the fact.
          */}
         <p className={styles["requiredNote"]}>
-          Everything here is needed unless it says optional.
-          {agentAssisted ? null : " Each answer saves when you move to the next one."}
+          Required unless marked optional.
+          {agentAssisted ? null : " Your answers save when you move to the next field."}
         </p>
         {agentAssisted ? null : (
           <p aria-live="polite" className={styles["saveStatus"]}>
@@ -718,7 +722,7 @@ export function ApplicationView({
                 ? `${job.title} · ${job.organizationName} · Read-only`
                 : legacyExternalDraft
                   ? `${job.title} · ${job.organizationName}`
-                  : "Review the details below and submit when everything looks right."}
+                  : "Complete the form below. Nothing is sent until you choose Submit."}
         </p>
       </header>
       {error === null ? null : (

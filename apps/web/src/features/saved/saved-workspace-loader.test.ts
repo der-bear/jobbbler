@@ -10,7 +10,11 @@ import type {
 import type { LatestSearchRun } from "@/lib/latest-run";
 import type { QueryApiOptions } from "@/lib/query-client";
 
-import { loadPrivateWorkspaceResources, loadSavedWorkspaceData } from "./saved-workspace-loader";
+import {
+  loadPrivateWorkspaceResources,
+  loadSavedWorkspaceData,
+  savedWorkspaceInitializationMode,
+} from "./saved-workspace-loader";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -73,6 +77,46 @@ const latestRun = {
   evaluation: null,
   delivery: null,
 } as LatestSearchRun;
+
+describe("savedWorkspaceInitializationMode", () => {
+  it("reuses server-loaded private data while preparing a newly requested search", () => {
+    expect(
+      savedWorkspaceInitializationMode(
+        {
+          owner: session.owner,
+          endpoints,
+          savedSearches,
+          schedules,
+        },
+        true,
+      ),
+    ).toBe("reuse");
+  });
+
+  it("creates a private workspace only when the server found no owner session", () => {
+    expect(savedWorkspaceInitializationMode(null, true)).toBe("create");
+  });
+
+  it("loads private data only for client-only rendering without server state", () => {
+    expect(savedWorkspaceInitializationMode(undefined, true)).toBe("load");
+    expect(savedWorkspaceInitializationMode(undefined, false)).toBe("load");
+  });
+
+  it("does no client initialization for an ordinary server-rendered visit", () => {
+    expect(savedWorkspaceInitializationMode(null, false)).toBe("none");
+    expect(
+      savedWorkspaceInitializationMode(
+        {
+          owner: session.owner,
+          endpoints,
+          savedSearches,
+          schedules,
+        },
+        false,
+      ),
+    ).toBe("none");
+  });
+});
 
 describe("loadSavedWorkspaceData", () => {
   it("starts the owner session and all independent private resources together", async () => {

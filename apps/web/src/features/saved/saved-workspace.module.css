@@ -26,7 +26,7 @@
   align-items: baseline;
   max-inline-size: var(--jb-page-max-wide);
   margin-inline: auto;
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   padding-block-end: clamp(30px, 5vw, 48px);
 }
 
@@ -67,14 +67,16 @@
 }
 
 .identityCard {
-  border-block-start: 2px solid var(--jb-signal);
+  border-block-start: var(--jb-stroke-control) solid var(--jb-signal);
   /*
    * Opaque on purpose. In the light theme the surface and the canvas are the
    * same white, so the glass fill left this card with no ground of its own —
    * it lost its shape and read as loose text under a green rule. A card in the
    * flow needs to be a card.
    */
-  background: var(--color-surface-subtle);
+  background: var(--jb-veil-subtle);
+  backdrop-filter: var(--jb-glass-blur);
+  -webkit-backdrop-filter: var(--jb-glass-blur);
   padding: 21px;
 }
 
@@ -132,7 +134,7 @@
 }
 
 .composer {
-  border-inline-end: 1px solid var(--color-line);
+  border-inline-end: var(--jb-stroke-structure) solid var(--color-line);
   padding-inline-end: clamp(28px, 4vw, 60px);
 }
 
@@ -233,7 +235,7 @@
   display: flex;
   align-items: flex-start;
   gap: 11px;
-  border: 1px solid var(--color-line);
+  border: var(--jb-stroke-structure) solid var(--color-line);
   border-radius: var(--radius-sm);
   padding: 12px;
   cursor: pointer;
@@ -292,7 +294,7 @@
   border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-sm);
   outline: 0;
-  background: var(--color-surface);
+  background: var(--jb-veil-control);
   color: var(--color-ink);
   padding: 9px 11px;
   font-size: var(--jb-type-ui);
@@ -389,7 +391,7 @@
 }
 
 .dangerButton:hover {
-  filter: brightness(0.94);
+  background: color-mix(in srgb, var(--jb-danger) 88%, var(--color-ink));
 }
 
 .secondaryButton,
@@ -407,7 +409,7 @@
   display: grid;
   gap: 9px;
   margin-block-start: 16px;
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   padding-block-start: 13px;
 }
 
@@ -423,6 +425,12 @@
   justify-content: space-between;
   color: var(--color-ink-muted);
   font-size: var(--jb-type-caption);
+}
+
+.endpointList > div[data-confirming="true"] {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: start;
 }
 
 .endpointList button {
@@ -442,6 +450,30 @@
   gap: 10px;
 }
 
+.revokePrompt {
+  display: grid;
+  gap: 5px;
+  border-radius: var(--radius-sm);
+  background: var(--jb-veil-control-subtle);
+  padding: 10px;
+}
+
+.revokePrompt strong,
+.revokePrompt p {
+  margin: 0;
+}
+
+.revokePrompt strong {
+  color: var(--color-ink);
+  font-size: var(--jb-type-caption);
+}
+
+.revokePrompt p {
+  color: var(--color-ink-muted);
+  font-size: var(--jb-type-caption);
+  line-height: 1.5;
+}
+
 .endpointList .revokeActions button:last-child,
 .fieldError {
   color: var(--jb-danger);
@@ -458,7 +490,7 @@
 
 .secondaryButton:hover,
 .quietButton:hover {
-  background: var(--color-surface-subtle);
+  background: var(--jb-state-hover);
 }
 
 /*
@@ -490,7 +522,7 @@
 
 .preview {
   display: grid;
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
 }
 
 .previewRow {
@@ -498,7 +530,7 @@
   grid-template-columns: auto 92px 1fr;
   align-items: center;
   gap: 11px;
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   padding-block: 15px;
 }
 
@@ -554,11 +586,11 @@
 .savedList {
   display: grid;
   margin-block-start: 24px;
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
 }
 
 .savedCard {
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   padding-block: 23px;
 }
 
@@ -624,7 +656,8 @@
   display: grid;
   gap: 12px;
   margin-block-start: 16px;
-  border-block-start: 1px solid color-mix(in srgb, var(--jb-danger) 36%, var(--color-line));
+  border-block-start: var(--jb-stroke-structure) solid
+    color-mix(in srgb, var(--jb-danger) 36%, var(--color-line));
   padding-block-start: 16px;
 }
 
@@ -652,7 +685,7 @@
   border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-sm);
   outline: 0;
-  background: var(--color-surface);
+  background: var(--jb-veil-control);
   color: var(--color-ink);
   padding: 9px 11px;
   font-size: var(--jb-type-ui);
@@ -700,14 +733,16 @@
   min-block-size: 210px;
   align-content: center;
   justify-items: start;
-  border: 1px solid var(--color-line);
+  border: var(--jb-stroke-structure) solid var(--color-line);
   border-radius: var(--radius-lg);
   /*
    * No colour wash here. The neutral already carries a trace of the accent in
    * its hue, which is the whole point of the shifted palette — tinting the
    * surface on top of that reads as a mint block rather than as restraint.
    */
-  background: var(--color-surface-subtle);
+  background: var(--jb-veil-subtle);
+  backdrop-filter: var(--jb-glass-blur);
+  -webkit-backdrop-filter: var(--jb-glass-blur);
   padding: clamp(28px, 4vw, 44px);
   color: var(--color-ink-subtle);
 }
@@ -731,10 +766,12 @@
   align-items: center;
   gap: 6px;
   min-block-size: 44px;
-  border: 1px solid var(--color-line-strong);
-  border-radius: var(--radius-pill);
-  padding-inline: 18px;
-  color: var(--color-ink);
+  /* Secondary rank: the last button that still drew itself as an outline. */
+  border: var(--jb-stroke-control) solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--jb-action-gradient);
+  padding-inline: 16px;
+  color: var(--color-canvas);
   font-size: var(--jb-type-ui);
   font-weight: 620;
   text-decoration: none;
@@ -744,8 +781,7 @@
 }
 
 .emptyAction:hover {
-  border-color: var(--color-ink);
-  background: var(--color-surface-subtle);
+  background: var(--jb-action-gradient-hover);
 }
 
 .emptyAction:focus-visible {
@@ -806,7 +842,7 @@
 
   .composer {
     border-inline-end: 0;
-    border-block-end: 1px solid var(--color-line);
+    border-block-end: var(--jb-stroke-structure) solid var(--color-line);
     padding-inline-end: 0;
     padding-block-end: 38px;
   }

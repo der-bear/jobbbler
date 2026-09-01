@@ -1,6 +1,6 @@
 .panel {
   margin-block-start: 18px;
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   padding-block-start: 10px;
 }
 
@@ -49,7 +49,7 @@
 .content {
   display: grid;
   gap: 16px;
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   margin-block-start: 10px;
   padding-block-start: 18px;
 }
@@ -92,7 +92,7 @@
   border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-sm);
   outline: 0;
-  background: var(--color-surface);
+  background: var(--jb-veil-control);
   color: var(--color-ink);
   padding: 8px 10px;
   font-size: var(--jb-type-label);
@@ -166,7 +166,7 @@
 }
 
 .hint {
-  background: var(--color-surface-subtle);
+  background: var(--jb-veil-subtle);
 }
 
 .warning,

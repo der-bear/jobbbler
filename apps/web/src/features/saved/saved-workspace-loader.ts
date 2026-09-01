@@ -33,6 +33,23 @@ export interface SavedWorkspaceInitialData {
   readonly schedules: readonly JobAlertSchedule[];
 }
 
+export type SavedWorkspaceInitializationMode = "none" | "reuse" | "load" | "create";
+
+/**
+ * Server-rendered saved-search data is authoritative for the first paint. A
+ * create request still needs the current search criteria, but it must not
+ * refetch the same private workspace and hold the whole page behind that
+ * redundant request.
+ */
+export function savedWorkspaceInitializationMode(
+  initialData: SavedWorkspaceInitialData | null | undefined,
+  createRequested: boolean,
+): SavedWorkspaceInitializationMode {
+  if (initialData === undefined) return "load";
+  if (!createRequested) return "none";
+  return initialData === null ? "create" : "reuse";
+}
+
 export async function loadLatestSearchRuns(
   savedSearches: readonly SavedSearch[],
   schedules: readonly JobAlertSchedule[],

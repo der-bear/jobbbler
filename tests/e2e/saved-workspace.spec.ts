@@ -19,7 +19,7 @@ test.describe("saved-search ownership workspace", () => {
     expect(markup).not.toContain("Nothing saved yet.");
   });
 
-  test("starts independent criteria and ownership requests together", async ({ page }) => {
+  test("starts search criteria and private-workspace creation together", async ({ page }) => {
     let releaseSearch!: () => void;
     const searchGate = new Promise<void>((resolve) => {
       releaseSearch = resolve;
@@ -29,7 +29,7 @@ test.describe("saved-search ownership workspace", () => {
 
     page.on("request", (request) => {
       const url = new URL(request.url());
-      if (request.method() === "GET" && url.pathname === "/api/v1/owners/session") {
+      if (request.method() === "POST" && url.pathname === "/api/v1/owners/session") {
         ownerSessionStarted = true;
       }
     });
@@ -133,6 +133,30 @@ test.describe("saved-search ownership workspace", () => {
     await expect(page.getByText("Email updates on", { exact: true })).toHaveCount(0);
   });
 
+  test("explains the consequence before removing a verified email", async ({ page }) => {
+    await createPrivateSession(page);
+    await page.goto("/saved");
+
+    await page.getByText("Keep access on other devices", { exact: true }).click();
+    await page
+      .getByRole("complementary", { name: "Saved search access" })
+      .getByLabel("Recovery email")
+      .fill(`remove-email-${String(Date.now())}@example.test`);
+    await page.getByRole("button", { name: "Send verification code" }).click();
+    await page.getByRole("button", { name: "Verify email" }).click();
+
+    const removeEmail = page.getByRole("button", { name: /Remove verified email/u });
+    await expect(removeEmail).toBeVisible();
+    await removeEmail.click();
+
+    const confirmation = page.getByRole("group", { name: "Remove verified email" });
+    await expect(confirmation).toContainText(
+      "Email updates using it will stop, and you will no longer be able to restore with it.",
+    );
+    await confirmation.getByRole("button", { name: "Keep email" }).click();
+    await expect(removeEmail).toBeFocused();
+  });
+
   test("keeps the page title aligned with the access card when recovery is expanded", async ({
     page,
   }) => {
@@ -155,6 +179,7 @@ test.describe("saved-search ownership workspace", () => {
 
   test("edits an existing email-update schedule without creating a duplicate", async ({ page }) => {
     await page.goto("/saved?q=platform&work=remote&create=1");
+    const savedSearchName = await page.getByLabel("Search name").inputValue();
     await page.getByLabel("Email me when results change").check();
     await page
       .getByRole("region", { name: "Save this search" })
@@ -169,7 +194,7 @@ test.describe("saved-search ownership workspace", () => {
     await page.getByRole("button", { name: "Review email updates" }).click();
     await page.getByRole("button", { name: "Turn on email updates" }).click();
 
-    const card = page.getByRole("article").filter({ hasText: "Email updates on" });
+    const card = page.getByRole("article").filter({ hasText: savedSearchName });
     await expect(card).toBeVisible();
     const initialSchedules = await page.evaluate(async () => {
       const response = await fetch("/api/v1/schedules");
@@ -227,5 +252,14 @@ test.describe("saved-search ownership workspace", () => {
       recurrence: { frequency: "daily", time: "10:30", timeZone: "Europe/Kyiv" },
     });
     await expect(card.getByRole("button", { name: "Edit updates" })).toBeFocused();
+
+    await card.getByRole("button", { name: "Pause" }).click();
+    await expect(card.getByText("Email updates paused", { exact: true })).toBeVisible();
+    await expect(card.getByText("Checks are paused", { exact: true })).toBeVisible();
+    await expect(card.getByRole("button", { name: "Resume" })).toBeVisible();
+
+    await card.getByRole("button", { name: "Resume" }).click();
+    await expect(card.getByText("Email updates on", { exact: true })).toBeVisible();
+    await expect(card.getByRole("button", { name: "Pause" })).toBeVisible();
   });
 });

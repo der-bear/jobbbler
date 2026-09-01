@@ -17,7 +17,7 @@ import {
   WarningCircleIcon,
 } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { z } from "zod";
@@ -59,6 +59,7 @@ import {
   loadLatestSearchRuns,
   loadPrivateWorkspaceResources,
   loadSavedWorkspaceData,
+  savedWorkspaceInitializationMode,
   type SavedWorkspaceInitialData,
   type SavedWorkspaceResources,
 } from "./saved-workspace-loader";
@@ -358,12 +359,11 @@ export function defaultSavedSearchName(criteria: JobSearchCriteria): string {
 
 export function SavedWorkspace({
   initialData,
-}: Readonly<{ initialData?: SavedWorkspaceInitialData | null }>) {
-  const searchParams = useSearchParams();
-  const searchParamsKey = searchParams.toString();
+  searchParamsKey = "",
+}: Readonly<{ initialData?: SavedWorkspaceInitialData | null; searchParamsKey?: string }>) {
   const router = useRouter();
   const toast = useToast();
-  const createRequested = searchParams.get("create") === "1";
+  const createRequested = new URLSearchParams(searchParamsKey).get("create") === "1";
   const [status, setStatus] = useState<Status>(
     initialData === undefined || createRequested ? "loading" : "ready",
   );
@@ -393,6 +393,7 @@ export function SavedWorkspace({
   const [days, setDays] = useState<readonly Weekday[]>(["monday", "wednesday", "friday"]);
   const [endpointId, setEndpointId] = useState("");
   const [pendingRevokeId, setPendingRevokeId] = useState<string | null>(null);
+  const removeEmailButtonRefs = useRef(new Map<string, HTMLButtonElement>());
   const [pendingSaved, setPendingSaved] = useState<SavedSearch | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<JobAlertSchedule | null>(null);
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
@@ -434,7 +435,8 @@ export function SavedWorkspace({
   }, [loadPrivateResources]);
 
   useEffect(() => {
-    if (initialData !== undefined && !createRequested) return undefined;
+    const initializationMode = savedWorkspaceInitializationMode(initialData, createRequested);
+    if (initializationMode === "none") return undefined;
     let cancelled = false;
     async function initialize() {
       setStatus("loading");
@@ -450,9 +452,15 @@ export function SavedWorkspace({
               );
             })()
           : Promise.resolve(null);
+        const workspaceRequest =
+          initializationMode === "load"
+            ? loadSavedWorkspaceData().then((value) => ({ kind: "loaded" as const, value }))
+            : initializationMode === "create"
+              ? startPrivateWorkspace().then(() => ({ kind: "created" as const }))
+              : Promise.resolve({ kind: "reused" as const });
         const [criteriaResult, workspaceResult] = await Promise.allSettled([
           criteriaRequest,
-          loadSavedWorkspaceData(),
+          workspaceRequest,
         ]);
         if (cancelled) return;
         if (criteriaResult.status === "rejected") throw criteriaResult.reason;
@@ -461,9 +469,12 @@ export function SavedWorkspace({
           setName(defaultSavedSearchName(criteriaResult.value.criteria));
         }
         if (workspaceResult.status === "fulfilled") {
-          applyPrivateResources(workspaceResult.value);
-          setOwner(workspaceResult.value.owner);
+          if (workspaceResult.value.kind === "loaded") {
+            applyPrivateResources(workspaceResult.value.value);
+            setOwner(workspaceResult.value.value.owner);
+          }
         } else if (
+          initializationMode === "load" &&
           workspaceResult.reason instanceof ApiClientError &&
           workspaceResult.reason.code === "UNAUTHORIZED"
         ) {
@@ -931,38 +942,60 @@ export function SavedWorkspace({
           </div>
           <p>{accessCopy.description}</p>
           {owner !== null && verifiedEndpoints.length > 0 ? (
-            <div className={styles["endpointList"]} aria-label="Verified delivery destinations">
+            <div className={styles["endpointList"]} aria-label="Verified emails">
               {verifiedEndpoints.map((endpoint) => (
-                <div key={endpoint.id}>
+                <div
+                  data-confirming={pendingRevokeId === endpoint.id || undefined}
+                  key={endpoint.id}
+                >
                   <span>
                     <EnvelopeSimpleIcon aria-hidden="true" size={14} />
                     {endpoint.maskedDestination}
                   </span>
                   {pendingRevokeId === endpoint.id ? (
-                    <span className={styles["revokeActions"]}>
-                      <button
-                        aria-label={`Cancel revoking ${endpoint.maskedDestination}`}
-                        onClick={() => setPendingRevokeId(null)}
-                        type="button"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        aria-label={`Confirm revoking ${endpoint.maskedDestination}`}
-                        disabled={status === "working"}
-                        onClick={() => void revokeEndpoint(endpoint)}
-                        type="button"
-                      >
-                        Confirm revoke
-                      </button>
-                    </span>
+                    <div
+                      aria-label="Remove verified email"
+                      className={styles["revokePrompt"]}
+                      role="group"
+                    >
+                      <strong>Remove this email?</strong>
+                      <p>
+                        Email updates using it will stop, and you will no longer be able to restore
+                        with it.
+                      </p>
+                      <span className={styles["revokeActions"]}>
+                        <button
+                          onClick={() => {
+                            setPendingRevokeId(null);
+                            window.requestAnimationFrame(() =>
+                              removeEmailButtonRefs.current.get(endpoint.id)?.focus(),
+                            );
+                          }}
+                          type="button"
+                        >
+                          Keep email
+                        </button>
+                        <button
+                          aria-label={`Remove verified email ${endpoint.maskedDestination}`}
+                          disabled={status === "working"}
+                          onClick={() => void revokeEndpoint(endpoint)}
+                          type="button"
+                        >
+                          Remove email
+                        </button>
+                      </span>
+                    </div>
                   ) : (
                     <button
-                      aria-label={`Revoke ${endpoint.maskedDestination}`}
+                      aria-label={`Remove verified email ${endpoint.maskedDestination}`}
                       onClick={() => setPendingRevokeId(endpoint.id)}
+                      ref={(node) => {
+                        if (node === null) removeEmailButtonRefs.current.delete(endpoint.id);
+                        else removeEmailButtonRefs.current.set(endpoint.id, node);
+                      }}
                       type="button"
                     >
-                      Revoke
+                      Remove email
                     </button>
                   )}
                 </div>

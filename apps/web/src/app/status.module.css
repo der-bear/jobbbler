@@ -60,13 +60,13 @@
 }
 
 .primary:hover {
-  background: var(--color-signal-strong);
+  background: var(--jb-signal-gradient-hover);
 }
 
 .secondary {
   border: 1px solid transparent;
-  background: var(--color-surface-subtle);
-  color: var(--color-ink);
+  background: var(--jb-action-gradient);
+  color: var(--color-canvas);
   padding: 8px 14px;
   cursor: pointer;
   transition:
@@ -75,7 +75,8 @@
 }
 
 .secondary:hover {
-  background: color-mix(in srgb, var(--jb-signal-tint) 10%, var(--color-surface-subtle));
+  border-color: transparent;
+  background: var(--jb-action-gradient-hover);
 }
 
 .primary:focus-visible,

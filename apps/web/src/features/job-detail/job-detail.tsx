@@ -394,7 +394,18 @@ export function JobDetail({
   const [state, setState] = useState<LoadState>(() =>
     initialResult === undefined ? { kind: "loading" } : { kind: "ready", result: initialResult },
   );
-  const hydratedFromServer = useRef(initialResult !== undefined);
+  /*
+   * Which role-and-criteria pair the current result answers for. The effect
+   * below fetches only when that changes, so the server-rendered result is
+   * kept rather than replaced with a skeleton and fetched again. The previous
+   * guard was a one-shot flag, and React's StrictMode runs effects twice in
+   * development: the second run found the flag cleared, showed the skeleton
+   * for ten milliseconds and refetched — the footer jumped 4.7k pixels and
+   * back, a layout shift of 0.15 on a phone.
+   */
+  const settledKey = useRef<string | null>(
+    initialResult === undefined ? null : `${jobId}${criteriaSearch}`,
+  );
   const [applicationBusy, setApplicationBusy] = useState(false);
   const router = useRouter();
   const toast = useToast();
@@ -427,10 +438,8 @@ export function JobDetail({
   );
 
   useEffect(() => {
-    if (hydratedFromServer.current) {
-      hydratedFromServer.current = false;
-      return;
-    }
+    const key = `${jobId}${criteriaSearch}`;
+    if (settledKey.current === key) return;
     const controller = new AbortController();
     setState({ kind: "loading" });
 
@@ -441,7 +450,10 @@ export function JobDetail({
         signal: controller.signal,
       },
     )
-      .then((result) => setState({ kind: "ready", result }))
+      .then((result) => {
+        settledKey.current = key;
+        setState({ kind: "ready", result });
+      })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
         setState({ kind: "error", message: errorMessage(error) });

@@ -89,7 +89,7 @@ button:disabled {
   color: var(--jb-signal-contrast);
 }
 .jb-button--primary:hover:not(:disabled) {
-  background: var(--jb-signal-strong);
+  background: var(--jb-signal-gradient-hover);
 }
 /*
  * Three roles, three grounds, no outlines.
@@ -102,20 +102,22 @@ button:disabled {
  * for the secondary, nothing at all for the third.
  */
 .jb-button--secondary {
-  background: var(--jb-surface-muted);
+  background: var(--jb-action-gradient);
   border-color: transparent;
-  color: var(--jb-text);
+  color: var(--jb-canvas);
 }
 .jb-button--secondary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--jb-signal-tint) 10%, var(--jb-surface-muted));
+  background: var(--jb-action-gradient-hover);
 }
 
 .jb-button--quiet:hover:not(:disabled) {
-  /* Translucent, so a quiet button on a frosted pane keeps the pane. */
-  background: var(--jb-glass-hover);
+  background:
+    linear-gradient(var(--jb-state-hover), var(--jb-state-hover)), var(--jb-glass-control);
 }
 .jb-button--quiet {
-  background: transparent;
+  background: var(--jb-glass-control);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
   color: var(--jb-text);
 }
 .jb-button--danger {
@@ -170,8 +172,8 @@ button:disabled {
 
 .jb-chip {
   align-items: center;
-  background: var(--jb-surface);
-  border: 1px solid var(--jb-border);
+  background: var(--jb-veil-control);
+  border: var(--jb-stroke-control) solid var(--jb-border-chip);
   border-radius: var(--jb-radius-pill);
   color: var(--jb-text);
   display: inline-flex;
@@ -185,9 +187,9 @@ button.jb-chip {
   cursor: pointer;
 }
 .jb-chip--selected {
-  background: var(--jb-surface-muted);
-  border-color: var(--jb-signal);
-  color: var(--jb-signal-strong);
+  background: var(--jb-state-active);
+  border-color: var(--jb-state-active-line);
+  color: var(--jb-state-active-ink);
 }
 /*
  * A static chip describes; it never invites a click. Dropping the outline keeps
@@ -213,9 +215,16 @@ button.jb-chip {
  * on — plain row, hovered row, card, panel — so the tint stays proportional
  * and the label keeps the same contrast everywhere.
  */
+.jb-chip:is(button, a):hover {
+  border-color: var(--jb-state-line);
+  background:
+    linear-gradient(var(--jb-state-hover), var(--jb-state-hover)), var(--jb-glass-control);
+}
+
 .jb-chip--signal {
-  background: color-mix(in srgb, var(--jb-signal-tint) 22%, transparent);
-  color: var(--jb-signal-strong);
+  border-color: var(--jb-state-active-line);
+  background: var(--jb-state-active);
+  color: var(--jb-state-active-ink);
 }
 .jb-chip__remove,
 .jb-icon-button,
@@ -230,9 +239,20 @@ button.jb-chip {
   padding: 0.25rem;
 }
 .jb-chip__remove:hover,
-.jb-icon-button:hover,
+.jb-icon-button:hover {
+  background: var(--jb-state-hover);
+}
+
 .jb-theme-toggle:hover {
-  background: var(--jb-surface-strong);
+  border-color: var(--jb-state-line);
+  background:
+    linear-gradient(var(--jb-state-hover), var(--jb-state-hover)), var(--jb-glass-fill-strong);
+}
+
+/* Keep focus as one readable ring instead of an outline outside a second edge. */
+.jb-theme-toggle:focus-visible {
+  border-color: transparent;
+  outline-offset: -2px;
 }
 
 .jb-theme-toggle__dark-icon {
@@ -249,7 +269,7 @@ button.jb-chip {
 
 .jb-card {
   background: var(--jb-surface);
-  border: 1px solid var(--jb-border);
+  border: var(--jb-stroke-structure) solid var(--jb-border);
   border-radius: var(--jb-radius-md);
   color: var(--jb-text);
   padding: 1.25rem;
@@ -291,15 +311,17 @@ button.jb-chip {
   background: var(--jb-scrim);
 }
 .jb-dialog__surface {
-  background: var(--jb-surface);
-  border: 1px solid var(--jb-border-strong);
+  background: var(--jb-glass-sheet);
+  backdrop-filter: var(--jb-glass-blur-sheet);
+  -webkit-backdrop-filter: var(--jb-glass-blur-sheet);
+  border: var(--jb-stroke-structure) solid var(--jb-border);
   border-radius: var(--jb-radius-lg);
   box-shadow: var(--jb-shadow-raised);
   color: var(--jb-text);
 }
 .jb-dialog__header {
   align-items: flex-start;
-  border-bottom: 1px solid var(--jb-border);
+  border-bottom: var(--jb-stroke-structure) solid var(--jb-border);
   display: flex;
   gap: 1rem;
   justify-content: space-between;
@@ -411,8 +433,11 @@ button.jb-chip {
   margin: 0.25rem 0 0;
 }
 
+/* Glass, like the control it stands next to. */
 .jb-theme-toggle {
-  background: var(--jb-surface);
+  background: var(--jb-glass-fill-strong);
+  backdrop-filter: var(--jb-glass-blur);
+  -webkit-backdrop-filter: var(--jb-glass-blur);
   border: 1px solid var(--jb-border-strong);
   color: var(--jb-text);
   height: 2.75rem;
@@ -495,9 +520,11 @@ button.jb-chip {
   z-index: 30;
   display: grid;
   gap: 4px;
-  border: 1px solid var(--jb-border);
+  border: var(--jb-stroke-structure) solid var(--jb-border);
   border-radius: var(--jb-radius-md);
-  background: var(--jb-surface);
+  background: var(--jb-glass-float);
+  backdrop-filter: var(--jb-glass-blur-float);
+  -webkit-backdrop-filter: var(--jb-glass-blur-float);
   box-shadow: var(--jb-shadow-raised);
   padding: 8px;
 }
@@ -505,7 +532,7 @@ button.jb-chip {
 .jb-multiselect .jb-multiselect__search {
   inline-size: 100%;
   min-block-size: 32px;
-  border: 1px solid var(--jb-border);
+  border: var(--jb-stroke-structure) solid var(--jb-border);
   border-radius: var(--jb-radius-sm);
   outline: 0;
   background: var(--jb-canvas);
@@ -544,9 +571,13 @@ button.jb-chip {
   text-align: start;
 }
 
-.jb-multiselect__option:hover,
+.jb-multiselect__option:hover {
+  background: var(--jb-state-hover);
+}
+
 .jb-multiselect__option[aria-selected="true"] {
-  background: var(--jb-surface-muted);
+  background: var(--jb-state-active);
+  color: var(--jb-state-active-ink);
 }
 
 .jb-multiselect__option:focus-visible {
@@ -629,7 +660,7 @@ button.jb-chip {
   inline-size: 16px;
   block-size: 16px;
   margin-block-start: -6px;
-  border: 2px solid var(--jb-surface);
+  border: var(--jb-stroke-control) solid var(--jb-surface);
   border-radius: var(--jb-radius-pill);
   background: var(--jb-signal);
   box-shadow: 0 1px 4px var(--jb-scrim-shadow);
@@ -638,7 +669,7 @@ button.jb-chip {
 .jb-range::-moz-range-thumb {
   inline-size: 12px;
   block-size: 12px;
-  border: 2px solid var(--jb-surface);
+  border: var(--jb-stroke-control) solid var(--jb-surface);
   border-radius: var(--jb-radius-pill);
   background: var(--jb-signal);
 }
@@ -683,50 +714,7 @@ select:focus-visible,
   border-radius: var(--jb-radius-sm);
 }
 
-/*
- * Hover moves the border toward the signal, not the fill.
- *
- * Raising the background is the blunt instrument — it shifts a whole block and
- * on a light theme it reads as the surface getting dirty. A border tinting
- * toward the accent says "this is live" with a two-pixel line, which is both
- * quieter and more legible. The fill still moves, but only just.
- */
-:root {
-  --jb-hover-surface: color-mix(in srgb, var(--jb-signal-tint) 1.5%, var(--color-surface-subtle));
-  --jb-hover-line: color-mix(in srgb, var(--jb-signal) 26%, var(--color-line));
-}
-
-/*
- * One glass material, in two intensities.
- *
- * `float` is for panes with the product moving behind them — the header, the
- * agent panel, popovers, sheets. `fill-strong` is for panes that sit in the
- * flow: cards and section containers.
- *
- * In the light theme the surface and the canvas are the same white, so the
- * alpha alone would change nothing. The property that actually reads as glass
- * is the blur: the signal lattice goes smooth inside the pane and stays a
- * crisp dot grid around it. Text still has a floor to stand on, because at
- * these alphas the pane is far closer to its surface than to the canvas.
- */
-:root {
-  --jb-glass-fill: color-mix(in srgb, var(--color-surface) 66%, transparent);
-  --jb-glass-fill-strong: color-mix(in srgb, var(--color-surface) 74%, transparent);
-  --jb-glass-float: color-mix(in srgb, var(--color-surface) 66%, transparent);
-  --jb-glass-hover: color-mix(in srgb, var(--jb-hover-surface) 74%, transparent);
-  /*
-   * A single stop of light across the top of a filled button. Two percent is
-   * enough to give the surface a direction without turning it into a bevel —
-   * flat next to it reads as unfinished, anything stronger reads as 2011.
-   */
-  --jb-signal-gradient: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--jb-signal) 94%, white) 0%,
-    var(--jb-signal) 62%
-  );
-  --jb-glass-blur: saturate(170%) blur(12px);
-  --jb-glass-blur-float: saturate(165%) blur(24px);
-}
+/* Shared material and state values live in tokens.css. */
 
 .jb-glass {
   background: var(--jb-glass-fill);
@@ -735,7 +723,13 @@ select:focus-visible,
 }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .jb-glass {
+  .jb-glass,
+  .jb-dialog__surface,
+  .jb-multiselect__popover {
     background: var(--color-surface);
+  }
+
+  .jb-button--quiet {
+    background: var(--color-surface-subtle);
   }
 }

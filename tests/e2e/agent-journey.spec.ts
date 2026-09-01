@@ -180,6 +180,16 @@ test.describe("agent journey through the live WebMCP surface", () => {
     ).toBeVisible();
     await expect(page.getByText("Complete", { exact: true }).first()).toBeVisible();
 
+    const activityLog = page.getByRole("region", { name: "Agent activity log" });
+    await activityLog.getByRole("button", { name: "Clear history" }).click();
+    const clearConfirmation = activityLog.getByRole("group", {
+      name: "Confirm clearing agent activity",
+    });
+    await expect(clearConfirmation.getByRole("button", { name: "Cancel" })).toBeFocused();
+    await clearConfirmation.getByRole("button", { name: "Clear history" }).click();
+    await expect(activityLog.getByText("No agent activity yet", { exact: true })).toBeVisible();
+    await expect(activityTab).toBeFocused();
+
     const alertReview = (await callTool(page, "request_search_alert", {
       name: "Agent E2E platform roles",
       criteria: {

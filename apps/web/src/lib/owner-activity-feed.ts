@@ -36,12 +36,45 @@ export interface OwnerActivityFeedController {
   stop(): void;
 }
 
-export function ownerActivityToToolActivity(event: OwnerActivityEvent): ToolActivity {
+interface PublicActivityCopy {
+  readonly safeSummary?: string;
+  readonly toolName: string;
+}
+
+const publicActivityCopyByServerKey: Readonly<Record<string, PublicActivityCopy>> = {
+  approve_agent_access: { toolName: "decide_application_assistance" },
+  delete_saved_search: { toolName: "set_job_alert_state" },
+  edit_application: {
+    toolName: "propose_application_updates",
+    safeSummary: "Application updates prepared for review.",
+  },
+  request_agent_access: {
+    toolName: "request_application_assistance",
+    safeSummary: "Application assistance is ready for your decision.",
+  },
+  revoke_agent_access: { toolName: "decide_application_assistance" },
+  submit_application: {
+    toolName: "decide_application_submission",
+    safeSummary: "Application submitted and receipt saved.",
+  },
+};
+
+const internalApplicationActivityKeys = new Set([
+  "approve_data_grant",
+  "request_data_consent",
+  "request_final_confirmation",
+  "review_application",
+  "validate_application",
+]);
+
+export function ownerActivityToToolActivity(event: OwnerActivityEvent): ToolActivity | null {
+  if (internalApplicationActivityKeys.has(event.key)) return null;
+  const publicCopy = publicActivityCopyByServerKey[event.key];
   return {
     id: event.id,
-    toolName: event.key,
+    toolName: publicCopy?.toolName ?? event.key,
     status: event.status,
-    safeSummary: event.safeSummary,
+    safeSummary: publicCopy?.safeSummary ?? event.safeSummary,
     correlationId: event.correlationId,
     startedAt: event.occurredAt,
     completedAt: event.status === "running" ? null : event.occurredAt,
@@ -166,7 +199,12 @@ export function startOwnerActivityFeed(
       const page = await fetchPage(cursor, requestController.signal);
       if (stopped) return;
       options.activities.mergeCommitted(
-        page.events.filter((event) => event.actorKind === "agent").map(ownerActivityToToolActivity),
+        page.events
+          .filter((event) => event.actorKind === "agent")
+          .flatMap((event) => {
+            const activity = ownerActivityToToolActivity(event);
+            return activity === null ? [] : [activity];
+          }),
       );
       cursor = page.nextCursor;
       failures = 0;

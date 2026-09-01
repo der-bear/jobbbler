@@ -10,7 +10,7 @@
 .evidenceSection,
 .roleFacts,
 .provenanceSection {
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
 }
 
 .identity {
@@ -210,7 +210,7 @@
      * own bottom border doing that job.
      */
     .articleAside .provenanceSection {
-      border-block-start: 1px solid var(--color-line);
+      border-block-start: var(--jb-stroke-structure) solid var(--color-line);
       padding-block-start: clamp(20px, 2.4vw, 28px);
     }
 
@@ -338,7 +338,7 @@
 }
 
 .applyButton:hover:not(:disabled) {
-  background: var(--color-signal-strong);
+  background: var(--jb-signal-gradient-hover);
 }
 
 .applyButton:disabled {
@@ -472,7 +472,7 @@
 }
 
 .provenanceList div {
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   padding-block-end: 10px;
 }
 

@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 const outcomeSteps = [
   {
     title: "Search",
-    copy: "The agent turns what you ask for into filters you can see and change.",
+    copy: "The agent turns what you ask for into exact search criteria and matching roles.",
   },
   {
     title: "Compare",
@@ -29,28 +29,25 @@ const outcomeSteps = [
   },
   {
     title: "Monitor",
-    copy: "Save the search once. Jobbbler keeps checking and reports only what changed.",
+    copy: "Save the search once. Jobbbler checks it on a schedule and reports only what changed.",
   },
   {
     title: "Apply",
-    copy: "The agent prepares one application and waits. Nothing is sent until you say yes.",
+    copy: "The agent prepares truthful answers and a cover letter. Nothing is sent until you approve the exact application.",
   },
 ] as const;
 
 const agentCan = [
-  "Find and compare matching roles",
-  "Check saved searches for changes",
-  "Optionally add an email so applications and saved searches can be recovered",
-  "Restore applications and saved searches with the email and one-time code you provide",
+  "Find, compare, and keep checking matching roles",
   "Prepare application answers from facts you provide",
-  "Relay your explicit final yes or no to Jobbbler",
+  "Restore your private workspace when you ask",
 ] as const;
 
 const decisionsForYou = [
   "Facts only you can provide",
   "Whether the agent may prepare this application",
-  "The exact application, recipient, and data shown before your final decision",
-  "The final yes or no that records consent and controls submission",
+  "The exact application and recipient shown before anything is sent",
+  "The final yes or no that controls submission",
   "The right to withdraw consent for future processing",
 ] as const;
 
@@ -62,10 +59,10 @@ export default function WebMcpAboutPage() {
         <h1>Search once. Let your agent handle the repetition.</h1>
         <p>
           Job search repeats itself. Tell a compatible browser agent what kind of technology role
-          you want. It can search, compare, and keep checking. If you choose a role with Apply on
-          Jobbbler, it asks before preparing one private application and again before Jobbbler
-          submits the exact application you reviewed. The conversation stays in your agent app. No
-          plug-in or separate server setup is needed.
+          you want. It can search, compare, and keep checking. If you choose a role, it asks before
+          preparing one private application and again before Jobbbler sends the exact version shown
+          to you. The conversation stays in your agent app. No plug-in or separate server setup is
+          needed.
         </p>
       </header>
 
@@ -118,12 +115,11 @@ export default function WebMcpAboutPage() {
           </div>
           <p className={styles["controlNote"]}>
             <ShieldCheckIcon aria-hidden="true" size={18} />
-            Every role in this demo supports Apply on Jobbbler. Opening the site alone gives an
-            agent no new authority to use your private data or submit anything: it must first ask
-            for short-lived permission to prepare one application, and submission requires a second,
-            explicit decision in the same agent chat. On your final yes, Jobbbler records your
-            consent, submits that unchanged application once, and saves a receipt. If you say no,
-            nothing is shared or sent.
+            Opening Jobbbler gives an agent no permission to use your personal data. It asks before
+            preparing one application and again before sending it. The first yes records consent to
+            process the answers for that application. The second yes applies only to the unchanged
+            application and recipient shown to you. If you say no at either step, that step does not
+            happen.
           </p>
         </div>
       </section>
@@ -137,14 +133,15 @@ export default function WebMcpAboutPage() {
           <p className={styles["lead"]}>
             When a compatible browser agent opens Jobbbler, it automatically finds the actions it
             can use. The same searches and safety rules power the agent and the job portal you see.
+            Every role in this demo supports Apply on Jobbbler.
           </p>
           <div className={styles["proof"]}>
             <EyeIcon aria-hidden="true" size={21} />
             <div>
-              <strong>See what happened.</strong>
+              <strong>A window into the agent layer.</strong>
               <p>
-                Open Agent activity to see the action, its status, and the result. The rest of
-                Jobbbler stays a familiar job portal.
+                For this demonstration, Agent activity shows judges and developers which action an
+                agent called and whether it worked. Everyday visitors can ignore it.
               </p>
             </div>
           </div>
@@ -156,10 +153,9 @@ export default function WebMcpAboutPage() {
             </p>
           </div>
           <p className={styles["accountNote"]}>
-            No account is needed to search or apply. Adding an email for recovery is optional and
-            does not approve data use, submission, or email updates. If you clear this browser, the
-            same verified email and a one-time code can restore your applications and saved searches
-            from the same agent chat.
+            No account is needed to search, save, or apply in this browser. Email is optional and is
+            used only for updates or restoring your private workspace. It never counts as consent to
+            use personal data or submit an application.
           </p>
         </div>
       </section>

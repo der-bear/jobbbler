@@ -331,7 +331,9 @@ function EmptyComparison({ kind }: Readonly<{ kind: "missing" | "invalid" }>) {
           ? "This comparison link lists the same role twice or more than three roles. Go back to search and pick up to three."
           : "Pick up to three roles from search to see their facts side by side. The link you get is shareable."}
       </p>
-      <Link href="/jobs">Return to search</Link>
+      <Link className={styles["stateLink"]} href="/jobs">
+        Return to search
+      </Link>
     </section>
   );
 }

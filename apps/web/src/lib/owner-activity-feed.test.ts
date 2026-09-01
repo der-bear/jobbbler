@@ -37,14 +37,67 @@ describe("owner activity feed", () => {
   it("maps only the safe event projection into the existing Agent Activity model", () => {
     expect(ownerActivityToToolActivity(event)).toEqual({
       id: event.id,
-      toolName: "edit_application",
+      toolName: "propose_application_updates",
       status: "completed",
-      safeSummary: "Application draft updated.",
+      safeSummary: "Application updates prepared for review.",
       correlationId: event.correlationId,
       startedAt: event.occurredAt,
       completedAt: event.occurredAt,
       affectedResourceIds: [],
     });
+  });
+
+  it("projects private application commands onto the public WebMCP tool names", () => {
+    expect(
+      ownerActivityToToolActivity({
+        ...event,
+        key: "request_agent_access",
+        status: "requires_user_action",
+        safeSummary: "Agent requested scoped application access.",
+      }),
+    ).toMatchObject({
+      toolName: "request_application_assistance",
+      status: "requires_user_action",
+      safeSummary: "Application assistance is ready for your decision.",
+    });
+
+    expect(
+      ownerActivityToToolActivity({
+        ...event,
+        key: "edit_application",
+        safeSummary: "Application draft updated.",
+      }),
+    ).toMatchObject({
+      toolName: "propose_application_updates",
+      safeSummary: "Application updates prepared for review.",
+    });
+
+    expect(
+      ownerActivityToToolActivity({
+        ...event,
+        key: "delete_saved_search",
+        safeSummary: "Saved search and its job alert were removed.",
+      }),
+    ).toMatchObject({
+      toolName: "set_job_alert_state",
+      safeSummary: "Saved search and its job alert were removed.",
+    });
+  });
+
+  it.each([
+    "validate_application",
+    "review_application",
+    "request_data_consent",
+    "approve_data_grant",
+    "request_final_confirmation",
+  ])("keeps internal orchestration event %s out of the public activity panel", (key) => {
+    expect(
+      ownerActivityToToolActivity({
+        ...event,
+        key,
+        safeSummary: "Internal application orchestration completed.",
+      }),
+    ).toBeNull();
   });
 
   it("keeps human and service events out of the agent activity feed", async () => {

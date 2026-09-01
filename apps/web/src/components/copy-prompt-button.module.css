@@ -7,7 +7,7 @@
   border-radius: var(--radius-md);
   padding: 7px 11px;
   color: var(--color-ink-muted);
-  background: var(--color-surface-raised);
+  background: var(--jb-veil-control);
   font: inherit;
   font-size: var(--jb-type-label);
   font-weight: 650;
@@ -19,7 +19,8 @@
 }
 
 .button:hover {
-  border-color: var(--jb-signal);
+  border-color: var(--jb-state-line);
+  background: linear-gradient(var(--jb-state-hover), var(--jb-state-hover)), var(--jb-veil-control);
   color: var(--color-ink);
 }
 

@@ -58,7 +58,7 @@
   display: grid;
   grid-template-columns: minmax(190px, 0.7fr) minmax(0, 1.35fr);
   gap: clamp(30px, 7vw, 92px);
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   padding-block: clamp(34px, 5vw, 52px);
 }
 
@@ -101,7 +101,7 @@
 }
 
 .prompt {
-  border-inline-start: 2px solid var(--jb-signal);
+  border-inline-start: var(--jb-stroke-control) solid var(--jb-signal);
   padding-inline-start: 15px;
   font-size: var(--jb-type-body);
   font-weight: 560;
@@ -138,12 +138,12 @@
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr);
   gap: 12px;
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   padding-block: 17px;
 }
 
 .steps li:last-child {
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
 }
 
 .steps svg,
@@ -170,16 +170,31 @@
   line-height: 1.6;
 }
 
+/*
+ * The lead runs the full width of the lane; the supporting material sits in
+ * two columns beneath it. Four blocks of very different weight used to run
+ * down one lane with the right half of the measure empty. A straight two-column
+ * split was tried first and gave the lead paragraph 217px — three words a
+ * line — because the section already keeps its heading in a lane of its own.
+ */
 .builtIn {
   display: grid;
-  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  align-items: start;
+  gap: 22px clamp(24px, 4vw, 42px);
+}
+
+.builtIn > .lead,
+.builtIn > .accountNote {
+  grid-column: 1 / -1;
+  max-inline-size: 60ch;
 }
 
 .proof {
   display: grid;
   grid-template-columns: 26px minmax(0, 1fr);
   gap: 13px;
-  border: 1px solid var(--color-line-strong);
+  border: var(--jb-stroke-structure) solid var(--color-line-strong);
   border-radius: var(--radius-lg);
   padding: 20px;
   background: var(--jb-glass-fill-strong);
@@ -205,7 +220,7 @@
 }
 
 .accountNote {
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   padding-block-start: 20px;
   color: var(--color-ink-muted);
   font-size: var(--jb-type-ui);
@@ -224,18 +239,32 @@
   font-weight: 680;
 }
 
+/*
+ * These rendered with no marker at all, so two lists of short statements read
+ * as loose indented sentences. Same dash the panel guide uses.
+ */
 .controlGrid ul {
   display: grid;
   gap: 10px;
   margin: 0;
-  padding-inline-start: 18px;
+  list-style: none;
+  padding-inline-start: 0;
   color: var(--color-ink-muted);
   font-size: var(--jb-type-ui);
   line-height: 1.5;
 }
 
-.controlGrid li::marker {
-  color: var(--jb-signal);
+.controlGrid li {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 9px;
+}
+
+.controlGrid li::before {
+  content: "";
+  margin-block-start: 0.62em;
+  block-size: 1px;
+  background: color-mix(in srgb, var(--jb-signal) 55%, var(--color-line-strong));
 }
 
 .controlNote {
@@ -244,7 +273,7 @@
   align-items: flex-start;
   gap: 9px;
   margin: 0;
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   padding-block-start: 20px;
   color: var(--color-ink-subtle);
   font-size: var(--jb-type-label);
@@ -257,7 +286,7 @@
 }
 
 .footer {
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   padding-block-start: 34px;
 }
 
@@ -280,19 +309,19 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  border: 1px solid var(--color-line-strong);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
+  background: var(--jb-action-gradient);
   padding: 9px 14px;
-  color: var(--color-ink);
+  color: var(--color-canvas);
   font-size: var(--jb-type-label);
   font-weight: 650;
   text-decoration: none;
 }
 
 .primaryAction {
-  border-color: var(--jb-signal);
   color: var(--jb-signal-contrast);
-  background: var(--jb-signal);
+  background: var(--jb-signal-gradient);
 }
 
 .primaryAction:focus-visible,

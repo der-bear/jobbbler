@@ -37,7 +37,7 @@
 }
 
 .timeline li[data-status="requires_user_action"] .marker {
-  color: var(--jb-warning);
+  color: var(--color-ink-subtle);
 }
 
 .timeline li[data-status="failed"] .marker {
@@ -46,7 +46,7 @@
 
 .entry {
   min-inline-size: 0;
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   padding-block-end: 15px;
 }
 
@@ -63,9 +63,11 @@
   max-inline-size: 100%;
   overflow: hidden;
   margin-block-start: 8px;
-  border: 1px solid var(--color-line);
+  border: 0;
   border-radius: var(--radius-sm);
-  background: var(--color-surface-subtle);
+  background: var(--jb-glass-control);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
   color: var(--color-ink);
   padding: 4px 7px;
   font-family: var(--jb-font-mono);
@@ -85,10 +87,6 @@
   color: var(--color-ink-subtle);
   font-family: var(--jb-font-mono);
   font-size: var(--jb-type-caption);
-}
-
-.timeline li[data-status="requires_user_action"] .meta span:first-child {
-  color: var(--jb-warning);
 }
 
 .timeline li[data-status="failed"] .meta span:first-child {
@@ -158,7 +156,7 @@
 .historyActions > div {
   display: grid;
   gap: 5px;
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   padding-block-start: 14px;
 }
 

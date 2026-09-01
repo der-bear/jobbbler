@@ -38,7 +38,7 @@
 }
 
 .clearButton:hover {
-  background: var(--color-surface-subtle);
+  background: var(--jb-state-hover);
   color: var(--color-ink);
 }
 
@@ -67,7 +67,7 @@
 
 .lookupStatus {
   margin: 0;
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   background: var(--color-surface-subtle);
   color: var(--color-ink-muted);
   padding: 9px 12px;
@@ -109,7 +109,7 @@
 
 .options > [data-kind="free-text"] {
   margin-block-start: 3px;
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   border-start-start-radius: 0;
   border-start-end-radius: 0;
 }

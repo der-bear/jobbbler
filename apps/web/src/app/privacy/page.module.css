@@ -42,7 +42,7 @@
   display: grid;
   grid-template-columns: minmax(180px, 0.42fr) minmax(0, 1fr);
   gap: clamp(34px, 7vw, 92px);
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
   padding-block: clamp(38px, 6vw, 66px);
 }
 
@@ -71,7 +71,7 @@
   grid-template-columns: auto minmax(0, 1fr);
   gap: 12px;
   margin-block-start: 28px;
-  border-block-start: 2px solid var(--jb-signal);
+  border-block-start: var(--jb-stroke-control) solid var(--jb-signal);
   padding: 18px 0 0;
 }
 
@@ -100,7 +100,7 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   padding-block: 17px;
   color: var(--color-ink);
   font-size: var(--jb-type-body-sm);
@@ -125,13 +125,13 @@
   justify-content: space-between;
   gap: 24px;
   min-block-size: 74px;
-  border-block-end: 1px solid var(--color-line);
+  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   color: var(--color-ink);
   text-decoration: none;
 }
 
 .actions a:first-child {
-  border-block-start: 1px solid var(--color-line);
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
 }
 
 .actions a:hover strong {
