@@ -105,7 +105,7 @@ test.describe("saved-search ownership workspace", () => {
     await page.getByText("Keep access on other devices", { exact: true }).click();
     await page
       .getByRole("complementary", { name: "Saved search access" })
-      .getByLabel("Email address")
+      .getByLabel("Recovery email")
       .fill(`workspace-recovery-${String(Date.now())}@example.test`);
     await page.getByRole("button", { name: "Send verification code" }).click();
     await expect(page.getByLabel("Six-digit code")).toBeFocused();
@@ -146,7 +146,7 @@ test.describe("saved-search ownership workspace", () => {
     await page.getByLabel("Email me when results change").check();
     await page
       .getByRole("region", { name: "Save this search" })
-      .getByLabel("Email address")
+      .getByLabel("Email for updates")
       .fill(`schedule-edit-${String(Date.now())}@example.test`);
     await page.getByRole("button", { name: "Send verification code" }).click();
     await page.getByRole("button", { name: "Verify and continue" }).click();

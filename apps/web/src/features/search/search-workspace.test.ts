@@ -103,6 +103,25 @@ describe("deriveSearchPresentation", () => {
     expect(presentation.visibleJobs).toHaveLength(8);
   });
 
+  it("uses singular result copy for one matching role", () => {
+    const presentation = deriveSearchPresentation(
+      { locations: ["Phoenix, United States"], sort: "newest", limit: 20 },
+      result(1),
+    );
+
+    expect(presentation.heading).toBe("1 match");
+  });
+
+  it("uses singular catalog copy for one role", () => {
+    const presentation = deriveSearchPresentation(
+      { sort: "newest", limit: 20 },
+      result(1),
+      "catalog",
+    );
+
+    expect(presentation.heading).toBe("1 role");
+  });
+
   it("treats a freshness filter as a search even without text", () => {
     const presentation = deriveSearchPresentation(
       { postedWithinDays: 7, sort: "newest", limit: 20 },

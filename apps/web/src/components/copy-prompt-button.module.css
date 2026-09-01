@@ -9,7 +9,7 @@
   color: var(--color-ink-muted);
   background: var(--color-surface-raised);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   font-weight: 650;
   cursor: pointer;
   transition:
@@ -30,7 +30,7 @@
   border-color: var(--color-line);
   border-radius: var(--radius-sm);
   padding: 6px 10px;
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 @media (pointer: coarse) {

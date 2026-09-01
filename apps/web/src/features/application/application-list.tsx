@@ -82,8 +82,8 @@ export function ApplicationHistory({
       <header className={styles["header"]}>
         <h1 id="applications-title">My applications</h1>
         <p>
-          Applications prepared on Jobbbler, whether you started them here or asked an agent. Open
-          one to see its status or receipt.
+          Applications prepared on Jobbbler, whether you started them here or asked an agent to
+          help. Open one to see its status or receipt.
         </p>
       </header>
 
@@ -91,8 +91,8 @@ export function ApplicationHistory({
         <div className={styles["empty"]}>
           <h2>No applications yet</h2>
           <p>
-            Browse roles to apply yourself, or ask a compatible agent to help. Jobbbler will ask
-            before using your personal data or submitting anything.
+            Browse roles to apply yourself, or ask a compatible agent to help. Your agent must ask
+            before Jobbbler uses your personal data or submits anything.
           </p>
           <Link className={styles["primaryLink"]} href="/jobs">
             Browse open roles <ArrowRightIcon aria-hidden="true" />

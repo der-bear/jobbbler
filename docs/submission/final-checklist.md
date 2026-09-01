@@ -85,7 +85,7 @@
       contract suite on the final build and record the fresh numbers.
 - [x] Validate gallery image crops, captions, alt text, dimensions, and
       file-size limits on Devpost.
-- [x] Recapture all four gallery crops on the final interface, then revalidate
+- [ ] Recapture all four gallery crops on the final interface, then revalidate
       captions, alt text, 3:2 dimensions, and file-size limits.
 - [ ] Check spelling, team/attribution fields, rules acknowledgement, and URLs
       immediately before submission.

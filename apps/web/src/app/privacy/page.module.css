@@ -13,7 +13,7 @@
 .sectionHeading > p {
   margin: 0;
   color: var(--color-signal-strong);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   font-weight: 650;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -62,7 +62,7 @@
   max-inline-size: 64ch;
   margin: 0;
   color: var(--color-ink-muted);
-  font-size: 15px;
+  font-size: var(--jb-type-body);
   line-height: 1.7;
 }
 
@@ -85,7 +85,7 @@
   max-inline-size: 64ch;
   margin: 0;
   color: var(--color-ink-muted);
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
   line-height: 1.6;
 }
 
@@ -103,7 +103,7 @@
   border-block-end: 1px solid var(--color-line);
   padding-block: 17px;
   color: var(--color-ink);
-  font-size: 14px;
+  font-size: var(--jb-type-body-sm);
   line-height: 1.55;
 }
 
@@ -151,14 +151,14 @@
 }
 
 .actions strong {
-  font-size: 14px;
+  font-size: var(--jb-type-body-sm);
   font-weight: 650;
 }
 
 .actions small {
   margin-block-start: 5px;
   color: var(--color-ink-muted);
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   line-height: 1.45;
 }
 

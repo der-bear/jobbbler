@@ -443,6 +443,29 @@ describe("ApplicationView", () => {
     expect(markup).not.toContain("Nothing is sent until this final action succeeds.");
   });
 
+  it.each([
+    ["idle" as const, "Changes save when you leave a field."],
+    ["saving" as const, "Saving changes…"],
+    ["saved" as const, "Changes saved."],
+  ])("states the actual field-save behavior when saveState is %s", (saveState, message) => {
+    const markup = renderToStaticMarkup(
+      <ApplicationView
+        busy={false}
+        confirmation={null}
+        error={null}
+        fieldValues={{}}
+        job={job}
+        now={workspace.serverNow}
+        onAction={() => undefined}
+        onFieldChange={() => undefined}
+        saveState={saveState}
+        workspace={workspace}
+      />,
+    );
+
+    expect(markup).toContain(message);
+  });
+
   it("leaves an external application as an explicit source-link handoff", () => {
     const externalUrl = "https://jobs.example.test/opening/42";
     const markup = renderToStaticMarkup(

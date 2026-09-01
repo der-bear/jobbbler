@@ -32,7 +32,7 @@
   block-size: 28px;
   place-items: center;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--color-ink-subtle);
 }
@@ -69,7 +69,7 @@
   background: var(--color-surface-subtle);
   color: var(--color-ink-muted);
   padding: 9px 12px;
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   line-height: 1.35;
 }
 
@@ -115,7 +115,7 @@
 .optionMeta {
   flex: 0 0 auto;
   color: var(--color-ink-subtle);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 @media (max-width: 800px) {

@@ -1,6 +1,16 @@
 :root {
   --jb-font-ui: var(--font-manrope, Manrope, ui-sans-serif, system-ui, sans-serif);
   --jb-font-mono: var(--font-ibm-plex-mono, ui-monospace, "SFMono-Regular", monospace);
+  /*
+   * Product typography uses one readable five-step scale. Caption is the
+   * minimum visible size; hierarchy comes from role, weight, and spacing rather
+   * than a collection of one-off pixel values.
+   */
+  --jb-type-caption: 0.75rem;
+  --jb-type-label: 0.8125rem;
+  --jb-type-ui: 0.875rem;
+  --jb-type-body-sm: 0.9375rem;
+  --jb-type-body: 1rem;
   --jb-canvas: #ffffff;
   --jb-surface: #ffffff;
   --jb-surface-muted: #f6f6f4;

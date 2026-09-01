@@ -1119,7 +1119,7 @@ export function SavedWorkspace({
                   {challengeId === null ? (
                     <form className={styles["form"]} onSubmit={beginVerification}>
                       <label>
-                        <span>Email address</span>
+                        <span>Email for updates</span>
                         <input
                           autoComplete="email"
                           maxLength={320}

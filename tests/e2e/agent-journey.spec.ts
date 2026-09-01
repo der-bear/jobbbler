@@ -162,7 +162,9 @@ test.describe("agent journey through the live WebMCP surface", () => {
     await expect
       .poll(() => new URL(page.url()).searchParams.get("q"))
       .toBe("senior full-stack engineer");
-    await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
+    await expect(page.getByRole("status", { name: "Search status" })).toContainText(
+      /\bmatch(?:es)?\b/i,
+    );
     await expect.poll(() => registeredToolNames(page)).toEqual([...allSiteTools]);
     await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(/ready/i);
     await expect(page.getByRole("status", { name: "WebMCP status" })).toContainText(

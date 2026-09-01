@@ -101,13 +101,13 @@
 
 .connection strong {
   color: var(--color-ink);
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   font-weight: 650;
 }
 
 .connection small {
   color: var(--color-ink-muted);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   line-height: 1.45;
 }
 
@@ -118,7 +118,7 @@
   background: transparent;
   color: var(--color-ink);
   padding-inline: 10px;
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   font-weight: 620;
 }
 
@@ -135,7 +135,7 @@
   border-block-end: 2px solid transparent;
   background: transparent;
   color: var(--color-ink-muted);
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   font-weight: 620;
 }
 

@@ -17,7 +17,7 @@
 .eyebrow {
   margin: 0;
   color: var(--color-ink-muted);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   font-weight: 500;
   letter-spacing: 0.11em;
   text-transform: uppercase;
@@ -66,13 +66,13 @@
 .identityHeading span,
 .previewRow span {
   color: var(--color-ink-subtle);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
 .identityHeading strong {
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
   font-weight: 650;
 }
 
@@ -80,7 +80,7 @@
 .preview > p {
   margin: 16px 0 0;
   color: var(--color-ink-muted);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   line-height: 1.62;
 }
 
@@ -136,9 +136,9 @@
 .stepBadge {
   flex: 0 0 auto;
   border: 1px solid var(--color-line-strong);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--color-ink-muted);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   font-weight: 620;
   letter-spacing: 0.06em;
   padding: 7px 10px;
@@ -153,10 +153,10 @@
 }
 
 .criteria span {
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--color-surface-subtle);
   color: var(--color-ink-muted);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   padding: 6px 9px;
   text-transform: capitalize;
 }
@@ -183,7 +183,7 @@
 .privacyNote p {
   margin: 0;
   color: var(--color-ink-muted);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   line-height: 1.55;
 }
 
@@ -216,7 +216,7 @@
   display: grid;
   gap: 3px;
   color: var(--color-ink);
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   letter-spacing: 0;
   line-height: 1.4;
   text-transform: none;
@@ -228,7 +228,7 @@
 
 .choice small {
   color: var(--color-ink-subtle);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 .composer > .primaryButton {
@@ -243,7 +243,7 @@
 .form label > span,
 .weekdayFieldset legend {
   color: var(--color-ink-muted);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -258,7 +258,7 @@
   background: var(--color-surface);
   color: var(--color-ink);
   padding: 9px 11px;
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
 }
 
 .form input:focus-visible,
@@ -305,7 +305,7 @@
   border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-sm);
   color: var(--color-ink-muted);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 .weekdayFieldset input:checked + span {
@@ -330,7 +330,7 @@
   gap: 8px;
   border-radius: var(--radius-sm);
   padding: 9px 13px;
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   font-weight: 660;
   text-decoration: none;
 }
@@ -385,7 +385,7 @@
 .endpointList > div {
   justify-content: space-between;
   color: var(--color-ink-muted);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 .endpointList button {
@@ -396,7 +396,7 @@
   color: var(--color-ink-muted);
   cursor: pointer;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -412,7 +412,7 @@
 
 .fieldError {
   margin: -6px 0 0;
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 .quietButton {
@@ -448,7 +448,7 @@
 .hint {
   margin: -7px 0 0;
   color: var(--color-signal-strong);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 .preview {
@@ -471,7 +471,7 @@
 
 .previewRow strong {
   justify-self: end;
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   text-align: end;
 }
 
@@ -509,7 +509,7 @@
   gap: 5px;
   min-block-size: 44px;
   color: var(--color-signal-strong);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   font-weight: 620;
   text-decoration: none;
 }
@@ -530,7 +530,7 @@
   align-items: center;
   gap: 6px;
   color: var(--color-ink-subtle);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }
@@ -553,7 +553,7 @@
 
 .savedTopline small {
   color: var(--color-ink-subtle);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 .savedCard h3 {
@@ -569,7 +569,7 @@
   gap: 16px;
   margin-block-start: 17px;
   color: var(--color-ink-subtle);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 .savedMeta span {
@@ -594,7 +594,7 @@
 .removeConfirmation p {
   margin: 0;
   color: var(--color-ink);
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   font-weight: 650;
 }
 
@@ -605,7 +605,7 @@
 
 .removeConfirmation label > span {
   color: var(--color-ink-muted);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   line-height: 1.5;
 }
 
@@ -618,7 +618,7 @@
   background: var(--color-surface);
   color: var(--color-ink);
   padding: 9px 11px;
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
 }
 
 .removeConfirmation input:focus-visible {
@@ -638,7 +638,7 @@
   gap: 8px 16px;
   margin-block-start: 14px;
   color: var(--color-ink-muted);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   letter-spacing: 0.02em;
   line-height: 1.5;
 }
@@ -673,7 +673,7 @@
   max-inline-size: 48ch;
   margin: 0 0 18px;
   color: var(--color-ink-muted);
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   line-height: 1.55;
 }
 
@@ -683,10 +683,10 @@
   gap: 6px;
   min-block-size: 44px;
   border: 1px solid var(--color-line-strong);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding-inline: 18px;
   color: var(--color-ink);
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
   font-weight: 620;
   text-decoration: none;
   transition:
@@ -715,7 +715,7 @@
   border-radius: var(--radius-sm);
   padding: 12px 14px;
   color: var(--jb-danger);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 .loading {

@@ -296,7 +296,7 @@ export function OwnerPrivacyControls({
                 onSubmit={(event) => void startRecoveryEmailVerification(event)}
               >
                 <label>
-                  <span>Email address</span>
+                  <span>Recovery email</span>
                   <input
                     autoComplete="email"
                     maxLength={320}

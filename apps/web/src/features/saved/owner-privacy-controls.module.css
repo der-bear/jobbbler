@@ -25,14 +25,14 @@
 
 .summary span {
   color: var(--color-ink-subtle);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
 .summary strong {
   color: var(--color-ink);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   font-weight: 650;
 }
 
@@ -57,7 +57,7 @@
 .panel h2 {
   margin: 5px 0 0;
   color: var(--color-ink);
-  font-size: 14px;
+  font-size: var(--jb-type-body-sm);
   font-weight: 650;
   letter-spacing: -0.02em;
 }
@@ -65,14 +65,14 @@
 .panel p {
   margin: 8px 0 0;
   color: var(--color-ink-muted);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   line-height: 1.55;
 }
 
 .label,
 .form label > span {
   color: var(--color-ink-subtle);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }
@@ -95,7 +95,7 @@
   background: var(--color-surface);
   color: var(--color-ink);
   padding: 8px 10px;
-  font-size: 12px;
+  font-size: var(--jb-type-label);
 }
 
 .form input:focus-visible {
@@ -110,7 +110,7 @@
   background: var(--color-ink);
   color: var(--color-surface);
   padding: 8px 11px;
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   font-weight: 650;
 }
 

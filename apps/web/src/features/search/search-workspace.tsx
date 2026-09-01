@@ -211,14 +211,15 @@ export function deriveSearchPresentation(
 }> {
   const hasCriteria = hasMeaningfulSearchCriteria(input);
   const landing = mode === "home" && !hasCriteria;
+  const total = result?.total ?? 0;
   return {
     heading: landing
       ? "Latest technology roles"
       : hasCriteria
-        ? `${String(result?.total ?? 0)} matches`
+        ? `${String(total)} ${total === 1 ? "match" : "matches"}`
         : result === null
           ? "Technology roles"
-          : `${String(result.total)} roles`,
+          : `${String(total)} ${total === 1 ? "role" : "roles"}`,
     landing,
     resultLayout: landing ? "cards" : "list",
     showHeroSearch: landing,

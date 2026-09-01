@@ -264,7 +264,9 @@ function ReviewDocument({
               ? "Saving changes…"
               : saveState === "error"
                 ? "Changes could not be saved. Leave the field again to retry."
-                : "Changes save automatically."}
+                : saveState === "saved"
+                  ? "Changes saved."
+                  : "Changes save when you leave a field."}
           </p>
         )}
 

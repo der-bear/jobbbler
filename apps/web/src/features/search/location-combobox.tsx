@@ -282,6 +282,7 @@ export function LocationCombobox({
         : query.length > 0 && !hasKnownSuggestion
           ? "No listed location matches yet. You can still search this place."
           : null;
+  const showPopover = open && (visibleStatus !== null || suggestionItems.length > 0);
 
   return (
     <div className={styles["combobox"]} onBlur={handleBlur}>
@@ -289,13 +290,15 @@ export function LocationCombobox({
         <MapPinIcon aria-hidden="true" size={17} />
         <input
           aria-activedescendant={
-            open && activeOption !== undefined ? `${id}-option-${String(activeIndex)}` : undefined
+            showPopover && activeOption !== undefined
+              ? `${id}-option-${String(activeIndex)}`
+              : undefined
           }
           aria-autocomplete="list"
           aria-busy={loadStatus === "loading" || undefined}
-          aria-controls={open ? `${id}-listbox` : undefined}
+          aria-controls={showPopover ? `${id}-listbox` : undefined}
           aria-describedby={`${id}-status`}
-          aria-expanded={open}
+          aria-expanded={showPopover}
           aria-label={label}
           autoComplete="off"
           id={`${id}-input`}
@@ -333,11 +336,11 @@ export function LocationCombobox({
           ? "Loading location suggestions."
           : loadStatus === "error"
             ? "Suggestions are unavailable. You can still enter any location."
-            : open
+            : showPopover
               ? `${String(suggestionItems.length)} location suggestions available.`
               : ""}
       </span>
-      {open ? (
+      {showPopover ? (
         <div className={styles["popover"]}>
           {visibleStatus === null ? null : (
             <p aria-hidden="true" className={styles["lookupStatus"]} data-state={loadStatus}>

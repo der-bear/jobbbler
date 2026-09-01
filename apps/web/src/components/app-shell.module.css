@@ -29,7 +29,7 @@
   border-block-start: 1px solid var(--color-line);
   padding-inline: clamp(20px, 3vw, 48px);
   color: var(--color-ink-subtle);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 .siteFooter nav {
@@ -131,7 +131,7 @@
   min-block-size: 44px;
   border-radius: var(--radius-sm);
   color: var(--color-ink-muted);
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
   font-weight: 580;
   padding: 9px 12px;
   text-decoration: none;
@@ -159,11 +159,11 @@
   align-items: center;
   gap: 7px;
   border: 1px solid var(--color-line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--color-surface);
   color: var(--color-ink-muted);
   padding-inline: 12px;
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   font-weight: 620;
   transition:
     border-color var(--motion-fast) var(--ease-standard),
@@ -234,7 +234,7 @@
     flex: 1;
     flex-direction: column;
     gap: 2px;
-    font-size: 13px;
+    font-size: var(--jb-type-ui);
     padding: 6px 10px;
   }
 

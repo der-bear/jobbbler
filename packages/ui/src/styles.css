@@ -72,16 +72,16 @@ button:disabled {
   color: var(--jb-text-muted);
 }
 .jb-button--sm {
-  font-size: 0.8125rem;
+  font-size: var(--jb-type-label);
   min-height: 2rem;
   padding: 0.375rem 0.625rem;
 }
 .jb-button--md {
-  font-size: 0.875rem;
+  font-size: var(--jb-type-ui);
   padding: 0.625rem 0.875rem;
 }
 .jb-button--lg {
-  font-size: 1rem;
+  font-size: var(--jb-type-body);
   min-height: 3rem;
   padding: 0.75rem 1.125rem;
 }
@@ -122,7 +122,7 @@ button:disabled {
 }
 .jb-field__label {
   color: var(--jb-text);
-  font-size: 0.8125rem;
+  font-size: var(--jb-type-label);
   font-weight: 700;
 }
 .jb-input {
@@ -145,7 +145,7 @@ button:disabled {
 }
 .jb-field__hint,
 .jb-field__error {
-  font-size: 0.75rem;
+  font-size: var(--jb-type-caption);
   margin: 0;
 }
 .jb-field__hint {
@@ -159,10 +159,10 @@ button:disabled {
   align-items: center;
   background: var(--jb-surface);
   border: 1px solid var(--jb-border);
-  border-radius: 999px;
+  border-radius: var(--jb-radius-pill);
   color: var(--jb-text);
   display: inline-flex;
-  font-size: 0.75rem;
+  font-size: var(--jb-type-caption);
   gap: 0.25rem;
   line-height: 1;
   min-height: 2rem;
@@ -187,7 +187,7 @@ button.jb-chip {
   background: var(--jb-surface-muted);
   color: var(--jb-text-muted);
   padding: 0 0.5625rem;
-  font-size: 0.6875rem;
+  font-size: var(--jb-type-caption);
   font-weight: 620;
 }
 .jb-chip--signal {
@@ -200,7 +200,7 @@ button.jb-chip {
   align-items: center;
   background: transparent;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--jb-radius-pill);
   color: currentColor;
   display: inline-flex;
   justify-content: center;
@@ -240,20 +240,20 @@ button.jb-chip {
 }
 .jb-card__eyebrow {
   color: var(--jb-text-muted);
-  font-size: 0.6875rem;
+  font-size: var(--jb-type-caption);
   font-weight: 700;
   letter-spacing: 0.08em;
   margin: 0 0 0.375rem;
   text-transform: uppercase;
 }
 .jb-card__title {
-  font-size: 1rem;
+  font-size: var(--jb-type-body);
   letter-spacing: -0.02em;
   margin: 0;
 }
 .jb-card__body {
   color: var(--jb-text-muted);
-  font-size: 0.875rem;
+  font-size: var(--jb-type-ui);
   line-height: 1.55;
 }
 
@@ -289,7 +289,7 @@ button.jb-chip {
 }
 .jb-dialog__description {
   color: var(--jb-text-muted);
-  font-size: 0.875rem;
+  font-size: var(--jb-type-ui);
   line-height: 1.45;
   margin: 0.375rem 0 0;
 }
@@ -329,7 +329,7 @@ button.jb-chip {
   width: 100%;
 }
 .jb-skeleton--circle {
-  border-radius: 999px;
+  border-radius: var(--jb-radius-pill);
   height: 2.5rem;
   width: 2.5rem;
 }
@@ -373,7 +373,7 @@ button.jb-chip {
 }
 .jb-toast p {
   color: var(--jb-toast-muted);
-  font-size: 0.8125rem;
+  font-size: var(--jb-type-label);
   margin: 0.25rem 0 0;
 }
 
@@ -431,7 +431,7 @@ button.jb-chip {
   background: var(--jb-surface);
   color: var(--jb-text);
   padding: 7px 10px;
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
   text-align: start;
 }
 
@@ -477,7 +477,7 @@ button.jb-chip {
   background: var(--jb-canvas);
   color: var(--jb-text);
   padding: 6px 9px;
-  font-size: 12px;
+  font-size: var(--jb-type-label);
 }
 
 .jb-multiselect__search:focus-visible {
@@ -505,7 +505,7 @@ button.jb-chip {
   background: transparent;
   color: var(--jb-text);
   padding: 7px 8px;
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
   cursor: pointer;
   text-align: start;
 }
@@ -544,7 +544,7 @@ button.jb-chip {
 .jb-multiselect__empty {
   color: var(--jb-text-muted);
   padding: 8px;
-  font-size: 12px;
+  font-size: var(--jb-type-label);
 }
 
 .jb-multiselect__clear {
@@ -553,7 +553,7 @@ button.jb-chip {
   background: transparent;
   color: var(--jb-signal-strong);
   padding: 5px 8px;
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   font-weight: 600;
 }
 
@@ -568,7 +568,7 @@ button.jb-chip {
 
 .jb-range::-webkit-slider-runnable-track {
   block-size: 4px;
-  border-radius: 999px;
+  border-radius: var(--jb-radius-pill);
   background: linear-gradient(
     to right,
     var(--jb-signal) 0%,
@@ -580,13 +580,13 @@ button.jb-chip {
 
 .jb-range::-moz-range-track {
   block-size: 4px;
-  border-radius: 999px;
+  border-radius: var(--jb-radius-pill);
   background: var(--jb-border);
 }
 
 .jb-range::-moz-range-progress {
   block-size: 4px;
-  border-radius: 999px;
+  border-radius: var(--jb-radius-pill);
   background: var(--jb-signal);
 }
 
@@ -596,7 +596,7 @@ button.jb-chip {
   block-size: 16px;
   margin-block-start: -6px;
   border: 2px solid var(--jb-surface);
-  border-radius: 999px;
+  border-radius: var(--jb-radius-pill);
   background: var(--jb-signal);
   box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
 }
@@ -605,12 +605,12 @@ button.jb-chip {
   inline-size: 12px;
   block-size: 12px;
   border: 2px solid var(--jb-surface);
-  border-radius: 999px;
+  border-radius: var(--jb-radius-pill);
   background: var(--jb-signal);
 }
 
 .jb-range:focus-visible {
   outline: var(--jb-focus-width) solid var(--jb-focus);
   outline-offset: var(--jb-focus-offset);
-  border-radius: 999px;
+  border-radius: var(--jb-radius-pill);
 }

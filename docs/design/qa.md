@@ -11,6 +11,9 @@ does not treat screenshots from an earlier build as evidence.
   results, and application state do not require knowledge of WebMCP.
 - Typography, spacing, thin rules, and restrained semantic color create the
   hierarchy. Decorative effects do not compete with the current task.
+- Compact product text uses the shared caption, label, UI, small-body, and body
+  roles; responsive display sizes are reserved for real headings. Pills use
+  the shared pill-radius token so control geometry does not drift by route.
 - Home is the simple starting state. Jobs is the focused search workspace.
   Search and location controls help people enter valid criteria without
   requiring them to understand the underlying data model.

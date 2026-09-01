@@ -73,10 +73,10 @@ Built for the OpenAI WebMCP Challenge.
 
 ## Product tour
 
-| Find once                                                                                                                          | Stay updated                                                                        | Apply with control                                                                                                                     |
-| ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Search and live filters — chips, multi-selects, and a minimum-salary selector — with every result opening as a readable role page. | Save the exact query; optionally add verified email updates; see only what changed. | Review one exact document-like draft on the visible owner surface; the sealed payload submits exactly once after the bound decision.   |
-| Evidence, trade-offs, and source freshness stay on the role page.                                                                  | Pause or resume checking without exposing an address or credential to WebMCP.       | Agent-prepared answers keep their provenance; assisted drafts are read-only on the site and revised through the external agent client. |
+| Find once                                                                                                                          | Stay updated                                                                        | Apply with control                                                                                                                           |
+| ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Search and live filters — chips, multi-selects, and a minimum-salary selector — with every result opening as a readable role page. | Save the exact query; optionally add verified email updates; see only what changed. | Review one exact document-like application on the visible owner surface; the sealed payload submits exactly once after the bound decision.   |
+| Evidence, trade-offs, and source freshness stay on the role page.                                                                  | Pause or resume checking without exposing an address or credential to WebMCP.       | Agent-prepared answers keep their provenance; assisted applications are read-only on the site and revised through the external agent client. |
 
 ## WebMCP surface
 

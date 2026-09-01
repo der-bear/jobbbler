@@ -112,7 +112,9 @@ test.describe("public job search workspace", () => {
     await expect(page.getByRole("searchbox", { name: "Search" })).toHaveValue(
       "senior full-stack engineer",
     );
-    await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
+    await expect(page.getByRole("status", { name: "Search status" })).toContainText(
+      /\bmatch(?:es)?\b/i,
+    );
 
     const role = resultCard(page, seededRole.title, seededRole.company);
     await expect(role).toBeVisible();
@@ -134,7 +136,9 @@ test.describe("public job search workspace", () => {
     await outcome.press("Enter");
 
     await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe(exampleOutcome);
-    await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
+    await expect(page.getByRole("status", { name: "Search status" })).toContainText(
+      /\bmatch(?:es)?\b/i,
+    );
   });
 
   test("keeps URL-backed filters editable through the visible controls", async ({ page }) => {
@@ -143,7 +147,9 @@ test.describe("public job search workspace", () => {
     await page.getByRole("button", { name: "Remote", pressed: true }).click();
 
     await expect(page).not.toHaveURL(/(?:\?|&)work=remote(?:&|$)/);
-    await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
+    await expect(page.getByRole("status", { name: "Search status" })).toContainText(
+      /\bmatch(?:es)?\b/i,
+    );
   });
 
   test("resets every active filter in one clear action", async ({ page }) => {
@@ -388,7 +394,7 @@ test.describe("public job search workspace", () => {
     });
 
     expect(outlinedAncestors).toBe(1);
-    await expect(page.getByRole("listbox")).toBeVisible();
+    await expect(page.getByRole("listbox")).toHaveCount(0);
   });
 
   test("opens a detail page that retains ranking evidence and provenance", async ({ page }) => {
@@ -438,7 +444,9 @@ test.describe("public job search workspace", () => {
     await outcome.fill(exampleOutcome);
     await outcome.press("Enter");
 
-    await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
+    await expect(page.getByRole("status", { name: "Search status" })).toContainText(
+      /\bmatch(?:es)?\b/i,
+    );
     await expect(resultCard(page, seededRole.title, seededRole.company)).toBeVisible();
   });
 });
@@ -485,7 +493,9 @@ test.describe("mobile and reduced-motion public search", () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto(seededSearch);
 
-    await expect(page.getByRole("status", { name: "Search status" })).toContainText(/matches/i);
+    await expect(page.getByRole("status", { name: "Search status" })).toContainText(
+      /\bmatch(?:es)?\b/i,
+    );
     await expect
       .poll(() =>
         page.evaluate(

@@ -17,7 +17,7 @@
   gap: 7px;
   min-block-size: 44px;
   color: var(--color-ink-muted);
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
   font-weight: 650;
   text-decoration: none;
 }
@@ -30,7 +30,7 @@
 .eyebrow {
   margin: 22px 0 0;
   color: var(--color-ink-muted);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   font-weight: 500;
   letter-spacing: 0.1em;
   line-height: 1.4;
@@ -51,7 +51,7 @@
 .role {
   margin: 0;
   color: var(--color-ink-muted);
-  font-size: 14px;
+  font-size: var(--jb-type-body-sm);
 }
 
 .role strong {
@@ -73,7 +73,7 @@
   align-items: center;
   gap: 9px;
   color: var(--color-ink-subtle);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 .progress li > span {
@@ -83,7 +83,7 @@
   block-size: 22px;
   border: 1px solid var(--color-line-strong);
   border-radius: 50%;
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 .progress li > span svg {
@@ -109,7 +109,7 @@
   padding: 10px 14px;
   color: var(--color-ink);
   background: var(--color-surface-soft);
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
   line-height: 1.5;
 }
 
@@ -146,7 +146,7 @@
   flex: 0 0 auto;
   margin: 0;
   color: var(--jb-signal);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -155,7 +155,7 @@
   max-inline-size: 66ch;
   margin: 18px 0 0;
   color: var(--color-ink-muted);
-  font-size: 14px;
+  font-size: var(--jb-type-body-sm);
   line-height: 1.65;
 }
 
@@ -168,7 +168,7 @@
 .saveStatus {
   margin: 10px 0 0;
   color: var(--color-ink-subtle);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   line-height: 1.5;
 }
 
@@ -186,14 +186,14 @@
 
 .fieldLabel label {
   color: var(--color-ink);
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
   font-weight: 650;
 }
 
 .fieldLabel span,
 .suggestion {
   color: var(--color-ink-subtle);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -211,7 +211,7 @@
 .field > p {
   margin: 0;
   color: var(--color-ink-subtle);
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   line-height: 1.5;
 }
 
@@ -225,7 +225,7 @@
   color: var(--color-ink);
   background: var(--color-surface);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--jb-type-body-sm);
   line-height: 1.5;
 }
 
@@ -267,7 +267,7 @@
   flex-basis: 100%;
   margin: 2px 0 0;
   color: var(--color-ink-subtle);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 .actions button,
@@ -278,7 +278,7 @@
   color: var(--color-ink);
   background: transparent;
   font: inherit;
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   font-weight: 650;
   cursor: pointer;
 }
@@ -335,14 +335,14 @@
 .reviewList dt,
 .permissionGrid dt {
   color: var(--color-ink-muted);
-  font-size: 12px;
+  font-size: var(--jb-type-label);
 }
 
 .reviewList dt span {
   display: block;
   margin-block-start: 4px;
   color: var(--color-ink-subtle);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -351,7 +351,7 @@
 .permissionGrid dd {
   margin: 0;
   color: var(--color-ink);
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
   line-height: 1.55;
   overflow-wrap: anywhere;
 }
@@ -366,7 +366,7 @@
   padding: 14px;
   color: var(--color-ink-muted);
   background: var(--color-surface-soft);
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   line-height: 1.55;
 }
 
@@ -374,7 +374,7 @@
   margin-block-start: 14px;
   border-block-start: 1px solid var(--color-line);
   color: var(--color-ink-muted);
-  font-size: 12px;
+  font-size: var(--jb-type-label);
 }
 
 .technicalDetails summary {
@@ -398,7 +398,7 @@
   display: inline-flex;
   margin-block-start: 12px;
   color: var(--color-ink-muted);
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   font-weight: 620;
   text-underline-offset: 3px;
 }
@@ -415,7 +415,7 @@
   border-block: 1px solid var(--color-line);
   padding-block: 12px;
   color: var(--color-ink-muted);
-  font-size: 12px;
+  font-size: var(--jb-type-label);
 }
 
 .missingSummary strong {
@@ -472,14 +472,14 @@
 .assistance h2 {
   margin: 5px 0 0;
   color: var(--color-ink);
-  font-size: 16px;
+  font-size: var(--jb-type-body);
   font-weight: 620;
 }
 
 .assistance p:not(.eyebrow) {
   margin: 6px 0 0;
   color: var(--color-ink-muted);
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   line-height: 1.5;
 }
 
@@ -491,7 +491,7 @@
   color: var(--jb-signal-contrast);
   background: var(--jb-signal);
   font: inherit;
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   font-weight: 650;
   cursor: pointer;
 }
@@ -499,7 +499,7 @@
 .receiptDate {
   margin: 10px 0 0;
   color: var(--jb-signal);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -514,7 +514,7 @@
 .confirmationCard strong {
   display: block;
   color: var(--color-ink);
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
 }
 
 .confirmationCard p {
@@ -552,7 +552,7 @@
 .submittedSnapshot > p {
   margin: 7px 0 0;
   color: var(--color-ink-muted);
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
   line-height: 1.55;
 }
 
@@ -592,13 +592,13 @@
 .trustRail strong {
   margin-block-start: 7px;
   color: var(--color-ink);
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
 }
 
 .trustRail span {
   margin-block-start: 6px;
   color: var(--color-ink-subtle);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   line-height: 1.5;
 }
 
@@ -675,7 +675,7 @@
 .heroSub {
   margin: 8px 0 0;
   color: var(--color-ink-muted);
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
   line-height: 1.5;
 }
 

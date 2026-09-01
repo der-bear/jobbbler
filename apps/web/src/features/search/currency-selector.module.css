@@ -14,7 +14,7 @@
   border-inline-start: 1px solid var(--color-line);
   background: transparent;
   color: var(--color-ink-subtle);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 .selector button:first-child {

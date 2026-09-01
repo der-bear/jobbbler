@@ -49,7 +49,7 @@
 .heroSub {
   margin: -6px 0 0;
   color: var(--color-ink-muted);
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
   text-align: center;
 }
 
@@ -59,7 +59,7 @@
   align-items: center;
   gap: 4px;
   border: 1px solid var(--color-line-strong);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--color-surface);
   padding: 4px 4px 4px 16px;
   box-shadow: 0 16px 44px color-mix(in srgb, var(--color-ink) 6%, transparent);
@@ -99,7 +99,7 @@
   outline: 0;
   background: transparent;
   color: var(--color-ink);
-  font-size: 14px;
+  font-size: var(--jb-type-body-sm);
 }
 
 .heroField input::placeholder {
@@ -118,7 +118,7 @@
 
 .heroLocation input {
   min-block-size: 42px;
-  font-size: 14px;
+  font-size: var(--jb-type-body-sm);
 }
 
 .heroDivider {
@@ -130,10 +130,10 @@
 
 .heroSearch > button {
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--jb-signal);
   color: var(--jb-signal-contrast);
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
   font-weight: 650;
   padding: 11px 22px;
   transition:
@@ -155,7 +155,7 @@
 .railTitle {
   margin: 0;
   color: var(--color-ink);
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   font-weight: 650;
 }
 
@@ -174,7 +174,7 @@
   background: transparent;
   color: var(--color-ink-muted);
   padding-inline: 8px;
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   font-weight: 620;
 }
 
@@ -269,7 +269,7 @@
 .choiceRow legend {
   padding: 0;
   color: var(--color-ink-muted);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 .choiceRow > div {
@@ -280,10 +280,10 @@
 
 .choiceRow button {
   border: 1px solid var(--color-line);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--color-ink-muted);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   padding: 5px 11px;
 }
 
@@ -306,7 +306,7 @@
 
 .filterRow > span:first-child {
   color: var(--color-ink-muted);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 .filterRow input,
@@ -320,7 +320,7 @@
   background: var(--color-surface);
   color: var(--color-ink);
   padding: 7px 10px;
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
 }
 
 .filterRow input:focus-visible,
@@ -344,7 +344,7 @@
 
 .salaryLabel strong {
   color: var(--color-signal-strong);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   font-weight: 650;
 }
 
@@ -427,7 +427,7 @@
   align-items: center;
   gap: 8px;
   color: var(--color-ink-subtle);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 .sortSelect {
@@ -449,7 +449,7 @@
   background: transparent;
   color: var(--color-ink);
   padding: 7px 30px 7px 11px;
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   font-weight: 580;
 }
 
@@ -476,7 +476,7 @@
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-ink);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   font-weight: 620;
   text-decoration: none;
 }
@@ -578,7 +578,7 @@
 }
 
 .jobTitleLink strong {
-  font-size: 16px;
+  font-size: var(--jb-type-body);
   font-weight: 650;
   letter-spacing: -0.026em;
   line-height: 1.35;
@@ -592,7 +592,7 @@
 .jobTitleLink small,
 .jobSalary small {
   color: var(--color-ink-muted);
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   line-height: 1.45;
 }
 
@@ -602,7 +602,7 @@
   align-items: center;
   gap: 8px;
   color: var(--color-ink-muted);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
   font-weight: 550;
   line-height: 1.4;
 }
@@ -621,7 +621,7 @@
 }
 
 .jobSalary strong {
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
   font-weight: 650;
 }
 
@@ -637,7 +637,7 @@
   align-items: center;
   min-block-size: 44px;
   color: var(--color-signal-strong);
-  font-size: 12px;
+  font-size: var(--jb-type-label);
   font-weight: 650;
   text-decoration: none;
 }
@@ -697,13 +697,13 @@
 
 .errorState strong {
   color: var(--jb-toast-text);
-  font-size: 12px;
+  font-size: var(--jb-type-label);
 }
 
 .errorState p {
   margin: 4px 0 0;
   color: var(--jb-toast-muted);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 .errorState button {
@@ -739,7 +739,7 @@
   max-inline-size: 48ch;
   margin: 0;
   color: var(--color-ink-muted);
-  font-size: 13px;
+  font-size: var(--jb-type-ui);
   line-height: 1.55;
 }
 
@@ -748,7 +748,7 @@
   justify-content: flex-start;
   margin-block-start: 20px;
   color: var(--color-ink-subtle);
-  font-size: 11px;
+  font-size: var(--jb-type-caption);
 }
 
 .resultsFooter span {
@@ -847,14 +847,14 @@
     background: transparent;
     cursor: pointer;
     font: inherit;
-    font-size: 12px;
+    font-size: var(--jb-type-label);
     font-weight: 650;
     text-align: start;
   }
 
   .advancedSummary span:nth-child(2) {
     color: var(--color-ink-muted);
-    font-size: 11px;
+    font-size: var(--jb-type-caption);
     font-weight: 550;
   }
 
@@ -930,7 +930,7 @@
   }
 
   .jobTitleLink strong {
-    font-size: 15px;
+    font-size: var(--jb-type-body);
   }
 
   .jobTitleLink small {
