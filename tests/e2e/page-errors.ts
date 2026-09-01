@@ -52,6 +52,14 @@ export function isExpectedRequestFailure(
   );
 }
 
+function isCancelledNextNavigation(request: Request): boolean {
+  return (
+    request.method() === "GET" &&
+    request.failure()?.errorText === "net::ERR_ABORTED" &&
+    new URL(request.url()).searchParams.has("_rsc")
+  );
+}
+
 export function collectPageErrors(
   page: Page,
   options: PageErrorOptions = {},
@@ -75,6 +83,10 @@ export function collectPageErrors(
     }
   });
   page.on("requestfailed", (request) => {
+    // Next prefetches several React Server Component routes, then cancels the
+    // speculative requests when navigation chooses one destination. Chromium
+    // reports that expected cancellation as a failed request in production.
+    if (isCancelledNextNavigation(request)) return;
     if (isExpectedRequestFailure(request, options.expectedRequestFailures ?? [])) return;
     errors.push(
       `requestfailed: ${request.method()} ${request.url()}: ${request.failure()?.errorText ?? "unknown error"}`,

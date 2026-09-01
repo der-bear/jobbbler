@@ -91,4 +91,27 @@ describe("E2E browser error collection", () => {
       "requestfailed: GET https://jobbbler.example/_next/app.js: net::ERR_ABORTED",
     ]);
   });
+
+  it("ignores cancelled Next navigation prefetches but retains other aborted requests", () => {
+    const current = recordingPage();
+    const errors = collectPageErrors(current.page);
+
+    current.emit(
+      "requestfailed",
+      request("https://jobbbler.example/jobs?_rsc=route-token", "GET", "net::ERR_ABORTED"),
+    );
+    current.emit(
+      "requestfailed",
+      request("https://jobbbler.example/api/v1/jobs/search", "GET", "net::ERR_ABORTED"),
+    );
+    current.emit(
+      "requestfailed",
+      request("https://jobbbler.example/jobs?_rsc=route-token", "POST", "net::ERR_ABORTED"),
+    );
+
+    expect(errors()).toEqual([
+      "requestfailed: GET https://jobbbler.example/api/v1/jobs/search: net::ERR_ABORTED",
+      "requestfailed: POST https://jobbbler.example/jobs?_rsc=route-token: net::ERR_ABORTED",
+    ]);
+  });
 });

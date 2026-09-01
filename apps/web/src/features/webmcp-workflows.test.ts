@@ -51,6 +51,7 @@ describe("plan_job_workflow", () => {
     const result = await planner.execute({ goal }, { signal: new AbortController().signal });
 
     expect(result).toMatchObject({ status: "completed", data: { nextTool } });
+    expect(webMcpResultSize(result)).toBeLessThanOrEqual(MAX_WEBMCP_RESULT_BYTES);
   });
 
   it("keeps workspace recovery entirely in the external agent client", async () => {
@@ -249,12 +250,12 @@ describe("plan_job_workflow", () => {
             needs: ["jobId"],
           },
           {
-            intent: "Read the full role before writing the cover letter",
+            intent: "Read the full role",
             tool: "get_job_details",
             needs: ["jobId"],
           },
           {
-            intent: "Create or reopen the private application",
+            intent: "Create or reopen the application",
             tool: "prepare_application",
             needs: ["jobId"],
           },
@@ -308,8 +309,6 @@ describe("plan_job_workflow", () => {
 
     const result = await planner.execute({ goal }, { signal: new AbortController().signal });
 
-    expect(webMcpResultSize(result)).toBeLessThanOrEqual(
-      goal === "prepare_application" ? 2_048 : MAX_WEBMCP_RESULT_BYTES,
-    );
+    expect(webMcpResultSize(result)).toBeLessThanOrEqual(MAX_WEBMCP_RESULT_BYTES);
   });
 });

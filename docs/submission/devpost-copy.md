@@ -273,10 +273,10 @@ session, agent session, reviewed payload, recipient, purpose, fields, notice,
 request ID, channel, and affirmative action; no raw chat is retained. An
 application still needs review plus a short-lived single-use confirmation.
 Tool activity and safe errors avoid raw PII, secrets, reusable tokens, and raw
-source HTML. Routine WebMCP results stay within 1.5 KB; larger named bounds are
-used only where the requested content requires them: 2 KB for the planner,
-16 KB for an application index, 20 KB for a full role, and 64 KB for the exact
-private application review shown after application-bound assistance approval.
+source HTML. Routine WebMCP results, including the workflow planner, stay within
+1.5 KB; larger named bounds are used only where the requested content requires
+them: 16 KB for an application index, 20 KB for a full role, and 64 KB for the
+exact private application review shown after application-bound assistance approval.
 
 ## Open source and local run
 

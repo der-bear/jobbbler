@@ -125,9 +125,9 @@ validate explicit IDs, ownership, and workflow state at execution time:
   `withdraw_application_consent` — each answering with the next safe step when
   its stage has not arrived
 
-Operational action results stay within 1.5 KB. The advisory
-`plan_job_workflow` result may use up to 2 KB, while `get_applications` is an
-explicitly paged private index (10 by default, 20 maximum) bounded to 16 KB.
+Operational actions and `plan_job_workflow` stay within 1.5 KB.
+`get_applications` is an explicitly paged private index (10 by default, 20
+maximum) bounded to 16 KB.
 Readiness, activity, and safe-error results never expose an owner ID, candidate
 answer, contact detail, reusable agent token, confirmation secret, raw email
 destination, or ciphertext. After application-bound assistance is authorized,

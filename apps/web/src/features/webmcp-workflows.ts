@@ -39,13 +39,11 @@ interface WorkflowPlan {
   readonly branches?: readonly WorkflowBranch[];
 }
 
-export const workflowVersion = "2.7";
-export const MAX_WORKFLOW_PLAN_RESULT_BYTES = 2_048;
-
+export const workflowVersion = "2.8";
 export const workflowBoundaries: readonly string[] = [
-  "Advisory only: executes nothing and grants no authority.",
-  "Human questions and decisions stay in agent client.",
-  "Monitoring never submits.",
+  "Advice only; grants no authority.",
+  "Decide in the agent client.",
+  "Monitoring cannot submit.",
 ];
 
 export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
@@ -190,7 +188,7 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
     ],
   },
   prepare_application: {
-    title: "Prepare application safely",
+    title: "Prepare application",
     steps: [
       {
         intent: "Open the role",
@@ -199,13 +197,13 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
         humanAction: false,
       },
       {
-        intent: "Read the full role before writing the cover letter",
+        intent: "Read the full role",
         tool: "get_job_details",
         requiredInputs: ["jobId"],
         humanAction: false,
       },
       {
-        intent: "Create or reopen the private application",
+        intent: "Create or reopen the application",
         tool: "prepare_application",
         requiredInputs: ["jobId"],
         humanAction: false,
@@ -217,33 +215,31 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
         humanAction: false,
       },
       {
-        intent: "Request preparation assistance",
+        intent: "Request application help",
         tool: "request_application_assistance",
         requiredInputs: ["draftId"],
-        humanAction: "Ask in the agent client: allow this application only.",
+        humanAction: "Ask in agent client: allow this application.",
       },
       {
-        intent: "Record assistance decision",
+        intent: "Record the decision",
         tool: "decide_application_assistance",
         requiredInputs: ["draftId", "requestId", "decision"],
         humanAction: false,
       },
       {
-        intent: "Prepare truthful answers and a role-specific cover letter",
+        intent: "Prepare truthful answers and cover letter",
         tool: "propose_application_updates",
         requiredInputs: ["draftId", "patches: fieldKey + value"],
-        humanAction:
-          "Use the full role and locally held CV facts; ask for gaps. The CV stays in the agent client.",
+        humanAction: "Use role and local CV facts; ask about gaps. CV stays in the agent client.",
       },
       {
         intent: "Present the exact submission review",
         tool: "request_submission_review",
         requiredInputs: ["draftId"],
-        humanAction:
-          "Show every returned field value in the agent client, then ask for the final decision.",
+        humanAction: "Show all values in the agent client; ask for the final decision.",
       },
       {
-        intent: "Submit once only if approved",
+        intent: "Submit once if approved",
         tool: "decide_application_submission",
         requiredInputs: ["draftId", "requestId", "draftVersion", "decision"],
         humanAction: false,
@@ -394,9 +390,6 @@ export function createWorkflowPlannerTool(
                 }),
             boundaries: [...workflowBoundaries],
           },
-          ...(parsed.goal === "prepare_application"
-            ? { maximumBytes: MAX_WORKFLOW_PLAN_RESULT_BYTES }
-            : {}),
         });
       } catch (error) {
         return safeWebMcpErrorResult(error, signal, "Provide one supported goal.");

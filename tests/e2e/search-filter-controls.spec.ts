@@ -9,6 +9,13 @@ test.beforeEach(async ({ page }) => {
     page,
     collectPageErrors(page, {
       expectedHttpErrors: [{ method: "GET", pathname: "/api/v1/owners/activity", status: 401 }],
+      expectedRequestFailures: [
+        {
+          method: "GET",
+          pathname: "/api/v1/jobs/search",
+          errorText: "net::ERR_ABORTED",
+        },
+      ],
     }),
   );
   await page.goto("/jobs?sort=newest");
