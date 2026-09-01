@@ -15,6 +15,21 @@ Jobbbler is the IT and adjacent-technology jobs product. It is the only product 
 - Make agent work observable through a redacted real-time stream without treating that stream as state.
 - Keep external I/O outside database write transactions.
 
+## Intelligence boundary
+
+Jobbbler does not call a model provider. The visiting external browser agent
+owns natural-language understanding and optional answer drafting; Jobbbler
+owns the structured facts, deterministic search and ranking, workflow state,
+validation, persistence, consent evidence, and consequential-action policy.
+WebMCP is the typed boundary between those responsibilities.
+
+This is intentional rather than a missing AI tier. It avoids paying for or
+trusting a second hidden model to reinterpret the same request, keeps candidate
+data in the chosen agent client until an exact operation is authorized, and
+lets weak and strong clients use the same deterministic product contract. A
+future provider-side AI operation would be a separately disclosed processor
+and would require the same bounded input, provenance, and data-grant rules.
+
 ## Runtime boundaries
 
 | Boundary               | Responsibility                                                            | Must not own                               |

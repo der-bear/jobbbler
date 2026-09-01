@@ -27,8 +27,8 @@ MCP server is installed or declared.
 
 The site describes itself instead of making the agent guess. Its global agent
 activity panel is available from every page, so an agent can safely start a
-search, open a role, or navigate to the relevant workspace before it uses
-contextual tools. The agent reads the accepted filter vocabulary through
+search, open a role, or navigate to the relevant workspace before it invokes
+workflow-specific actions. The agent reads the accepted filter vocabulary through
 `get_search_filters`, composes a valid search with `search_jobs`, and the
 visible URL, filters, and results update on the real page. The search is saved
 once; after the tab closes, Jobbbler's own server keeps checking on schedule —
@@ -99,6 +99,12 @@ next step instead of pretending to succeed. The visible interface and WebMCP are
 two adapters over the same server commands, so the URL, filters, results,
 alerts, permissions, and receipts stay consistent whether a person or an agent
 acted.
+
+Jobbbler intentionally does not call a second model behind the site. The
+visiting external agent already understands the person's request and can draft
+language; Jobbbler supplies typed current data, deterministic search, durable
+workflow state, and server-enforced authority. That separation keeps
+intelligence in the person's chosen client and product truth in the product.
 
 The imperative WebMCP API does not standardize a native consent UI or provide
 cryptographic proof that a tool decision came from an agent or a human. A

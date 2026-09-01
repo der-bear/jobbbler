@@ -31,6 +31,13 @@ and workflow-specific actions enforce IDs, ownership, and state when executed.
 
 Built for the OpenAI WebMCP Challenge.
 
+Jobbbler deliberately makes no model call of its own. The visiting external
+agent already understands the person's language and can draft text; the site
+contributes the part a general agent cannot safely invent: typed live data,
+deterministic filters, durable state, bounded actions, and server-enforced
+authority. This keeps intelligence in the chosen client and product truth in
+the product.
+
 ## Why it is different
 
 - **Explainable discovery.** Structured criteria, source provenance, freshness,

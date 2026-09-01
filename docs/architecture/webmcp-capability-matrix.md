@@ -1,6 +1,6 @@
 # WebMCP Capability Matrix
 
-Status: release candidate, 2026-08-30
+Status: release candidate, 2026-09-01
 
 This matrix ties the WebMCP draft to one Jobbbler behavior, one blocking
 verification, and one judge-visible proof. WebMCP is an agent interface over

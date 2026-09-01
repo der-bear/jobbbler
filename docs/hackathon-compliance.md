@@ -34,11 +34,26 @@ live rules and submission form are rechecked immediately before submission.
 
 Jobbbler is the only product in this repository and submission. It covers IT and adjacent-technology vacancies. Local Services is a distinct future product; if built for the challenge, it must have a separate product identity, repository context, case study, story, media package, live URL, and Devpost submission.
 
+## Kickoff scope disposition
+
+The preserved kickoff is an explored shared-engine specification, not the
+release contract. The challenge release makes these deliberate, testable
+choices:
+
+| Kickoff direction                             | Release decision                                                                                                                                      |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Jobs and Local Services as separate verticals | Ship Jobs as the coherent first product; keep Local Services out of this repository and submission                                                    |
+| Route- and state-varying WebMCP registration  | Register one stable 29-tool vocabulary on every route; enforce ownership and workflow state when a tool executes                                      |
+| Multiple live job feeds                       | Keep three governed connector implementations and offline fixtures, but disable every live-source policy so the release uses only 300 fictional roles |
+| Optional platform AI tier                     | Keep language understanding and drafting in the visiting external agent; Jobbbler remains the deterministic data, workflow, and authority layer       |
+| SQLite first, Supabase later                  | Preserve SQLite for zero-service development and validate the same repository contracts, migrations, RLS, and 300-role catalog in Supabase PostgreSQL |
+| Several application adapters                  | Ship the Jobbbler-managed application path first; keep partner ATS and external handoff modes outside the public release workflow                     |
+
 ## Current release evidence
 
 The 1 September 2026 release-candidate check on the current tree recorded:
 
-- `pnpm verify`: formatting, lint, every workspace typecheck, 934 deterministic
+- `pnpm verify`: formatting, lint, every workspace typecheck, 935 deterministic
   tests, and both production builds passed;
 - isolated clean-context Docker builds completed for both release targets; the
   web and worker runtime images use Node 24, run as the non-root `jobbbler`
