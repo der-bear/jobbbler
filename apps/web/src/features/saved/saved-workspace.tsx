@@ -213,7 +213,7 @@ export function privateAccessCopy(
       eyebrow: "Private workspace",
       title: "No account needed",
       description:
-        "This browser can keep saved searches and applications. Add email only for updates or access on another device.",
+        "Save searches and applications without creating an account. Add email only for updates or to restore access on another device.",
     };
   }
   if (
@@ -222,9 +222,9 @@ export function privateAccessCopy(
   ) {
     return {
       eyebrow: "Private workspace",
-      title: "Saved on this device",
+      title: "Available in this browser",
       description:
-        "Your saved searches and applications stay private to this browser. Add email only for updates or access on another device.",
+        "This browser can open your saved searches and applications. Add email only for updates or to restore access on another device.",
     };
   }
   return {

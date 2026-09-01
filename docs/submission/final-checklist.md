@@ -16,11 +16,14 @@
 
 ## WebMCP and demo proof
 
-- [ ] Verify WebMCP in a supported browser context using the real registered
-      tools.
-- [ ] Verify the global agent activity panel on more than one route: the same
+- [x] Verify WebMCP in a supported browser context using the real registered
+      tools. The in-app browser discovered 29 unique tools and
+      completed real read-only calls.
+- [x] Verify the global agent activity panel on more than one route: the same
       29 focused imperative tools stay registered everywhere, and state-gated
-      tools answer with a clear next step when they are not ready.
+      tools answer with a clear next step when they are not ready. The live
+      surface was checked on `/` and `/saved`; an unavailable application
+      returned a bounded `NOT_FOUND` result.
 - [ ] Record actual registration/readiness, tool activity, search, compare,
       saved alert, and application boundaries.
 - [ ] Demonstrate the agent-native alert pair from the external client:
@@ -81,8 +84,10 @@
 - [ ] Confirm gallery screenshots show the current global agent activity panel — the
       Activity / Tools / Guide tab order, current readiness state, and Tools
       groups Find / Inspect and compare / Alerts / Apply — not an older rail.
-- [ ] Re-run `pnpm verify`, the focused E2E suite, and the local PostgreSQL
-      contract suite on the final build and record the fresh numbers.
+- [x] Re-run `pnpm verify`, the focused E2E suite, and the local PostgreSQL
+      contract suite on the final code revision and record the fresh numbers:
+      933 deterministic tests, 41/41 browser journeys, and 103/103 PostgreSQL
+      contract tests on the 1 September release candidate.
 - [x] Validate gallery image crops, captions, alt text, dimensions, and
       file-size limits on Devpost.
 - [ ] Recapture all four gallery crops on the final interface, then revalidate
