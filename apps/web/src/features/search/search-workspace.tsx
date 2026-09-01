@@ -38,6 +38,7 @@ import { useWebMcp } from "@/components/webmcp-provider";
 import {
   categoryLabel,
   compactDate,
+  defaultDisplayCurrency,
   deviatingEmploymentLabel,
   employmentLabel,
   locationBesideWorkModel,
@@ -104,7 +105,7 @@ function draftFromInput(input: JobSearchInput): SearchDraft {
     currency:
       input.salary?.currency !== undefined && isDisplayCurrency(input.salary.currency)
         ? input.salary.currency
-        : "EUR",
+        : defaultDisplayCurrency,
     excludeKeywords: input.excludeKeywords?.join(", ") ?? "",
     sort: input.sort ?? "relevance",
   };
@@ -125,11 +126,11 @@ function inputFromDraft(draft: SearchDraft): JobSearchInput {
       .split(",")
       .map((value) => value.trim())
       .filter((value) => value.length > 0),
-    ...(salaryAmount === undefined
+    ...(salaryAmount === undefined && draft.currency === defaultDisplayCurrency
       ? {}
       : {
           salary: {
-            minimum: salaryAmount,
+            ...(salaryAmount === undefined ? {} : { minimum: salaryAmount }),
             currency: draft.currency,
             period: "year" as const,
             unknownPolicy: "include" as const,

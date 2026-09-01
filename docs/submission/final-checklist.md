@@ -86,7 +86,7 @@
       groups Find / Inspect and compare / Alerts / Apply — not an older rail.
 - [x] Re-run `pnpm verify`, the focused E2E suite, and the local PostgreSQL
       contract suite on the final code revision and record the fresh numbers:
-      933 deterministic tests, 41/41 browser journeys, and 103/103 PostgreSQL
+      934 deterministic tests, 42/42 browser journeys, and 103/103 PostgreSQL
       contract tests on the 1 September release candidate.
 - [x] Validate gallery image crops, captions, alt text, dimensions, and
       file-size limits on Devpost.

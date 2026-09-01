@@ -267,6 +267,30 @@ describe("job-detail fit explanation", () => {
     expect(markup).toContain(">Full-time</span>");
   });
 
+  it("uses the catalog display currency on a directly opened role", () => {
+    const salariedJob = {
+      ...job,
+      salary: { minimum: 100_000, maximum: 120_000, currency: "USD", period: "year" },
+    } satisfies Job;
+    const defaultMarkup = renderToStaticMarkup(
+      createElement(JobDetail, {
+        jobId: job.id,
+        criteriaSearch: "",
+        initialResult: { job: salariedJob, fit: noEvidenceFit },
+      }),
+    );
+    const selectedMarkup = renderToStaticMarkup(
+      createElement(JobDetail, {
+        jobId: job.id,
+        criteriaSearch: "?currency=USD",
+        initialResult: { job: salariedJob, fit: noEvidenceFit },
+      }),
+    );
+
+    expect(defaultMarkup).toContain("€86k–€103k / yr");
+    expect(selectedMarkup).toContain("$100k–$120k / yr");
+  });
+
   it("shows concrete cities without repeating broader search scopes", () => {
     const markup = renderToStaticMarkup(
       createElement(JobDetail, {

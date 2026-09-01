@@ -38,9 +38,9 @@ Jobbbler is the only product in this repository and submission. It covers IT and
 
 The 1 September 2026 release-candidate check on the current tree recorded:
 
-- `pnpm verify`: formatting, lint, every workspace typecheck, 933 deterministic
+- `pnpm verify`: formatting, lint, every workspace typecheck, 934 deterministic
   tests, and both production builds passed;
-- Playwright: 41/41 browser journeys passed;
+- Playwright: 42/42 browser journeys passed;
 - PostgreSQL: 103/103 repository, concurrency, migration, and RLS contract
   tests passed in a disposable local database that was removed after the run;
 - live WebMCP in the supported in-app browser: 29 unique tools were discovered

@@ -26,6 +26,7 @@ import { externalApplicationUrl, supportsJobbblerPreparation } from "./applicati
 import {
   compactDate,
   concreteJobLocations,
+  displayCurrencyFromSearch,
   employmentLabel,
   locationBesideWorkModel,
   relativeFreshness,
@@ -168,7 +169,9 @@ function JobIdentity({
         <span>
           {job.seniority === null ? "Seniority not stated" : seniorityLabel(job.seniority)}
         </span>
-        <span className={styles["factSalary"]}>{salaryLabel(job.salary)}</span>
+        <span className={styles["factSalary"]}>
+          {salaryLabel(job.salary, displayCurrencyFromSearch(criteriaSearch))}
+        </span>
       </div>
       <div className={styles["actions"]}>
         {canPrepare ? (

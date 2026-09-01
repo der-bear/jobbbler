@@ -36,6 +36,14 @@ export function comparePageHref(jobIds: readonly string[], criteriaSearch = ""):
   return parameters.size === 0 ? "/compare" : `/compare?${parameters.toString()}`;
 }
 
+export function comparisonJobHref(jobId: string, criteriaSearch = ""): string {
+  const parameters = new URLSearchParams(criteriaSearch);
+  parameters.delete("compare");
+  parameters.delete("id");
+  const suffix = parameters.toString();
+  return `/jobs/${encodeURIComponent(jobId)}${suffix.length === 0 ? "" : `?${suffix}`}`;
+}
+
 export function comparisonSearchHref(jobIds: readonly string[], criteriaSearch = ""): string {
   const parameters = new URLSearchParams(criteriaSearch);
   parameters.delete("compare");

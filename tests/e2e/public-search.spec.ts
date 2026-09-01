@@ -220,8 +220,16 @@ test.describe("public job search workspace", () => {
     await expect(page.getByRole("region", { name: "Comparison selection" })).toHaveCount(0);
 
     const jobIds = await firstJobIds(page);
-    await page.goto(`/compare?id=${jobIds.join("&id=")}`);
+    await page.goto(`/compare?currency=USD&sort=newest&id=${jobIds.join("&id=")}`);
     await expect(page.getByRole("region", { name: "Role comparison" })).toBeVisible();
+    const openRoleHref = await page
+      .getByRole("link", { name: /^Open .+ role$/ })
+      .first()
+      .getAttribute("href");
+    expect(openRoleHref).not.toBeNull();
+    const openRoleUrl = new URL(openRoleHref ?? "", page.url());
+    expect(openRoleUrl.searchParams.get("currency")).toBe("USD");
+    expect(openRoleUrl.searchParams.get("sort")).toBe("newest");
   });
 
   test("offers retry, change-selection, and return paths when comparison loading fails", async ({
@@ -418,6 +426,19 @@ test.describe("public job search workspace", () => {
     await expect(page.getByRole("region", { name: "About this posting" })).toContainText(
       "Handled on Jobbbler",
     );
+  });
+
+  test("keeps a display-currency choice from search through role details", async ({ page }) => {
+    await page.goto("/jobs?sort=newest");
+    await page.getByRole("radio", { name: "USD" }).click();
+
+    await expect.poll(() => new URL(page.url()).searchParams.get("currency")).toBe("USD");
+    const firstRole = page.getByRole("article").first();
+    await expect(firstRole.locator("strong").last()).toContainText("$");
+    await firstRole.getByRole("link", { name: /^View details for / }).click();
+
+    await expect.poll(() => new URL(page.url()).searchParams.get("currency")).toBe("USD");
+    await expect(page.getByRole("main")).toContainText(/\$[\d,]+k?–\$[\d,]+k? \/ yr/u);
   });
 
   test("persists the selected theme after a reload", async ({ page }) => {

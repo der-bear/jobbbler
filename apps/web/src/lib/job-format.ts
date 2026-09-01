@@ -5,7 +5,11 @@ import type {
   Seniority,
   WorkModel,
 } from "@jobbbler/contracts";
-import { annualizeSalaryAmount, convertSalaryAmount } from "@jobbbler/jobs-domain";
+import {
+  annualizeSalaryAmount,
+  comparableCurrencies,
+  convertSalaryAmount,
+} from "@jobbbler/jobs-domain";
 
 const categoryLabels: Readonly<Record<JobCategory, string>> = {
   software_engineering: "Software engineering",
@@ -47,6 +51,19 @@ const employmentLabels: Readonly<Record<EmploymentType, string>> = {
   freelance: "Freelance",
   internship: "Internship",
 };
+
+export const defaultDisplayCurrency = "EUR";
+const displayCurrencies = new Set(comparableCurrencies);
+
+export function displayCurrencyFromSearch(criteriaSearch: string): string {
+  const parameters = new URLSearchParams(
+    criteriaSearch.startsWith("?") ? criteriaSearch.slice(1) : criteriaSearch,
+  );
+  const requested = parameters.get("currency")?.toUpperCase();
+  return requested !== undefined && displayCurrencies.has(requested)
+    ? requested
+    : defaultDisplayCurrency;
+}
 
 export function categoryLabel(value: JobCategory): string {
   return categoryLabels[value];

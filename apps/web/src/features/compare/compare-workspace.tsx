@@ -13,6 +13,7 @@ import {
 
 import {
   compactDate,
+  displayCurrencyFromSearch,
   employmentLabel,
   relativeFreshness,
   salaryLabel,
@@ -24,6 +25,7 @@ import { ApiClientError, queryApi } from "@/lib/query-client";
 import {
   compareApiUrl,
   comparePageHref,
+  comparisonJobHref,
   comparisonLocation,
   comparisonRowVisibility,
   comparisonSearchHref,
@@ -43,13 +45,20 @@ function errorMessage(error: unknown): string {
   return "The comparison could not be loaded. Please retry.";
 }
 
-function JobHeading({ job, removeHref }: Readonly<{ job: Job; removeHref: string }>) {
+function JobHeading({
+  criteriaSearch,
+  job,
+  removeHref,
+}: Readonly<{ criteriaSearch: string; job: Job; removeHref: string }>) {
   return (
     <div className={styles["jobHeading"]}>
       <h2>{job.title}</h2>
       <p>{job.organizationName}</p>
       <div className={styles["jobActions"]}>
-        <Link aria-label={`Open ${job.title} role`} href={`/jobs/${encodeURIComponent(job.id)}`}>
+        <Link
+          aria-label={`Open ${job.title} role`}
+          href={comparisonJobHref(job.id, criteriaSearch)}
+        >
           Open role
         </Link>
         <Link
@@ -129,6 +138,7 @@ function ComparisonTable({
   selectedJobIds: readonly string[];
 }>) {
   const visible = comparisonRowVisibility(result.jobs.map(({ fit }) => fit));
+  const displayCurrency = displayCurrencyFromSearch(criteriaSearch);
   return (
     <div className={styles["tableScroll"]}>
       <table className={styles["comparisonTable"]}>
@@ -138,6 +148,7 @@ function ComparisonTable({
             {result.jobs.map(({ job }) => (
               <th key={job.id} scope="col">
                 <JobHeading
+                  criteriaSearch={criteriaSearch}
                   job={job}
                   removeHref={comparePageHref(
                     removeComparedJob(selectedJobIds, job.id),
@@ -179,7 +190,7 @@ function ComparisonTable({
           <tr>
             <th scope="row">Compensation</th>
             {result.jobs.map(({ job }) => (
-              <td key={job.id}>{salaryLabel(job.salary)}</td>
+              <td key={job.id}>{salaryLabel(job.salary, displayCurrency)}</td>
             ))}
           </tr>
           {visible.fit ? (
@@ -250,6 +261,7 @@ function MobileComparison({
   selectedJobIds: readonly string[];
 }>) {
   const visible = comparisonRowVisibility(result.jobs.map(({ fit }) => fit));
+  const displayCurrency = displayCurrencyFromSearch(criteriaSearch);
   return (
     <div className={styles["mobileComparison"]}>
       {result.jobs.map(({ job, fit }) => {
@@ -257,6 +269,7 @@ function MobileComparison({
         return (
           <article aria-label={`${job.title} at ${job.organizationName}`} key={job.id}>
             <JobHeading
+              criteriaSearch={criteriaSearch}
               job={job}
               removeHref={comparePageHref(
                 removeComparedJob(selectedJobIds, job.id),
@@ -276,7 +289,9 @@ function MobileComparison({
                 {job.seniority === null ? "Seniority not stated" : seniorityLabel(job.seniority)} ·{" "}
                 {employmentLabel(job.employmentType)}
               </MobileFact>
-              <MobileFact label="Compensation">{salaryLabel(job.salary)}</MobileFact>
+              <MobileFact label="Compensation">
+                {salaryLabel(job.salary, displayCurrency)}
+              </MobileFact>
               {visible.fit ? (
                 <MobileFact label="Why it matches">
                   <FitNotes fit={fit} />
