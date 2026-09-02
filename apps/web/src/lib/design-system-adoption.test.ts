@@ -200,7 +200,7 @@ describe("design system adoption", () => {
     );
 
     expect(location).toMatch(
-      /\.popover \{[^}]*border: var\(--jb-stroke-structure\) solid var\(--color-line-strong\);[^}]*background: var\(--jb-glass-sheet\);/u,
+      /\.popover \{[^}]*border: var\(--jb-stroke-structure\) solid var\(--color-line-strong\);[^}]*background: var\(--jb-glass-menu\);/u,
     );
     expect(location).toContain("backdrop-filter: var(--jb-glass-blur-float);");
   });

@@ -1,5 +1,6 @@
 "use client";
 
+import { CaretDownIcon } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -150,6 +151,7 @@ export function OwnerPrivacyControls({
         <summary className={styles["summary"]}>
           <span>Been here before?</span>
           <strong>Restore with email</strong>
+          <CaretDownIcon aria-hidden="true" className={styles["summaryIcon"]} size={16} />
         </summary>
         <div className={styles["content"]}>
           <div>
@@ -223,6 +225,7 @@ export function OwnerPrivacyControls({
           <summary className={styles["summary"]}>
             <span>Optional</span>
             <strong>Get back in from another device</strong>
+            <CaretDownIcon aria-hidden="true" className={styles["summaryIcon"]} size={16} />
           </summary>
           <div className={styles["content"]}>
             <div>
@@ -253,6 +256,7 @@ export function OwnerPrivacyControls({
         <summary className={styles["summary"]}>
           <span>Your data</span>
           <strong>Delete private data</strong>
+          <CaretDownIcon aria-hidden="true" className={styles["summaryIcon"]} size={16} />
         </summary>
         <div className={styles["content"]}>
           <div>

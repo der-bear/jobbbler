@@ -193,6 +193,8 @@
   --jb-glass-fill: color-mix(in srgb, var(--jb-surface) 80%, transparent);
   --jb-glass-fill-strong: color-mix(in srgb, var(--jb-surface) 86%, transparent);
   --jb-glass-float: color-mix(in srgb, var(--jb-surface) 72%, transparent);
+  /* Text-dense floating menus retain the glass depth without letting labels beneath show through. */
+  --jb-glass-menu: color-mix(in srgb, var(--jb-surface) 98%, transparent);
   --jb-glass-sheet: color-mix(in srgb, var(--jb-canvas) 90%, transparent);
   --jb-glass-blur-control: saturate(145%) blur(8px);
   --jb-glass-blur: saturate(155%) blur(14px);

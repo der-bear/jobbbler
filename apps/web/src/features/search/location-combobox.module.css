@@ -60,7 +60,7 @@
   border: var(--jb-stroke-structure) solid var(--color-line-strong);
   border-radius: var(--jb-radius-md);
   /* Keep the nearby filter labels from reading through the suggestion text. */
-  background: var(--jb-glass-sheet);
+  background: var(--jb-glass-menu);
   backdrop-filter: var(--jb-glass-blur-float);
   -webkit-backdrop-filter: var(--jb-glass-blur-float);
   box-shadow: var(--shadow-floating);

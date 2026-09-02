@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { securityHeaders } from "./src/server/security-headers";
 
 const nextConfig: NextConfig = {
+  agentRules: false,
   distDir: process.env["NEXT_DIST_DIR"] ?? ".next",
   output: "standalone",
   outputFileTracingRoot: fileURLToPath(new URL("../../", import.meta.url)),

@@ -8,8 +8,7 @@ describe("WebMCP explanation", () => {
     const markup = renderToStaticMarkup(<WebMcpAboutPage />);
 
     expect(markup).toContain("Search once. Let your agent handle the repetition.");
-    expect(markup).toContain("No plug-in or separate server setup is needed");
-    expect(markup).not.toContain("No separate MCP server");
+    expect(markup).toContain("No separate MCP connection or server setup is needed");
     expect(markup).toContain("One conversation, from search to application");
     expect(markup).toContain("Open this Jobbbler site");
     expect(markup).toContain("compare the best matches");

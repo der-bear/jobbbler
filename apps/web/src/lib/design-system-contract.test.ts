@@ -88,6 +88,7 @@ describe("Jobbbler design tokens", () => {
     expect(css).toContain("--jb-glass-control:");
     expect(css).toContain("--jb-glass-fill:");
     expect(css).toContain("--jb-glass-float:");
+    expect(css).toContain("--jb-glass-menu:");
     expect(css).toContain("--jb-glass-sheet:");
     expect(css).toContain("--jb-glass-blur-control:");
     expect(css).toContain("--jb-glass-blur:");

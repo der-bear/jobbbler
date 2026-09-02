@@ -61,8 +61,8 @@ export default function WebMcpAboutPage() {
           Job search repeats itself. Tell a compatible browser agent what kind of technology role
           you want. It can search, compare, and keep checking. If you choose a role, it asks before
           preparing one private application and again before Jobbbler sends the exact version shown
-          to you. The conversation stays in your agent app. No plug-in or separate server setup is
-          needed.
+          to you. The conversation stays in your agent app. No separate MCP connection or server
+          setup is needed.
         </p>
       </header>
 
