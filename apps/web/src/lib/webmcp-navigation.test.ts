@@ -37,6 +37,29 @@ describe("createWebMcpNavigator", () => {
     await navigation;
     expect(settled).toBe(true);
     expect(currentUrl).toBe("https://jobbbler.test/jobs?q=platform");
+    expect(onCommitted).not.toHaveBeenCalled();
+    await vi.runOnlyPendingTimersAsync();
+    expect(onCommitted).toHaveBeenCalledTimes(1);
+  });
+
+  it("notifies after an already-committed navigation has resolved", async () => {
+    vi.useFakeTimers();
+    let currentUrl = "https://jobbbler.test/about/webmcp";
+    const onCommitted = vi.fn();
+    const navigate = createWebMcpNavigator({
+      currentUrl: () => currentUrl,
+      onCommitted,
+      navigate(href) {
+        currentUrl = new URL(href, currentUrl).href;
+      },
+    });
+
+    await navigate("/jobs?q=platform", {
+      signal: new AbortController().signal,
+    });
+
+    expect(onCommitted).not.toHaveBeenCalled();
+    await vi.runOnlyPendingTimersAsync();
     expect(onCommitted).toHaveBeenCalledTimes(1);
   });
 

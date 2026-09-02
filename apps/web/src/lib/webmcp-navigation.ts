@@ -18,6 +18,13 @@ export function createWebMcpNavigator(
 ): WebMcpNavigate {
   const currentUrl = options.currentUrl ?? (() => window.location.href);
   const pollIntervalMilliseconds = options.pollIntervalMilliseconds ?? 16;
+  const notifyCommitted = () => {
+    if (options.onCommitted === undefined) return;
+    // Let the active tool resolve before its registry is replaced. Native
+    // hosts tie an executing tool to the registration signal, so refreshing
+    // synchronously would cancel the very navigation that just succeeded.
+    globalThis.setTimeout(options.onCommitted, 0);
+  };
   // A cold client-side route may compile before it commits in local previews,
   // and browser-agent hosts can briefly pause the page while refreshing the
   // global tool registry. Keep the transition bounded without turning either
@@ -30,7 +37,7 @@ export function createWebMcpNavigator(
     await options.navigate(href);
     if (signal.aborted) throw cancellationError();
     if (new URL(currentUrl(), destination).href === destination) {
-      options.onCommitted?.();
+      notifyCommitted();
       return;
     }
 
@@ -42,7 +49,7 @@ export function createWebMcpNavigator(
       };
       const finish = () => {
         cleanup();
-        options.onCommitted?.();
+        notifyCommitted();
         resolve();
       };
       const onAbort = () => {
