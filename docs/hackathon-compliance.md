@@ -1,113 +1,76 @@
-# OpenAI WebMCP Challenge Compliance
+# OpenAI WebMCP Challenge evidence
 
-This checklist maps the live challenge requirements to concrete Jobbbler
-evidence. The status separates what the repository proves from deployment,
-media, and live-browser checks that must be recorded for the final submitted
-revision. The live rules and submission form are rechecked immediately before
-submission; their copied text is not redistributed in this repository.
+Jobbbler is a complete job-search product with a conventional interface and a
+browser-native WebMCP layer. The ordinary site works without an agent. In a
+supported browser agent, the same live page exposes 29 focused tools for
+finding roles, comparing evidence, monitoring a saved search, and preparing a
+reviewed application.
 
-| Requirement                                               | Jobbbler evidence                                                                                                                                          | Evidence status                                                         |
-| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| New or meaningfully extended during the submission period | Repository baseline begins on 29 August 2026; implementation uses dated commits after the 25 August start                                                  | Verified in repository                                                  |
-| WebMCP-powered web app                                    | Imperative `document.modelContext.registerTool` integration with the same 29 tools on every route, shared UI state, activity feedback, and lifecycle tests | Repository, production, and supported in-app browser verified           |
-| Working and consistent with video/text                    | The production smoke suite, final browser walkthrough, and media plan require the same deployed revision                                                   | Production verified; final media evidence pending                       |
-| Authorized third-party SDK/API/data use                   | The submitted catalog is first-party synthetic data; optional external connectors remain policy-controlled and disabled in the release worker              | Repository and production catalog verified                              |
-| Accessible live URL                                       | Signed-out search at `https://jobbbler.com` requires no payment or mandatory account                                                                       | Production signed-out smoke verified                                    |
-| Strong WebMCP explanation                                 | English project story and README explain why the browser-local semantic layer improves discovery, monitoring, and reviewed applications                    | Verified in repository                                                  |
-| Public source repository                                  | Source, lockfile, migrations, instructions, and MIT license are public                                                                                     | Repository verified; final revision pending                             |
-| Required WebMCP code visible                              | Registration implementation and capability evidence are linked from README                                                                                 | Repository verified; default-branch sync pending                        |
-| Demo video under three minutes with audio                 | The checked-in storyboard targets 2:40 and puts working WebMCP near the beginning                                                                          | Pending final video, duration, and audio check                          |
-| No unlicensed media or trademarks                         | Product UI is original; source names are used only as factual attribution                                                                                  | Repository verified; final media review pending                         |
-| Free judging access through judging period                | Public search and the loginless owner-session design require no payment or demo account                                                                    | Production access verified; availability monitoring remains operational |
-| English submission materials                              | Checked-in UI, README, story, instructions, captions, and narration are English                                                                            | Repository verified; final form/media check pending                     |
-| Original submission and IP ownership                      | Original design system and implementation; dependency licenses retained                                                                                    | Verified in repository                                                  |
-| Stage-one viability                                       | Coherent conventional UI, durable backend, and non-trivial WebMCP implementation                                                                           | Local and production release gates verified                             |
-| WebMCP Leverage                                           | Search, compare, alerts, applications, route lifecycle, visible feedback, and model evaluation fixtures                                                    | Production browser verified; final recorded demo pending                |
-| Human-controlled agent authority                          | Resource/action/expiry-bound delegations, request-bound decisions, backend re-evaluation, revoke, and denied-retry tests                                   | Repository verified; live journey pending                               |
-| Consent and privacy by design                             | Granular data grants, exact recipient/purpose/payload binding, withdrawal, redaction, and public architecture                                              | Repository verified; live journey pending                               |
-| Observable agent interaction                              | Redacted cursor activity, point-of-effect feedback, optional Supabase wake-up broadcasts, reconnect/refetch semantics, and polling fallback                | Production API and scheduler verified; final live journey pending       |
-| Execution                                                 | Conventional UI, worker, storage adapters, scheduler, notifications, security controls, and observability contracts                                        | Repository and production smoke verified                                |
-| Potential Impact                                          | Focused IT/adjacent-tech audience; explainable discovery and safer applications                                                                            | Verified in repository narrative                                        |
-| Creativity and Ambition                                   | Agent-native web workflow without separate MCP setup, durable alerts, and human-confirmed actions                                                          | Repository verified; final demo pending                                 |
+## Judge path
 
-## Product separation
+1. Open [jobbbler.com](https://jobbbler.com) signed out. The fictional
+   300-role catalog, filters, saved searches, applications, privacy controls,
+   and product guide require no paid account.
+2. In the ChatGPT Desktop built-in browser with a WebMCP-capable model, inspect
+   Site tools. Jobbbler registers the same 29 tools on every route.
+3. Ask the agent to find and compare roles. `search_jobs` synchronizes the
+   visible URL, filters, results, and Agent activity while compact read tools
+   return source-backed evidence without unnecessary page changes.
+4. Ask it to keep watching the search or prepare an application. Jobbbler
+   works autonomously until an email, personal-data permission, or final
+   submission decision belongs to the person; then the agent client presents
+   the exact request-bound review.
 
-Jobbbler is the only product in this repository and submission. It covers IT and adjacent-technology vacancies. Local Services is a distinct future product; if built for the challenge, it must have a separate product identity, repository context, case study, story, media package, live URL, and Devpost submission.
+The [WebMCP evaluation evidence](architecture/webmcp-evals.md) contains the
+verified prompts, expected tool sequences, client boundary, and model-review
+results. The [capability matrix](architecture/webmcp-capability-matrix.md) maps
+the browser proposal to implementation, tests, failure handling, and visible
+proof.
 
-## Scope disposition
+## Evaluation evidence
 
-Early planning explored a broader shared engine. The challenge release makes
-these deliberate, testable choices:
+| Dimension               | What Jobbbler demonstrates                                                                                                                                                       | Where to inspect it                                                                                                                                                             |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| WebMCP leverage         | One stable, route-independent 29-tool vocabulary; bounded schemas and results; shared commands keep agent and page state aligned                                                 | [`packages/webmcp`](../packages/webmcp), [`webmcp-provider.tsx`](../apps/web/src/components/webmcp-provider.tsx), [capability matrix](architecture/webmcp-capability-matrix.md) |
+| Execution               | Production Next.js BFF, portable domain and storage contracts, Supabase PostgreSQL, lease-based worker, Resend delivery, recovery, redacted activity, and tested degraded states | [architecture](architecture/README.md), [operations](operations.md), [security](security.md)                                                                                    |
+| Potential impact        | A person delegates repetitive discovery and monitoring, while the agent returns only for missing facts and consequential decisions                                               | [product experience](design/product-experience.md), [consent architecture](architecture/agent-authorization-and-consent.md)                                                     |
+| Creativity and ambition | The website becomes the agent interface without a separately configured MCP server; durable work continues honestly on Jobbbler's server after the tab closes                    | [realtime activity](architecture/realtime-agent-activity.md), [evaluation evidence](architecture/webmcp-evals.md)                                                               |
 
-| Kickoff direction                             | Release decision                                                                                                                                      |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Jobs and Local Services as separate verticals | Ship Jobs as the coherent first product; keep Local Services out of this repository and submission                                                    |
-| Route- and state-varying WebMCP registration  | Register one stable 29-tool vocabulary on every route; enforce ownership and workflow state when a tool executes                                      |
-| Multiple live job feeds                       | Keep three governed connector implementations and offline fixtures, but disable every live-source policy so the release uses only 300 fictional roles |
-| Optional platform AI tier                     | Keep language understanding and drafting in the visiting external agent; Jobbbler remains the deterministic data, workflow, and authority layer       |
-| SQLite first, Supabase later                  | Preserve SQLite for zero-service development and validate the same repository contracts, migrations, RLS, and 300-role catalog in Supabase PostgreSQL |
-| Several application adapters                  | Ship the Jobbbler-managed application path first; keep partner ATS and external handoff modes outside the public release workflow                     |
+## Deliberate release scope
 
-## Current release evidence
+- The release is one coherent product for IT and adjacent-technology roles.
+- All 300 roles and 30 organizations are first-party fictional demo data.
+  Checked-in live-source policies are disabled, so production does not mix in
+  third-party vacancies.
+- Language understanding and drafting stay with the visiting agent. Jobbbler
+  is the deterministic data, workflow, authority, and audit layer.
+- SQLite is the zero-service local default. Production uses the same repository
+  contracts and migrations through Supabase PostgreSQL.
+- Every demo role uses the Jobbbler-managed application path. Unsupported ATS
+  handoffs are outside the public workflow.
 
-The fresh 2 September 2026 release-candidate check on the current tree
-recorded:
+## Verified release
 
-- `pnpm verify`: formatting, lint, every workspace typecheck, 990 deterministic
-  tests, and both production builds passed;
-- Playwright: 50/50 browser journeys passed, including the complete
-  agent-prepared application flow, saved-search schedules, location
-  autocomplete, keyboard navigation, responsive layouts, and reduced motion;
-- the release SQLite database contained exactly 300 `jobbbler_demo` roles and
-  its backup/restore integrity check passed with the same 300-role catalog;
-- live WebMCP in the supported in-app browser: the same 29 unique tools stayed
-  discoverable before and after real navigation. `search_jobs` applied a
-  Platform + Remote + Newest request to the visible URL and returned 61 matches
-  with three bounded results; `open_job_details` opened one of those roles;
-  `get_job_details` returned its source-backed record; and a warm
-  `open_jobbbler_page` call returned to search without losing a tool;
-- the public `https://jobbbler.com` deployment returned ready with PostgreSQL,
-  19 migrations, 30 organizations, and 300 roles; HTTP, `www`, and the Vercel
-  project hostname resolve through permanent redirects to that canonical HTTPS
-  origin;
-- Chrome's official Model Context Tool Inspector discovered all 29 tools on the
-  production origin without a model key and completed `get_search_filters`, an
-  exact Phoenix `search_jobs` request, and `get_job_details`; Jobbbler's visible
-  activity log recorded all three calls;
-- the production Supabase catalog contains exactly 300 first-party fictional
-  roles and no enabled live-source policy; the scheduled alert cycle produced
-  a current heartbeat, the security advisor returned no findings, and its only
-  performance notices were expected unused-index information on the fresh
-  release database;
-- a production email-verification request was accepted by Jobbbler and recorded
-  as delivered by the configured Resend transport on the verified domain;
-- low-effort model review: Luna evaluated 50 realistic intents (43 immediate
-  safe routes and seven clarification- or state-sensitive cases); Terra
-  evaluated 10 multi-step journeys and exposed three guidance gaps that drove
-  the saved-state pagination, workflow, and cursor/UI clarification changes;
-- production dependency audit: no known production vulnerabilities;
-- design-system contracts keep normal text and action states at WCAG AA
-  contrast in both themes, prohibit two-pixel component borders, and route
-  compact typography, radii, and frosted materials through shared tokens.
+The 2 September 2026 release candidate passed:
 
-The infrastructure rehearsal on 1 September 2026 additionally recorded:
+- formatting, lint, all workspace typechecks, 991 deterministic tests, and the
+  production web and worker builds through `pnpm verify`;
+- 50 browser journeys covering search, pagination, location autocomplete,
+  saved-search schedules, the complete agent-prepared application path,
+  keyboard use, responsive layouts, and reduced motion;
+- 103 PostgreSQL repository, concurrency, migration, and RLS contract tests in
+  a disposable database;
+- production readiness with 19 PostgreSQL migrations, 30 organizations, and
+  exactly 300 `jobbbler_demo` roles;
+- all 29 tools discovered across real navigation in the supported ChatGPT
+  Desktop browser, plus the Chrome Model Context Tool Inspector as a separate
+  developer verification surface;
+- a real scheduled alert cycle and delivered verification email on the
+  configured production transports;
+- 50 low-effort Luna routing evaluations and 10 Terra multi-step evaluations;
+- no known production dependency vulnerabilities and no Supabase security
+  advisor findings.
 
-- isolated clean-context Docker builds for both release targets; the web and
-  worker runtime images use Node 24, run as the non-root `jobbbler` user (UID
-  1001), and the worker image contains both migration sets through PostgreSQL
-  `0019` and SQLite `0025`;
-- PostgreSQL: 103/103 repository, concurrency, migration, and RLS contract
-  tests passed in a disposable local database that was removed after the run;
-- read-only Supabase inspection: all 19 checked-in PostgreSQL migrations are
-  present, the `jobbbler` schema contains 300 demo roles, RLS is enabled on its
-  tables, and the security advisor reports no findings.
-
-These checks prove the current code and public deployment. They do not replace
-the final same-revision media, default-branch sync, and Devpost checks.
-
-## Current known deadline
-
-At the final release check, Devpost listed 3 September 2026 at 1:00 pm Pacific
-Time. Devpost displays the localized equivalent in the authenticated UI.
-Because rules may change, the live rules and submission form remain the final
-source of truth.
+The catalog is intentionally fictional and labelled as such. No real candidate
+data, employer submission, or production mailbox secret is required to review
+the project.

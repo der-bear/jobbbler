@@ -1,8 +1,8 @@
 # Jobbbler Documentation
 
 Start with the repository [README](../README.md) for the product story, local
-setup, and WebMCP catalog. This index separates implemented behavior from
-submission work.
+setup, and WebMCP catalog. This index points to implemented behavior and
+verified release evidence.
 
 ## Product and architecture
 
@@ -25,15 +25,10 @@ submission work.
 - [Health and security operations](operations/health-and-security.md)
 - [PostgreSQL cutover and rollback](operations/postgres-cutover-and-rollback.md)
 
-## Challenge and submission evidence
+## Challenge evidence
 
-- [OpenAI WebMCP Challenge compliance map](hackathon-compliance.md)
-- [Devpost copy](submission/devpost-copy.md)
-- [Submission film production contract](submission/video-production.md)
-- [Gallery shot list and alt text](submission/gallery-shot-list.md)
-- [Final submission checklist](submission/final-checklist.md)
+- [OpenAI WebMCP Challenge evidence](hackathon-compliance.md)
 
-The compliance map distinguishes repository evidence from production, media,
-and live-browser checks that still require the exact submitted revision. The
-public repository keeps only implementation-relevant architecture and evidence;
-early exploration notes and copied third-party rules are intentionally omitted.
+The public documentation contains implementation-relevant architecture and
+evidence. Production checklists, form drafts, media scripts, early exploration,
+and copied third-party rules are intentionally kept outside the public project.
