@@ -162,9 +162,9 @@ export function createSiteWideToolManifests(
 ): readonly ToolManifest<unknown, SiteWideToolOutput>[] {
   const openJobbblerPage: ToolManifest<unknown, SiteWideToolOutput> = {
     name: "open_jobbbler_page",
-    purpose: "Open a Jobbbler workspace from any page using explicit validated identifiers.",
+    purpose: "Open a Jobbbler page or exact private item by ID.",
     description:
-      "Navigate to Search, Saved searches, Applications, the WebMCP guide, a two- or three-role Comparison, or one existing private Application. Comparison and private-application destinations require exact IDs; this tool creates no authority.",
+      "Use a supported page name plus exact job or application IDs when required to open Search, Saved searches, Applications, the WebMCP guide, a comparison, or one application, and return the opened page and URL without changing stored data.",
     inputSchema: openPageInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: false },
     async execute(input, { signal }) {
@@ -173,7 +173,7 @@ export function createSiteWideToolManifests(
         const href = destinationHref(parsed);
         await dependencies.onNavigate(href, { signal });
         return completedWebMcpResult({
-          summary: `Opened the ${parsed.page.replaceAll("_", " ")} workspace.`,
+          summary: `Opened ${parsed.page.replaceAll("_", " ")}.`,
           data: { page: parsed.page, href },
         });
       } catch (error) {
@@ -188,9 +188,9 @@ export function createSiteWideToolManifests(
 
   const startApplication: ToolManifest<unknown, SiteWideToolOutput> = {
     name: "prepare_application",
-    purpose: "Create or reopen one private Jobbbler application for a chosen role.",
+    purpose: "Create or reopen one private application for a chosen role.",
     description:
-      "Create or reopen the private application for one Jobbbler role when the person asks to apply. Returns its application ID and opens its workspace so the agent can check missing facts next. It grants no preparation authority, shares no candidate data, and submits nothing.",
+      "Use one job ID the person selected to create or reopen its private application and return the application ID, URL, and next tool; this grants no preparation authority, shares no candidate data, and submits nothing.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -228,9 +228,9 @@ export function createSiteWideToolManifests(
 
   const getApplications: ToolManifest<unknown, SiteWideToolOutput> = {
     name: "get_applications",
-    purpose: "List this private workspace's applications without returning candidate answers.",
+    purpose: "List private applications without returning candidate answers.",
     description:
-      "List private Jobbbler applications newest first after a current or recovered owner session is present. Returns only application and job identifiers, role title and organization, role and application status, update time, and receipt availability. It never returns answers, candidate fields, email, or credentials.",
+      "Use optional limit and offset with a current or recovered owner session to return application and job IDs, role details, status, update time, receipt availability, and nextOffset without returning answers, contact data, or credentials.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -296,9 +296,9 @@ export function createSiteWideToolManifests(
 
   const enableWorkspaceRecovery: ToolManifest<unknown, SiteWideToolOutput> = {
     name: "enable_workspace_recovery",
-    purpose: "Optionally add passwordless recovery to the current private Jobbbler workspace.",
+    purpose: "Add an optional email for getting back to saved work on another device.",
     description:
-      "Enable optional passwordless recovery for the current private workspace in two calls; a current owner session is required. This is not consent, not application submission approval, and not an alert subscription. First use action=start with the person's email; then ask for the six-digit code in the agent client and use action=complete with the exact challengeId. Returns no email, endpoint, owner, or session data.",
+      "Use the current owner session and the person's exact email to start, then its challengeId and the six-digit code the person supplies to finish, returning only the phase and next tools; this is not data consent, not submission approval, and not email-update permission.",
     inputSchema: {
       oneOf: [
         {
@@ -345,7 +345,7 @@ export function createSiteWideToolManifests(
             { signal },
           );
           return completedWebMcpResult({
-            summary: "Optional passwordless recovery setup started.",
+            summary: "Email verification started.",
             data: {
               phase: "code_required",
               challengeId: started.challengeId,
@@ -360,7 +360,7 @@ export function createSiteWideToolManifests(
           { signal },
         );
         return completedWebMcpResult({
-          summary: "Optional passwordless workspace recovery is enabled.",
+          summary: "Email added for getting back to saved work.",
           data: {
             phase: "enabled",
             nextTools: ["get_applications", "get_saved_alerts"],
@@ -378,10 +378,9 @@ export function createSiteWideToolManifests(
 
   const recoverWorkspace: ToolManifest<unknown, SiteWideToolOutput> = {
     name: "recover_jobbbler_workspace",
-    purpose:
-      "Restore private Jobbbler applications and saved searches with an email and one-time code.",
+    purpose: "Bring back saved searches and applications with an email and one-time code.",
     description:
-      "Restore private Jobbbler applications and saved searches in two calls. First use action=start with the verified email explicitly supplied by the person. Then ask for the six-digit code in the agent client and use action=complete with the exact recoveryId. The tool never returns the email, code, owner, or session credential.",
+      "Use the verified email the person supplies to start, then its exact recoveryId and six-digit code to finish, returning only the phase and next tools without exposing the email, code, owner, or session credential.",
     inputSchema: {
       oneOf: [
         {
@@ -428,7 +427,7 @@ export function createSiteWideToolManifests(
             { signal },
           );
           return completedWebMcpResult({
-            summary: "If a verified workspace matches, a six-digit code is on its way.",
+            summary: "If that email matches saved work, a six-digit code is on its way.",
             data: {
               phase: "code_required",
               recoveryId: started.recoveryId,
@@ -444,7 +443,7 @@ export function createSiteWideToolManifests(
         );
         dependencies.onWorkspaceRecovered(recovered.expiresAt);
         return completedWebMcpResult({
-          summary: "Private workspace access recovered.",
+          summary: "Saved searches and applications are available again.",
           data: {
             phase: "recovered",
             nextTools: ["get_applications", "get_saved_alerts"],

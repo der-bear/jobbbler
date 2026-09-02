@@ -129,43 +129,43 @@ describe("saved-route WebMCP tools", () => {
         name: "get_saved_alerts",
         purpose: "Show saved job searches and whether email updates are on.",
         description:
-          "Return saved job searches, newest first. For each search, show whether email updates are on and when the next check will happen. If there are more searches, call this tool again with nextOffset. Never return an email address or sign-in information.",
+          "Use optional limit and offset with the current private owner to list saved searches newest first, returning each saved-search ID, email-update state, next check, and nextOffset without exposing an email address or sign-in information.",
       },
       {
         name: "request_search_alert",
         purpose: "Prepare email updates for one job search for the person to review.",
         description:
-          "Prepare a review for one job search, schedule, and email address. Use only choices the person supplied now or exact choices from get_search_state(detail=exact). Never infer filters or reuse them from another task. If the name, search choices, schedule, or email is missing, ask only for the missing information. A new email address requires a 6-digit code; a verified one does not. Turn on updates only after explicit approval through decide_search_alert.",
+          "Use the exact name, search choices, schedule, and email the person supplied to return one review for that person to approve or decline with decide_search_alert; never infer missing values, and require a six-digit code only for a new email.",
       },
       {
         name: "decide_search_alert",
         purpose: "Use the person's answer to turn the reviewed email updates on or leave them off.",
         description:
-          "Continue the review created by request_search_alert. Approve only when the person clearly says yes. Include the 6-digit code only when the review asks for it. Do not include a code when the email address is already confirmed. A decline needs no code. Never guess approval or invent a code. Apply the decision only to the alert exactly as reviewed.",
+          "Use the exact requestId and reviewToken from request_search_alert, the person's explicit approved or declined decision, and a six-digit code only when requested to return the decision and turn on only the unchanged reviewed updates.",
       },
       {
         name: "set_job_alert_state",
         purpose: "Pause, resume, or permanently delete one saved job search and its email updates.",
         description:
-          "To pause or resume email updates, use action=pause or action=resume with the scheduleId from get_saved_alerts. Delete only after the person clearly asks to permanently delete one saved search. For deletion, use action=delete with that savedSearchId and confirmation DELETE_SAVED_SEARCH_AND_ALERT. If the person says 'stop,' 'turn off,' or 'not now,' pause; never delete. If more than one alert could match, ask which one.",
+          "Use a scheduleId from get_saved_alerts to pause or resume email updates, or an exact savedSearchId and confirmation after the person clearly requests permanent deletion, and return the resulting state or deletion receipt; an ambiguous stop request means pause, and more than one possible match requires a question.",
       },
       {
         name: "open_saved_search",
         purpose: "Open one saved search and show its saved choices on the results page.",
         description:
-          "Open the results page with the same search choices saved in a search returned by get_saved_alerts. The search tools can then use those choices.",
+          "Use a savedSearchId from get_saved_alerts to open its exact choices on the results page and return the opened route and saved-search ID without changing the criteria.",
       },
       {
         name: "get_latest_search_update",
         purpose: "Show what changed the last time a saved job search was checked.",
         description:
-          "Show how many jobs are new, updated, closed, or no longer match since the previous check. Use limit and nextOffset to see more changed jobs. Checks continue even when this site is not open.",
+          "Use a savedSearchId plus optional limit and offset to return counts and a paged list of job IDs that are new, updated, closed, or no longer match since the latest check, including nextOffset when more changes remain.",
       },
       {
         name: "save_job_search",
         purpose: "Save one job search without turning on email updates.",
         description:
-          "Use when the person says save, remember, or bookmark this search. Save only search choices the person gave now or exact choices from get_search_state(detail=exact). If no name was supplied, ask for a short, recognizable name. Do not ask for an email address; email updates stay off. If the person asks for notifications, alerts, or email updates, use request_search_alert instead.",
+          "Use a short name and exact choices the person supplied or get_search_state(detail=exact) to save and return a saved-search ID with email updates off; ask for missing values, and use request_search_alert instead when the person wants notifications.",
       },
     ]);
     expect(JSON.stringify(instructions)).not.toMatch(

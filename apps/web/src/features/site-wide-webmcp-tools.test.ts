@@ -34,6 +34,45 @@ function findTool(manifests: ReturnType<typeof createSiteWideToolManifests>, nam
 }
 
 describe("site-wide WebMCP tools", () => {
+  it("gives every site-wide tool a plain contract with inputs and returns", () => {
+    const manifests = createSiteWideToolManifests(dependencies());
+
+    expect(
+      manifests.map(({ name, purpose, description }) => ({ name, purpose, description })),
+    ).toEqual([
+      {
+        name: "open_jobbbler_page",
+        purpose: "Open a Jobbbler page or exact private item by ID.",
+        description:
+          "Use a supported page name plus exact job or application IDs when required to open Search, Saved searches, Applications, the WebMCP guide, a comparison, or one application, and return the opened page and URL without changing stored data.",
+      },
+      {
+        name: "prepare_application",
+        purpose: "Create or reopen one private application for a chosen role.",
+        description:
+          "Use one job ID the person selected to create or reopen its private application and return the application ID, URL, and next tool; this grants no preparation authority, shares no candidate data, and submits nothing.",
+      },
+      {
+        name: "get_applications",
+        purpose: "List private applications without returning candidate answers.",
+        description:
+          "Use optional limit and offset with a current or recovered owner session to return application and job IDs, role details, status, update time, receipt availability, and nextOffset without returning answers, contact data, or credentials.",
+      },
+      {
+        name: "enable_workspace_recovery",
+        purpose: "Add an optional email for getting back to saved work on another device.",
+        description:
+          "Use the current owner session and the person's exact email to start, then its challengeId and the six-digit code the person supplies to finish, returning only the phase and next tools; this is not data consent, not submission approval, and not email-update permission.",
+      },
+      {
+        name: "recover_jobbbler_workspace",
+        purpose: "Bring back saved searches and applications with an email and one-time code.",
+        description:
+          "Use the verified email the person supplies to start, then its exact recoveryId and six-digit code to finish, returning only the phase and next tools without exposing the email, code, owner, or session credential.",
+      },
+    ]);
+  });
+
   it("keeps only distinct site-wide outcome actions", () => {
     const manifests = createSiteWideToolManifests(dependencies());
 
@@ -108,11 +147,9 @@ describe("site-wide WebMCP tools", () => {
     }));
     const manifests = createSiteWideToolManifests(dependencies({ startApplication }));
     const prepareTool = findTool(manifests, "prepare_application");
-    expect(prepareTool.purpose).toBe(
-      "Create or reopen one private Jobbbler application for a chosen role.",
-    );
-    expect(prepareTool.description).toContain("when the person asks to apply");
-    expect(prepareTool.description).toContain("opens its workspace");
+    expect(prepareTool.purpose).toBe("Create or reopen one private application for a chosen role.");
+    expect(prepareTool.description).toContain("one job ID the person selected");
+    expect(prepareTool.description).toContain("application ID, URL, and next tool");
     expect(prepareTool.description).toContain("submits nothing");
     expect(prepareTool.description).not.toContain("get_job_application_capability");
     expect(prepareTool.description).not.toContain("managed internal");
@@ -157,7 +194,7 @@ describe("site-wide WebMCP tools", () => {
     expect(startOwnerRecovery).toHaveBeenCalledWith({ email: "person@example.com" }, { signal });
     expect(result).toMatchObject({
       status: "completed",
-      summary: "If a verified workspace matches, a six-digit code is on its way.",
+      summary: "If that email matches saved work, a six-digit code is on its way.",
       data: {
         phase: "code_required",
         recoveryId,
@@ -195,7 +232,7 @@ describe("site-wide WebMCP tools", () => {
     expect(onWorkspaceRecovered).toHaveBeenCalledWith(sessionExpiresAt);
     expect(result).toMatchObject({
       status: "completed",
-      summary: "Private workspace access recovered.",
+      summary: "Saved searches and applications are available again.",
       data: {
         phase: "recovered",
         nextTools: ["get_applications", "get_saved_alerts"],
@@ -236,10 +273,9 @@ describe("site-wide WebMCP tools", () => {
     const tool = findTool(manifests, "enable_workspace_recovery");
     const signal = new AbortController().signal;
 
-    expect(tool.description).toContain("optional passwordless recovery");
-    expect(tool.description).toContain("not consent");
-    expect(tool.description).toContain("not application submission approval");
-    expect(tool.description).toContain("not an alert subscription");
+    expect(tool.description).toContain("person's exact email");
+    expect(tool.description).toContain("not data consent");
+    expect(tool.description).toContain("not email-update permission");
     const result = await tool.execute(
       { action: "start", email: " Person@Example.COM " },
       { signal },
@@ -251,7 +287,7 @@ describe("site-wide WebMCP tools", () => {
     );
     expect(result).toMatchObject({
       status: "completed",
-      summary: "Optional passwordless recovery setup started.",
+      summary: "Email verification started.",
       data: {
         phase: "code_required",
         challengeId,
@@ -291,7 +327,7 @@ describe("site-wide WebMCP tools", () => {
     );
     expect(result).toMatchObject({
       status: "completed",
-      summary: "Optional passwordless workspace recovery is enabled.",
+      summary: "Email added for getting back to saved work.",
       data: {
         phase: "enabled",
         nextTools: ["get_applications", "get_saved_alerts"],
