@@ -145,6 +145,24 @@ describe("owner recovery route handlers", () => {
     });
   });
 
+  it("can defer recovery delivery until after the response without changing its envelope", async () => {
+    const current = dependencies({ encryptedAddress: "protected-email-envelope" });
+    let deferred: (() => Promise<void>) | undefined;
+    const response = await handleStartOwnerRecoveryRequest(
+      request("/api/v1/owners/recovery/start", { email: "person@example.com" }),
+      current,
+      (task) => {
+        deferred = task;
+      },
+    );
+
+    expect(response.status).toBe(202);
+    expect(current.delivery.deliverVerification).not.toHaveBeenCalled();
+    expect(deferred).toBeTypeOf("function");
+    await deferred?.();
+    expect(current.delivery.deliverVerification).toHaveBeenCalledOnce();
+  });
+
   it("sets the rotated opaque HttpOnly session only after successful recovery", async () => {
     const current = dependencies();
     const response = await handleCompleteOwnerRecoveryRequest(

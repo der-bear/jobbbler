@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { JobFit } from "@jobbbler/contracts";
+import type { Job, JobFit } from "@jobbbler/contracts";
 
 import {
   compareApiUrl,
@@ -9,6 +9,7 @@ import {
   comparisonRowVisibility,
   comparisonSearchHref,
   comparisonSourceDestination,
+  comparisonSourceUrl,
   removeComparedJob,
   resolveCompareSelection,
 } from "./compare-state";
@@ -36,6 +37,11 @@ const neutralFit: JobFit = {
     freshness: rank,
   },
 };
+
+const externalJob = {
+  applyMode: "external",
+  source: { url: "https://jobs.example.test/opening/42" },
+} as Job;
 
 describe("shareable comparison state", () => {
   it("keeps one to three distinct job IDs in their URL order", () => {
@@ -114,5 +120,24 @@ describe("shareable comparison state", () => {
     expect(comparisonSourceDestination("internal", null)).toBe("Apply on Jobbbler");
     expect(comparisonSourceDestination("external", null)).toBe("Application link unavailable");
     expect(comparisonSourceDestination("external", "https://example.com/jobs/1")).toBeNull();
+  });
+
+  it("never exposes an unsafe external source link from comparison", () => {
+    expect(comparisonSourceUrl(externalJob)).toBe("https://jobs.example.test/opening/42");
+    expect(
+      comparisonSourceUrl({
+        ...externalJob,
+        source: { ...externalJob.source, url: "http://jobs.example.test/opening/42" },
+      }),
+    ).toBeNull();
+    expect(
+      comparisonSourceUrl({
+        ...externalJob,
+        source: {
+          ...externalJob.source,
+          url: "https://user:secret@jobs.example.test/opening/42",
+        },
+      }),
+    ).toBeNull();
   });
 });

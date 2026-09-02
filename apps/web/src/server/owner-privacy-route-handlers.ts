@@ -25,6 +25,8 @@ import {
 
 const RECOVERY_RESPONSE_FLOOR_MS = 350;
 
+export type RecoveryResponseScheduler = (task: () => Promise<void>) => void;
+
 async function checkLimit(
   requestId: string,
   key: string,
@@ -119,6 +121,7 @@ async function publishIdentityActivity(
 export async function handleStartOwnerRecoveryRequest(
   request: Request,
   dependencies: IdentityRouteDependencies,
+  scheduleAfterResponse?: RecoveryResponseScheduler,
 ): Promise<Response> {
   const requestId = createRequestId();
   try {
@@ -136,18 +139,22 @@ export async function handleStartOwnerRecoveryRequest(
     );
     if (limited !== null) return limited;
     const started = await dependencies.identity.startOwnerRecovery(input, dependencies.now());
-    const delivery =
-      started.encryptedAddress === null
-        ? Promise.resolve()
-        : dependencies.delivery
-            .deliverVerification({
-              encryptedAddress: started.encryptedAddress,
-              code: started.rawCode,
-              expiresAt: started.expiresAt,
-              challengeId: started.recoveryId,
-            })
-            .then(() => undefined)
-            .catch(() => undefined);
+    const deliver = async (): Promise<void> => {
+      if (started.encryptedAddress === null) return;
+      await dependencies.delivery
+        .deliverVerification({
+          encryptedAddress: started.encryptedAddress,
+          code: started.rawCode,
+          expiresAt: started.expiresAt,
+          challengeId: started.recoveryId,
+        })
+        .then(() => undefined)
+        .catch(() => undefined);
+    };
+    const delivery = scheduleAfterResponse === undefined ? deliver() : Promise.resolve();
+    if (started.encryptedAddress !== null && scheduleAfterResponse !== undefined) {
+      scheduleAfterResponse(deliver);
+    }
     await Promise.all([delivery, responseFloor()]);
     const developmentCode = canExposeLocalOtp(dependencies.environment)
       ? started.rawCode

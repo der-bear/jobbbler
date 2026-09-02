@@ -31,6 +31,7 @@ import {
   comparisonRowVisibility,
   comparisonSearchHref,
   comparisonSourceDestination,
+  comparisonSourceUrl,
   removeComparedJob,
   resolveCompareSelection,
 } from "./compare-state";
@@ -110,18 +111,19 @@ function unknownCount(fit: JobFit): number {
 }
 
 function SourceFacts({ job }: Readonly<{ job: Job }>) {
-  const destination = comparisonSourceDestination(job.applyMode, job.source.url);
+  const sourceUrl = comparisonSourceUrl(job);
+  const destination = comparisonSourceDestination(job.applyMode, sourceUrl);
   return (
     <>
       <p className={styles["sourceFact"]}>{job.source.label}</p>
       <p className={styles["freshness"]}>{relativeFreshness(job.updatedAt)}</p>
       <p className={styles["freshness"]}>Published {compactDate(job.publishedAt)}</p>
-      {job.source.url === null ? (
+      {sourceUrl === null ? (
         <p className={job.applyMode === "internal" ? styles["freshness"] : styles["unknown"]}>
           {destination}
         </p>
       ) : (
-        <a href={job.source.url} rel="noreferrer" target="_blank">
+        <a href={sourceUrl} rel="noreferrer" target="_blank">
           View original source <ArrowSquareOutIcon aria-hidden="true" size={14} />
         </a>
       )}

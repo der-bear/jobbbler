@@ -1,5 +1,7 @@
 import type { Job, JobFit } from "@jobbbler/contracts";
 
+import { externalApplicationUrl } from "../job-detail/application-capability";
+
 export type CompareSelection =
   | { readonly kind: "ready"; readonly jobIds: readonly string[] }
   | { readonly kind: "missing" }
@@ -71,6 +73,10 @@ export function comparisonSourceDestination(
 ): string | null {
   if (sourceUrl !== null) return null;
   return applyMode === "internal" ? "Apply on Jobbbler" : "Application link unavailable";
+}
+
+export function comparisonSourceUrl(job: Job): string | null {
+  return externalApplicationUrl(job);
 }
 
 export function comparisonRowVisibility(fits: readonly JobFit[]): Readonly<{
