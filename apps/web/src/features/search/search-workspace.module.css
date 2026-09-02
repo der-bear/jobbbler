@@ -350,12 +350,21 @@
 }
 
 .choiceRow button {
+  min-block-size: 32px;
   border: var(--jb-stroke-control) solid var(--jb-border-chip);
   border-radius: var(--radius-pill);
   background: transparent;
-  color: var(--color-ink-muted);
+  color: var(--color-ink);
   font-size: var(--jb-type-caption);
+  font-weight: 620;
   padding: 5px 11px;
+}
+
+/* One line on focus: the ring sits on the chip's own edge, which gives way. */
+.choiceRow button:focus-visible {
+  border-color: transparent;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: calc(-1 * var(--jb-focus-width));
 }
 
 .choiceRow button:hover {
@@ -427,19 +436,28 @@
   inline-size: 100%;
   min-inline-size: 0;
   min-block-size: 36px;
-  border: 1px solid var(--color-line-strong);
+  border: var(--jb-stroke-control) solid var(--color-line-strong);
   border-radius: var(--radius-sm);
   outline: 0;
   background: var(--jb-veil-control);
   color: var(--color-ink);
   padding: 7px 10px;
   font-size: var(--jb-type-ui);
+  transition: border-color var(--motion-fast) var(--ease-standard);
+}
+
+/* A field does not take the hover ground — its ground is where you type —
+   so only the edge answers, one step toward the ink. */
+.filterRow input:hover,
+.filterRow select:hover {
+  border-color: var(--jb-hover-line);
 }
 
 .filterRow input:focus-visible,
 .filterRow select:focus-visible {
+  border-color: transparent;
   outline: var(--jb-focus-width) solid var(--jb-focus);
-  outline-offset: var(--jb-focus-offset);
+  outline-offset: calc(-1 * var(--jb-focus-width));
 }
 
 .filterRow .railSearch input:focus-visible,
@@ -549,9 +567,14 @@
   display: inline-flex;
   min-block-size: 36px;
   align-items: center;
-  border: 1px solid var(--color-line-strong);
+  border: var(--jb-stroke-control) solid var(--color-line-strong);
   border-radius: var(--radius-sm);
   background: var(--jb-veil-control);
+  transition: border-color var(--motion-fast) var(--ease-standard);
+}
+
+.sortSelect:hover {
+  border-color: var(--jb-hover-line);
 }
 
 .sortSelect select {
@@ -575,8 +598,9 @@
 }
 
 .sortSelect:focus-within {
+  border-color: transparent;
   outline: var(--jb-focus-width) solid var(--jb-focus);
-  outline-offset: var(--jb-focus-offset);
+  outline-offset: calc(-1 * var(--jb-focus-width));
 }
 
 .saveAlertLink,
@@ -595,9 +619,12 @@
   border-radius: var(--radius-sm);
   background: var(--jb-veil-control);
   color: var(--color-ink);
-  font-size: var(--jb-type-caption);
+  font-size: var(--jb-type-label);
   font-weight: 620;
   text-decoration: none;
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    background var(--motion-fast) var(--ease-standard);
 }
 
 .saveAlertLink {
@@ -838,7 +865,15 @@
 }
 
 .saveAlertLink:hover {
+  border-color: var(--jb-hover-line);
   background: var(--jb-hover-surface);
+}
+
+.saveAlertLink:focus-visible,
+.errorState button:focus-visible {
+  border-color: transparent;
+  outline: var(--jb-focus-width) solid var(--jb-focus);
+  outline-offset: calc(-1 * var(--jb-focus-width));
 }
 
 .skeletonList {

@@ -1,41 +1,50 @@
 .selector {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  overflow: hidden;
-  border: 1px solid var(--color-line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--jb-glass-fill-strong);
-  backdrop-filter: var(--jb-glass-blur);
-  -webkit-backdrop-filter: var(--jb-glass-blur);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
+/*
+ * The currency is a chip row with a radio's semantics — exactly one is on. It
+ * used to be a boxed segmented control 40px tall with square corners and its
+ * own opaque fill: the one control in the rail outside the material, and the
+ * tallest thing in it.
+ */
 .selector button {
   min-inline-size: 0;
-  min-block-size: 40px;
-  border: 0;
-  border-inline-start: var(--jb-stroke-structure) solid var(--color-line);
+  min-block-size: 32px;
+  border: var(--jb-stroke-control) solid var(--jb-border-chip);
+  border-radius: var(--radius-pill);
   background: transparent;
-  color: var(--color-ink-subtle);
+  color: var(--color-ink);
+  padding: 0 11px;
   font-size: var(--jb-type-caption);
-}
-
-.selector button:first-child {
-  border-inline-start: 0;
+  font-weight: 620;
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    background var(--motion-fast) var(--ease-standard);
 }
 
 .selector button:hover {
-  color: var(--color-ink);
+  border-color: var(--jb-state-line);
+  background: var(--jb-hover-surface);
 }
 
 .selector button[aria-checked="true"] {
-  background: var(--color-surface-subtle);
-  color: var(--color-signal-strong);
-  font-weight: 500;
+  border-color: var(--jb-state-active-line);
+  background: var(--jb-state-active);
+  color: var(--jb-state-active-ink);
 }
 
-.selector button:focus-visible {
-  position: relative;
-  z-index: 1;
+/*
+ * Specific enough to win. The radios carry a roving tabindex, and the shared
+ * `[tabindex]:not([tabindex="-1"]):focus-visible` rule outranks a plain
+ * `.selector button:focus-visible` — it drew the ring outside the chip and
+ * squared its corners. One line on the edge, and the pill stays a pill.
+ */
+.selector button[tabindex]:focus-visible {
+  border-color: transparent;
+  border-radius: var(--radius-pill);
   outline: var(--jb-focus-width) solid var(--jb-focus);
   outline-offset: calc(-1 * var(--jb-focus-width));
 }
