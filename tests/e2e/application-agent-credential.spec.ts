@@ -36,7 +36,10 @@ test("persists a quickly completed application before a reload", async ({ page }
     );
   await page.getByRole("heading", { name: "Application details" }).click();
 
-  await expect(page.getByText("Changes saved.")).toBeVisible();
+  // A deliberately fast fill queues five versioned writes. Keep the assertion
+  // above the generic UI timeout so a cold dev server can drain that honest
+  // persistence chain without turning a completed save into a flaky failure.
+  await expect(page.getByText("Changes saved.")).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText("5 of 5 details ready")).toBeVisible();
   await page.reload();
 
