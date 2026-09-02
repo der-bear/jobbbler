@@ -32,7 +32,42 @@ describe("typed API query client", () => {
         signal: controller.signal,
       }),
     );
-    expect(takeToolRequestCorrelation(controller.signal)).toBe(requestId);
+    expect(takeToolRequestCorrelation(controller.signal)).toBeUndefined();
+  });
+
+  it("keeps the mutation correlation when a trailing read refreshes the same tool state", async () => {
+    const controller = new AbortController();
+    const mutationRequestId = "req_650e8400-e29b-41d4-a716-446655440000";
+    const refreshRequestId = "req_750e8400-e29b-41d4-a716-446655440000";
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          ok: true,
+          data: { enabled: true },
+          meta: { requestId: mutationRequestId },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          ok: true,
+          data: { enabled: true },
+          meta: { requestId: refreshRequestId },
+        }),
+      );
+
+    await queryApi("/api/v1/schedules/schedule_1", z.object({ enabled: z.boolean() }), {
+      fetch,
+      method: "POST",
+      body: { enabled: true },
+      signal: controller.signal,
+    });
+    await queryApi("/api/v1/schedules/schedule_1", z.object({ enabled: z.boolean() }), {
+      fetch,
+      signal: controller.signal,
+    });
+
+    expect(takeToolRequestCorrelation(controller.signal)).toBe(mutationRequestId);
   });
 
   it("throws a typed safe error for an API error envelope", async () => {

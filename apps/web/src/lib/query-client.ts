@@ -57,12 +57,14 @@ export async function queryApi<T>(
   options: QueryApiOptions = {},
 ): Promise<T> {
   const fetchImplementation = options.fetch ?? globalThis.fetch;
+  const method = options.method ?? "GET";
+  const recordsCommittedActivity = method !== "GET";
   const headers = new Headers(options.headers);
   headers.set("accept", "application/json");
   if (options.body !== undefined) headers.set("content-type", "application/json");
 
   const response = await fetchImplementation(url, {
-    method: options.method ?? "GET",
+    method,
     credentials: "same-origin",
     headers,
     ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
@@ -78,13 +80,17 @@ export async function queryApi<T>(
   const parsed = apiResponseSchema(dataSchema).safeParse(payload);
   if (!parsed.success) throw dependencyFailure();
   if (parsed.data.ok) {
-    if (options.signal !== undefined && parsed.data.meta?.requestId !== undefined) {
+    if (
+      recordsCommittedActivity &&
+      options.signal !== undefined &&
+      parsed.data.meta?.requestId !== undefined
+    ) {
       recordToolRequestCorrelation(options.signal, parsed.data.meta.requestId);
     }
     return parsed.data.data;
   }
 
-  if (options.signal !== undefined) {
+  if (recordsCommittedActivity && options.signal !== undefined) {
     recordToolRequestCorrelation(options.signal, parsed.data.error.requestId);
   }
 

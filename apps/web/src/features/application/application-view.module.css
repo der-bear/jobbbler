@@ -319,12 +319,6 @@
   font-weight: 500;
 }
 
-.requiredNote {
-  margin: 22px 0 0;
-  color: var(--color-ink-muted);
-  font-size: var(--jb-type-label);
-}
-
 .field input:focus-visible,
 .field textarea:focus-visible,
 .field select:focus-visible {
@@ -519,13 +513,25 @@
  * heading already carries the meaning — the frame can be a hairline.
  */
 .sharingSummary {
-  margin-block-start: 38px;
+  margin-block-start: 28px;
   border: var(--jb-stroke-structure) solid var(--color-line);
   border-radius: 0;
-  padding: 20px 22px;
+  padding: 16px 18px;
   background: var(--jb-glass-fill-strong);
   backdrop-filter: var(--jb-glass-blur);
   -webkit-backdrop-filter: var(--jb-glass-blur);
+}
+
+.sharingSummary .reviewList {
+  margin-block-start: 16px;
+}
+
+.sharingSummary .reviewList div {
+  padding-block: 11px;
+}
+
+.sharingSummary .privacyLink {
+  margin-block-start: 8px;
 }
 
 /*
@@ -542,8 +548,8 @@
 
 .sharingTitle > svg {
   flex: 0 0 auto;
-  inline-size: 22px;
-  block-size: 22px;
+  inline-size: 19px;
+  block-size: 19px;
   color: var(--jb-signal);
 }
 
@@ -552,7 +558,7 @@
 }
 
 .sharingTitle h3 {
-  margin: 5px 0 0;
+  margin: 0;
   color: var(--color-ink);
   font-size: var(--jb-type-heading-sm);
   font-weight: 620;
@@ -560,29 +566,25 @@
 }
 
 .assistance {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  margin-block-end: 28px;
-  border: 1px solid color-mix(in srgb, var(--jb-signal) 48%, var(--color-line));
-  padding: 16px 18px;
-  background: color-mix(in srgb, var(--jb-signal) 7%, var(--color-surface));
-}
-
-.assistance .eyebrow {
-  margin: 0;
+  margin-block-end: 22px;
+  border-inline-start: var(--jb-stroke-control) solid var(--jb-signal);
+  border-radius: var(--radius-sm);
+  padding: 10px 13px;
+  background: var(--jb-glass-control);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
 }
 
 .assistance h2 {
-  margin: 5px 0 0;
+  margin: 0;
   color: var(--color-ink);
-  font-size: var(--jb-type-body);
+  font-size: var(--jb-type-ui);
   font-weight: 620;
+  line-height: 1.4;
 }
 
 .assistance p:not(.eyebrow) {
-  margin: 6px 0 0;
+  margin: 3px 0 0;
   color: var(--color-ink-muted);
   font-size: var(--jb-type-label);
   line-height: 1.5;

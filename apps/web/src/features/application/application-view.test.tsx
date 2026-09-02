@@ -188,6 +188,7 @@ describe("ApplicationView", () => {
   it.each([
     {
       state: "requested assistance",
+      statusCopy: "Waiting for your decision in the agent chat",
       assistedWorkspace: {
         ...workspace,
         delegationRequests: [
@@ -205,6 +206,7 @@ describe("ApplicationView", () => {
     },
     {
       state: "active assistance",
+      statusCopy: "Agent preparation is active",
       assistedWorkspace: {
         ...workspace,
         delegationRequests: [
@@ -220,7 +222,7 @@ describe("ApplicationView", () => {
         ],
       } satisfies ApplicationWorkspace,
     },
-  ])("keeps $state decisions in the external agent client", ({ assistedWorkspace }) => {
+  ])("keeps $state decisions in the external agent client", ({ assistedWorkspace, statusCopy }) => {
     const markup = renderToStaticMarkup(
       <ApplicationView
         busy={false}
@@ -235,13 +237,20 @@ describe("ApplicationView", () => {
       />,
     );
 
-    expect(markup).toContain("Continue in your agent chat");
+    expect(markup).toContain(statusCopy);
     expect(markup).toContain("stays read-only");
     expect(markup.match(/readOnly=""/gu)).toHaveLength(2);
     expect(markup).not.toContain("Edit anything that does not sound like you");
     expect(markup).not.toContain("fill it in here");
     expect(markup).not.toContain("Allow preparation");
     expect(markup).not.toContain("Submit to Northstar Systems");
+    expect(markup).not.toContain("Not submitted yet");
+    expect(markup).not.toContain("Required unless marked optional.");
+    expect(markup).not.toContain("Continue in your agent chat.");
+    if (statusCopy === "Agent preparation is active") {
+      expect(markup).toContain("make the final decision there");
+      expect(markup).not.toContain("change anything or submit");
+    }
   });
 
   it.each(["requested", "active"] as const)(
@@ -275,8 +284,8 @@ describe("ApplicationView", () => {
       );
 
       expect(markup).toContain("Submit to Northstar Systems");
-      expect(markup).toContain("Agent access ended");
-      expect(markup).toContain("ask the agent to request access again");
+      expect(markup).toContain("Agent preparation access ended");
+      expect(markup).toContain("ask the agent to continue");
       expect(markup).not.toContain("read-only for this agent-assisted draft");
       expect(markup).not.toContain("Your agent requested preparation access");
       expect(markup).not.toContain('readOnly=""');
@@ -325,12 +334,13 @@ describe("ApplicationView", () => {
       />,
     );
 
-    expect(markup).toContain("Agent access ended");
+    expect(markup).toContain("Agent preparation access ended");
     expect(markup).toContain("Continue here");
     expect(markup).toContain("Submit to Northstar Systems");
     expect(markup).toContain("Agent suggestion");
     expect(markup).not.toContain('readOnly=""');
-    expect(markup).not.toContain("Continue in your agent chat");
+    expect(markup).not.toContain("Waiting for your decision in the agent chat");
+    expect(markup).not.toContain("Agent preparation is active");
   });
 
   it("reclassifies an expiring request when the mounted server clock advances", () => {
@@ -390,7 +400,10 @@ describe("ApplicationView", () => {
 
     expect(markup).toContain("1 detail needed");
     expect(markup).toContain("Cover letter");
-    expect(markup).toContain("Complete the form below. Nothing is sent until you choose Submit.");
+    expect(markup).toContain("Northstar Systems");
+    expect(markup).not.toContain(
+      "Complete the form below. Nothing is sent until you choose Submit.",
+    );
     // The counter beside the title already says what is left; no sentence repeats it.
     expect(markup).not.toContain("Fill in the missing details below.");
     expect(markup).not.toContain("Approve and continue");
@@ -406,7 +419,7 @@ describe("ApplicationView", () => {
 
     /* And nothing is flagged as an error before anyone has tried to submit. */
     expect(markup).not.toContain('aria-invalid="true"');
-    expect(markup).toContain("Required unless marked optional.");
+    expect(markup).not.toContain("Required unless marked optional.");
   });
 
   it("enables submission as soon as the visible required fields are complete", () => {
@@ -458,7 +471,6 @@ describe("ApplicationView", () => {
   });
 
   it.each([
-    ["idle" as const, "Saves when you move to the next field."],
     ["saving" as const, "Saving changes…"],
     ["saved" as const, "Changes saved."],
   ])("states the actual field-save behavior when saveState is %s", (saveState, message) => {
@@ -478,6 +490,25 @@ describe("ApplicationView", () => {
     );
 
     expect(markup).toContain(message);
+  });
+
+  it("does not narrate idle autosave before anything changes", () => {
+    const markup = renderToStaticMarkup(
+      <ApplicationView
+        busy={false}
+        confirmation={null}
+        error={null}
+        fieldValues={{}}
+        job={job}
+        now={workspace.serverNow}
+        onAction={() => undefined}
+        onFieldChange={() => undefined}
+        saveState="idle"
+        workspace={workspace}
+      />,
+    );
+
+    expect(markup).not.toContain("Saves when you move to the next field.");
   });
 
   it("leaves an external application as an explicit source-link handoff", () => {

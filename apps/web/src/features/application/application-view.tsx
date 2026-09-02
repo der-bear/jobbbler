@@ -208,28 +208,33 @@ function AgentAssistanceRequest({
     isLiveApplicationAssistance(delegation, now),
   );
   const requested = live?.status === "requested" ? live : undefined;
+  const active = live?.status === "active";
   const latest = workspace.delegationRequests.at(-1);
   const ended = live === undefined && latest !== undefined;
-  if (requested === undefined && !ended) return null;
+  if (requested === undefined && !active && !ended) return null;
   return (
     <section aria-labelledby="agent-assistance-heading" className={styles["assistance"]}>
       <div>
-        <p className={styles["eyebrow"]}>Agent preparation</p>
         {ended ? (
           <>
             <h2 id="agent-assistance-heading">Continue here</h2>
             <p>
-              Agent access ended. You can edit and submit here, or ask the agent to request access
-              again.
+              Agent preparation access ended. This application is editable again, or you can ask the
+              agent to continue.
+            </p>
+          </>
+        ) : active ? (
+          <>
+            <h2 id="agent-assistance-heading">Agent preparation is active</h2>
+            <p>
+              Review progress here. Ask your agent for changes or make the final decision there;
+              this page stays read-only.
             </p>
           </>
         ) : (
           <>
-            <h2 id="agent-assistance-heading">Your decision is needed</h2>
-            <p>
-              Decide in your agent app whether the agent may prepare this application. This request
-              applies only to this application.
-            </p>
+            <h2 id="agent-assistance-heading">Waiting for your decision in the agent chat</h2>
+            <p>Approve this one application there. This page stays read-only until you decide.</p>
           </>
         )}
       </div>
@@ -279,29 +284,13 @@ function ReviewDocument({
       <AgentAssistanceRequest now={now} workspace={workspace} />
       <section aria-labelledby="review-heading" className={styles["stagePanel"]}>
         <div className={styles["sectionHeading"]}>
-          <div>
-            <p className={styles["eyebrow"]}>Not submitted yet</p>
-            <h2 id="review-heading">Application details</h2>
-          </div>
+          <h2 id="review-heading">Application details</h2>
           <p className={styles["completion"]} data-ready={readiness.readyForReview}>
             {readiness.readyForReview
               ? `${String(readiness.completed)} of ${String(readiness.required)} details ready`
               : `${String(missingFields.length)} ${missingFields.length === 1 ? "detail" : "details"} needed`}
           </p>
         </div>
-        {/*
-         * Only the agent case needs a sentence here: it has to say why the
-         * page is read-only. Filling in by hand needs none — the counter
-         * beside the title already says what is left.
-         */}
-        {agentAssisted ? (
-          <p className={styles["sectionIntro"]}>
-            {readiness.readyForReview
-              ? "Review the application here. This page stays read-only while agent assistance is active; ask your agent to change anything before the final decision."
-              : "Your agent still needs information. Answer in your agent app; this page stays read-only while assistance is active."}
-          </p>
-        ) : null}
-
         {/*
          * This used to stand there from the moment the page opened, listing
          * every field as "still needed" before anyone had typed a character —
@@ -315,13 +304,7 @@ function ReviewDocument({
           </div>
         ) : null}
 
-        {/*
-         * Both house rules sit above the fields: what has to be answered, and
-         * what happens to an answer once it is typed. The saving line used to
-         * be underneath the last field, where it arrives after the fact.
-         */}
-        <p className={styles["requiredNote"]}>Required unless marked optional.</p>
-        {agentAssisted ? null : (
+        {agentAssisted || saveState === "idle" ? null : (
           <p aria-live="polite" className={styles["saveStatus"]}>
             {saveState === "saving"
               ? "Saving changes…"
@@ -329,7 +312,7 @@ function ReviewDocument({
                 ? "Changes could not be saved. Leave the field again to retry."
                 : saveState === "saved"
                   ? "Changes saved."
-                  : "Saves when you move to the next field."}
+                  : null}
           </p>
         )}
 
@@ -411,16 +394,7 @@ function ReviewDocument({
           </Link>
         </section>
 
-        {agentAssisted ? (
-          <div className={styles["actions"]}>
-            <p>
-              <strong>Continue in your agent chat.</strong>{" "}
-              {readiness.readyForReview
-                ? "Ask for any changes there, then decide whether to submit the exact application shown here."
-                : "Answer the missing questions there so the agent can finish the application."}
-            </p>
-          </div>
-        ) : (
+        {agentAssisted ? null : (
           <div aria-busy={busy} className={styles["actions"]}>
             {/*
              * Enabled even when the form is incomplete. A greyed-out button
@@ -771,7 +745,7 @@ export function ApplicationView({
                 ? `${job.title} · ${job.organizationName} · Read-only`
                 : legacyExternalDraft
                   ? `${job.title} · ${job.organizationName}`
-                  : "Complete the form below. Nothing is sent until you choose Submit."}
+                  : job.organizationName}
         </p>
       </header>
       {error === null ? null : (

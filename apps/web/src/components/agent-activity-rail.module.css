@@ -19,10 +19,10 @@
 
 .timeline li:not(:last-child)::after {
   position: absolute;
-  inset-block: 15px -2px;
+  inset-block: 15px -1px;
   inset-inline-start: 7px;
-  inline-size: 1px;
-  background: var(--color-line-strong);
+  inline-size: var(--jb-stroke-structure);
+  background: var(--color-line);
   content: "";
 }
 
