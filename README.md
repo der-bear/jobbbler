@@ -211,6 +211,13 @@ Open the local URL printed by Next.js. Seeding restores the canonical 300-role,
 30-company fictional catalog and does not contact an upstream provider. Live
 source ingestion is disabled in every checked-in policy for this release.
 
+For native WebMCP in local Chrome 149 or later, open
+`chrome://flags/#enable-webmcp-testing`, set **WebMCP testing** to **Enabled**,
+and relaunch Chrome before opening Jobbbler. A deployed HTTPS release instead
+uses an origin-bound Chrome origin-trial token supplied at web build time as
+`WEBMCP_ORIGIN_TRIAL_TOKEN`; see [Deployment](docs/operations/deployment.md).
+The ordinary portal remains usable when the experimental browser API is absent.
+
 SQLite is the zero-service development default. Set `DATABASE_URL` for
 PostgreSQL/Supabase; the server selects the PostgreSQL adapter without
 exposing that connection string to the browser. See

@@ -9,10 +9,37 @@ describe("security headers", () => {
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "strict-origin-when-cross-origin",
       "X-Frame-Options": "DENY",
-      "Permissions-Policy": expect.stringContaining("camera=()"),
+      "Origin-Agent-Cluster": "?1",
+      "Permissions-Policy": expect.stringContaining("tools=(self)"),
     });
+    expect(headers["Permissions-Policy"]).toContain("camera=()");
     expect(headers["Content-Security-Policy"]).toBeUndefined();
+    expect(headers["Origin-Trial"]).toBeUndefined();
     expect(headers["Strict-Transport-Security"]).toBeUndefined();
+  });
+
+  it("serves a configured WebMCP origin-trial token as a response header", () => {
+    const originTrialToken = "A".repeat(96);
+    const headers = securityHeaders({
+      NODE_ENV: "production",
+      WEBMCP_ORIGIN_TRIAL_TOKEN: originTrialToken,
+    });
+
+    expect(headers["Origin-Trial"]).toBe(originTrialToken);
+  });
+
+  it.each([
+    "too-short",
+    `A${"B".repeat(64)}\nInjected: value`,
+    `A${"B".repeat(64)} value`,
+    "A".repeat(4_097),
+  ])("rejects an unsafe WebMCP origin-trial token", (originTrialToken) => {
+    expect(() =>
+      securityHeaders({
+        NODE_ENV: "production",
+        WEBMCP_ORIGIN_TRIAL_TOKEN: originTrialToken,
+      }),
+    ).toThrow(/WEBMCP_ORIGIN_TRIAL_TOKEN/u);
   });
 
   it("adds a production CSP, HSTS, and the configured Supabase realtime origin", () => {

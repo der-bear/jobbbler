@@ -2,11 +2,20 @@
 
 Build independent immutable images from a clean repository checkout. Realtime wake-ups are optional; when enabled, pass the public Supabase URL and anon key at build time because Next.js embeds `NEXT_PUBLIC_*` values into the browser bundle. These values are public configuration, never service-role credentials.
 
+Before building the public release, enroll the exact clean HTTPS
+`PUBLIC_BASE_URL` in Chrome's WebMCP origin trial and pass the issued token as
+`WEBMCP_ORIGIN_TRIAL_TOKEN`. The web build emits it only as the public
+`Origin-Trial` response header. The token is origin-bound and is not an
+application credential, but it must not be checked into the repository. A
+redeploy is required after issuing or renewing it because Next.js resolves the
+header configuration during the web build.
+
 ```bash
 docker build --target web --tag jobbbler-web:local \
   --build-arg NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
   --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
   --build-arg NEXT_PUBLIC_SUPABASE_ACTIVITY_WAKEUPS="$NEXT_PUBLIC_SUPABASE_ACTIVITY_WAKEUPS" \
+  --build-arg WEBMCP_ORIGIN_TRIAL_TOKEN="$WEBMCP_ORIGIN_TRIAL_TOKEN" \
   .
 docker build --target worker --tag jobbbler-worker:local .
 ```
@@ -51,5 +60,13 @@ Through the public HTTPS ingress, wait for `GET /api/health/live`, then
 count, exactly 300 jobs and 30 organizations. Work leases make normal worker
 retries safe. The release worker evaluates saved searches and notification
 delivery only; every checked-in live-source policy is disabled.
+
+Before browser testing, inspect one document response and confirm
+`Origin-Trial`, `Origin-Agent-Cluster: ?1`, and a `Permissions-Policy` containing
+`tools=(self)`. Then open the origin in Chrome 149 or later without the local
+development flag and verify that `document.modelContext` exists, the Agent
+activity panel reports the complete tool count, and a read-only tool can be
+discovered and executed. The origin-trial token must match this exact origin;
+staging and production origins need separate enrollments.
 
 For SQLite-only development, omit `DATABASE_URL` and mount a writable `/app/.data` volume. Production PostgreSQL deployments do not need a SQLite volume.

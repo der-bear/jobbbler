@@ -29,6 +29,8 @@ describe("production deployment artifacts", () => {
     expect(dockerfile).toContain("ARG NEXT_PUBLIC_SUPABASE_URL");
     expect(dockerfile).toContain("ARG NEXT_PUBLIC_SUPABASE_ANON_KEY");
     expect(dockerfile).toContain("ARG NEXT_PUBLIC_SUPABASE_ACTIVITY_WAKEUPS");
+    expect(dockerfile).toContain("ARG WEBMCP_ORIGIN_TRIAL_TOKEN");
+    expect(dockerfile).toContain("ENV WEBMCP_ORIGIN_TRIAL_TOKEN=$WEBMCP_ORIGIN_TRIAL_TOKEN");
     expect(ignore).toContain(".env");
     expect(ignore).toContain("node_modules");
     expect(ignore).toContain("**/.next*");
@@ -58,5 +60,6 @@ describe("production deployment artifacts", () => {
     expect(runbook).toContain("--target web");
     expect(runbook).toContain("--target worker");
     expect(runbook).toContain("/api/health/ready");
+    expect(runbook).toContain("WEBMCP_ORIGIN_TRIAL_TOKEN");
   });
 });
