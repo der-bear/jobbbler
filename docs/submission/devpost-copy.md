@@ -27,7 +27,7 @@ MCP server is installed or declared.
 
 The site describes itself instead of making the agent guess. Its global agent
 activity panel is available from every page, so an agent can safely start a
-search, open a role, or navigate to the relevant workspace before it invokes
+search, open a role, or navigate to the relevant part of the site before it invokes
 workflow-specific actions. The agent reads the accepted filter vocabulary through
 `get_search_filters`, composes a valid search with `search_jobs`, and the
 visible URL, filters, and results update on the real page. The search is saved

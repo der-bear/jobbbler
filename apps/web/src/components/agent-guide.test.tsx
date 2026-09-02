@@ -77,11 +77,9 @@ describe("AgentGuide", () => {
     expect(markup).toContain("What stays with you");
     expect(markup).toContain("Prepare truthful answers and a role-specific cover letter");
     expect(markup).toContain("your CV stays with you and your agent");
+    expect(markup).toContain("Optionally add an email to get back to saved work on another device");
     expect(markup).toContain(
-      "Optionally add an email so applications and saved searches can be recovered",
-    );
-    expect(markup).toContain(
-      "Restore applications and saved searches with the email and code you provide",
+      "Bring back saved searches and applications with your email and six-digit code",
     );
     expect(markup).toContain("Consent to process your data");
     expect(markup).toContain("right to withdraw it");

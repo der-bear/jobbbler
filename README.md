@@ -114,7 +114,7 @@ validate explicit IDs, ownership, and workflow state at execution time:
 - Role `/jobs/:jobId`: `get_job_details`, `compare_jobs`
 - Comparison `/compare`: `get_comparison`, `add_job_to_comparison`,
   `remove_job_from_comparison`
-- Saved `/saved`: `get_saved_alerts`, `request_search_alert`,
+- Saved `/saved`: `save_job_search`, `get_saved_alerts`, `request_search_alert`,
   `decide_search_alert`, `set_job_alert_state`, `open_saved_search`, and
   `get_latest_search_update` (reads only what changed since the last check,
   not the full result list). Both saved searches and bounded change references

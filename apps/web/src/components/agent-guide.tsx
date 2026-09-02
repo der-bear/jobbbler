@@ -26,9 +26,9 @@ const compactPurposes: Readonly<Record<string, string>> = {
     "Create or reopen one private Jobbbler application, without sharing or submitting data.",
   get_applications: "List private applications without returning their answers.",
   open_jobbbler_page: "Open another Jobbbler page.",
-  enable_workspace_recovery: "Optionally add passwordless recovery to this private workspace.",
+  enable_workspace_recovery: "Add an email to get back to saved work on another device.",
   recover_jobbbler_workspace:
-    "Restore applications and saved searches with the email and code you provide.",
+    "Bring back saved searches and applications with your email and six-digit code.",
 };
 
 function toolPurpose(tool: RegisteredToolSummary): string {
@@ -173,8 +173,8 @@ export function AgentGuide() {
           <ul>
             <li>Search and compare matching roles</li>
             <li>Save a search and report only what changed</li>
-            <li>Optionally add an email so applications and saved searches can be recovered</li>
-            <li>Restore applications and saved searches with the email and code you provide</li>
+            <li>Optionally add an email to get back to saved work on another device</li>
+            <li>Bring back saved searches and applications with your email and six-digit code</li>
             <li>
               Prepare truthful answers and a role-specific cover letter; your CV stays with you and
               your agent

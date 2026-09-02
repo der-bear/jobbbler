@@ -18,6 +18,9 @@ describe("WebMCP explanation", () => {
     expect(markup).toContain('aria-label="Copy prompt"');
     expect(markup).toContain("Search");
     expect(markup).toContain("Compare");
+    expect(markup).toContain(
+      "It compares the facts and explains the trade-offs using what matters to you",
+    );
     expect(markup).toContain("Monitor");
     expect(markup).toContain("Apply");
     expect(markup).toContain("A window into the agent layer");
@@ -26,6 +29,9 @@ describe("WebMCP explanation", () => {
     expect(markup).not.toContain("Agent view");
     expect(markup).toContain("The conversation stays in your agent app");
     expect(markup).toContain("No account is needed to search");
+    expect(markup).toContain("getting back to saved searches and applications on another device");
+    expect(markup).toContain("Bring back your saved searches and applications when you ask");
+    expect(markup).not.toContain("private workspace");
     expect(markup).toContain("Jobbbler keeps checking after the tab closes");
     expect(markup).toContain("You stay in control");
     expect(markup).toContain("Stays with you");

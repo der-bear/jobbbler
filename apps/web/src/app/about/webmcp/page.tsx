@@ -25,7 +25,7 @@ const outcomeSteps = [
   },
   {
     title: "Compare",
-    copy: "It checks the facts and explains which roles fit best.",
+    copy: "It compares the facts and explains the trade-offs using what matters to you.",
   },
   {
     title: "Monitor",
@@ -40,7 +40,7 @@ const outcomeSteps = [
 const agentCan = [
   "Find, compare, and keep checking matching roles",
   "Prepare application answers from facts you provide",
-  "Restore your private workspace when you ask",
+  "Bring back your saved searches and applications when you ask",
 ] as const;
 
 const decisionsForYou = [
@@ -154,8 +154,8 @@ export default function WebMcpAboutPage() {
           </div>
           <p className={styles["accountNote"]}>
             No account is needed to search, save, or apply in this browser. Email is optional and is
-            used only for updates or restoring your private workspace. It never counts as consent to
-            use personal data or submit an application.
+            used only for updates or getting back to saved searches and applications on another
+            device. It never counts as consent to use personal data or submit an application.
           </p>
         </div>
       </section>
