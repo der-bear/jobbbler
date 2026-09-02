@@ -57,9 +57,10 @@
   inset-block-start: calc(100% + 10px);
   inset-inline: -12px;
   overflow: hidden;
-  border: 1px solid var(--color-line-strong);
+  border: var(--jb-stroke-structure) solid var(--color-line-strong);
   border-radius: var(--jb-radius-md);
-  background: var(--jb-glass-float);
+  /* Keep the nearby filter labels from reading through the suggestion text. */
+  background: var(--jb-glass-sheet);
   backdrop-filter: var(--jb-glass-blur-float);
   -webkit-backdrop-filter: var(--jb-glass-blur-float);
   box-shadow: var(--shadow-floating);

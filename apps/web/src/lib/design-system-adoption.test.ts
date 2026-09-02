@@ -182,4 +182,16 @@ describe("design system adoption", () => {
       ".quietButton:hover {\n  background: var(--jb-hover-surface);",
     );
   });
+
+  it("gives the location popover a readable frosted sheet over nearby filters", async () => {
+    const location = await readFile(
+      join(sourceRoot, "features/search/location-combobox.module.css"),
+      "utf8",
+    );
+
+    expect(location).toMatch(
+      /\.popover \{[^}]*border: var\(--jb-stroke-structure\) solid var\(--color-line-strong\);[^}]*background: var\(--jb-glass-sheet\);/u,
+    );
+    expect(location).toContain("backdrop-filter: var(--jb-glass-blur-float);");
+  });
 });
