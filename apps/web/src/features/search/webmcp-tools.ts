@@ -306,6 +306,10 @@ function reusableCriteria(criteria: JobSearchCriteria): JsonValue {
 }
 
 function compactSearchResult(result: SearchJobsResult): JsonValue {
+  const locationGuidance =
+    result.total === 0 && result.criteria.locations.length > 0
+      ? "No role matched the requested location and other filters. Keep the place literal: check its spelling, or ask before broadening or removing it."
+      : null;
   return {
     total: result.total,
     jobs: result.jobs.slice(0, 3).map((job) => ({
@@ -320,6 +324,7 @@ function compactSearchResult(result: SearchJobsResult): JsonValue {
     })),
     nextCursor: result.nextCursor,
     hasMore: result.nextCursor !== null,
+    ...(locationGuidance === null ? {} : { locationGuidance }),
   };
 }
 

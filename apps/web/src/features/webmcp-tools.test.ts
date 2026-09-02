@@ -321,6 +321,35 @@ describe("route-scoped WebMCP tool manifests", () => {
     expectBoundedJson(filters);
   });
 
+  it("guides the agent after a literal location search returns no matches", async () => {
+    const noMatches: SearchJobsResult = {
+      ...searchResult,
+      criteria: { ...searchResult.criteria, locations: ["Nowhere City"] },
+      jobs: [],
+      total: 0,
+      nextCursor: null,
+    };
+    const manifests = createSearchToolManifests({
+      searchJobs: async () => noMatches,
+      getSearchState: () => null,
+      onSearchCommitted: () => undefined,
+      onNavigate: () => undefined,
+    }) as readonly ToolManifest[];
+
+    const result = await tool(manifests, "search_jobs").execute(
+      { locations: ["Nowhere City"] },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toMatchObject({
+      status: "completed",
+      data: {
+        total: 0,
+        locationGuidance: expect.stringContaining("check its spelling"),
+      },
+    });
+  });
+
   it("returns three exact job IDs and an opaque continuation cursor within the agent budget", async () => {
     const nextCursor = "cursor_" + "x".repeat(249);
     const fullRoleTitle = "Senior Infrastructure Engineer, Multi-Tenant Isolation";

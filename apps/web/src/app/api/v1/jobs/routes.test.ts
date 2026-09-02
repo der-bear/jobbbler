@@ -185,6 +185,21 @@ describe("job discovery API routes", () => {
     expect(response.headers.get("retry-after")).toBe("17");
   });
 
+  it("allows enough distinct searches for a shared judge or office connection", async () => {
+    const check = vi.fn(async () => ({
+      allowed: true,
+      remaining: 239,
+      retryAfterSeconds: 0,
+      resetAtMs: 61_000,
+    }));
+    await handleSearchRequest(
+      new Request("https://jobbbler.example/api/v1/jobs/search?q=platform"),
+      dependencies({ check }),
+    );
+
+    expect(check).toHaveBeenCalledWith(expect.objectContaining({ limit: 240, windowMs: 60_000 }));
+  });
+
   it("lazy-loads bounded location suggestions from the catalog index", async () => {
     const current = dependencies();
     const response = await handleLocationSuggestionsRequest(

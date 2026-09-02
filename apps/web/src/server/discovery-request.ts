@@ -7,7 +7,9 @@ import type { RateLimitDecision } from "./rate-limit";
 
 export const publicJobSearchPolicy = {
   scope: "jobs.search",
-  limit: 60,
+  // Search is read-only and inexpensive. Keep enough headroom for agent retries
+  // and several challenge judges sharing one office or conference NAT.
+  limit: 240,
   cacheControl: "public, max-age=0, s-maxage=60, stale-while-revalidate=300",
   revalidateSeconds: 60,
 } as const;
