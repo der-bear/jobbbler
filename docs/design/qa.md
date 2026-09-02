@@ -64,9 +64,8 @@ and submitted:
 
 ## Visual evidence
 
-Only final 3:2 captures under [`docs/submission/media/`](../submission/media/)
-are submission evidence. Their intended states, captions, alt text, and privacy
-guardrails are defined in the
-[gallery shot list](../submission/gallery-shot-list.md). Replace those files
-in place after the interface and deployed revision are frozen so README,
-Devpost, and the video never describe different builds.
+Capture submission media only after the interface and deployed revision are
+frozen. Use the same real product states in the gallery and video, keep private
+values out of frame, and verify every image at its final crop and upload size.
+Production scripts, form drafts, and gallery working files stay outside this
+public repository.
