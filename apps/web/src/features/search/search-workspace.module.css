@@ -302,6 +302,16 @@
   padding-inline: 9px;
 }
 
+/*
+ * The wrapper draws the edge, so the wrapper answers the pointer. The hover
+ * rule for fields lands on the inner input, whose edge is 0 — Search and
+ * Location were the two controls in the rail that did nothing on hover.
+ */
+.railSearch:hover,
+.railLocation:hover {
+  border-color: var(--jb-hover-line);
+}
+
 .railSearch:has(input:focus-visible),
 .railLocation:has(input:focus-visible) {
   border-color: transparent;
@@ -444,12 +454,22 @@
   border-radius: var(--radius-sm);
   outline: 0;
   background: var(--jb-veil-control);
-  backdrop-filter: var(--jb-glass-blur-control);
-  -webkit-backdrop-filter: var(--jb-glass-blur-control);
   color: var(--color-ink);
   padding: 7px 10px;
   font-size: var(--jb-type-ui);
   transition: border-color var(--motion-fast) var(--ease-standard);
+}
+
+/*
+ * The glass belongs to the field that draws its own edge. Search and
+ * Location sit inside a wrapper that is the glass already; a second blur on
+ * the inner input drew a tinted, blurred rectangle inside the field — the
+ * canvas showing through twice, saturated twice.
+ */
+.filterRow input:not(.railSearch input, .railLocation input),
+.filterRow select {
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
 }
 
 /* A field does not take the hover ground — its ground is where you type —
@@ -654,10 +674,20 @@
  * aligned with the heading above. Rows only — the card layout has gaps and a
  * border of its own, and a negative margin there closes the grid up.
  */
+/*
+ * A row in the list is a band, not a card: it runs exactly as wide as the
+ * rule under the results header and has no corners. It used to bleed 16px
+ * past that rule on both sides with a 4px radius, so every separator was
+ * longer than the header's and the titles stood 20px in from it.
+ */
 .resultList:not([data-layout="cards"]) .jobResult {
-  margin-inline: calc(var(--jb-rhythm-2) * -1);
-  border-radius: var(--radius-sm);
-  padding-inline: var(--jb-rhythm-2);
+  margin-inline: 0;
+  border-radius: 0;
+  padding-inline: 0;
+}
+
+.resultList:not([data-layout="cards"]) .jobSummary {
+  padding-inline: 0;
 }
 
 .resultList .jobResult {
@@ -786,7 +816,7 @@
  * The label and the hover ground are the same veil, so on hover the label
  * used to sink into the row. It steps one veil up and stays a label.
  */
-.jobResult:hover :global(.jb-chip--static) {
+.jobResult:hover :global(.jb-chip--static:not(.jb-chip--signal)) {
   background: var(--jb-veil-strong);
 }
 
@@ -1067,7 +1097,15 @@
     white-space: nowrap;
   }
 
+  /*
+   * On a phone the rail is part of the page, not a second scroller. Kept
+   * sticky with its own scroll, its last controls sat under the floating
+   * bar and could not be scrolled out from beneath it.
+   */
   .filterRail {
+    position: static;
+    max-block-size: none;
+    overflow: visible;
     border-inline-end: 0;
     border-block-end: var(--jb-stroke-structure) solid var(--color-line);
     padding: 20px 20px 18px;

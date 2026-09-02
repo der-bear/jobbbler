@@ -63,6 +63,16 @@
   outline: 0;
 }
 
+/*
+ * The shared `[tabindex]:not([tabindex="-1"]):focus-visible` rule outranks a
+ * plain class selector, so the resizer and the roving-tabindex tabs restate
+ * their focus with the attribute in the selector.
+ */
+.resizer[tabindex]:focus-visible {
+  outline: 0;
+  border-radius: 0;
+}
+
 .header {
   display: grid;
   gap: 14px;
@@ -185,6 +195,12 @@
 
 .tabs button[aria-selected="true"]:focus-visible {
   border-block-end-color: transparent;
+}
+
+.tabs button[tabindex]:focus-visible {
+  border-radius: 0;
+  outline: var(--jb-stroke-control) solid var(--jb-focus);
+  outline-offset: calc(-1 * var(--jb-stroke-control));
 }
 
 .content:focus-visible,

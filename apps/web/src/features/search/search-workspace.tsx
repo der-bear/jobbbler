@@ -606,7 +606,9 @@ function JobResult({
           <strong>{titleWithoutEmploymentSuffix(job.title, job.employmentType)}</strong>
           <small>{job.organizationName}</small>
           <span className={styles["jobMeta"]}>
-            <Chip>{workModelLabel(job.workModel)}</Chip>
+            <Chip tone={job.workModel === "onsite" ? "neutral" : "signal"}>
+              {workModelLabel(job.workModel)}
+            </Chip>
             {[
               locationBesideWorkModel(displayedLocation, job.workModel),
               deviatingEmploymentLabel(job.employmentType),

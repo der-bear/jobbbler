@@ -166,7 +166,9 @@ function JobIdentity({
         </div>
       </div>
       <div className={styles["facts"]}>
-        <Chip>{workModelLabel(job.workModel)}</Chip>
+        <Chip tone={job.workModel === "onsite" ? "neutral" : "signal"}>
+          {workModelLabel(job.workModel)}
+        </Chip>
         {factLocations === null ? null : (
           <span>
             <MapPinIcon aria-hidden="true" size={16} />

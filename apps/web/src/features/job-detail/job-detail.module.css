@@ -451,11 +451,15 @@
   gap: 8px;
 }
 
+/* A skill is a fact about the role, so it takes the static label's form, not a control's edge. */
 .skills span {
-  border: 1px solid var(--color-line-strong);
+  border-radius: var(--jb-radius-pill);
+  background: var(--jb-hover-surface);
   color: var(--color-ink-muted);
   font-size: var(--jb-type-caption);
-  padding: 6px 9px;
+  font-weight: 620;
+  padding: 4px 9px;
+  mix-blend-mode: var(--jb-blend-fg);
 }
 
 .provenanceSection {

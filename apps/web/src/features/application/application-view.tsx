@@ -557,22 +557,21 @@ function CompletePanel({ workspace }: Readonly<{ workspace: ApplicationWorkspace
   const submission = receipt.status === "submitted" ? receipt.submission : null;
   /*
    * A person either sent this themselves or let their agent send it; the
-   * receipt says which. The data decision records its channel, and an earlier
-   * delegation means an agent had a hand in it even if that record is gone.
+   * receipt says which. Only the data decision's channel can tell — an earlier
+   * delegation proves nothing, since access can end and the person can then
+   * finish here by hand. Without a recorded channel the receipt does not guess.
    */
-  const throughAgent =
-    workspace.dataGrant?.decisionChannel === "agent_client" ||
-    workspace.delegationRequests.length > 0;
+  const channel = workspace.dataGrant?.decisionChannel;
+  const submittedBy =
+    channel === "agent_client"
+      ? "Submitted through your agent"
+      : channel === "first_party_ui"
+        ? "Submitted by you"
+        : "Submitted";
   return (
     <section aria-labelledby="complete-heading" className={styles["stagePanel"]}>
       <CheckCircleIcon aria-hidden="true" className={styles["completeIcon"]} weight="fill" />
-      <p className={styles["eyebrow"]}>
-        {handedOff
-          ? "Next step"
-          : throughAgent
-            ? "Submitted through your agent"
-            : "Submitted by you"}
-      </p>
+      <p className={styles["eyebrow"]}>{handedOff ? "Next step" : submittedBy}</p>
       <h2 id="complete-heading">
         {handedOff
           ? "Ready to continue on the employer's website"
