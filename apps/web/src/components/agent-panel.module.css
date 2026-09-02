@@ -92,7 +92,8 @@
   flex: 0 0 auto;
   place-items: center;
   border: 0;
-  border-radius: var(--radius-sm);
+  /* Icon-only and square: round by nature. */
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--color-ink-muted);
 }

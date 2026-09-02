@@ -67,6 +67,8 @@
 }
 
 .identityCard {
+  /* It carries a fill, so it is a pane and takes a pane's corners. */
+  border-radius: var(--radius-md);
   border-block-start: var(--jb-stroke-control) solid var(--jb-signal);
   /*
    * Opaque on purpose. In the light theme the surface and the canvas are the
@@ -734,7 +736,8 @@
   align-content: center;
   justify-items: start;
   border: var(--jb-stroke-structure) solid var(--color-line);
-  border-radius: var(--radius-lg);
+  /* A pane in the flow, not a sheet. */
+  border-radius: var(--radius-md);
   /*
    * No colour wash here. The neutral already carries a trace of the accent in
    * its hue, which is the whole point of the shifted palette — tinting the

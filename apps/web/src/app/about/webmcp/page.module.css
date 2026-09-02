@@ -195,7 +195,7 @@
   grid-template-columns: 26px minmax(0, 1fr);
   gap: 13px;
   border: var(--jb-stroke-structure) solid var(--color-line-strong);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   padding: 20px;
   background: var(--jb-glass-fill-strong);
   backdrop-filter: var(--jb-glass-blur);
