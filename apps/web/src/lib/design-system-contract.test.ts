@@ -96,6 +96,7 @@ describe("Jobbbler design tokens", () => {
   });
 
   it("routes backdrop blur and visible border weights through the shared system", async () => {
+    const tokens = await readFile(tokenSheet, "utf8");
     const paths = [...(await cssFiles(webSource)), ...(await cssFiles(uiSource))];
     const rawBackdropFilters: string[] = [];
     const twoPixelBorders: string[] = [];
@@ -110,6 +111,9 @@ describe("Jobbbler design tokens", () => {
 
     expect(rawBackdropFilters, "backdrop blur must use the material scale").toEqual([]);
     expect(twoPixelBorders, "visible borders may not exceed the control stroke").toEqual([]);
+    expect(tokens, "active indicators must stay on the one-pixel control stroke").toContain(
+      "--jb-stroke-indicator: 1px;",
+    );
   });
 
   it("keeps normal text and action states at WCAG AA contrast in both themes", async () => {
