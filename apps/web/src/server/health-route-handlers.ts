@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 
+import { DomainError, isDomainError } from "@jobbbler/core-domain";
 import { inspectSqliteDatabase, type SqliteIntegritySummary } from "@jobbbler/storage-sqlite";
 import {
   postgresMigrationManifest,
@@ -19,8 +20,39 @@ interface ReadinessSummary {
 }
 
 type Inspector = () => Promise<ReadinessSummary> | ReadinessSummary;
+type ReadinessPhase =
+  "catalog" | "configuration" | "database" | "inspection" | "migrations" | "storage" | "worker";
 
 type MigrationJournalEntry = Pick<PostgresMigration, "version" | "name" | "checksum">;
+
+function readinessDependencyError(phase: ReadinessPhase, cause: unknown): DomainError {
+  return new DomainError({
+    code: "DEPENDENCY",
+    message: "Production dependencies are not ready.",
+    retryable: true,
+    details: { phase },
+    cause,
+  });
+}
+
+async function inspectPhase<T>(phase: ReadinessPhase, inspect: () => Promise<T> | T): Promise<T> {
+  try {
+    return await inspect();
+  } catch (error) {
+    throw readinessDependencyError(phase, error);
+  }
+}
+
+function safeReadinessError(error: unknown): DomainError {
+  if (
+    isDomainError(error) &&
+    error.code === "DEPENDENCY" &&
+    typeof error.details?.["phase"] === "string"
+  ) {
+    return error;
+  }
+  return readinessDependencyError("inspection", error);
+}
 
 export function validatePostgresMigrationJournal(
   applied: readonly MigrationJournalEntry[],
@@ -82,38 +114,48 @@ function isPostgresStorage(storage: RuntimeStorage): storage is PostgresStorage 
 }
 
 async function defaultInspector(): Promise<ReadinessSummary> {
-  const runtime = validateRuntimeConfiguration();
-  const storage = getServerStorage();
+  const runtime = await inspectPhase("configuration", () => validateRuntimeConfiguration());
+  const storage = await inspectPhase("storage", () => getServerStorage());
   if (isPostgresStorage(storage)) {
     if (runtime.databaseDriver !== "postgres") {
       throw new Error("Runtime database selection does not match the validated configuration.");
     }
-    const expectedMigrations = postgresMigrationManifest();
-    const appliedMigrations = await storage.sql<MigrationJournalEntry[]>`
-      SELECT version, name, checksum
-      FROM jobbbler.schema_migrations
-      ORDER BY version`;
-    validatePostgresMigrationJournal(appliedMigrations, expectedMigrations);
+    const expectedMigrations = await inspectPhase("migrations", () => postgresMigrationManifest());
+    const appliedMigrations = await inspectPhase(
+      "migrations",
+      () => storage.sql<MigrationJournalEntry[]>`
+        SELECT version, name, checksum
+        FROM jobbbler.schema_migrations
+        ORDER BY version`,
+    );
+    await inspectPhase("migrations", () =>
+      validatePostgresMigrationJournal(appliedMigrations, expectedMigrations),
+    );
     if (runtime.environment === "production") {
-      const heartbeatRows = await storage.sql<{ readonly occurred_at: string | null }[]>`
-        SELECT body->>'occurredAt' AS occurred_at
-        FROM jobbbler.entity_records
-        WHERE kind = 'audit'
-          AND body->>'type' = 'worker.cycle.completed'
-          AND body->>'aggregateType' = 'system'
-          AND body->>'aggregateId' = 'worker_cycle'
-        ORDER BY body->>'occurredAt' DESC, id DESC
-        LIMIT 1`;
-      assertFreshWorkerHeartbeat(
-        heartbeatRows[0]?.occurred_at ?? null,
-        new Date().toISOString(),
-        workerHeartbeatMaximumAge(process.env),
-      );
+      await inspectPhase("worker", async () => {
+        const heartbeatRows = await storage.sql<{ readonly occurred_at: string | null }[]>`
+          SELECT body->>'occurredAt' AS occurred_at
+          FROM jobbbler.entity_records
+          WHERE kind = 'audit'
+            AND body->>'type' = 'worker.cycle.completed'
+            AND body->>'aggregateType' = 'system'
+            AND body->>'aggregateId' = 'worker_cycle'
+          ORDER BY body->>'occurredAt' DESC, id DESC
+          LIMIT 1`;
+        assertFreshWorkerHeartbeat(
+          heartbeatRows[0]?.occurred_at ?? null,
+          new Date().toISOString(),
+          workerHeartbeatMaximumAge(process.env),
+        );
+      });
     }
-    const rows = await storage.sql<{ readonly organizations: string; readonly jobs: string }[]>`
-      SELECT
-        (SELECT count(*)::text FROM jobbbler.entity_records WHERE kind = 'organization') AS organizations,
-        (SELECT count(*)::text FROM jobbbler.entity_records WHERE kind = 'job') AS jobs`;
+    const rows = await inspectPhase(
+      "catalog",
+      () => storage.sql<{ readonly organizations: string; readonly jobs: string }[]>`
+        SELECT
+          (SELECT count(*)::text FROM jobbbler.entity_records WHERE kind = 'organization') AS organizations,
+          (SELECT count(*)::text FROM jobbbler.entity_records WHERE kind = 'job') AS jobs`,
+    );
     const row = rows[0];
     if (row === undefined) throw new Error("PostgreSQL readiness query returned no summary.");
     return {
@@ -127,8 +169,10 @@ async function defaultInspector(): Promise<ReadinessSummary> {
     throw new Error("Runtime database selection does not match the validated configuration.");
   }
   const base = process.env["INIT_CWD"] ?? process.cwd();
-  const summary: SqliteIntegritySummary = inspectSqliteDatabase(
-    resolve(base, process.env["SQLITE_DATABASE_PATH"] ?? ".data/jobbbler.sqlite"),
+  const summary = await inspectPhase<SqliteIntegritySummary>("database", () =>
+    inspectSqliteDatabase(
+      resolve(base, process.env["SQLITE_DATABASE_PATH"] ?? ".data/jobbbler.sqlite"),
+    ),
   );
   return {
     driver: "sqlite",
@@ -162,6 +206,6 @@ export async function handleReadyHealthRequest(
       { requestId, cacheControl: "no-store" },
     );
   } catch (error) {
-    return apiErrorResponse(error, { requestId, status: 503 });
+    return apiErrorResponse(safeReadinessError(error), { requestId, status: 503 });
   }
 }

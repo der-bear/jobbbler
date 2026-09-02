@@ -77,7 +77,12 @@ describe("health route handlers", () => {
     expect(response.status).toBe(503);
     expect(await response.json()).toMatchObject({
       ok: false,
-      error: { code: "INTERNAL" },
+      error: {
+        code: "DEPENDENCY",
+        message: "Production dependencies are not ready.",
+        retryable: true,
+        details: { phase: "inspection" },
+      },
     });
   });
 
