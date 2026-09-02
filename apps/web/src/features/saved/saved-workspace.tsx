@@ -403,6 +403,7 @@ export function SavedWorkspace({
   const [frequency, setFrequency] = useState<"daily" | "weekly">("daily");
   const [time, setTime] = useState("09:00");
   const [timeZone, setTimeZone] = useState(localTimeZone);
+  const timeZoneOptions = useMemo(knownTimeZones, []);
   const [days, setDays] = useState<readonly Weekday[]>(["monday", "wednesday", "friday"]);
   const [endpointId, setEndpointId] = useState("");
   const [pendingRevokeId, setPendingRevokeId] = useState<string | null>(null);
@@ -1269,7 +1270,7 @@ export function SavedWorkspace({
                       value={timeZone}
                     />
                     <datalist id="saved-search-time-zones">
-                      {knownTimeZones().map((zone) => (
+                      {timeZoneOptions.map((zone) => (
                         <option key={zone} value={zone} />
                       ))}
                     </datalist>
@@ -1463,10 +1464,7 @@ export function SavedWorkspace({
                         </div>
                       ) : null}
                       <div className={styles["savedActions"]}>
-                        <Link
-                          className={styles["quietButton"]}
-                          href={searchHref(saved.criteria)}
-                        >
+                        <Link className={styles["quietButton"]} href={searchHref(saved.criteria)}>
                           View matches
                         </Link>
                         {schedule === undefined ? (

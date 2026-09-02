@@ -26,7 +26,12 @@ type PanelTab = (typeof panelTabs)[number];
 
 const MIN_PANEL_WIDTH = 320;
 const MAX_PANEL_WIDTH = 560;
-const MIN_MAIN_WIDTH = 760;
+/*
+ * The page keeps 640px beside the panel: with the 320px panel minimum that is
+ * the 960px where the panel becomes a sheet (see app-shell.tsx). At 760 the
+ * resizer had no range at all between 961 and 1079px.
+ */
+const MIN_MAIN_WIDTH = 640;
 
 export function maximumAgentPanelWidth(viewportWidth: number): number {
   return Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, viewportWidth - MIN_MAIN_WIDTH));

@@ -14,8 +14,11 @@ const coreTools: readonly RegisteredToolSummary[] = [
 
 describe("AgentPanelSurface", () => {
   it("keeps a readable main column while allowing the full panel on wide screens", () => {
-    expect(maximumAgentPanelWidth(1081)).toBe(321);
-    expect(maximumAgentPanelWidth(1240)).toBe(480);
+    // 960 is the sheet breakpoint: panel 320 + page 640. One pixel above it the resizer has a range.
+    expect(maximumAgentPanelWidth(961)).toBe(321);
+    expect(maximumAgentPanelWidth(1081)).toBe(441);
+    expect(maximumAgentPanelWidth(1100)).toBe(460);
+    expect(maximumAgentPanelWidth(1240)).toBe(560);
     expect(maximumAgentPanelWidth(1440)).toBe(560);
   });
 
