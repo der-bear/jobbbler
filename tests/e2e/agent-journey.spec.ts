@@ -222,9 +222,9 @@ test.describe("agent journey through the live WebMCP surface", () => {
           },
           {
             key: "Retention",
-            value: "Stored until the alert or delivery destination is removed.",
+            value: "Kept until you delete this search alert or remove your email.",
           },
-          { key: "Withdrawal", value: expect.stringContaining("Pause or delete the alert") },
+          { key: "Withdrawal", value: expect.stringContaining("Stop it any time") },
         ]),
       },
     });

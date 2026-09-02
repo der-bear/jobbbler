@@ -35,7 +35,7 @@ function endpoint(
 }
 
 const browserOnlyCopy = {
-  eyebrow: "Private workspace",
+  eyebrow: "Only you can see this",
   title: "Available in this browser",
   description:
     "This browser can open your saved searches and applications. Add email only for updates or to restore access on another device.",
@@ -51,7 +51,7 @@ const recoverableCopy = {
 describe("privateAccessCopy", () => {
   it("explains the no-account state before private work exists", () => {
     expect(privateAccessCopy(null, [])).toEqual({
-      eyebrow: "Private workspace",
+      eyebrow: "Only you can see this",
       title: "No account needed",
       description:
         "Save searches and applications without creating an account. Add email only for updates or to restore access on another device.",

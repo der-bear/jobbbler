@@ -1,7 +1,7 @@
 export const searchAlertReviewPolicy = {
   purpose: "Store this search and email matching-job updates.",
   dataCategories: ["saved_search_criteria", "delivery_email"] as const,
-  retention: "Stored until the alert or delivery destination is removed.",
-  withdrawal: "Pause or delete the alert, or revoke its delivery destination, at any time.",
+  retention: "Kept until you delete this search alert or remove your email.",
+  withdrawal: "Stop it any time: pause or delete the alert, or remove your email.",
   privacyNoticeVersion: "search-alert-v1",
 } as const;

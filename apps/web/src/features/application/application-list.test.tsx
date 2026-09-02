@@ -76,7 +76,8 @@ describe("ApplicationHistory", () => {
     expect(markup).not.toContain("Your decision needed");
     expect(markup).not.toContain("In progress");
     expect(markup).toContain("View receipt");
-    expect(markup).toContain("Not submitted by Jobbbler");
+    // Plain words: the person finishes on the employer's site; nothing "by Jobbbler" to parse.
+    expect(markup).toContain("Finish on the employer website");
     expect(markup).toContain("View next step");
     expect(markup).toContain("Role closed");
     expect(markup).toContain("View application");

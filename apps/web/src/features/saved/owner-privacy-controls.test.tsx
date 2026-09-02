@@ -46,7 +46,7 @@ describe("OwnerPrivacyControls", () => {
     );
 
     expect(markup).toContain("<details");
-    expect(markup).toContain("Workspace controls");
+    expect(markup).toContain("Your data");
     expect(markup).toContain("<strong>Delete private data</strong>");
     expect(markup).toContain("DELETE MY PRIVATE DATA");
     expect(markup).not.toContain("Add a recovery email");

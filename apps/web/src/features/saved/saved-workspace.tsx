@@ -211,7 +211,7 @@ export function privateAccessCopy(
 }> {
   if (owner === null) {
     return {
-      eyebrow: "Private workspace",
+      eyebrow: "Only you can see this",
       title: "No account needed",
       description:
         "Save searches and applications without creating an account. Add email only for updates or to restore access on another device.",
@@ -222,7 +222,7 @@ export function privateAccessCopy(
     !endpoints.some(({ status: endpointStatus }) => endpointStatus === "verified")
   ) {
     return {
-      eyebrow: "Private workspace",
+      eyebrow: "Only you can see this",
       title: "Available in this browser",
       description:
         "This browser can open your saved searches and applications. Add email only for updates or to restore access on another device.",
@@ -1014,7 +1014,7 @@ export function SavedWorkspace({
                 router.replace("/saved");
                 toast.show({
                   title: "Private data deleted",
-                  description: "The private workspace and its sessions were permanently removed.",
+                  description: "Everything you saved here has been deleted.",
                   tone: "success",
                 });
               }}
@@ -1024,7 +1024,7 @@ export function SavedWorkspace({
                     setOwner(recoveredOwner);
                     toast.show({
                       title: "Workspace recovered",
-                      description: "A new private session is active on this browser.",
+                      description: "Your saved searches and applications are back on this browser.",
                       tone: "success",
                     });
                   })
@@ -1321,13 +1321,13 @@ export function SavedWorkspace({
                   )}
                   <div className={styles["previewRow"]}>
                     <SparkleIcon aria-hidden="true" size={19} />
-                    <span>Digest policy</span>
-                    <strong>Only material changes</strong>
+                    <span>We email you</span>
+                    <strong>Only when something changes</strong>
                   </div>
                   <p>
                     {editingSchedule !== null && reviewChanges.length === 0
                       ? "Nothing has changed yet. Go back to edit the schedule."
-                      : "Jobbbler will check this saved search in the background and email only when the results meaningfully change."}
+                      : "Jobbbler checks this search for you and emails only when the results change. You can pause or delete it any time, here or from your agent."}
                   </p>
                   <div className={styles["buttonRow"]}>
                     <button

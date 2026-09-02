@@ -35,11 +35,11 @@ function stateLabel(item: ApplicationListItem): string {
     case "submitted":
       return "Submitted";
     case "handed_off":
-      return "Not submitted by Jobbbler";
+      return "Finish on the employer website";
     case "withdrawn":
       return "Withdrawn";
     case "failed":
-      return "Needs attention";
+      return "Something went wrong";
     case "submitting":
       return "Submitting";
     default:
