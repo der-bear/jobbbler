@@ -14,7 +14,9 @@ export const workflowGoals = [
   "compare_roles",
   "save_search",
   "monitor_search",
+  "manage_saved_search",
   "prepare_application",
+  "withdraw_application_consent",
   "enable_recovery",
   "recover_workspace",
 ] as const;
@@ -39,10 +41,11 @@ interface WorkflowPlan {
   readonly branches?: readonly WorkflowBranch[];
 }
 
-export const workflowVersion = "2.8";
+export const workflowVersion = "2.9";
 export const workflowBoundaries: readonly string[] = [
   "Advice only; grants no authority.",
   "Decide in the agent client.",
+  "Applications: call readiness and follow its nextTool.",
   "Monitoring cannot submit.",
 ];
 
@@ -86,13 +89,7 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
         humanAction: false,
       },
       {
-        intent: "Open the strongest role",
-        tool: "open_job_details",
-        requiredInputs: ["jobId"],
-        humanAction: false,
-      },
-      {
-        intent: "Start a comparison with up to two more",
+        intent: "Compare the selected shortlist",
         tool: "compare_jobs",
         requiredInputs: ["jobIds: 2–3 exact IDs"],
         humanAction: false,
@@ -187,15 +184,31 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
       },
     ],
   },
+  manage_saved_search: {
+    title: "Manage saved searches",
+    steps: [
+      {
+        intent: "List saved searches and alert schedules",
+        tool: "get_saved_alerts",
+        requiredInputs: ["optional limit and offset"],
+        humanAction: false,
+      },
+      {
+        intent: "Pause, resume, or permanently delete the exact target",
+        tool: "set_job_alert_state",
+        requiredInputs: [
+          "action",
+          "scheduleId for pause or resume",
+          "savedSearchId and confirmation only for delete",
+        ],
+        humanAction:
+          "Delete only when the person explicitly asks to permanently delete this saved search.",
+      },
+    ],
+  },
   prepare_application: {
     title: "Prepare application",
     steps: [
-      {
-        intent: "Open the role",
-        tool: "open_job_details",
-        requiredInputs: ["jobId"],
-        humanAction: false,
-      },
       {
         intent: "Read the full role",
         tool: "get_job_details",
@@ -211,7 +224,7 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
       {
         intent: "Check missing facts",
         tool: "get_application_readiness",
-        requiredInputs: ["draftId"],
+        requiredInputs: ["draftId from prepare_application"],
         humanAction: false,
       },
       {
@@ -243,6 +256,23 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
         tool: "decide_application_submission",
         requiredInputs: ["draftId", "requestId", "draftVersion", "decision"],
         humanAction: false,
+      },
+    ],
+  },
+  withdraw_application_consent: {
+    title: "Withdraw application consent",
+    steps: [
+      {
+        intent: "Read the current application state without returning answers",
+        tool: "get_application_readiness",
+        requiredInputs: ["draftId"],
+        humanAction: false,
+      },
+      {
+        intent: "Stop future consent-based processing for this application",
+        tool: "withdraw_application_consent",
+        requiredInputs: ["draftId"],
+        humanAction: "Use only after the person explicitly asks to withdraw consent.",
       },
     ],
   },
@@ -323,6 +353,10 @@ function preferredTool(goal: WorkflowGoal, route: string): string | null {
   }
   if (goal === "compare_roles" && route === "/compare") return "get_comparison";
   if (goal === "monitor_search" && route === "/saved") return "get_saved_alerts";
+  if (goal === "manage_saved_search" && route === "/saved") return "get_saved_alerts";
+  if (goal === "withdraw_application_consent" && route === "/apply/:draftId") {
+    return "get_application_readiness";
+  }
   if (goal === "prepare_application" && route === "/jobs/:jobId") {
     return "get_job_details";
   }
@@ -340,7 +374,7 @@ export function createWorkflowPlannerTool(
     name: "plan_job_workflow",
     purpose: "Return the recommended safe steps for one Jobbbler goal from the current page.",
     description:
-      "Pass one required goal: find_roles, compare_roles, save_search, monitor_search, prepare_application, enable_recovery, or recover_workspace. The result is a concise, route-aware tool sequence with human decision points. Advisory only — it executes nothing, grants nothing, and confirms nothing.",
+      "Pass one required goal: find_roles, compare_roles, save_search, monitor_search, manage_saved_search, prepare_application, withdraw_application_consent, enable_recovery, or recover_workspace. The result is a concise route-aware sequence with human decision points. Advisory only: it executes, grants, and confirms nothing.",
     inputSchema: planInputSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: false },
     async execute(input, { signal }) {
@@ -350,7 +384,16 @@ export function createWorkflowPlannerTool(
         const availableNow = context.availableTools();
         const currentRoute = typeof context.route === "function" ? context.route() : context.route;
         const preferred = preferredTool(parsed.goal, currentRoute);
-        const everyStep = [...plan.steps, ...(plan.branches?.flatMap(({ steps }) => steps) ?? [])];
+        const isAvailable = (step: WorkflowStep) =>
+          step.tool === null || availableNow.includes(step.tool);
+        const visibleSteps = plan.steps.filter(isAvailable);
+        const visibleBranches = plan.branches
+          ?.map((branch) => ({ ...branch, steps: branch.steps.filter(isAvailable) }))
+          .filter(({ steps }) => steps.length > 0);
+        const everyStep = [
+          ...visibleSteps,
+          ...(visibleBranches?.flatMap(({ steps }) => steps) ?? []),
+        ];
         const preferredStep = everyStep.find(
           (step) =>
             step.tool === preferred && step.tool !== null && availableNow.includes(step.tool),
@@ -369,16 +412,16 @@ export function createWorkflowPlannerTool(
             ...(nextStep === undefined || nextStep.humanAction === false
               ? {}
               : { nextHumanAction: nextStep.humanAction }),
-            steps: plan.steps.map((step) => ({
+            steps: visibleSteps.map((step) => ({
               intent: step.intent,
               tool: step.tool,
               needs: step.requiredInputs ?? [],
               ...(step.humanAction === false ? {} : { ask: step.humanAction }),
             })),
-            ...(plan.branches === undefined
+            ...(visibleBranches === undefined
               ? {}
               : {
-                  branches: plan.branches.map((branch) => ({
+                  branches: visibleBranches.map((branch) => ({
                     when: branch.when,
                     steps: branch.steps.map((step) => ({
                       intent: step.intent,

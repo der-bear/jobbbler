@@ -97,7 +97,9 @@ results. A browser capability is never treated as identity or authorization.
 > authority.
 
 `plan_job_workflow` returns recommended safe steps for a goal from the current
-page. It is advisory only: it plans, it never acts.
+page. Its nine goals cover discovery, comparison, saving and monitoring,
+saved-search management, application preparation, consent withdrawal, and
+optional workspace recovery. It is advisory only: it plans, it never acts.
 
 The catalog has **29 focused tools**, all registered on every page. Nine are
 clear entry points — `plan_job_workflow`, `get_search_filters`, `search_jobs`,
@@ -115,7 +117,9 @@ validate explicit IDs, ownership, and workflow state at execution time:
 - Saved `/saved`: `get_saved_alerts`, `request_search_alert`,
   `decide_search_alert`, `set_job_alert_state`, `open_saved_search`, and
   `get_latest_search_update` (reads only what changed since the last check,
-  not the full result list). Alert setup stays in the external agent client:
+  not the full result list). Both saved searches and bounded change references
+  have explicit `limit`, `offset`, and `nextOffset` continuation. Alert setup
+  stays in the external agent client:
   one tool prepares the exact review and sends a mailbox code; the second
   accepts only an explicit request-bound decision and, on approval, that code.
   `enable_workspace_recovery` optionally verifies an email for the current

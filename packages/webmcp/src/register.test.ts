@@ -288,6 +288,19 @@ describe("WebMCP framework core", () => {
     expect(() => validateToolManifest([manifest({ description: "x".repeat(501) })])).toThrow(
       /description/i,
     );
+    expect(() =>
+      validateToolManifest([
+        manifest({
+          inputSchema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              query: { type: "string", description: "x".repeat(151) },
+            },
+          },
+        }),
+      ]),
+    ).toThrow(/schema description/i);
   });
 
   it("registers an entire route set and aborts every registration on cleanup", async () => {

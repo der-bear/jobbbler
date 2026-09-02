@@ -65,7 +65,10 @@ recorded:
   on both `/` and `/saved`; `get_search_filters` and `get_saved_alerts` executed
   successfully, and an unavailable owner application returned a bounded
   `NOT_FOUND` result instead of pretending to succeed;
-- model routing checks: Luna low effort 50/50 and Terra low effort 10/10;
+- low-effort model review: Luna evaluated 50 realistic intents (43 immediate
+  safe routes and seven clarification- or state-sensitive cases); Terra
+  evaluated 10 multi-step journeys and exposed three guidance gaps that drove
+  the saved-state pagination, workflow, and cursor/UI clarification changes;
 - production dependency audit: no known production vulnerabilities;
 - design-system contracts keep normal text and action states at WCAG AA
   contrast in both themes, prohibit two-pixel component borders, and route

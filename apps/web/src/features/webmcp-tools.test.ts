@@ -231,6 +231,9 @@ describe("route-scoped WebMCP tool manifests", () => {
       false,
     ]);
     expect(tool(manifests, "search_jobs").description).toContain("Ask for one useful preference");
+    expect(tool(manifests, "search_jobs").description).toContain(
+      "visible portal keeps the first 20",
+    );
 
     const controller = new AbortController();
     const execution = tool(manifests, "search_jobs").execute(

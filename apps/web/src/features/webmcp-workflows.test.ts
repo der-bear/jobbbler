@@ -13,6 +13,8 @@ describe("plan_job_workflow", () => {
 
     expect(planner.description).toContain("required goal");
     for (const goal of workflowGoals) expect(planner.description).toContain(goal);
+    expect(workflowGoals).toContain("manage_saved_search");
+    expect(workflowGoals).toContain("withdraw_application_consent");
   });
 
   it("reads the current page when invoked instead of capturing a stale registration route", async () => {
@@ -147,6 +149,9 @@ describe("plan_job_workflow", () => {
         "request_search_alert",
         "decide_search_alert",
         "get_saved_alerts",
+        "get_latest_search_update",
+        "open_saved_search",
+        "set_job_alert_state",
       ],
     });
 
@@ -230,6 +235,7 @@ describe("plan_job_workflow", () => {
         "propose_application_updates",
         "request_submission_review",
         "decide_application_submission",
+        "withdraw_application_consent",
       ],
     });
 
@@ -245,11 +251,6 @@ describe("plan_job_workflow", () => {
         nextInputs: ["jobId"],
         steps: [
           {
-            intent: "Open the role",
-            tool: "open_job_details",
-            needs: ["jobId"],
-          },
-          {
             intent: "Read the full role",
             tool: "get_job_details",
             needs: ["jobId"],
@@ -259,21 +260,79 @@ describe("plan_job_workflow", () => {
             tool: "prepare_application",
             needs: ["jobId"],
           },
-          expect.objectContaining({ tool: "get_application_readiness" }),
-          expect.objectContaining({ tool: "request_application_assistance" }),
-          expect.objectContaining({ tool: "decide_application_assistance" }),
+          expect.objectContaining({
+            tool: "get_application_readiness",
+            needs: ["draftId from prepare_application"],
+          }),
+          expect.objectContaining({
+            tool: "request_application_assistance",
+            needs: ["draftId"],
+          }),
+          expect.objectContaining({
+            tool: "decide_application_assistance",
+            needs: ["draftId", "requestId", "decision"],
+          }),
           expect.objectContaining({
             tool: "propose_application_updates",
+            needs: ["draftId", "patches: fieldKey + value"],
             ask: expect.stringContaining("CV stays in the agent client"),
           }),
-          expect.objectContaining({ tool: "request_submission_review" }),
-          expect.objectContaining({ tool: "decide_application_submission" }),
+          expect.objectContaining({
+            tool: "request_submission_review",
+            needs: ["draftId"],
+          }),
+          expect.objectContaining({
+            tool: "decide_application_submission",
+            needs: ["draftId", "requestId", "draftVersion", "decision"],
+          }),
         ],
       },
     });
     expect(JSON.stringify(result)).not.toContain("get_job_application_capability");
     expect(JSON.stringify(result)).not.toContain("applyMode=external");
     expect(JSON.stringify(result)).not.toContain("employer page");
+    expect(JSON.stringify(result)).toContain("follow its nextTool");
+  });
+
+  it("teaches management and withdrawal without overloading the main workflows", async () => {
+    const planner = createWorkflowPlannerTool({
+      route: "/saved",
+      availableTools: () => [
+        "get_saved_alerts",
+        "set_job_alert_state",
+        "get_application_readiness",
+        "withdraw_application_consent",
+      ],
+    });
+
+    const management = await planner.execute(
+      { goal: "manage_saved_search" },
+      { signal: new AbortController().signal },
+    );
+    const withdrawal = await planner.execute(
+      { goal: "withdraw_application_consent" },
+      { signal: new AbortController().signal },
+    );
+
+    expect(management).toMatchObject({
+      status: "completed",
+      data: {
+        nextTool: "get_saved_alerts",
+        steps: [
+          expect.objectContaining({ tool: "get_saved_alerts" }),
+          expect.objectContaining({ tool: "set_job_alert_state" }),
+        ],
+      },
+    });
+    expect(withdrawal).toMatchObject({
+      status: "completed",
+      data: {
+        steps: [
+          expect.objectContaining({ tool: "get_application_readiness" }),
+          expect.objectContaining({ tool: "withdraw_application_consent" }),
+        ],
+      },
+    });
   });
 
   it.each(workflowGoals)("keeps the %s plan inside the WebMCP output budget", async (goal) => {

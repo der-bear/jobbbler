@@ -37,7 +37,7 @@ const emptyInputSchema = {
 const patchesProperty = {
   type: "array",
   description:
-    "Application answers the agent can prepare from known facts. For cover_letter, use the full get_job_details result and locally held CV facts; send only the letter, never the CV. Ask for missing facts and never invent them.",
+    "Answers from known facts only. For cover_letter, use get_job_details and local CV facts; send only the letter. Ask; never invent missing facts.",
   minItems: 1,
   maxItems: 24,
   items: {

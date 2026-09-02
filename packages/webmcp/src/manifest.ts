@@ -3,19 +3,32 @@ import { toolDescriptionSchema, toolNameSchema } from "@jobbbler/contracts";
 import type { ToolManifest } from "./types.js";
 
 const maxPurposeLength = 240;
+const maxSchemaDescriptionLength = 150;
 
-function validateJsonValue(value: unknown): void {
+function validateJsonValue(value: unknown, path = "inputSchema"): void {
   if (value === null || typeof value === "boolean" || typeof value === "string") return;
   if (typeof value === "number") {
     if (!Number.isFinite(value)) throw new Error("JSON Schema must contain only finite numbers.");
     return;
   }
   if (Array.isArray(value)) {
-    value.forEach(validateJsonValue);
+    value.forEach((item, index) => validateJsonValue(item, `${path}[${String(index)}]`));
     return;
   }
   if (typeof value === "object") {
-    Object.values(value).forEach(validateJsonValue);
+    for (const [childKey, childValue] of Object.entries(value)) {
+      if (
+        childKey === "description" &&
+        (typeof childValue !== "string" ||
+          childValue.trim().length === 0 ||
+          childValue.length > maxSchemaDescriptionLength)
+      ) {
+        throw new Error(
+          `JSON Schema description at ${path}.${childKey} must be 1 to 150 characters.`,
+        );
+      }
+      validateJsonValue(childValue, `${path}.${childKey}`);
+    }
     return;
   }
   throw new Error("JSON Schema must be JSON-serializable.");

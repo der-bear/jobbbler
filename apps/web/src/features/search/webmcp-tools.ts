@@ -330,7 +330,7 @@ export function createSearchToolManifests(
     name: "search_jobs",
     purpose: "Search the public technology-job catalog and synchronize the visible results.",
     description:
-      "Search Jobbbler's source-backed technology roles with the preferences the person supplied. Ask for one useful preference when the request gives no role, skill, location, work model, or other search criterion. Applies validated criteria to the visible page and returns compact matches with IDs.",
+      "Search Jobbbler's source-backed technology roles with the preferences the person supplied. Ask for one useful preference when the request gives no role, skill, location, work model, or other search criterion. Applies validated criteria and returns compact matches with IDs. With cursor, agent matches advance while the visible portal keeps the first 20 matches as a readable overview of the same criteria.",
     inputSchema: searchJobsToolInputJsonSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {

@@ -74,19 +74,25 @@ surface. Any published model score must come from a fresh run of these exact
 fixtures. Deterministic suites separately verify schemas, execution,
 cancellation, bounded output, UI synchronization, storage atomicity, and builds.
 
-### Fresh release-surface model checks — 1 September 2026
+### Fresh low-effort model review — 2 September 2026
 
-- **Luna, low effort:** 50/50 semantic passes. The evaluator saw only the
-  globally registered 29-tool manifests, excluded route-contextual application
-  manifests, and removed checked-in expected fields before choosing a tool and
-  arguments. The requested run covered exactly 50 of the 51 fixtures; the
-  excluded case was `search-direct-prepare-application`.
-- **Terra, low effort:** 10/10 semantic passes on the ambiguity, invalid-input,
-  wrong-order, stale-review, and never-invent-a-human-decision safety set.
+- **Luna, low effort:** 50 realistic intents were reviewed against the global
+  manifests. Forty-three had an immediate safe route; seven were deliberately
+  clarification- or state-sensitive (ordinal references, page-number wording,
+  missing save/alert details, and decisions without exact request state). No
+  destructive or submission action was executed. The review directly led to
+  clearer missing-input guidance and saved-search continuation.
+- **Terra, low effort:** 10 multi-step journeys were reviewed. Seven passed
+  end-to-end as written; three exposed guidance gaps around cursor/UI semantics,
+  larger saved workspaces, and application readiness. The implementation now
+  documents the separate visible overview, pages saved state explicitly, adds
+  management and consent-withdrawal goals, removes redundant comparison and
+  application reads, and makes readiness the application workflow boundary.
 
-These are routing and argument-selection checks, not claims that a language
-model proves handler correctness. The deterministic suites remain authoritative
-for execution, authorization, idempotency, persistence, and UI behaviour.
+These are design-routing reviews, not a post-fix probabilistic benchmark and
+not proof of handler correctness. We intentionally publish no inflated 50/50 or
+10/10 claim. Deterministic suites remain authoritative for execution,
+authorization, idempotency, persistence, output bounds, and UI behaviour.
 
 The judge demo should show one natural-language search, one comparison, one
 saved-search delta, and the application sequence from assistance request through

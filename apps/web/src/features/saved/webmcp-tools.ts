@@ -44,6 +44,30 @@ const emptyInputSchema = {
 
 const emptyInput = z.strictObject({});
 const deletionConfirmation = "DELETE_SAVED_SEARCH_AND_ALERT" as const;
+const savedAlertsPageSize = 6;
+const savedAlertsInputSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    limit: {
+      type: "integer",
+      description: "Number of saved searches to return, from 1 to 6. Defaults to 6.",
+      minimum: 1,
+      maximum: savedAlertsPageSize,
+      default: savedAlertsPageSize,
+    },
+    offset: {
+      type: "integer",
+      description: "Zero-based offset into saved searches sorted newest first. Defaults to 0.",
+      minimum: 0,
+      default: 0,
+    },
+  },
+} as const satisfies JsonSchema;
+const savedAlertsInput = z.strictObject({
+  limit: z.number().int().min(1).max(savedAlertsPageSize).default(savedAlertsPageSize),
+  offset: z.number().int().nonnegative().default(0),
+});
 
 const scheduleStateBranch = (action: "pause" | "resume") =>
   ({
@@ -83,7 +107,7 @@ const stateInputSchema = {
         savedSearchId: {
           type: "string",
           description: "The exact saved search ID returned by get_saved_alerts.",
-          pattern: "^saved_search_[0-9a-f-]{36}$",
+          pattern: "^saved_[0-9a-f-]{36}$",
         },
         confirmation: {
           type: "string",
@@ -283,7 +307,7 @@ const openSavedInputSchema = {
     savedSearchId: {
       type: "string",
       description: "A saved search ID returned by get_saved_alerts.",
-      pattern: "^saved_search_[0-9a-f-]{36}$",
+      pattern: "^saved_[0-9a-f-]{36}$",
     },
   },
   required: ["savedSearchId"],
@@ -298,11 +322,29 @@ const latestUpdateInputSchema = {
     savedSearchId: {
       type: "string",
       description: "A saved search ID returned by get_saved_alerts.",
-      pattern: "^saved_search_[0-9a-f-]{36}$",
+      pattern: "^saved_[0-9a-f-]{36}$",
+    },
+    limit: {
+      type: "integer",
+      description: "Number of change references to return, from 1 to 5. Defaults to 5.",
+      minimum: 1,
+      maximum: 5,
+      default: 5,
+    },
+    offset: {
+      type: "integer",
+      description: "Zero-based offset into this run's change references. Defaults to 0.",
+      minimum: 0,
+      default: 0,
     },
   },
   required: ["savedSearchId"],
 } as const satisfies JsonSchema;
+const latestUpdateInput = z.strictObject({
+  savedSearchId: entityIdSchema,
+  limit: z.number().int().min(1).max(5).default(5),
+  offset: z.number().int().nonnegative().default(0),
+});
 
 export interface SavedToolDependencies {
   listSavedSearches(options: Readonly<{ signal: AbortSignal }>): Promise<readonly SavedSearch[]>;
@@ -497,12 +539,12 @@ export function createSavedToolManifests(
     name: "get_saved_alerts",
     purpose: "List saved searches and their optional update schedules.",
     description:
-      "Read up to six saved searches in this private workspace, including any optional email-update schedule and next check. Email destinations and credentials are never returned.",
-    inputSchema: emptyInputSchema,
+      "List private saved searches newest first, including any optional email-update schedule and next check. Use limit and nextOffset to continue through larger workspaces. Email destinations and credentials are never returned.",
+    inputSchema: savedAlertsInputSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     async execute(input, { signal }) {
       try {
-        emptyInput.parse(input);
+        const { limit, offset } = savedAlertsInput.parse(input);
         const [savedSearches, schedules] = await Promise.all([
           dependencies.listSavedSearches({ signal }),
           dependencies.listSchedules({ signal }),
@@ -510,7 +552,8 @@ export function createSavedToolManifests(
         const scheduleBySearch = new Map(
           schedules.map((schedule) => [schedule.savedSearchId, schedule]),
         );
-        const alerts = savedSearches.slice(0, 6).map((savedSearch) => {
+        const page = savedSearches.slice(offset, offset + limit);
+        const alerts = page.map((savedSearch) => {
           const schedule = scheduleBySearch.get(savedSearch.id);
           return {
             savedSearchId: savedSearch.id,
@@ -521,16 +564,28 @@ export function createSavedToolManifests(
             frequency: schedule?.recurrence.frequency ?? null,
           };
         });
+        const nextOffset =
+          offset + alerts.length < savedSearches.length ? offset + alerts.length : null;
         return completedWebMcpResult({
           summary: `Read ${String(savedSearches.length)} saved job search${savedSearches.length === 1 ? "" : "es"}; ${String(schedules.filter(({ enabled }) => enabled).length)} alert${schedules.filter(({ enabled }) => enabled).length === 1 ? " is" : "s are"} active.`,
-          data: { alerts, truncated: savedSearches.length > alerts.length },
+          data: {
+            total: savedSearches.length,
+            returned: alerts.length,
+            nextOffset,
+            alerts,
+            truncated: nextOffset !== null,
+          },
           facts: [
             { key: "saved_searches", value: savedSearches.length },
             { key: "active_alerts", value: schedules.filter(({ enabled }) => enabled).length },
           ],
         });
       } catch (error) {
-        return safeWebMcpErrorResult(error, signal, "Saved alert state accepts no arguments.");
+        return safeWebMcpErrorResult(
+          error,
+          signal,
+          "Use optional limit from 1 to 6 and a non-negative offset.",
+        );
       }
     },
   };
@@ -539,7 +594,7 @@ export function createSavedToolManifests(
     name: "request_search_alert",
     purpose: "Prepare one email job alert for an explicit decision in the external agent client.",
     description:
-      "Prepare an exact review for one saved search, schedule, and email destination. Copy only criteria explicitly supplied in this request or returned by get_search_state(detail=exact). Never add filters such as salary, category, or exclusions by inference or from another task. A new destination receives a 6-digit mailbox code; an already verified destination does not. No alert becomes active until the person's explicit decision through decide_search_alert.",
+      "Prepare an exact review for one saved search, schedule, and email destination. Use only criteria supplied now or from get_search_state(detail=exact). Never add filters by inference or from another task. If name, criteria, schedule, or email is missing, ask only for the missing details. A new email needs a 6-digit code; a verified one does not. Activation requires the person's explicit decision through decide_search_alert.",
     inputSchema: requestAlertInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -736,12 +791,12 @@ export function createSavedToolManifests(
     name: "get_latest_search_update",
     purpose: "Read what changed since a saved search was last checked, not the full result list.",
     description:
-      "Read the most recent server-side check of one saved search: counts of new, updated, closed, and no-longer-matching roles, plus up to five change references. Monitoring runs without an open tab.",
+      "Read the most recent server-side check of one saved search: counts of new, updated, closed, and no-longer-matching roles. Use limit and nextOffset to continue through its bounded change references. Monitoring runs without an open tab.",
     inputSchema: latestUpdateInputSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     async execute(input, { signal }) {
       try {
-        const parsed = openSavedInput.parse(input);
+        const parsed = latestUpdateInput.parse(input);
         const savedSearches = await dependencies.listSavedSearches({ signal });
         const savedSearch = savedSearches.find(({ id }) => id === parsed.savedSearchId);
         if (savedSearch === undefined) {
@@ -763,6 +818,14 @@ export function createSavedToolManifests(
         }
         const counts = { new: 0, updated: 0, closed: 0, no_longer_matching: 0 };
         for (const item of run.evaluation.changes.items) counts[item.kind] += 1;
+        const changePage = run.evaluation.changes.items.slice(
+          parsed.offset,
+          parsed.offset + parsed.limit,
+        );
+        const nextOffset =
+          parsed.offset + changePage.length < run.evaluation.changes.items.length
+            ? parsed.offset + changePage.length
+            : null;
         const parts = [
           counts.new > 0 ? `${String(counts.new)} new` : null,
           counts.updated > 0 ? `${String(counts.updated)} updated` : null,
@@ -782,10 +845,12 @@ export function createSavedToolManifests(
             checkedAt: run.evaluation.createdAt,
             baselineCount: run.evaluation.baselineCount,
             counts,
-            truncated: run.evaluation.changes.truncated,
-            changes: run.evaluation.changes.items
-              .slice(0, 5)
-              .map(({ jobId, kind }) => ({ jobId, kind })),
+            total: run.evaluation.changes.total,
+            returned: changePage.length,
+            nextOffset,
+            truncated: nextOffset !== null || run.evaluation.changes.truncated,
+            sourceTruncated: run.evaluation.changes.truncated,
+            changes: changePage.map(({ jobId, kind }) => ({ jobId, kind })),
             deliveryStatus: run.delivery?.status ?? null,
           },
           facts: [{ key: "changes_total", value: run.evaluation.changes.total }],
@@ -794,7 +859,7 @@ export function createSavedToolManifests(
         return safeWebMcpErrorResult(
           error,
           signal,
-          "Provide one saved search ID from get_saved_alerts.",
+          "Provide one saved search ID from get_saved_alerts, optional limit from 1 to 5, and a non-negative offset.",
         );
       }
     },
@@ -804,7 +869,7 @@ export function createSavedToolManifests(
     name: "save_job_search",
     purpose: "Save one reusable job search without turning on email updates.",
     description:
-      "Use when the person says save, remember, or bookmark this search. Save only criteria explicitly supplied in this request or returned by get_search_state(detail=exact). Do not ask for an email: email updates remain off. If the person explicitly asks for notifications, monitoring, or emailed updates, use request_search_alert instead.",
+      "Use when the person says save, remember, or bookmark this search. Save only criteria explicitly supplied now or returned by get_search_state(detail=exact). If no name was supplied, ask for a short, recognizable name. Do not ask for an email: email updates stay off. For notifications, monitoring, or emailed updates, use request_search_alert instead.",
     inputSchema: saveSearchInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {

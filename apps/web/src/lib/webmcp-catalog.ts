@@ -128,7 +128,7 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
       },
       {
         name: "get_saved_alerts",
-        purpose: "List saved searches and their optional update schedules.",
+        purpose: "Page through saved searches and their optional update schedules.",
         readOnly: true,
       },
       {
@@ -154,7 +154,7 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
       {
         name: "get_latest_search_update",
         purpose:
-          "Read what changed since a saved search was last checked, not the full result list.",
+          "Page through what changed since a saved search was last checked, not the full result list.",
         readOnly: true,
       },
     ],

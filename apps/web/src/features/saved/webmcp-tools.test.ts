@@ -115,6 +115,20 @@ function dependencies(
 }
 
 describe("saved-route WebMCP tools", () => {
+  it("tells a weak agent exactly what to ask for when save or alert details are missing", () => {
+    const manifests = createSavedToolManifests(dependencies());
+    const byName = (name: string) => {
+      const manifest = manifests.find((candidate) => candidate.name === name);
+      if (manifest === undefined) throw new Error(`Missing ${name}.`);
+      return manifest;
+    };
+
+    expect(byName("save_job_search").description).toContain("ask for a short, recognizable name");
+    expect(byName("request_search_alert").description).toContain(
+      "ask only for the missing details",
+    );
+  });
+
   it("reads a bounded owner-scoped alert summary without destinations", async () => {
     const manifests = createSavedToolManifests(dependencies());
 
@@ -156,6 +170,50 @@ describe("saved-route WebMCP tools", () => {
     });
     expect(JSON.stringify(result)).not.toContain(schedule.delivery.endpointId);
     expect(new TextEncoder().encode(JSON.stringify(result)).byteLength).toBeLessThanOrEqual(1_500);
+  });
+
+  it("paginates saved searches with the exact IDs returned by the service", async () => {
+    const savedSearches = Array.from({ length: 8 }, (_, index) => ({
+      ...savedSearch,
+      id: `saved_0000000${String(index + 1)}-0000-7000-8000-00000000000${String(index + 1)}`,
+      name: `Search ${String(index + 1)}`,
+      updatedAt: `2026-08-${String(29 - index).padStart(2, "0")}T08:00:00.000Z`,
+    }));
+    const manifests = createSavedToolManifests(
+      dependencies({
+        listSavedSearches: vi.fn(async () => savedSearches),
+        listSchedules: vi.fn(async () => []),
+      }),
+    );
+
+    const result = await manifests[0]!.execute(
+      { limit: 3, offset: 3 },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toMatchObject({
+      status: "completed",
+      data: {
+        total: 8,
+        returned: 3,
+        nextOffset: 6,
+        alerts: savedSearches.slice(3, 6).map(({ id, name }) => ({
+          savedSearchId: id,
+          name,
+        })),
+      },
+    });
+    expect(webMcpResultSize(result)).toBeLessThanOrEqual(MAX_WEBMCP_RESULT_BYTES);
+
+    const schemas = manifests
+      .filter(({ name }) =>
+        ["set_job_alert_state", "open_saved_search", "get_latest_search_update"].includes(name),
+      )
+      .map(({ inputSchema }) => JSON.stringify(inputSchema));
+    for (const schema of schemas) {
+      expect(schema).toContain("^saved_[0-9a-f-]{36}$");
+      expect(schema).not.toContain("^saved_search_");
+    }
   });
 
   it("saves reusable criteria without asking for an email or enabling updates", async () => {
@@ -215,6 +273,48 @@ describe("saved-route WebMCP tools", () => {
       },
     });
     expect(JSON.stringify(result)).not.toMatch(/owner_|email.*@|endpoint|schedule_/iu);
+    expect(webMcpResultSize(result)).toBeLessThanOrEqual(MAX_WEBMCP_RESULT_BYTES);
+  });
+
+  it("paginates the bounded change references for a saved search", async () => {
+    const changes = Array.from({ length: 12 }, (_, index) => ({
+      id: `change_0000000${String(index + 1)}-0000-7000-8000-00000000000${String(index + 1)}`,
+      jobId: `job_0000000${String(index + 1)}-0000-7000-8000-00000000000${String(index + 1)}`,
+      kind: index % 2 === 0 ? ("new" as const) : ("updated" as const),
+      createdAt: "2026-08-29T08:00:00.000Z",
+    }));
+    const manifests = createSavedToolManifests(
+      dependencies({
+        getLatestRun: vi.fn(async () => ({
+          savedSearchId: savedSearch.id,
+          evaluation: {
+            id: "evaluation_00000001-0000-7000-8000-000000000001",
+            createdAt: "2026-08-29T08:00:00.000Z",
+            catalogUpdatedAt: "2026-08-29T07:55:00.000Z",
+            baselineCount: 80,
+            changes: { total: 12, truncated: false, items: changes },
+          },
+          delivery: null,
+        })),
+      }),
+    );
+
+    const result = await manifests[5]!.execute(
+      { savedSearchId: savedSearch.id, limit: 4, offset: 4 },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toMatchObject({
+      status: "completed",
+      data: {
+        total: 12,
+        returned: 4,
+        nextOffset: 8,
+        truncated: true,
+        sourceTruncated: false,
+        changes: changes.slice(4, 8).map(({ jobId, kind }) => ({ jobId, kind })),
+      },
+    });
     expect(webMcpResultSize(result)).toBeLessThanOrEqual(MAX_WEBMCP_RESULT_BYTES);
   });
 
