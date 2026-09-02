@@ -185,6 +185,14 @@ describe("route-scoped WebMCP tool manifests", () => {
     const agentResult: SearchJobsResult = {
       ...searchResult,
       criteria: { ...searchResult.criteria, query: "platform", cursor: null, limit: 3 },
+      jobs: [
+        {
+          ...firstJob,
+          locations: ["Europe", "Berlin, Germany"],
+          matchScore: 88,
+          matchEvidence: fit.evidence,
+        },
+      ],
       total: 4,
       nextCursor: "cursor-3",
     };
@@ -261,7 +269,10 @@ describe("route-scoped WebMCP tool manifests", () => {
     });
     expect(success).toMatchObject({
       status: "completed",
-      data: { nextCursor: "cursor-3" },
+      data: {
+        jobs: [{ location: "Berlin, Germany" }],
+        nextCursor: "cursor-3",
+      },
     });
     expectBoundedJson(success);
 
@@ -713,7 +724,13 @@ describe("route-scoped WebMCP tool manifests", () => {
     const getComparison = vi.fn(
       async (options: { readonly signal: AbortSignal }): Promise<CompareJobsResult> => {
         expect(options.signal).toBeInstanceOf(AbortSignal);
-        return compareJobsResultSchema.parse(comparisonResult);
+        return compareJobsResultSchema.parse({
+          ...comparisonResult,
+          jobs: comparisonResult.jobs.map((entry) => ({
+            ...entry,
+            job: { ...entry.job, locations: ["Europe", "Berlin, Germany"] },
+          })),
+        });
       },
     );
     const removeJobFromComparison = vi.fn(
@@ -753,6 +770,11 @@ describe("route-scoped WebMCP tool manifests", () => {
     );
     expect(getComparison).toHaveBeenCalledWith({ signal: controller.signal });
     expect(comparison.status).toBe("completed");
+    expect(comparison).toMatchObject({
+      data: {
+        jobs: [{ location: "Berlin, Germany" }, { location: "Berlin, Germany" }],
+      },
+    });
     expectBoundedJson(comparison);
 
     const removed = await tool(manifests, "remove_job_from_comparison").execute(

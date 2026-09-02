@@ -18,6 +18,7 @@ import { comparableCurrencies, normalizeJobSearchCriteria } from "@jobbbler/jobs
 import type { JsonSchema, JsonValue, ToolManifest } from "@jobbbler/webmcp";
 
 import { searchInputToSearchParams } from "@/lib/search-url";
+import { locationForSearch } from "@/lib/job-format";
 import type { WebMcpNavigate } from "@/lib/webmcp-navigation";
 import {
   completedWebMcpResult,
@@ -316,7 +317,10 @@ function compactSearchResult(result: SearchJobsResult): JsonValue {
       id: job.id,
       title: short(job.title, 80),
       organization: short(job.organizationName, 32),
-      location: short(job.locations[0] ?? "Location not stated", 24),
+      location: short(
+        locationForSearch(job.locations, result.criteria.locations) ?? "Location not stated",
+        24,
+      ),
       workModel: job.workModel,
       salaryMinimum: job.salary?.minimum ?? null,
       salaryCurrency: job.salary?.currency ?? null,

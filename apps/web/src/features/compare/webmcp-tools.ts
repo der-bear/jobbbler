@@ -10,6 +10,7 @@ import {
   type SafeWebMcpErrorResult,
 } from "@/lib/webmcp-tool-result";
 import type { WebMcpNavigate } from "@/lib/webmcp-navigation";
+import { concreteJobLocations } from "@/lib/job-format";
 
 const emptyInputSchema = {
   type: "object",
@@ -65,7 +66,7 @@ function compactComparison(result: CompareJobsResult): JsonValue {
       matchScore: fit.score,
       eligible: fit.eligible,
       workModel: job.workModel,
-      location: short(job.locations[0] ?? "Location not stated", 30),
+      location: short(concreteJobLocations(job.locations)[0] ?? "Location not stated", 30),
       salaryMinimum: job.salary?.minimum ?? null,
       salaryCurrency: job.salary?.currency ?? null,
       unknownDimensions: Object.values(fit.dimensions).filter(
