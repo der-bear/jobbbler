@@ -59,12 +59,6 @@ function receiptTimestamp(value: string): string {
   }).format(new Date(value))} UTC`;
 }
 
-function receiptDay(value: string): string {
-  return new Intl.DateTimeFormat("en", { dateStyle: "long", timeZone: "UTC" }).format(
-    new Date(value),
-  );
-}
-
 function submittedAnswerValue(
   value: ApplicationWorkspace["draft"]["answers"][number]["value"],
 ): string | null {
@@ -587,11 +581,7 @@ function CompletePanel({ workspace }: Readonly<{ workspace: ApplicationWorkspace
           "Jobbbler did not submit this application. It prepared the reviewed details for the exact employer link below."
         ) : (
           <>
-            Sent on{" "}
-            <time dateTime={submission?.submittedAt}>
-              {receiptDay(submission?.submittedAt ?? receipt.createdAt)}
-            </time>
-            . This is a Jobbbler demo, so the application went to Jobbbler&apos;s demo inbox for{" "}
+            This is a Jobbbler demo, so the application went to Jobbbler&apos;s demo inbox for{" "}
             {submission?.recipient.name ?? "the saved demo recipient"}, not to the employer.
           </>
         )}
