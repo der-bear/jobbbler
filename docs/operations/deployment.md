@@ -55,36 +55,33 @@ docker run --rm \
   jobbbler-web:local
 ```
 
-For the challenge-hosted topology, the Next.js web app can run on Vercel while
-the checked-in [alert worker workflow](../../.github/workflows/alert-worker.yml)
-runs one bounded `alert_once` cycle every ten minutes and can also be started
-manually. Configure the workflow with repository secrets named `DATABASE_URL`,
-`PUBLIC_BASE_URL`, `PII_ENCRYPTION_KEY`, `RESEND_API_KEY`, and `EMAIL_FROM`.
-The web deployment uses the same database, origin, encryption key, provider
-credentials, plus its server-only `TOKEN_HASH_SECRET`. The workflow never uses
-a catalog or combined worker mode, so the first-party demonstration catalog
-cannot be mixed with live external feeds.
+For the challenge-hosted topology, the Next.js app runs on Vercel and exposes a
+bounded, bearer-protected `POST /api/internal/alert-cycle` endpoint. Supabase
+Cron invokes that endpoint every ten minutes using `pg_cron`, `pg_net`, and a
+shared `CRON_SECRET` kept in Vercel and Supabase Vault. The endpoint reuses the
+web runtime's server-only database and email configuration; it never runs the
+catalog connectors, so the first-party demonstration catalog cannot be mixed
+with live external feeds.
 
 The official Supabase integration may expose the web app's connection as
 `POSTGRES_URL`; Jobbbler accepts that server-only name automatically while
-keeping `DATABASE_URL` as the explicit portable override. The independent
-GitHub Actions worker still uses its documented `DATABASE_URL` repository
-secret.
+keeping `DATABASE_URL` as the explicit portable override.
 
 Connect the repository as a monorepo and set the Vercel project's Root
 Directory to `apps/web`. The checked-in `apps/web/vercel.json` runs installation
 and the filtered build from the repository root so pnpm can resolve every
-workspace package; Next.js keeps its normal `.next` output contract. Do not add
-a Vercel cron for the worker: Hobby schedules are not frequent enough for the
-ten-minute readiness and alert interval, and a serverless request is not a
-long-lived worker.
+workspace package; Next.js keeps its normal `.next` output contract. Vercel
+Hobby cron is intentionally not used because it cannot meet the ten-minute
+interval. Apply
+[`infra/supabase/alert-cycle-scheduler.sql`](../../infra/supabase/alert-cycle-scheduler.sql)
+after both Vault secrets are present and the production origin is publicly
+reachable.
 
-The scheduled workflow is a deployment adapter for the same idempotent worker,
-not a second implementation of alert logic. Its concurrency group prevents
-overlapping cycles; the database leases and provider idempotency keys remain the
-authoritative retry boundary. Keep the web readiness heartbeat window longer
-than the external scheduler's normal interval, but short enough to fail closed
-when the worker has actually stopped.
+The internal route is only a deployment adapter for the same idempotent worker,
+not a second implementation of alert logic. Database leases and provider
+idempotency keys remain the authoritative overlap and retry boundary. Keep the
+web readiness heartbeat window longer than the scheduler's normal interval,
+but short enough to fail closed when background processing has actually stopped.
 
 Through the public HTTPS ingress, wait for `GET /api/health/live`, then
 `GET /api/health/ready` to report `driver: "postgres"`, the release migration
