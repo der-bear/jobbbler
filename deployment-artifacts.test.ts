@@ -74,6 +74,7 @@ describe("production deployment artifacts", () => {
       string,
       unknown
     >;
+    const ignore = await readRepositoryFile(".gitignore");
 
     expect(configuration).toMatchObject({
       framework: "nextjs",
@@ -82,6 +83,7 @@ describe("production deployment artifacts", () => {
     });
     expect(configuration).not.toHaveProperty("outputDirectory");
     expect(configuration).not.toHaveProperty("crons");
+    expect(ignore).toContain(".vercel/");
   });
 
   it("documents server-only PostgreSQL configuration and independent web and worker deployment", async () => {
