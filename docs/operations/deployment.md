@@ -65,6 +65,14 @@ credentials, plus its server-only `TOKEN_HASH_SECRET`. The workflow never uses
 a catalog or combined worker mode, so the first-party demonstration catalog
 cannot be mixed with live external feeds.
 
+Connect the repository as a monorepo and set the Vercel project's Root
+Directory to `apps/web`. The checked-in `apps/web/vercel.json` runs installation
+and the filtered build from the repository root so pnpm can resolve every
+workspace package; Next.js keeps its normal `.next` output contract. Do not add
+a Vercel cron for the worker: Hobby schedules are not frequent enough for the
+ten-minute readiness and alert interval, and a serverless request is not a
+long-lived worker.
+
 The scheduled workflow is a deployment adapter for the same idempotent worker,
 not a second implementation of alert logic. Its concurrency group prevents
 overlapping cycles; the database leases and provider idempotency keys remain the

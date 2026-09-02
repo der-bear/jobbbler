@@ -69,6 +69,21 @@ describe("production deployment artifacts", () => {
     expect(workflow).not.toContain("catalog_service");
   });
 
+  it("pins the Vercel web build to the Next.js workspace without losing monorepo packages", async () => {
+    const configuration = JSON.parse(await readRepositoryFile("apps/web/vercel.json")) as Record<
+      string,
+      unknown
+    >;
+
+    expect(configuration).toMatchObject({
+      framework: "nextjs",
+      installCommand: "cd ../.. && pnpm install --frozen-lockfile",
+      buildCommand: "cd ../.. && pnpm --filter @jobbbler/web build",
+    });
+    expect(configuration).not.toHaveProperty("outputDirectory");
+    expect(configuration).not.toHaveProperty("crons");
+  });
+
   it("documents server-only PostgreSQL configuration and independent web and worker deployment", async () => {
     const runbook = await readRepositoryFile("docs/operations/deployment.md");
 
@@ -80,5 +95,6 @@ describe("production deployment artifacts", () => {
     expect(runbook).toContain("WEBMCP_ORIGIN_TRIAL_TOKEN");
     expect(runbook).toContain("alert worker workflow");
     expect(runbook).toContain("alert_once");
+    expect(runbook).toMatch(/Root\s+Directory to `apps\/web`/u);
   });
 });
