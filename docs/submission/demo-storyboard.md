@@ -45,4 +45,5 @@ simply helps people find work.”**
 - End with `request_submission_review` pending. Do not invoke
   `decide_application_submission`, show a receipt, or claim that the application
   was shared or submitted.
-- Replace these before publishing: **[PRODUCTION_URL]** and **[VIDEO_URL]**. Repository: https://github.com/der-bear/jobbbler.
+- Production: https://jobbbler.com. Replace **[VIDEO_URL]** after the final
+  recording is published. Repository: https://github.com/der-bear/jobbbler.
