@@ -26,6 +26,7 @@ describe("OwnerPrivacyControls", () => {
     expect(markup).toContain("Restore with email");
     expect(markup).toContain("Restore your Jobbbler work");
     expect(markup).toContain('type="email"');
+    expect(markup).toContain("Recovery email");
     expect(markup).toContain("Enter the email you verified before");
     expect(markup).toContain("We’ll send a six-digit code");
     expect(markup).not.toContain("agent");
@@ -68,6 +69,7 @@ describe("OwnerPrivacyControls", () => {
     expect(markup).toContain("<strong>Delete private data</strong>");
     expect(markup).toContain("Get back in from another device");
     expect(markup).toContain("Add your email");
+    expect(markup).toContain("Email to get back in");
     expect(markup).toContain("This does not turn on email updates");
     expect(markup).not.toContain("Restore with email");
     expect(markup).toContain('type="email"');

@@ -588,19 +588,6 @@
   line-height: 1.5;
 }
 
-.assistance button {
-  flex: 0 0 auto;
-  min-block-size: 38px;
-  border: 1px solid var(--jb-signal);
-  padding: 8px 12px;
-  color: var(--jb-signal-contrast);
-  background: var(--jb-signal);
-  font: inherit;
-  font-size: var(--jb-type-caption);
-  font-weight: 650;
-  cursor: pointer;
-}
-
 .receiptDate {
   margin: 10px 0 0;
   color: var(--jb-signal);

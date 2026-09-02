@@ -91,6 +91,10 @@ describe("design system adoption", () => {
       join(sourceRoot, "features/saved/saved-workspace.module.css"),
       "utf8",
     );
+    const privacyControls = await readFile(
+      join(sourceRoot, "features/saved/owner-privacy-controls.module.css"),
+      "utf8",
+    );
     const about = await readFile(join(sourceRoot, "app/about/webmcp/page.module.css"), "utf8");
     const status = await readFile(join(sourceRoot, "app/status.module.css"), "utf8");
 
@@ -100,18 +104,26 @@ describe("design system adoption", () => {
     expect(uiStyles).toMatch(
       /\.jb-button--secondary \{[^}]*background: var\(--jb-action-gradient\);[^}]*color: var\(--jb-action-contrast\);/u,
     );
-    expect(uiStyles).toMatch(
-      /\.jb-button--quiet \{[^}]*background: var\(--jb-glass-control\);/u,
-    );
+    expect(uiStyles).toMatch(/\.jb-button--quiet \{[^}]*background: var\(--jb-glass-control\);/u);
     expect(saved).toMatch(/\.primaryButton \{[^}]*background: var\(--jb-signal-gradient\);/u);
-    expect(saved).toMatch(
-      /\.secondaryButton \{[^}]*background: var\(--jb-action-gradient\);/u,
-    );
+    expect(saved).toMatch(/\.secondaryButton \{[^}]*background: var\(--jb-action-gradient\);/u);
     expect(saved).toMatch(/\.quietButton \{[^}]*background: var\(--jb-glass-control\);/u);
-    expect(about).toMatch(
-      /\.secondaryAction \{[^}]*background: var\(--jb-action-gradient\);/u,
+    expect(privacyControls).toMatch(
+      /\.form button \{[^}]*background: var\(--jb-signal-gradient\);[^}]*color: var\(--jb-signal-contrast\);/u,
     );
+    expect(about).toMatch(/\.secondaryAction \{[^}]*background: var\(--jb-action-gradient\);/u);
     expect(status).toMatch(/\.secondary \{[^}]*background: var\(--jb-action-gradient\);/u);
+  });
+
+  it("keeps transient activity indicators on the one-pixel indicator scale", async () => {
+    const search = await readFile(
+      join(sourceRoot, "features/search/search-workspace.module.css"),
+      "utf8",
+    );
+
+    expect(search).toMatch(
+      /\.resultsHeader::after \{[^}]*block-size: var\(--jb-stroke-indicator\);/u,
+    );
   });
 
   it("keeps panel dividers and marketing actions on the shared stroke and radius scale", async () => {
@@ -178,9 +190,7 @@ describe("design system adoption", () => {
     expect(
       search.match(/\.jobResult:hover \{\s*background: var\(--jb-hover-surface\);/gu),
     ).toHaveLength(2);
-    expect(saved).toContain(
-      ".quietButton:hover {\n  background: var(--jb-hover-surface);",
-    );
+    expect(saved).toContain(".quietButton:hover {\n  background: var(--jb-hover-surface);");
   });
 
   it("gives the location popover a readable frosted sheet over nearby filters", async () => {

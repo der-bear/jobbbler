@@ -93,7 +93,7 @@ test.describe("saved-search ownership workspace", () => {
   test("moves focus into recovery and deletion confirmation steps", async ({ page }) => {
     await page.goto("/saved");
     await page.getByText("Restore with email", { exact: true }).click();
-    await page.getByLabel("Your email").fill("focus-check@example.test");
+    await page.getByLabel("Recovery email").fill("focus-check@example.test");
     await page.getByRole("button", { name: "Send code" }).click();
     await expect(page.getByLabel("Six-digit code")).toBeFocused();
 
@@ -183,7 +183,7 @@ test.describe("saved-search ownership workspace", () => {
     await page.getByLabel("Email me when results change").check();
     await page
       .getByRole("region", { name: "Save this search" })
-      .getByLabel("Your email")
+      .getByLabel("Email for updates")
       .fill(`schedule-edit-${String(Date.now())}@example.test`);
     await page.getByRole("button", { name: "Send code" }).click();
     await page.getByRole("button", { name: "Verify and continue" }).click();

@@ -36,13 +36,6 @@ import {
 import type { WebMcpNavigate } from "@/lib/webmcp-navigation";
 import { searchAlertReviewPolicy } from "@/lib/search-alert-review-policy";
 
-const emptyInputSchema = {
-  type: "object",
-  additionalProperties: false,
-  properties: {},
-} as const satisfies JsonSchema;
-
-const emptyInput = z.strictObject({});
 const deletionConfirmation = "DELETE_SAVED_SEARCH_AND_ALERT" as const;
 const savedAlertsPageSize = 6;
 const savedAlertsInputSchema = {

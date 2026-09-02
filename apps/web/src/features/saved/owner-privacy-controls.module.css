@@ -110,16 +110,21 @@
   border-color: transparent;
 }
 
-/* A fill states the control; the outline around it was one line doing nothing. */
+/* Recovery and verification advance the form, so they use the product's
+   primary action rather than inverting with the page theme. */
 .form button {
   min-block-size: 39px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: var(--color-ink);
-  color: var(--color-surface);
+  background: var(--jb-signal-gradient);
+  color: var(--jb-signal-contrast);
   padding: 8px 11px;
   font-size: var(--jb-type-caption);
   font-weight: 650;
+}
+
+.form button:hover:not(:disabled) {
+  background: var(--jb-signal-gradient-hover);
 }
 
 .form button:disabled {
@@ -139,8 +144,14 @@
 }
 
 .form .quiet {
-  background: transparent;
-  color: var(--color-ink-muted);
+  background: var(--jb-glass-control);
+  color: var(--color-ink);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
+}
+
+.form .quiet:hover:not(:disabled) {
+  background: var(--jb-hover-surface);
 }
 
 /*

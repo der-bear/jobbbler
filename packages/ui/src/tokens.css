@@ -218,11 +218,7 @@
   --jb-state-active-line: color-mix(in srgb, var(--jb-signal) 30%, var(--jb-border-chip));
   --jb-state-active-ink: var(--jb-signal-strong);
 
-  --jb-action-gradient: linear-gradient(
-    180deg,
-    var(--jb-action) 0%,
-    var(--jb-action-strong) 72%
-  );
+  --jb-action-gradient: linear-gradient(180deg, var(--jb-action) 0%, var(--jb-action-strong) 72%);
   --jb-action-gradient-hover: linear-gradient(
     180deg,
     var(--jb-action-hover) 0%,

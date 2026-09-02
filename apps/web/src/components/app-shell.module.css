@@ -472,6 +472,8 @@
     border-color var(--motion-fast) var(--ease-standard),
     background var(--motion-fast) var(--ease-standard),
     color var(--motion-fast) var(--ease-standard);
+  /* A two-word pill must not break into two lines beside a docked panel at 1024. */
+  white-space: nowrap;
 }
 
 .agentView:hover {
@@ -616,6 +618,18 @@
   .shell[data-agent-open="true"] .desktopNavigation .mobileLabel {
     display: block;
     white-space: nowrap;
+  }
+}
+
+/*
+ * Beside a docked panel the header has 640–700px, not the window. Short labels
+ * already apply (the 1600px rule below); under 1060px even they collide with
+ * the Agent activity pill, so the nav goes to icons. The links keep their
+ * names through aria-label.
+ */
+@media (max-width: 1060px) {
+  .shell[data-agent-open="true"] .desktopNavigation .mobileLabel {
+    display: none;
   }
 }
 

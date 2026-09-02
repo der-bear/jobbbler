@@ -27,11 +27,13 @@ type PanelTab = (typeof panelTabs)[number];
 const MIN_PANEL_WIDTH = 320;
 const MAX_PANEL_WIDTH = 560;
 /*
- * The page keeps 640px beside the panel: with the 320px panel minimum that is
- * the 960px where the panel becomes a sheet (see app-shell.tsx). At 760 the
- * resizer had no range at all between 961 and 1079px.
+ * The page keeps 760px beside the panel wherever the window allows it: below
+ * that the header's nav and the Agent activity pill collide. The panel gives
+ * way first (down to its 320px minimum); the sheet begins at 960px, where a
+ * 320px panel would leave the page under 640px. Between 961 and 1079px the
+ * panel is pinned at its minimum and the resizer is put away.
  */
-const MIN_MAIN_WIDTH = 640;
+const MIN_MAIN_WIDTH = 760;
 
 export function maximumAgentPanelWidth(viewportWidth: number): number {
   return Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, viewportWidth - MIN_MAIN_WIDTH));
@@ -217,6 +219,7 @@ export function AgentPanelSurface({
       <div
         aria-label="Resize agent panel"
         aria-orientation="vertical"
+        aria-hidden={maximumWidth <= MIN_PANEL_WIDTH || undefined}
         aria-valuemax={maximumWidth}
         aria-valuemin={MIN_PANEL_WIDTH}
         aria-valuenow={width}
@@ -224,7 +227,7 @@ export function AgentPanelSurface({
         onKeyDown={resizeWithKeyboard}
         onPointerDown={startResize}
         role="separator"
-        tabIndex={modal ? -1 : 0}
+        tabIndex={modal || maximumWidth <= MIN_PANEL_WIDTH ? -1 : 0}
       />
 
       <header className={styles["header"]}>

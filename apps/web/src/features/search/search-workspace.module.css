@@ -265,6 +265,12 @@
   outline-offset: var(--jb-focus-offset);
 }
 
+.resultsControls {
+  /* Beside a docked panel the row is narrower than Save search + Sort; they wrap instead of spilling. */
+  flex-wrap: wrap;
+  max-inline-size: 100%;
+}
+
 .resultsHeader,
 .resultsControls,
 .resultsFooter {
@@ -539,6 +545,9 @@
 
 .resultsHeader {
   position: relative;
+  /* Beside a docked panel the count and the controls no longer fit on one line; the
+     controls drop under the count instead of squeezing "300 roles" onto two lines. */
+  flex-wrap: wrap;
   align-items: flex-end;
   border-block-end: var(--jb-stroke-structure) solid var(--color-line);
   padding-block-end: 18px;
@@ -549,7 +558,7 @@
   position: absolute;
   inset-block-end: -1px;
   inset-inline-start: 0;
-  block-size: 2px;
+  block-size: var(--jb-stroke-indicator);
   inline-size: 100%;
   background: var(--jb-signal);
   opacity: 0;
@@ -579,6 +588,7 @@
 .resultsHeader h1,
 .resultsHeader h2 {
   margin: 0;
+  white-space: nowrap;
   font-size: var(--jb-type-heading-sm);
   font-weight: 590;
   letter-spacing: -0.035em;

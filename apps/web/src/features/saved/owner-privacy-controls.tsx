@@ -217,7 +217,7 @@ export function OwnerPrivacyControls({
           {recoveryId === null ? (
             <form className={styles["form"]} onSubmit={(event) => void startRecovery(event)}>
               <label>
-                <span>Your email</span>
+                <span>Recovery email</span>
                 <input
                   autoComplete="email"
                   maxLength={320}
