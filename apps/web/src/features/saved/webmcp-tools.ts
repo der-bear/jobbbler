@@ -44,14 +44,15 @@ const savedAlertsInputSchema = {
   properties: {
     limit: {
       type: "integer",
-      description: "Number of saved searches to return, from 1 to 6. Defaults to 6.",
+      description: "How many saved searches to return, from 1 to 6. If omitted, return 6.",
       minimum: 1,
       maximum: savedAlertsPageSize,
       default: savedAlertsPageSize,
     },
     offset: {
       type: "integer",
-      description: "Zero-based offset into saved searches sorted newest first. Defaults to 0.",
+      description:
+        "How many saved searches to skip, starting with the newest. If omitted, skip none.",
       minimum: 0,
       default: 0,
     },
@@ -72,12 +73,12 @@ const scheduleStateBranch = (action: "pause" | "resume") =>
         enum: [action],
         description:
           action === "pause"
-            ? "Temporarily stop this alert. The saved search remains available."
-            : "Resume checking this paused alert.",
+            ? "Pause email updates. Keep the saved search."
+            : "Turn email updates back on for this paused alert.",
       },
       scheduleId: {
         type: "string",
-        description: "The exact schedule ID returned by get_saved_alerts.",
+        description: "The scheduleId returned by get_saved_alerts for this alert.",
         pattern: "^schedule_[0-9a-f-]{36}$",
       },
     },
@@ -95,18 +96,18 @@ const stateInputSchema = {
         action: {
           type: "string",
           enum: ["delete"],
-          description: "Permanently delete one saved search and stop its alert, if present.",
+          description: "Permanently delete one saved search and stop its email updates, if any.",
         },
         savedSearchId: {
           type: "string",
-          description: "The exact saved search ID returned by get_saved_alerts.",
+          description: "The savedSearchId returned by get_saved_alerts for this search.",
           pattern: "^saved_[0-9a-f-]{36}$",
         },
         confirmation: {
           type: "string",
           enum: [deletionConfirmation],
           description:
-            "Required only after the person explicitly asks to permanently delete this saved search and its alert.",
+            "Use only after the person clearly asks to permanently delete this saved search and its email updates.",
         },
       },
       required: ["action", "savedSearchId", "confirmation"],
@@ -133,12 +134,13 @@ const recurrenceInputSchema = {
         frequency: { type: "string", enum: ["daily"] },
         time: {
           type: "string",
-          description: "Local 24-hour time in HH:mm format.",
+          description:
+            "Time on the person's clock, written in 24-hour HH:mm form, for example 09:30.",
           pattern: "^([01]\\d|2[0-3]):[0-5]\\d$",
         },
         timeZone: {
           type: "string",
-          description: "IANA time zone, for example Europe/Kyiv.",
+          description: "Time zone name, for example Europe/Kyiv.",
           maxLength: 120,
         },
       },
@@ -151,17 +153,18 @@ const recurrenceInputSchema = {
         frequency: { type: "string", enum: ["weekly"] },
         time: {
           type: "string",
-          description: "Local 24-hour time in HH:mm format.",
+          description:
+            "Time on the person's clock, written in 24-hour HH:mm form, for example 09:30.",
           pattern: "^([01]\\d|2[0-3]):[0-5]\\d$",
         },
         timeZone: {
           type: "string",
-          description: "IANA time zone, for example Europe/Kyiv.",
+          description: "Time zone name, for example Europe/Kyiv.",
           maxLength: 120,
         },
         days: {
           type: "array",
-          description: "Unique weekdays on which to check.",
+          description: "Days of the week to check. List each day only once.",
           minItems: 1,
           maxItems: 7,
           uniqueItems: true,
@@ -182,18 +185,18 @@ const requestAlertInputSchema = {
   properties: {
     name: {
       type: "string",
-      description: "Short human-readable name for this alert.",
+      description: "A short name the person will recognize for these email updates.",
       minLength: 1,
       maxLength: 100,
     },
     criteria: {
       ...jobSearchToolInputJsonSchema,
-      description: "Raw search_jobs preferences or get_search_state exact criteria.",
+      description: "Search choices from search_jobs or the exact choices from get_search_state.",
     },
     recurrence: recurrenceInputSchema,
     email: {
       type: "string",
-      description: "Delivery email the person explicitly supplied.",
+      description: "Email address the person gave for job updates.",
       format: "email",
       maxLength: 320,
     },
@@ -207,13 +210,13 @@ const saveSearchInputSchema = {
   properties: {
     name: {
       type: "string",
-      description: "Short human-readable name for this saved search.",
+      description: "A short name the person will recognize for this saved search.",
       minLength: 1,
       maxLength: 100,
     },
     criteria: {
       ...jobSearchToolInputJsonSchema,
-      description: "Raw search_jobs preferences or get_search_state exact criteria.",
+      description: "Search choices from search_jobs or the exact choices from get_search_state.",
     },
   },
   required: ["name", "criteria"],
@@ -227,19 +230,19 @@ const decisionInputSchema = {
       properties: {
         requestId: {
           type: "string",
-          description: "Exact request ID returned by request_search_alert.",
+          description: "Copy the requestId returned by request_search_alert.",
           pattern: "^[a-z][a-z0-9_]*_[0-9a-f-]{36}$",
         },
         reviewToken: {
           type: "string",
-          description: "Opaque review token returned by request_search_alert.",
+          description: "Copy the reviewToken returned by request_search_alert exactly as given.",
           maxLength: 4_096,
         },
         decision: { type: "string", enum: ["approved"] },
         code: {
           type: "string",
           description:
-            "6-digit code the person received when request_search_alert says email verification is required. Omit it when the destination is already verified.",
+            "The 6-digit code sent to the person's email. Include it only when request_search_alert asks for it; otherwise leave it out.",
           pattern: "^\\d{6}$",
         },
       },
@@ -251,12 +254,12 @@ const decisionInputSchema = {
       properties: {
         requestId: {
           type: "string",
-          description: "Exact request ID returned by request_search_alert.",
+          description: "Copy the requestId returned by request_search_alert.",
           pattern: "^[a-z][a-z0-9_]*_[0-9a-f-]{36}$",
         },
         reviewToken: {
           type: "string",
-          description: "Opaque review token returned by request_search_alert.",
+          description: "Copy the reviewToken returned by request_search_alert exactly as given.",
           maxLength: 4_096,
         },
         decision: { type: "string", enum: ["declined"] },
@@ -299,7 +302,7 @@ const openSavedInputSchema = {
   properties: {
     savedSearchId: {
       type: "string",
-      description: "A saved search ID returned by get_saved_alerts.",
+      description: "The savedSearchId returned by get_saved_alerts for this search.",
       pattern: "^saved_[0-9a-f-]{36}$",
     },
   },
@@ -314,19 +317,19 @@ const latestUpdateInputSchema = {
   properties: {
     savedSearchId: {
       type: "string",
-      description: "A saved search ID returned by get_saved_alerts.",
+      description: "The savedSearchId returned by get_saved_alerts for this search.",
       pattern: "^saved_[0-9a-f-]{36}$",
     },
     limit: {
       type: "integer",
-      description: "Number of change references to return, from 1 to 5. Defaults to 5.",
+      description: "How many changed jobs to return, from 1 to 5. If omitted, return 5.",
       minimum: 1,
       maximum: 5,
       default: 5,
     },
     offset: {
       type: "integer",
-      description: "Zero-based offset into this run's change references. Defaults to 0.",
+      description: "How many changed jobs to skip. If omitted, skip none.",
       minimum: 0,
       default: 0,
     },
@@ -445,7 +448,7 @@ function searchAlertReviewResult(
 ): RequiresUserActionWebMcpResult {
   const verificationRequired = result.review.deliveryVerification.required;
   return requiresUserActionWebMcpResult({
-    summary: "Review this exact job alert in the agent client.",
+    summary: "This job alert is ready for the person's review.",
     kind: "data_consent",
     surface: "search_alert_consent",
     requestId: result.requestId,
@@ -457,8 +460,8 @@ function searchAlertReviewResult(
     presentation: {
       title: "Review this job alert",
       prompt: verificationRequired
-        ? "Confirm the exact alert and enter the 6-digit code sent to the reviewed email."
-        : "Confirm the exact search, schedule, masked destination, data use, retention, and withdrawal.",
+        ? "Check the search, email address, and timing. Then enter the 6-digit code sent to that email."
+        : "Check the search, email address, timing, how the information is used, how long it is kept, and how to stop the emails.",
       confirmLabel: verificationRequired ? "Verify and turn on" : "Turn on alert",
       facts: [
         { key: "Search", value: describeSearchCriteria(result.review.criteria) },
@@ -471,11 +474,7 @@ function searchAlertReviewResult(
         { key: "Purpose", value: result.review.purpose },
         {
           key: "Data",
-          value: result.review.dataCategories
-            .map((category, index) =>
-              index === 0 ? humanize(category) : category.replaceAll("_", " "),
-            )
-            .join(" and "),
+          value: "Your job search choices and email address.",
         },
         { key: "Retention", value: result.review.retention },
         { key: "Withdrawal", value: result.review.withdrawal },
@@ -519,8 +518,7 @@ function assertPresentableSearchAlertReview(
     {
       code: "custom",
       path: ["criteria"],
-      message:
-        "The exact consent review is too long for one safe agent response. Narrow this alert or split it into simpler alerts.",
+      message: "This review is too long to show safely. Use fewer filters or make separate alerts.",
     },
   ]);
 }
@@ -530,9 +528,9 @@ export function createSavedToolManifests(
 ): readonly ToolManifest<unknown, SavedToolOutput>[] {
   const getSavedAlerts: ToolManifest<unknown, SavedToolOutput> = {
     name: "get_saved_alerts",
-    purpose: "List saved searches and their optional update schedules.",
+    purpose: "Show saved job searches and whether email updates are on.",
     description:
-      "List private saved searches newest first, including any optional email-update schedule and next check. Use limit and nextOffset to continue through larger workspaces. Email destinations and credentials are never returned.",
+      "Return saved job searches, newest first. For each search, show whether email updates are on and when the next check will happen. If there are more searches, call this tool again with nextOffset. Never return an email address or sign-in information.",
     inputSchema: savedAlertsInputSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -559,8 +557,9 @@ export function createSavedToolManifests(
         });
         const nextOffset =
           offset + alerts.length < savedSearches.length ? offset + alerts.length : null;
+        const activeEmailUpdates = schedules.filter(({ enabled }) => enabled).length;
         return completedWebMcpResult({
-          summary: `Read ${String(savedSearches.length)} saved job search${savedSearches.length === 1 ? "" : "es"}; ${String(schedules.filter(({ enabled }) => enabled).length)} alert${schedules.filter(({ enabled }) => enabled).length === 1 ? " is" : "s are"} active.`,
+          summary: `Found ${String(savedSearches.length)} saved job search${savedSearches.length === 1 ? "" : "es"}. ${String(activeEmailUpdates)} ${activeEmailUpdates === 1 ? "has" : "have"} email updates turned on.`,
           data: {
             total: savedSearches.length,
             returned: alerts.length,
@@ -577,7 +576,7 @@ export function createSavedToolManifests(
         return safeWebMcpErrorResult(
           error,
           signal,
-          "Use optional limit from 1 to 6 and a non-negative offset.",
+          "If needed, ask for 1 to 6 searches and say how many newer searches to skip.",
         );
       }
     },
@@ -585,9 +584,9 @@ export function createSavedToolManifests(
 
   const requestSearchAlert: ToolManifest<unknown, SavedToolOutput> = {
     name: "request_search_alert",
-    purpose: "Prepare one email job alert for an explicit decision in the external agent client.",
+    purpose: "Prepare email updates for one job search for the person to review.",
     description:
-      "Prepare an exact review for one saved search, schedule, and email destination. Use only criteria supplied now or from get_search_state(detail=exact). Never add filters by inference or from another task. If name, criteria, schedule, or email is missing, ask only for the missing details. A new email needs a 6-digit code; a verified one does not. Activation requires the person's explicit decision through decide_search_alert.",
+      "Prepare a review for one job search, schedule, and email address. Use only choices the person supplied now or exact choices from get_search_state(detail=exact). Never infer filters or reuse them from another task. If the name, search choices, schedule, or email is missing, ask only for the missing information. A new email address requires a 6-digit code; a verified one does not. Turn on updates only after explicit approval through decide_search_alert.",
     inputSchema: requestAlertInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -609,7 +608,7 @@ export function createSavedToolManifests(
         return safeWebMcpErrorResult(
           error,
           signal,
-          "Provide a name, raw search criteria, recurrence, and delivery email.",
+          "Provide a name, the exact search choices, when to check, and the email address for updates.",
         );
       }
     },
@@ -617,9 +616,9 @@ export function createSavedToolManifests(
 
   const decideSearchAlert: ToolManifest<unknown, SavedToolOutput> = {
     name: "decide_search_alert",
-    purpose: "Record the person's exact alert decision from the external agent client.",
+    purpose: "Use the person's answer to turn the reviewed email updates on or leave them off.",
     description:
-      "Continue the exact request from request_search_alert. Approval always requires the person's explicit decision. Include the 6-digit code only when that review says email verification is required; omit it for an already verified destination. Decline requires no code. Never infer approval or invent a code. This activates only the unchanged reviewed alert.",
+      "Continue the review created by request_search_alert. Approve only when the person clearly says yes. Include the 6-digit code only when the review asks for it. Do not include a code when the email address is already confirmed. A decline needs no code. Never guess approval or invent a code. Apply the decision only to the alert exactly as reviewed.",
     inputSchema: decisionInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -629,7 +628,10 @@ export function createSavedToolManifests(
           await dependencies.decideSearchAlert({ ...parsed, channel: "agent_client" }, { signal }),
         );
         return completedWebMcpResult({
-          summary: result.summary,
+          summary:
+            result.decision === "approved"
+              ? "Email updates are on for this job search."
+              : "Email updates were not turned on.",
           data: {
             requestId: result.requestId,
             decision: result.decision,
@@ -649,7 +651,7 @@ export function createSavedToolManifests(
         return safeWebMcpErrorResult(
           error,
           signal,
-          "Provide the exact review request and the person's approval, adding a code only when requested, or decline.",
+          "Use the requestId and reviewToken from request_search_alert. Say whether the person approved or declined. Add the code only when asked.",
         );
       }
     },
@@ -657,9 +659,9 @@ export function createSavedToolManifests(
 
   const setJobAlertState: ToolManifest<unknown, SavedToolOutput> = {
     name: "set_job_alert_state",
-    purpose: "Pause, resume, or permanently delete one saved job search in this workspace.",
+    purpose: "Pause, resume, or permanently delete one saved job search and its email updates.",
     description:
-      "Use action=pause or action=resume with the exact schedule ID returned as scheduleId by get_saved_alerts. Use action=delete only after the person explicitly asks to permanently delete one exact saved search; pass its savedSearchId and the literal confirmation DELETE_SAVED_SEARCH_AND_ALERT. 'Stop', 'turn off', or 'not now' means pause, never delete. If several alerts could match, ask which one.",
+      "To pause or resume email updates, use action=pause or action=resume with the scheduleId from get_saved_alerts. Delete only after the person clearly asks to permanently delete one saved search. For deletion, use action=delete with that savedSearchId and confirmation DELETE_SAVED_SEARCH_AND_ALERT. If the person says 'stop,' 'turn off,' or 'not now,' pause; never delete. If more than one alert could match, ask which one.",
     inputSchema: stateInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -672,7 +674,7 @@ export function createSavedToolManifests(
               {
                 code: "custom",
                 path: ["savedSearchId"],
-                message: "The saved search is not in the current private workspace.",
+                message: "This saved search was not found.",
               },
             ]);
           }
@@ -703,7 +705,7 @@ export function createSavedToolManifests(
             {
               code: "custom",
               path: ["scheduleId"],
-              message: "The schedule is not in the current private workspace.",
+              message: "This job alert was not found.",
             },
           ]);
         }
@@ -719,8 +721,8 @@ export function createSavedToolManifests(
         await dependencies.onScheduleCommitted(updated);
         return completedWebMcpResult({
           summary: updated.enabled
-            ? "Resumed this job alert and updated the visible workspace."
-            : "Paused this job alert and updated the visible workspace.",
+            ? "Email updates for this job search are on again."
+            : "Email updates for this job search are paused.",
           data: {
             scheduleId: updated.id,
             savedSearchId: updated.savedSearchId,
@@ -735,7 +737,7 @@ export function createSavedToolManifests(
         return safeWebMcpErrorResult(
           error,
           signal,
-          "Use action=pause or action=resume with a scheduleId from get_saved_alerts. Permanent deletion requires action=delete, a savedSearchId, and the exact confirmation literal.",
+          "To pause or resume, use the scheduleId from get_saved_alerts. To delete permanently, use the savedSearchId and confirmation DELETE_SAVED_SEARCH_AND_ALERT.",
         );
       }
     },
@@ -743,9 +745,9 @@ export function createSavedToolManifests(
 
   const openSavedSearch: ToolManifest<unknown, SavedToolOutput> = {
     name: "open_saved_search",
-    purpose: "Open one saved search on the results page with its exact stored criteria.",
+    purpose: "Open one saved search and show its saved choices on the results page.",
     description:
-      "Navigate to the search page with the exact criteria of a saved search returned by get_saved_alerts. The search tools then apply to that restored search.",
+      "Open the results page with the same search choices saved in a search returned by get_saved_alerts. The search tools can then use those choices.",
     inputSchema: openSavedInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -758,13 +760,13 @@ export function createSavedToolManifests(
             {
               code: "custom",
               path: ["savedSearchId"],
-              message: "The saved search is not in the current private workspace.",
+              message: "This saved search was not found.",
             },
           ]);
         }
         await dependencies.onNavigate(dependencies.savedSearchHref(savedSearch), { signal });
         return completedWebMcpResult({
-          summary: "Opened the saved search on the results page with its stored criteria.",
+          summary: "Opened this saved search on the results page.",
           data: { savedSearchId: savedSearch.id, route: "/" },
           resources: [
             { type: "saved_search", id: savedSearch.id, label: short(savedSearch.name, 64) },
@@ -782,9 +784,9 @@ export function createSavedToolManifests(
 
   const getLatestSearchUpdate: ToolManifest<unknown, SavedToolOutput> = {
     name: "get_latest_search_update",
-    purpose: "Read what changed since a saved search was last checked, not the full result list.",
+    purpose: "Show what changed the last time a saved job search was checked.",
     description:
-      "Read the most recent server-side check of one saved search: counts of new, updated, closed, and no-longer-matching roles. Use limit and nextOffset to continue through its bounded change references. Monitoring runs without an open tab.",
+      "Show how many jobs are new, updated, closed, or no longer match since the previous check. Use limit and nextOffset to see more changed jobs. Checks continue even when this site is not open.",
     inputSchema: latestUpdateInputSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -797,7 +799,7 @@ export function createSavedToolManifests(
             {
               code: "custom",
               path: ["savedSearchId"],
-              message: "The saved search is not in the current private workspace.",
+              message: "This saved search was not found.",
             },
           ]);
         }
@@ -805,7 +807,7 @@ export function createSavedToolManifests(
         if (run.evaluation === null) {
           return completedWebMcpResult({
             summary:
-              "This saved search has not been checked yet. The next scheduled run will establish its baseline.",
+              "This saved search has not been checked yet. Its first check will make the starting list.",
             data: { savedSearchId: savedSearch.id, checked: false },
           });
         }
@@ -830,7 +832,7 @@ export function createSavedToolManifests(
         return completedWebMcpResult({
           summary:
             parts.length === 0
-              ? "No meaningful changes since the last check."
+              ? "No jobs changed since the last check."
               : `Since the last check: ${parts.join(", ")}.`,
           data: {
             savedSearchId: savedSearch.id,
@@ -852,7 +854,7 @@ export function createSavedToolManifests(
         return safeWebMcpErrorResult(
           error,
           signal,
-          "Provide one saved search ID from get_saved_alerts, optional limit from 1 to 5, and a non-negative offset.",
+          "Use a savedSearchId from get_saved_alerts. If needed, ask for 1 to 5 changed jobs and say how many to skip.",
         );
       }
     },
@@ -860,9 +862,9 @@ export function createSavedToolManifests(
 
   const saveJobSearch: ToolManifest<unknown, SavedToolOutput> = {
     name: "save_job_search",
-    purpose: "Save one reusable job search without turning on email updates.",
+    purpose: "Save one job search without turning on email updates.",
     description:
-      "Use when the person says save, remember, or bookmark this search. Save only criteria explicitly supplied now or returned by get_search_state(detail=exact). If no name was supplied, ask for a short, recognizable name. Do not ask for an email: email updates stay off. For notifications, monitoring, or emailed updates, use request_search_alert instead.",
+      "Use when the person says save, remember, or bookmark this search. Save only search choices the person gave now or exact choices from get_search_state(detail=exact). If no name was supplied, ask for a short, recognizable name. Do not ask for an email address; email updates stay off. If the person asks for notifications, alerts, or email updates, use request_search_alert instead.",
     inputSchema: saveSearchInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -892,7 +894,7 @@ export function createSavedToolManifests(
         return safeWebMcpErrorResult(
           error,
           signal,
-          "Provide a short name and the exact search criteria to save. Email is not needed.",
+          "Provide a short name and the exact search choices to save. No email address is needed.",
         );
       }
     },

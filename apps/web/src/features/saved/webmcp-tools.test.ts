@@ -65,10 +65,10 @@ const alertReview: RequestSearchAlertResult = {
     criteria: savedSearch.criteria,
     recurrence: schedule.recurrence,
     firstRunAt: schedule.nextRunAt,
-    purpose: "Send email when this saved technology-job search changes.",
+    purpose: "Store this search and email matching-job updates.",
     dataCategories: ["saved_search_criteria", "delivery_email"],
-    retention: "Stored until the alert or private workspace is deleted.",
-    withdrawal: "Pause the alert or delete the private workspace at any time.",
+    retention: "Used only while this search alert is on and your email is attached.",
+    withdrawal: "Stop it any time: pause or delete the alert, or remove your email.",
     privacyNoticeVersion: "2026-08-29",
   },
 };
@@ -82,7 +82,7 @@ const approvedAlert: DecideSearchAlertResult = {
   scheduleId: schedule.id,
   nextRunAt: schedule.nextRunAt,
   decidedAt: "2026-08-29T08:02:00.000Z",
-  summary: "Job alert activated for the reviewed search and destination.",
+  summary: "Email updates are on for this job search.",
 };
 
 function dependencies(
@@ -115,17 +115,61 @@ function dependencies(
 }
 
 describe("saved-route WebMCP tools", () => {
-  it("tells a weak agent exactly what to ask for when save or alert details are missing", () => {
+  it("gives every saved-search tool plain and specific instructions", () => {
     const manifests = createSavedToolManifests(dependencies());
-    const byName = (name: string) => {
-      const manifest = manifests.find((candidate) => candidate.name === name);
-      if (manifest === undefined) throw new Error(`Missing ${name}.`);
-      return manifest;
-    };
 
-    expect(byName("save_job_search").description).toContain("ask for a short, recognizable name");
-    expect(byName("request_search_alert").description).toContain(
-      "ask only for the missing details",
+    const instructions = manifests.map(({ name, purpose, description }) => ({
+      name,
+      purpose,
+      description,
+    }));
+
+    expect(instructions).toEqual([
+      {
+        name: "get_saved_alerts",
+        purpose: "Show saved job searches and whether email updates are on.",
+        description:
+          "Return saved job searches, newest first. For each search, show whether email updates are on and when the next check will happen. If there are more searches, call this tool again with nextOffset. Never return an email address or sign-in information.",
+      },
+      {
+        name: "request_search_alert",
+        purpose: "Prepare email updates for one job search for the person to review.",
+        description:
+          "Prepare a review showing the exact job search, when it will be checked, and the email address that will receive updates. Use only search choices the person gave now or exact choices from get_search_state(detail=exact). Never add filters from a guess or another request. If the name, search choices, check time, or email address is missing, ask only for the missing information. A new email address needs a 6-digit code; an email address already confirmed does not. Turn on updates only after the person clearly approves them with decide_search_alert.",
+      },
+      {
+        name: "decide_search_alert",
+        purpose: "Use the person's answer to turn the reviewed email updates on or leave them off.",
+        description:
+          "Continue the review created by request_search_alert. Approve only when the person clearly says yes. Include the 6-digit code only when the review asks for it. Do not include a code when the email address is already confirmed. A decline needs no code. Never guess approval or invent a code. Apply the decision only to the alert exactly as reviewed.",
+      },
+      {
+        name: "set_job_alert_state",
+        purpose: "Pause, resume, or permanently delete one saved job search and its email updates.",
+        description:
+          "To pause or resume email updates, use action=pause or action=resume with the scheduleId from get_saved_alerts. Delete only after the person clearly asks to permanently delete one saved search. For deletion, use action=delete with that savedSearchId and confirmation DELETE_SAVED_SEARCH_AND_ALERT. If the person says 'stop,' 'turn off,' or 'not now,' pause; never delete. If more than one alert could match, ask which one.",
+      },
+      {
+        name: "open_saved_search",
+        purpose: "Open one saved search and show its saved choices on the results page.",
+        description:
+          "Open the results page with the same search choices saved in a search returned by get_saved_alerts. The search tools can then use those choices.",
+      },
+      {
+        name: "get_latest_search_update",
+        purpose: "Show what changed the last time a saved job search was checked.",
+        description:
+          "Show how many jobs are new, updated, closed, or no longer match since the previous check. Use limit and nextOffset to see more changed jobs. Checks continue even when this site is not open.",
+      },
+      {
+        name: "save_job_search",
+        purpose: "Save one job search without turning on email updates.",
+        description:
+          "Use when the person says save, remember, or bookmark this search. Save only search choices the person gave now or exact choices from get_search_state(detail=exact). If no name was supplied, ask for a short, recognizable name. Do not ask for an email address; email updates stay off. If the person asks for notifications, alerts, or email updates, use request_search_alert instead.",
+      },
+    ]);
+    expect(JSON.stringify(instructions)).not.toMatch(
+      /\b(?:workspace|recovery|destination|digest|session)\b/iu,
     );
   });
 
@@ -150,13 +194,10 @@ describe("saved-route WebMCP tools", () => {
       true,
       false,
     ]);
-    expect(manifests[1]!.description).toContain("explicit decision");
-    expect(manifests[1]!.description).toContain("Never add filters");
-    expect(manifests[2]!.description).toContain("6-digit code");
-    expect(manifests[3]!.description).toContain("exact schedule ID");
     const result = await manifests[0]!.execute({}, { signal: new AbortController().signal });
     expect(result).toMatchObject({
       status: "completed",
+      summary: "Found 1 saved job search. 1 has email updates turned on.",
       data: {
         alerts: [
           {
@@ -373,10 +414,14 @@ describe("saved-route WebMCP tools", () => {
       },
       presentation: {
         title: "Review this job alert",
+        prompt:
+          "Check the search, email address, and timing. Then enter the 6-digit code sent to that email.",
         confirmLabel: "Verify and turn on",
         facts: expect.arrayContaining([
           { key: "Search", value: expect.stringContaining("platform") },
-          { key: "Data", value: "Saved search criteria and delivery email" },
+          { key: "Purpose", value: alertReview.review.purpose },
+          { key: "Data", value: "Your job search choices and email address." },
+          { key: "Retention", value: alertReview.review.retention },
           { key: "Withdrawal", value: alertReview.review.withdrawal },
         ]),
       },
@@ -458,7 +503,7 @@ describe("saved-route WebMCP tools", () => {
       status: "failed",
       error: { code: "VALIDATION", retryable: false },
     });
-    expect(JSON.stringify(result)).toMatch(/narrow/i);
+    expect(JSON.stringify(result)).toMatch(/use fewer filters/i);
     expect(requestSearchAlert).not.toHaveBeenCalled();
   });
 
@@ -597,6 +642,7 @@ describe("saved-route WebMCP tools", () => {
     );
     expect(result).toMatchObject({
       status: "completed",
+      summary: "Email updates are on for this job search.",
       data: {
         decision: "approved",
         scheduleId: schedule.id,
@@ -611,7 +657,7 @@ describe("saved-route WebMCP tools", () => {
       decision: "declined",
       scheduleId: null,
       nextRunAt: null,
-      summary: "Job alert activation declined. No schedule was created.",
+      summary: "Email updates were not turned on.",
     };
     const decideSearchAlert = vi.fn(async () => declined);
     const manifests = createSavedToolManifests(dependencies({ decideSearchAlert }));
@@ -637,6 +683,7 @@ describe("saved-route WebMCP tools", () => {
     );
     expect(result).toMatchObject({
       status: "completed",
+      summary: "Email updates were not turned on.",
       data: { decision: "declined", scheduleId: null, nextRunAt: null },
     });
   });
@@ -659,7 +706,11 @@ describe("saved-route WebMCP tools", () => {
       { signal },
     );
     expect(onScheduleCommitted).toHaveBeenCalledWith(expect.objectContaining({ version: 3 }));
-    expect(result).toMatchObject({ status: "completed", data: { enabled: false, version: 3 } });
+    expect(result).toMatchObject({
+      status: "completed",
+      summary: "Email updates for this job search are paused.",
+      data: { enabled: false, version: 3 },
+    });
   });
 
   it("resumes a paused schedule with the explicit resume action", async () => {
@@ -684,7 +735,11 @@ describe("saved-route WebMCP tools", () => {
       { expectedVersion: pausedSchedule.version, enabled: true },
       { signal },
     );
-    expect(result).toMatchObject({ status: "completed", data: { enabled: true, version: 4 } });
+    expect(result).toMatchObject({
+      status: "completed",
+      summary: "Email updates for this job search are on again.",
+      data: { enabled: true, version: 4 },
+    });
   });
 
   it("permanently deletes one exact saved search and bridges the bounded receipt", async () => {
