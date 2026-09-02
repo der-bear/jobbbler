@@ -62,35 +62,38 @@ Master: **1920×1080, 30 fps, H.264, yuv420p, AAC 48 kHz**.
 | 1:42–2:28 | Apply with control                 | Ask the agent to apply to a clearly fictional managed role using a synthetic profile. Show the agent collecting any missing fact, requesting application assistance, and preparing truthful answers. Zoom into the exact submission review: recipient, purpose, values, and sensitivity labels. The person gives one final approval in the agent client. Show the submitted state and immutable receipt on Jobbbler. | “Now the task becomes personal. The agent can prepare the application for me, but opening the site was never permission to use my data. Jobbbler asks at the boundary that matters, shows the exact application, and submits only the unchanged version I approve. The receipt records what happened.” |
 | 2:28–2:44 | The agentic web, made concrete     | Pull back to one composed frame: agent answer on the left, Jobbbler result and Activity on the right. Resolve to the wordmark and live dot.                                                                                                                                                                                                                                                                          | “This is not an AI job board. It is one website showing what changes when the web can explain its actions to the agent you already chose. Jobbbler. Find once. Stay updated. Apply with control.”                                                                                                      |
 
-## The three real user requests
+## The two real delegated journeys
 
-Use natural language, not tool syntax. Small wording adjustments are allowed
-only if the selected client needs them to complete the verified path.
+Use natural language, not tool syntax. In both journeys the person delegates an
+outcome; the agent chooses the tools and sequence, and returns only for a
+missing fact or a decision that belongs to the person. Small wording
+adjustments are allowed only if the selected client needs them to complete the
+verified path.
 
-### 1. Find and compare
+### 1. Find, compare, and keep watching
 
 > Open jobbbler.com. Find senior remote platform-engineering roles in Europe
-> with a disclosed salary. Compare the two strongest matches and tell me which
-> one you would shortlist.
+> with a disclosed salary. Compare the two strongest matches, tell me which one
+> you would shortlist, and keep checking that search every weekday at 08:00
+> Europe/Berlin. Notify me only when the matches change. Ask me only if you need
+> a missing detail or my decision.
 
 Expected visible actions include `get_search_filters`, `search_jobs`,
-`get_job_details`, and `compare_jobs`. The agent may call
-`plan_job_workflow`; if it does, show it briefly as guidance, not as the result.
-
-### 2. Keep watching
-
-> Save this search. Check it every weekday at 08:00 Europe/Berlin and email me
-> only when the matches change.
+`get_job_details`, `compare_jobs`, and the saved-search tools. The agent may
+call `plan_job_workflow`; if it does, show it briefly as guidance, not as the
+result.
 
 Use an owned synthetic demo mailbox. If a mailbox challenge is required, keep
 the code entry out of frame and cut from the exact pending review to the
 activated result. The visible destination must remain masked. The recorded
 delta and narration must use the counts returned by the captured run.
 
-### 3. Apply
+### 2. Apply
 
 > Apply to the selected Jobbbler demo role. Use the synthetic profile I shared,
-> write only truthful answers, and stop for my final decision before submitting.
+> complete only truthful answers, and ask me only for a missing fact, required
+> data-processing consent, or my final decision on the exact version before you
+> submit it.
 
 The capture must include the real assistance request and decision, prepared
 answers with agent provenance, the exact submission review, the person's final
@@ -126,8 +129,8 @@ identifies.
 
 ## Editorial graphics
 
-On-screen editorial copy is limited to the opening thesis, three chapter
-labels, one platform statement, and the closing line:
+On-screen editorial copy is limited to the opening thesis, the journey labels,
+one platform statement, and the closing line:
 
 1. **One sentence**
 2. **Find once**
