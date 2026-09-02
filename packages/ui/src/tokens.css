@@ -27,6 +27,7 @@
    * three steps close the gap between body copy and the page title, which is
    * where headings actually live.
    */
+  --jb-type-heading-xs: 1.25rem;
   --jb-type-heading-sm: 1.125rem;
   --jb-type-heading: 1.375rem;
   --jb-type-heading-lg: 1.625rem;
@@ -109,7 +110,16 @@
   --jb-page-gutter: clamp(20px, 3vw, 48px);
   --jb-page-top: clamp(34px, 5vw, 72px);
   --jb-page-bottom: 96px;
+  /*
+   * Two title tiers and one section size. The page title is the token; the two
+   * hero pages share a larger clamp; every section heading is one size and a
+   * heading inside a card is one size. Measured before this: page titles at
+   * 34 / 52 / 64 / 66 and section headings at 15 · 18 · 28 · 29 · 34.
+   */
+  --jb-hero-title-size: clamp(2.5rem, 4.6vw, 3.5rem);
   --jb-page-title-size: clamp(2.25rem, 4.2vw, 3.25rem);
+  --jb-section-title-size: clamp(1.25rem, 2.4vw, 1.75rem);
+  --jb-card-title-size: var(--jb-type-heading-sm);
   --jb-page-title-tracking: -0.055em;
   --jb-page-title-leading: 1.02;
   /*
@@ -144,6 +154,13 @@
    * behind — which is exactly the thing that loses contrast.
    */
   --jb-state-shift: color-mix(in srgb, var(--jb-signal) 7%, transparent);
+  /*
+   * Foreground blend. Dark ink under `darken` is kept wherever it is the darker
+   * of the two, so no ground, hover or wash can take its contrast away; the
+   * dark theme reads the same rule from the other side with `lighten`.
+   * Labels on a filled button and the wordmark stay unblended.
+   */
+  --jb-blend-fg: darken;
 
   /*
    * Material scale. Controls obscure almost everything behind them, in-flow
@@ -172,11 +189,17 @@
    * producing three different colours for the same pointer gesture.
    */
   --jb-hover-surface: var(--jb-veil-control-subtle);
-  --jb-hover-line: color-mix(in srgb, var(--jb-signal) 26%, var(--jb-border));
+  /*
+   * The edge answers the pointer in contrast, not in colour: a field's edge
+   * steps toward the ink, a chip's to the full border-strong. Green on an edge
+   * means one thing — this is on — and the selected fill is kept quiet enough
+   * that a row of chosen filters is not the loudest thing on the page.
+   */
+  --jb-hover-line: color-mix(in srgb, var(--jb-text) 50%, var(--jb-border-strong));
   --jb-state-hover: var(--jb-state-shift);
-  --jb-state-line: color-mix(in srgb, var(--jb-signal) 30%, var(--jb-border-strong));
-  --jb-state-active: color-mix(in srgb, var(--jb-signal-tint) 15%, transparent);
-  --jb-state-active-line: color-mix(in srgb, var(--jb-signal) 48%, var(--jb-border-chip));
+  --jb-state-line: var(--jb-border-strong);
+  --jb-state-active: color-mix(in srgb, var(--jb-signal-tint) 9%, transparent);
+  --jb-state-active-line: color-mix(in srgb, var(--jb-signal) 30%, var(--jb-border-chip));
   --jb-state-active-ink: var(--jb-signal-strong);
 
   --jb-action-gradient: linear-gradient(
@@ -245,6 +268,7 @@
   --jb-canvas: #181a19;
   --jb-signal-tint: #75df9a;
   --jb-state-shift: color-mix(in srgb, var(--jb-signal-tint) 10%, transparent);
+  --jb-blend-fg: lighten;
   --jb-canvas-light-opacity: 0.15;
   --jb-canvas-grain-opacity: 0.55;
   --jb-surface: #1e201f;
