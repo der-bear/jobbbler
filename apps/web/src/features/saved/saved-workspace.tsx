@@ -23,12 +23,10 @@ import { flushSync } from "react-dom";
 import { z } from "zod";
 
 import {
-  completeEmailVerificationResultSchema,
   jobAlertScheduleSchema,
   ownerSessionResultSchema,
   savedSearchDeletionReceiptSchema,
   searchJobsResultSchema,
-  startEmailVerificationResultSchema,
   verificationEndpointSummarySchema,
   type JobAlertSchedule,
   type JobSearchCriteria,
@@ -53,6 +51,7 @@ import {
 } from "@/lib/webmcp-ui-bridge";
 import type { LatestSearchRun } from "@/lib/latest-run";
 
+import { EmailVerification } from "./email-verification";
 import { OwnerPrivacyControls } from "./owner-privacy-controls";
 import { saveSearchWithoutDelivery } from "./saved-search-client";
 import {
@@ -393,11 +392,6 @@ export function SavedWorkspace({
   );
   const [latestRuns, setLatestRuns] = useState<ReadonlyMap<string, LatestSearchRun>>(new Map());
   const [criteria, setCriteria] = useState<JobSearchCriteria | null>(null);
-  const [email, setEmail] = useState("");
-  const [challengeId, setChallengeId] = useState<string | null>(null);
-  const [code, setCode] = useState("");
-  const [verificationHint, setVerificationHint] = useState<string | null>(null);
-  const verificationCodeRef = useRef<HTMLInputElement | null>(null);
   const [name, setName] = useState("");
   const [emailUpdates, setEmailUpdates] = useState(false);
   const [frequency, setFrequency] = useState<"daily" | "weekly">("daily");
@@ -578,12 +572,6 @@ export function SavedWorkspace({
     [endpoints],
   );
 
-  useEffect(() => {
-    if (challengeId === null) return;
-    const frame = window.requestAnimationFrame(() => verificationCodeRef.current?.focus());
-    return () => window.cancelAnimationFrame(frame);
-  }, [challengeId]);
-
   async function revokeEndpoint(endpoint: VerificationEndpointSummary) {
     setStatus("working");
     setError(null);
@@ -612,55 +600,6 @@ export function SavedWorkspace({
     () => new Map(schedules.map((schedule) => [schedule.savedSearchId, schedule])),
     [schedules],
   );
-
-  async function beginVerification(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setStatus("working");
-    setError(null);
-    try {
-      const started = await queryApi(
-        "/api/v1/owners/email/start",
-        startEmailVerificationResultSchema,
-        { method: "POST", body: { email } },
-      );
-      setChallengeId(started.challengeId);
-      setVerificationHint(
-        started.developmentCode === undefined
-          ? `Code sent to ${started.maskedDestination}.`
-          : `Local capture code: ${started.developmentCode}`,
-      );
-      if (started.developmentCode !== undefined) setCode(started.developmentCode);
-      setStatus("ready");
-    } catch (caught) {
-      setError(message(caught));
-      setStatus("error");
-    }
-  }
-
-  async function completeVerification(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (challengeId === null) return;
-    setStatus("working");
-    setError(null);
-    try {
-      const completed = await queryApi(
-        "/api/v1/owners/email/complete",
-        completeEmailVerificationResultSchema,
-        { method: "POST", body: { challengeId, code } },
-      );
-      setOwner(completed.owner);
-      await loadPrivateResources();
-      setStatus("ready");
-      toast.show({
-        title: "Email verified",
-        description: "Saved searches can now be restored and sent as email updates.",
-        tone: "success",
-      });
-    } catch (caught) {
-      setError(message(caught));
-      setStatus("error");
-    }
-  }
 
   function recurrence(): ScheduleRecurrence {
     return frequency === "daily"
@@ -902,8 +841,8 @@ export function SavedWorkspace({
         title: "Saved search removed",
         description:
           receipt.scheduleId === null
-            ? "The rest of your private workspace is unchanged."
-            : "Its email updates are off. The rest of your private workspace is unchanged.",
+            ? "Everything else you saved is unchanged."
+            : "Its email updates are off. Everything else you saved is unchanged.",
         tone: "success",
       });
       window.requestAnimationFrame(() => libraryRef.current?.focus());
@@ -1037,7 +976,7 @@ export function SavedWorkspace({
                   .then(() => {
                     setOwner(recoveredOwner);
                     toast.show({
-                      title: "Workspace recovered",
+                      title: "Saved items restored",
                       description: "Your saved searches and applications are back on this browser.",
                       tone: "success",
                     });
@@ -1163,51 +1102,28 @@ export function SavedWorkspace({
                       remove it at any time.
                     </p>
                   </div>
-                  {challengeId === null ? (
-                    <form className={styles["form"]} onSubmit={beginVerification}>
-                      <label>
-                        <span>Email for updates</span>
-                        <input
-                          autoComplete="email"
-                          maxLength={320}
-                          onChange={(event) => setEmail(event.target.value)}
-                          placeholder="you@example.com"
-                          required
-                          type="email"
-                          value={email}
-                        />
-                      </label>
-                      <button className={styles["primaryButton"]} disabled={status === "working"}>
-                        Send code
-                        <ArrowRightIcon aria-hidden="true" size={16} />
-                      </button>
-                    </form>
-                  ) : (
-                    <form className={styles["form"]} onSubmit={completeVerification}>
-                      <label>
-                        <span>Six-digit code</span>
-                        <input
-                          autoComplete="one-time-code"
-                          inputMode="numeric"
-                          maxLength={6}
-                          onChange={(event) => setCode(event.target.value.replace(/\D/gu, ""))}
-                          pattern="[0-9]{6}"
-                          ref={verificationCodeRef}
-                          required
-                          value={code}
-                        />
-                      </label>
-                      {verificationHint === null ? null : (
-                        <p aria-live="polite" className={styles["hint"]} role="status">
-                          {verificationHint}
-                        </p>
-                      )}
-                      <button className={styles["primaryButton"]} disabled={status === "working"}>
-                        Verify and continue
-                        <CheckCircleIcon aria-hidden="true" size={16} />
-                      </button>
-                    </form>
-                  )}
+                  <EmailVerification
+                    classNames={{
+                      error: styles["verificationError"],
+                      form: styles["form"],
+                      hint: styles["hint"],
+                      submitButton: styles["primaryButton"],
+                    }}
+                    intent="updates"
+                    onVerified={async (verifiedOwner) => {
+                      setOwner(verifiedOwner);
+                      await loadPrivateResources();
+                      toast.show({
+                        title: "Email verified",
+                        description:
+                          "Saved searches can now be restored and sent as email updates.",
+                        tone: "success",
+                      });
+                    }}
+                    sendIcon={<ArrowRightIcon aria-hidden="true" size={16} />}
+                    toErrorMessage={message}
+                    verifyIcon={<CheckCircleIcon aria-hidden="true" size={16} />}
+                  />
                 </div>
               ) : preview === null ? (
                 <form className={styles["form"]} onSubmit={previewAlert}>

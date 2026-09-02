@@ -93,7 +93,7 @@ test.describe("saved-search ownership workspace", () => {
   test("moves focus into recovery and deletion confirmation steps", async ({ page }) => {
     await page.goto("/saved");
     await page.getByText("Restore with email", { exact: true }).click();
-    await page.getByLabel("Recovery email").fill("focus-check@example.test");
+    await page.getByLabel("Email you used before").fill("focus-check@example.test");
     await page.getByRole("button", { name: "Send code" }).click();
     await expect(page.getByLabel("Six-digit code")).toBeFocused();
 
@@ -114,15 +114,15 @@ test.describe("saved-search ownership workspace", () => {
     await createPrivateSession(page);
     await page.goto("/saved");
 
-    await page.getByText("Get back in from another device", { exact: true }).click();
-    await page
-      .getByRole("complementary", { name: "Saved search access" })
+    const accessCard = page.getByRole("complementary", { name: "Saved search access" });
+    await accessCard.getByText("Get back in from another device", { exact: true }).click();
+    await accessCard
       .getByLabel("Email to get back in")
       .fill(`workspace-recovery-${String(Date.now())}@example.test`);
-    await page.getByRole("button", { name: "Send code" }).click();
-    await expect(page.getByLabel("Six-digit code")).toBeFocused();
-    await expect(page.getByRole("button", { name: "Verify" })).toBeEnabled();
-    await page.getByRole("button", { name: "Verify" }).click();
+    await accessCard.getByRole("button", { name: "Send code" }).click();
+    await expect(accessCard.getByLabel("Six-digit code")).toBeFocused();
+    await expect(accessCard.getByRole("button", { name: "Verify" })).toBeEnabled();
+    await accessCard.getByRole("button", { name: "Verify" }).click();
 
     await expect(page.getByText("Email added", { exact: true })).toBeVisible();
     await expect(page.getByText("Access from another device", { exact: true })).toBeVisible();
@@ -137,19 +137,20 @@ test.describe("saved-search ownership workspace", () => {
     await createPrivateSession(page);
     await page.goto("/saved");
 
-    await page.getByText("Get back in from another device", { exact: true }).click();
-    await page
-      .getByRole("complementary", { name: "Saved search access" })
+    const accessCard = page.getByRole("complementary", { name: "Saved search access" });
+    await accessCard.getByText("Get back in from another device", { exact: true }).click();
+    await accessCard
       .getByLabel("Email to get back in")
       .fill(`remove-email-${String(Date.now())}@example.test`);
-    await page.getByRole("button", { name: "Send code" }).click();
-    await page.getByRole("button", { name: "Verify" }).click();
+    await accessCard.getByRole("button", { name: "Send code" }).click();
+    await accessCard.getByRole("button", { name: "Verify" }).click();
 
-    const removeEmail = page.getByRole("button", { name: /Remove verified email/u });
+    const removeEmail = accessCard.getByRole("button", { name: /Remove verified email/u });
     await expect(removeEmail).toBeVisible();
+    await expect(accessCard.getByText("Remove email", { exact: true })).toBeVisible();
     await removeEmail.click();
 
-    const confirmation = page.getByRole("group", { name: "Remove verified email" });
+    const confirmation = accessCard.getByRole("group", { name: "Remove verified email" });
     await expect(confirmation).toContainText(
       "Email updates using it will stop, and you will no longer be able to restore with it.",
     );
@@ -180,13 +181,17 @@ test.describe("saved-search ownership workspace", () => {
   test("edits an existing email-update schedule without creating a duplicate", async ({ page }) => {
     await page.goto("/saved?q=platform&work=remote&create=1");
     const savedSearchName = await page.getByLabel("Search name").inputValue();
-    await page.getByLabel("Email me when results change").check();
-    await page
-      .getByRole("region", { name: "Save this search" })
-      .getByLabel("Email for updates")
+    const composer = page.getByRole("region", { name: "Save this search" });
+    const emailConsent = composer.getByLabel("Email me when results change");
+    await emailConsent.check();
+    await expect(emailConsent).toBeChecked();
+    await composer
+      .getByLabel("Your email")
       .fill(`schedule-edit-${String(Date.now())}@example.test`);
-    await page.getByRole("button", { name: "Send code" }).click();
-    await page.getByRole("button", { name: "Verify and continue" }).click();
+    await composer.getByRole("button", { name: "Send code" }).click();
+    await expect(composer.getByLabel("Six-digit code")).toBeFocused();
+    await expect(composer.getByRole("button", { name: "Verify and continue" })).toBeEnabled();
+    await composer.getByRole("button", { name: "Verify and continue" }).click();
 
     await page.getByLabel("How often").selectOption("weekly");
     await page.getByLabel("Local time").fill("09:00");

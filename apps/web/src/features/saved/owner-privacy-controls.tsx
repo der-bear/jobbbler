@@ -3,11 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 
 import {
-  completeEmailVerificationResultSchema,
   completeOwnerDeletionResultSchema,
   createOwnerDeletionIntentResultSchema,
   ownerSessionResultSchema,
-  startEmailVerificationResultSchema,
   startOwnerRecoveryResultSchema,
   type OwnerSummary,
 } from "@jobbbler/contracts";
@@ -15,6 +13,7 @@ import {
 import { ApiClientError, queryApi } from "@/lib/query-client";
 import { clearOwnerSessionMarker, markOwnerSessionStarted } from "@/lib/owner-session-marker";
 
+import { EmailVerification } from "./email-verification";
 import styles from "./owner-privacy-controls.module.css";
 
 interface OwnerPrivacyControlsProps {
@@ -39,16 +38,11 @@ export function OwnerPrivacyControls({
 }: OwnerPrivacyControlsProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [recoverySetupError, setRecoverySetupError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [recoveryId, setRecoveryId] = useState<string | null>(null);
   const [recoveryCode, setRecoveryCode] = useState("");
   const [recoveryHint, setRecoveryHint] = useState<string | null>(null);
   const recoveryCodeRef = useRef<HTMLInputElement | null>(null);
-  const [verificationId, setVerificationId] = useState<string | null>(null);
-  const [verificationCode, setVerificationCode] = useState("");
-  const [verificationHint, setVerificationHint] = useState<string | null>(null);
-  const verificationCodeRef = useRef<HTMLInputElement | null>(null);
   const [deletionPhrase, setDeletionPhrase] = useState("");
   const [deletionId, setDeletionId] = useState<string | null>(null);
   const [finalPhrase, setFinalPhrase] = useState("");
@@ -59,12 +53,6 @@ export function OwnerPrivacyControls({
     const frame = window.requestAnimationFrame(() => recoveryCodeRef.current?.focus());
     return () => window.cancelAnimationFrame(frame);
   }, [recoveryId]);
-
-  useEffect(() => {
-    if (verificationId === null) return;
-    const frame = window.requestAnimationFrame(() => verificationCodeRef.current?.focus());
-    return () => window.cancelAnimationFrame(frame);
-  }, [verificationId]);
 
   useEffect(() => {
     if (deletionId === null) return;
@@ -85,7 +73,7 @@ export function OwnerPrivacyControls({
       setRecoveryId(started.recoveryId);
       setRecoveryHint(
         started.developmentCode === undefined
-          ? "If a verified workspace matches, a six-digit code is on its way."
+          ? "If that email was used before, a six-digit code is on its way."
           : `Local capture code: ${started.developmentCode}`,
       );
       if (started.developmentCode !== undefined) setRecoveryCode(started.developmentCode);
@@ -114,52 +102,6 @@ export function OwnerPrivacyControls({
       setRecoveryHint(null);
     } catch (caught) {
       setError(safeMessage(caught));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function startRecoveryEmailVerification(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setBusy(true);
-    setRecoverySetupError(null);
-    try {
-      const started = await queryApi(
-        "/api/v1/owners/email/start",
-        startEmailVerificationResultSchema,
-        { method: "POST", body: { email } },
-      );
-      setVerificationId(started.challengeId);
-      setVerificationHint(
-        started.developmentCode === undefined
-          ? `Code sent to ${started.maskedDestination}.`
-          : `Local capture code: ${started.developmentCode}`,
-      );
-      if (started.developmentCode !== undefined) setVerificationCode(started.developmentCode);
-    } catch (caught) {
-      setRecoverySetupError(safeMessage(caught));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function completeRecoveryEmailVerification(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (verificationId === null) return;
-    setBusy(true);
-    setRecoverySetupError(null);
-    try {
-      const completed = await queryApi(
-        "/api/v1/owners/email/complete",
-        completeEmailVerificationResultSchema,
-        { method: "POST", body: { challengeId: verificationId, code: verificationCode } },
-      );
-      onRecoveryEmailEnabled(completed.owner);
-      setVerificationId(null);
-      setVerificationCode("");
-      setVerificationHint(null);
-    } catch (caught) {
-      setRecoverySetupError(safeMessage(caught));
     } finally {
       setBusy(false);
     }
@@ -217,7 +159,7 @@ export function OwnerPrivacyControls({
           {recoveryId === null ? (
             <form className={styles["form"]} onSubmit={(event) => void startRecovery(event)}>
               <label>
-                <span>Recovery email</span>
+                <span>Email you used before</span>
                 <input
                   autoComplete="email"
                   maxLength={320}
@@ -290,69 +232,20 @@ export function OwnerPrivacyControls({
                 device. This does not turn on email updates.
               </p>
             </div>
-            {verificationId === null ? (
-              <form
-                className={styles["form"]}
-                onSubmit={(event) => void startRecoveryEmailVerification(event)}
-              >
-                <label>
-                  <span>Email to get back in</span>
-                  <input
-                    autoComplete="email"
-                    maxLength={320}
-                    onChange={(event) => setEmail(event.target.value)}
-                    required
-                    type="email"
-                    value={email}
-                  />
-                </label>
-                <button disabled={busy} type="submit">
-                  Send code
-                </button>
-              </form>
-            ) : (
-              <form
-                className={styles["form"]}
-                onSubmit={(event) => void completeRecoveryEmailVerification(event)}
-              >
-                <p aria-atomic="true" className={styles["hint"]} role="status">
-                  {verificationHint}
-                </p>
-                <label>
-                  <span>Six-digit code</span>
-                  <input
-                    autoComplete="one-time-code"
-                    inputMode="numeric"
-                    maxLength={6}
-                    onChange={(event) =>
-                      setVerificationCode(event.target.value.replace(/\D/gu, ""))
-                    }
-                    pattern="[0-9]{6}"
-                    ref={verificationCodeRef}
-                    required
-                    value={verificationCode}
-                  />
-                </label>
-                <div className={styles["actions"]}>
-                  <button
-                    className={styles["quiet"]}
-                    disabled={busy}
-                    onClick={() => setVerificationId(null)}
-                    type="button"
-                  >
-                    Start over
-                  </button>
-                  <button disabled={busy || verificationCode.length !== 6} type="submit">
-                    Verify
-                  </button>
-                </div>
-              </form>
-            )}
-            {recoverySetupError === null ? null : (
-              <p className={styles["error"]} role="alert">
-                {recoverySetupError}
-              </p>
-            )}
+            <EmailVerification
+              classNames={{
+                actions: styles["actions"],
+                error: styles["error"],
+                form: styles["form"],
+                hint: styles["hint"],
+                quietButton: styles["quiet"],
+              }}
+              disabled={busy}
+              intent="device-access"
+              onBusyChange={setBusy}
+              onVerified={onRecoveryEmailEnabled}
+              toErrorMessage={safeMessage}
+            />
           </div>
         </details>
       )}
@@ -366,9 +259,8 @@ export function OwnerPrivacyControls({
             <span className={styles["label"]}>Privacy control</span>
             <h2>Delete private data</h2>
             <p>
-              Permanently removes this workspace, its saved searches, alerts, applications,
-              permissions, delivery destinations, and every active session. Public job listings
-              remain.
+              Permanently removes everything you saved here: searches, email updates, applications,
+              permissions, and verified emails. Public job listings remain.
             </p>
           </div>
           {deletionId === null ? (
@@ -391,8 +283,8 @@ export function OwnerPrivacyControls({
           ) : (
             <form className={styles["form"]} onSubmit={(event) => void completeDeletion(event)}>
               <p aria-atomic="true" className={styles["warning"]} role="alert">
-                Final step. This cannot be undone. Type <strong>DELETE</strong> to remove the
-                workspace now.
+                Final step. This cannot be undone. Type <strong>DELETE</strong> to remove everything
+                now.
               </p>
               <label>
                 <span>Final confirmation</span>

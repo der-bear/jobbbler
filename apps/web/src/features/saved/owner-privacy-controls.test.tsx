@@ -26,13 +26,14 @@ describe("OwnerPrivacyControls", () => {
     expect(markup).toContain("Restore with email");
     expect(markup).toContain("Restore your Jobbbler work");
     expect(markup).toContain('type="email"');
-    expect(markup).toContain("Recovery email");
+    expect(markup).toContain("Email you used before");
     expect(markup).toContain("Enter the email you verified before");
     expect(markup).toContain("We’ll send a six-digit code");
     expect(markup).not.toContain("agent");
     expect(markup).not.toContain("workspace matched");
     expect(markup).not.toContain("never reveals whether an account exists");
     expect(markup).not.toContain("Delete private data");
+    expect(markup).not.toMatch(/workspace|recovery|delivery destination|digest|session/iu);
   });
 
   it("offers explicit human-only deletion only inside a live private session", () => {
@@ -50,9 +51,11 @@ describe("OwnerPrivacyControls", () => {
     expect(markup).toContain("Your data");
     expect(markup).toContain("<strong>Delete private data</strong>");
     expect(markup).toContain("DELETE MY PRIVATE DATA");
+    expect(markup).toContain("Permanently removes everything you saved here");
     expect(markup).not.toContain("Add your email");
     expect(markup).not.toContain("Recover a verified workspace");
     expect(markup).not.toContain(owner.id);
+    expect(markup).not.toMatch(/workspace|recovery|delivery destination|digest|session/iu);
   });
 
   it("offers optional recovery setup without replacing a live ephemeral session", () => {
@@ -73,5 +76,6 @@ describe("OwnerPrivacyControls", () => {
     expect(markup).toContain("This does not turn on email updates");
     expect(markup).not.toContain("Restore with email");
     expect(markup).toContain('type="email"');
+    expect(markup).not.toMatch(/workspace|recovery|delivery destination|digest|session/iu);
   });
 });

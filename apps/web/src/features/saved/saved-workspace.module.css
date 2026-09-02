@@ -544,6 +544,15 @@
   font-size: var(--jb-type-caption);
 }
 
+.verificationError {
+  margin: 12px 0 0;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--jb-danger) 10%, transparent);
+  padding: 10px 12px;
+  color: var(--jb-danger);
+  font-size: var(--jb-type-caption);
+}
+
 .preview {
   display: grid;
   border-block-start: var(--jb-stroke-structure) solid var(--color-line);
