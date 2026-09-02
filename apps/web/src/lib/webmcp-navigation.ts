@@ -11,6 +11,7 @@ export function createWebMcpNavigator(
   options: Readonly<{
     navigate(href: string): Promise<void> | void;
     currentUrl?: () => string;
+    onCommitted?: () => void;
     pollIntervalMilliseconds?: number;
     timeoutMilliseconds?: number;
   }>,
@@ -28,7 +29,10 @@ export function createWebMcpNavigator(
     const destination = new URL(href, currentUrl()).href;
     await options.navigate(href);
     if (signal.aborted) throw cancellationError();
-    if (new URL(currentUrl(), destination).href === destination) return;
+    if (new URL(currentUrl(), destination).href === destination) {
+      options.onCommitted?.();
+      return;
+    }
 
     await new Promise<void>((resolve, reject) => {
       const cleanup = () => {
@@ -38,6 +42,7 @@ export function createWebMcpNavigator(
       };
       const finish = () => {
         cleanup();
+        options.onCommitted?.();
         resolve();
       };
       const onAbort = () => {

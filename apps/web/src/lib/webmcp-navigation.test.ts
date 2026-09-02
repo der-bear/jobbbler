@@ -8,8 +8,10 @@ describe("createWebMcpNavigator", () => {
   it("resolves only after the destination URL is committed", async () => {
     vi.useFakeTimers();
     let currentUrl = "https://jobbbler.test/about/webmcp";
+    const onCommitted = vi.fn();
     const navigate = createWebMcpNavigator({
       currentUrl: () => currentUrl,
+      onCommitted,
       navigate(href) {
         globalThis.setTimeout(() => {
           currentUrl = new URL(href, currentUrl).href;
@@ -30,10 +32,12 @@ describe("createWebMcpNavigator", () => {
 
     await vi.advanceTimersByTimeAsync(40);
     expect(settled).toBe(false);
+    expect(onCommitted).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(10);
     await navigation;
     expect(settled).toBe(true);
     expect(currentUrl).toBe("https://jobbbler.test/jobs?q=platform");
+    expect(onCommitted).toHaveBeenCalledTimes(1);
   });
 
   it("keeps a cold client-side route transition alive beyond four seconds", async () => {

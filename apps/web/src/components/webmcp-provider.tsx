@@ -304,6 +304,10 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
 
     const navigate = createWebMcpNavigator({
       navigate: (href) => router.push(href, { scroll: false }),
+      // Native agent hosts clear a document's discovered-tool snapshot when
+      // client-side navigation commits. Re-register the same global catalog so
+      // the next agent turn sees every tool without requiring a full reload.
+      onCommitted: retry,
     });
     const publicSearchTools = searchManifests(navigate);
     const publicDetailTools = detailManifests(undefined, navigate);
@@ -464,7 +468,7 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
       registrationController.abort();
       unregister?.();
     };
-  }, [activitiesStore, registrationRevision, router]);
+  }, [activitiesStore, registrationRevision, retry, router]);
 
   const value = useMemo<WebMcpContextValue>(
     () => ({
