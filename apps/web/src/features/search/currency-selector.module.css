@@ -1,50 +1,57 @@
 .selector {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  border: var(--jb-stroke-control) solid var(--color-line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--jb-veil-control);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
+  transition: border-color var(--motion-fast) var(--ease-standard);
 }
 
-/*
- * The currency is a chip row with a radio's semantics — exactly one is on. It
- * used to be a boxed segmented control 40px tall with square corners and its
- * own opaque fill: the one control in the rail outside the material, and the
- * tallest thing in it.
- */
+/* A toolbar control: it takes the field's chrome and the field's height. */
+.selector:hover {
+  border-color: var(--jb-hover-line);
+}
+
 .selector button {
   min-inline-size: 0;
-  min-block-size: 32px;
-  border: var(--jb-stroke-control) solid var(--jb-border-chip);
-  border-radius: var(--radius-pill);
+  min-block-size: 34px;
+  border: 0;
+  border-inline-start: var(--jb-stroke-structure) solid var(--color-line);
   background: transparent;
-  color: var(--color-ink);
-  padding: 0 11px;
+  color: var(--color-ink-muted);
   font-size: var(--jb-type-caption);
   font-weight: 620;
   transition:
-    border-color var(--motion-fast) var(--ease-standard),
-    background var(--motion-fast) var(--ease-standard);
+    background var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+}
+
+.selector button:first-child {
+  border-inline-start: 0;
 }
 
 .selector button:hover {
-  border-color: var(--jb-state-line);
   background: var(--jb-hover-surface);
+  color: var(--color-ink);
 }
 
 .selector button[aria-checked="true"] {
-  border-color: var(--jb-state-active-line);
   background: var(--jb-state-active);
   color: var(--jb-state-active-ink);
 }
 
 /*
- * Specific enough to win. The radios carry a roving tabindex, and the shared
+ * Specific enough to win: the radios carry a roving tabindex, and the shared
  * `[tabindex]:not([tabindex="-1"]):focus-visible` rule outranks a plain
- * `.selector button:focus-visible` — it drew the ring outside the chip and
- * squared its corners. One line on the edge, and the pill stays a pill.
+ * `.selector button:focus-visible`. The ring stays inside the segment.
  */
 .selector button[tabindex]:focus-visible {
-  border-color: transparent;
-  border-radius: var(--radius-pill);
+  position: relative;
+  z-index: 1;
+  border-radius: 0;
   outline: var(--jb-focus-width) solid var(--jb-focus);
   outline-offset: calc(-1 * var(--jb-focus-width));
 }

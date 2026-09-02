@@ -67,6 +67,8 @@
    */
   --jb-stroke-structure: 0.5px;
   --jb-stroke-control: 1px;
+  /* A marker under a selected tab is not an edge; it may be heavier than one. */
+  --jb-stroke-indicator: 2px;
   --jb-radius-sm: 4px;
   --jb-radius-md: 8px;
   --jb-radius-lg: 12px;

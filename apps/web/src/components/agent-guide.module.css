@@ -86,7 +86,7 @@
   margin: 4px 0 0;
   border: var(--jb-stroke-structure) solid var(--color-line);
   border-inline-start: var(--jb-stroke-control) solid var(--jb-signal);
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: var(--jb-glass-fill-strong);
   backdrop-filter: var(--jb-glass-blur);
   -webkit-backdrop-filter: var(--jb-glass-blur);

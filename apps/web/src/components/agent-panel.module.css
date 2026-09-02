@@ -157,7 +157,7 @@
 .tabs button {
   min-block-size: 44px;
   border: 0;
-  border-block-end: var(--jb-stroke-control) solid transparent;
+  border-block-end: var(--jb-stroke-indicator) solid transparent;
   background: transparent;
   color: var(--color-ink-muted);
   font-size: var(--jb-type-label);

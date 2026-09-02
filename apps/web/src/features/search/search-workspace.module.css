@@ -713,7 +713,7 @@
 .resultList[data-layout="cards"] .jobResult {
   overflow: hidden;
   border: var(--jb-stroke-structure) solid var(--color-line);
-  border-radius: var(--jb-radius-md);
+  border-radius: 0;
   background: var(--jb-glass-fill-strong);
   backdrop-filter: var(--jb-glass-blur);
   -webkit-backdrop-filter: var(--jb-glass-blur);

@@ -267,7 +267,7 @@ button.jb-chip {
 .jb-card {
   background: var(--jb-surface);
   border: var(--jb-stroke-structure) solid var(--jb-border);
-  border-radius: var(--jb-radius-md);
+  border-radius: 0;
   color: var(--jb-text);
   padding: 1.25rem;
 }
