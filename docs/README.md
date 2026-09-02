@@ -29,7 +29,7 @@ submission work.
 
 - [OpenAI WebMCP Challenge compliance map](hackathon-compliance.md)
 - [Devpost copy](submission/devpost-copy.md)
-- [Demo storyboard](submission/demo-storyboard.md)
+- [Submission film production contract](submission/video-production.md)
 - [Gallery shot list and alt text](submission/gallery-shot-list.md)
 - [Final submission checklist](submission/final-checklist.md)
 

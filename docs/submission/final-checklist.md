@@ -29,14 +29,14 @@
       surface was checked across search, role detail, and the WebMCP guide;
       fresh discovery after each navigation still returned 29 unique tools.
 - [ ] Record actual registration/readiness, tool activity, search, compare,
-      saved alert, and application boundaries.
+      saved alert, and the complete managed application path.
 - [ ] Demonstrate the agent-native alert pair from the external client:
       `request_search_alert` returns the exact review with a masked destination,
       the person decides and supplies a mailbox code only when requested, and
       `decide_search_alert` activates only the unchanged request.
-- [ ] Confirm the video matches the storyboard's 0–160s beats and narration
-      lines, including the delta beat (“Since the last check…”) and the
-      person's decision stop before anything is shared or submitted.
+- [ ] Confirm the video matches `video-production.md`, including the actual
+      delta, exact final review, explicit approval, submitted state, and
+      immutable receipt.
 - [ ] Show that an unavailable or unsupported context leaves the ordinary UI
       usable.
 - [ ] Confirm activity, readiness, and safe errors expose no secrets, reusable
@@ -70,8 +70,9 @@
       exact request, and both storage adapters reject a late assistance request
       before consuming a first-party confirmation.
 - [ ] Present the exact request-bound submission review in the external agent
-      client and stop with that decision pending; do not invoke submission or
-      claim that data was shared.
+      client, relay the person's explicit approval, and show the unchanged
+      synthetic application reach its submitted state with its immutable
+      receipt.
 - [ ] Confirm every demo role uses Jobbbler-managed delivery and the server
       independently rejects any unsupported application mode before creating
       an application.
