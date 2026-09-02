@@ -263,7 +263,7 @@ system.
 
 ## Resources
 
-- Live project: **[PRODUCTION_URL — replace before submission]**
+- Live project: https://jobbbler.com
 - Demo video: **[VIDEO_URL — replace before submission]**
 - Source repository: https://github.com/der-bear/jobbbler
 - WebMCP registration code: https://github.com/der-bear/jobbbler/blob/main/packages/webmcp/src/register.ts

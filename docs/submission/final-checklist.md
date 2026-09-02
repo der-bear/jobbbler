@@ -1,8 +1,11 @@
-# Task 13 final submission checklist
+# Final submission checklist
 
 ## Claims and links
 
-- [ ] Replace **[PRODUCTION_URL]** and **[VIDEO_URL]** in `devpost-copy.md`.
+- [x] Replace **[PRODUCTION_URL]** in `devpost-copy.md` with the canonical live
+      site.
+- [ ] Replace **[VIDEO_URL]** in `devpost-copy.md` after the final recording is
+      published.
 - [ ] Confirm the live URL loads signed out and the fallback UI works without
       WebMCP.
 - [ ] Confirm the submitted build, video, gallery, and Devpost copy describe
@@ -86,10 +89,11 @@
       Activity / Tools / Guide tab order, current readiness state, and Tools
       groups Find / Inspect and compare / Alerts / Apply — not an older rail.
 - [x] Re-run `pnpm verify`, the focused E2E suite, and the local PostgreSQL
-      contract suite on the final code revision and record the fresh numbers:
-      977 deterministic tests and 50/50 browser journeys on the 2 September
-      release candidate; 103/103 PostgreSQL contract tests in the 1 September
-      infrastructure rehearsal.
+      contract suite on the release candidate and record the fresh numbers:
+      990 deterministic tests passed with 89 intentionally skipped across 149
+      passing and 5 skipped test files; 50/50 browser journeys passed on the 2
+      September release candidate, and 103/103 PostgreSQL contract tests passed
+      in the 1 September infrastructure rehearsal.
 - [x] Build the web and worker Docker targets from a clean isolated context;
       verify that both runtime images use the non-root `jobbbler` user and that
       the worker image contains the checked-in PostgreSQL and SQLite migrations.
