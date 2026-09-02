@@ -15,6 +15,8 @@ describe("plan_job_workflow", () => {
     for (const goal of workflowGoals) expect(planner.description).toContain(goal);
     expect(workflowGoals).toContain("manage_saved_search");
     expect(workflowGoals).toContain("withdraw_application_consent");
+    expect(planner.description).toContain("Jobbbler-managed email updates");
+    expect(planner.description).toContain("not a client-side scheduler");
   });
 
   it("reads the current page when invoked instead of capturing a stale registration route", async () => {
@@ -169,7 +171,8 @@ describe("plan_job_workflow", () => {
           expect.objectContaining({ tool: "get_search_state", needs: ["detail=exact"] }),
           expect.objectContaining({
             tool: "request_search_alert",
-            ask: expect.stringContaining("agent client"),
+            needs: expect.arrayContaining(["email"]),
+            ask: "Ask in chat for missing name, schedule, time zone, or email; show the exact review and ask once.",
           }),
           expect.objectContaining({
             tool: "decide_search_alert",

@@ -41,7 +41,7 @@ interface WorkflowPlan {
   readonly branches?: readonly WorkflowBranch[];
 }
 
-export const workflowVersion = "2.9";
+export const workflowVersion = "2.10";
 export const workflowBoundaries: readonly string[] = [
   "Advice only; grants no authority.",
   "Decide in the agent client.",
@@ -142,7 +142,7 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
         humanAction: false,
       },
       {
-        intent: "Prepare the exact alert review and verify a new email only when needed",
+        intent: "Prepare the exact alert review",
         tool: "request_search_alert",
         requiredInputs: [
           "name",
@@ -150,7 +150,8 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
           "recurrence",
           "email",
         ],
-        humanAction: "Review the exact alert and decide in the external agent client.",
+        humanAction:
+          "Ask in chat for missing name, schedule, time zone, or email; show the exact review and ask once.",
       },
       {
         intent: "Record the exact decision and activate only if approved",
@@ -374,7 +375,7 @@ export function createWorkflowPlannerTool(
     name: "plan_job_workflow",
     purpose: "Return the recommended safe steps for one Jobbbler goal from the current page.",
     description:
-      "Pass one required goal: find_roles, compare_roles, save_search, monitor_search, manage_saved_search, prepare_application, withdraw_application_consent, enable_recovery, or recover_workspace. The result is a concise route-aware sequence with human decision points. Advisory only: it executes, grants, and confirms nothing.",
+      "Pass one required goal: find_roles, compare_roles, save_search, monitor_search, manage_saved_search, prepare_application, withdraw_application_consent, enable_recovery, or recover_workspace. For Jobbbler-managed email updates, use monitor_search and its request_search_alert decision flow, not a client-side scheduler. The result is a concise route-aware sequence with human decision points. Advisory only: it executes, grants, and confirms nothing.",
     inputSchema: planInputSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: false },
     async execute(input, { signal }) {

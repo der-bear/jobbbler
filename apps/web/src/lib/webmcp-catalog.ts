@@ -133,7 +133,8 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
       },
       {
         name: "request_search_alert",
-        purpose: "Prepare email updates for one saved search and request an explicit decision.",
+        purpose:
+          "Prepare Jobbbler-managed email updates that continue after the browser closes, then request one explicit decision.",
         readOnly: false,
       },
       {

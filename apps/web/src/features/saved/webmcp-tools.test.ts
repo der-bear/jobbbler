@@ -133,9 +133,10 @@ describe("saved-route WebMCP tools", () => {
       },
       {
         name: "request_search_alert",
-        purpose: "Prepare email updates for one job search for the person to review.",
+        purpose:
+          "Prepare Jobbbler-managed email updates for one search; use this instead of a client timer.",
         description:
-          "Use the exact name, search choices, schedule, and email the person supplied to return one review for that person to approve or decline with decide_search_alert; never infer missing values, and require a six-digit code only for a new email.",
+          "When the person asks Jobbbler to keep checking a search or email changes, ask in the agent client for any missing name, schedule, time zone, or email, then use the exact supplied values to return one review for approve or decline with decide_search_alert. This is server-side monitoring that continues after the browser closes; do not substitute client automation. Require a six-digit code only for a new email.",
       },
       {
         name: "decide_search_alert",
