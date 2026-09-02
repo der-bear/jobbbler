@@ -280,10 +280,11 @@ function localTimeZone(): string {
   }
 }
 
-function displayInstant(value: string): string {
+export function displayInstant(value: string, timeZone = "UTC"): string {
   return new Intl.DateTimeFormat("en", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone,
   }).format(new Date(value));
 }
 
@@ -700,7 +701,7 @@ export function SavedWorkspace({
       window.history.replaceState({}, "", "/saved");
       toast.show({
         title: editingSchedule === null ? "Email updates are on" : "Email updates changed",
-        description: `${editingSchedule === null ? "The first" : "The next"} check is scheduled for ${displayInstant(scheduled.nextRunAt)}.`,
+        description: `${editingSchedule === null ? "The first" : "The next"} check is scheduled for ${displayInstant(scheduled.nextRunAt, scheduled.recurrence.timeZone)}.`,
         tone: "success",
       });
       if (editingSchedule !== null) {
@@ -790,7 +791,7 @@ export function SavedWorkspace({
       toast.show({
         title: updated.enabled ? "Email updates resumed" : "Email updates paused",
         description: updated.enabled
-          ? `Next check: ${displayInstant(updated.nextRunAt)}.`
+          ? `Next check: ${displayInstant(updated.nextRunAt, updated.recurrence.timeZone)}.`
           : "No checks or emails will run until you resume it.",
         tone: "success",
       });
@@ -1229,7 +1230,7 @@ export function SavedWorkspace({
                   <div className={styles["previewRow"]}>
                     <CalendarDotsIcon aria-hidden="true" size={19} />
                     <span>{editingSchedule === null ? "First check" : "Next check"}</span>
-                    <strong>{displayInstant(preview.nextRunAt)}</strong>
+                    <strong>{displayInstant(preview.nextRunAt, timeZone)}</strong>
                   </div>
                   {editingSchedule === null ? (
                     <div className={styles["previewRow"]}>
@@ -1358,7 +1359,7 @@ export function SavedWorkspace({
                           <span>
                             <ClockIcon aria-hidden="true" size={14} />
                             {schedule.enabled
-                              ? `Next check ${displayInstant(schedule.nextRunAt)}`
+                              ? `Next check ${displayInstant(schedule.nextRunAt, schedule.recurrence.timeZone)}`
                               : "Checks are paused"}
                           </span>
                         </div>

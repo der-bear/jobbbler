@@ -93,7 +93,15 @@ export function jobSummaryParagraphs(summary: string): readonly string[] {
 }
 
 function errorMessage(error: unknown): string {
-  if (error instanceof ApiClientError && error.code === "NOT_FOUND") {
+  /*
+   * A malformed or unknown id is the same thing to the person: the role they
+   * followed a link to is not here. The API's validation wording ("invalid or
+   * unsupported values") is for the agent, not for the page.
+   */
+  if (
+    error instanceof ApiClientError &&
+    (error.code === "NOT_FOUND" || error.code === "VALIDATION")
+  ) {
     return "This role is no longer available in the current catalog.";
   }
   if (error instanceof ApiClientError) return error.message;

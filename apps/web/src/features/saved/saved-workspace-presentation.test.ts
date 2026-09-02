@@ -8,12 +8,23 @@ import type {
 
 import {
   defaultSavedSearchName,
+  displayInstant,
   privateAccessCopy,
   savedComposerPresentation,
   savedSearchCriteriaSummary,
   scheduleFormValues,
   scheduleReviewChanges,
 } from "./saved-workspace";
+
+describe("displayInstant", () => {
+  it("formats server-rendered schedule instants in one deterministic time zone", () => {
+    expect(displayInstant("2026-08-31T23:30:00.000Z")).toBe("Aug 31, 2026, 11:30 PM");
+  });
+
+  it("uses the schedule's declared time zone when it is available", () => {
+    expect(displayInstant("2026-08-31T23:30:00.000Z", "Europe/Kyiv")).toBe("Sep 1, 2026, 2:30 AM");
+  });
+});
 
 const owner: OwnerSummary = {
   id: "owner_550e8400-e29b-41d4-a716-446655440000",

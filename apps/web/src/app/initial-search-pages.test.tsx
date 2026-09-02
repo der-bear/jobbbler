@@ -12,7 +12,7 @@ vi.mock("next/headers", () => ({
   headers: vi.fn(
     async () =>
       new Headers({
-        "x-forwarded-for": runtime.clientAddress,
+        "x-vercel-forwarded-for": runtime.clientAddress,
       }),
   ),
 }));

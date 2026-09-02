@@ -69,6 +69,7 @@ describe("ApplicationHistory", () => {
     expect(markup).toContain("Senior Product Engineer");
     expect(markup).toContain("Northstar Labs");
     expect(markup).toContain("Submitted");
+    expect(markup).toContain("Updated Aug 29, 2026");
     expect(markup).toContain("Open application");
     // One question per row: submitted or not. The stages in between stay on the application page.
     expect(markup).toContain("Not submitted");

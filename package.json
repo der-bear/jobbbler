@@ -1,8 +1,14 @@
 {
   "name": "jobbbler",
   "version": "0.1.0",
+  "description": "An agent-ready job portal that exposes safe, consent-aware workflows through WebMCP.",
   "private": true,
   "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/der-bear/jobbbler.git"
+  },
   "packageManager": "pnpm@11.19.0",
   "engines": {
     "node": ">=24 <27",

@@ -28,6 +28,17 @@ describe("runtime configuration", () => {
     expect(JSON.stringify(summary)).not.toContain("secret");
   });
 
+  it("accepts the server-only URL installed by the Vercel Supabase integration", () => {
+    const { DATABASE_URL: _databaseUrl, ...withoutDatabaseUrl } = productionEnvironment;
+
+    expect(
+      validateRuntimeConfiguration({
+        ...withoutDatabaseUrl,
+        POSTGRES_URL: "postgresql://jobbbler:secret@db.example/jobbbler",
+      }).databaseDriver,
+    ).toBe("postgres");
+  });
+
   it("allows the zero-service local development defaults", () => {
     expect(validateRuntimeConfiguration({ NODE_ENV: "development" })).toEqual({
       environment: "development",

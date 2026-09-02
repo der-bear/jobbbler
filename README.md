@@ -222,9 +222,10 @@ uses an origin-bound Chrome origin-trial token supplied at web build time as
 `WEBMCP_ORIGIN_TRIAL_TOKEN`; see [Deployment](docs/operations/deployment.md).
 The ordinary portal remains usable when the experimental browser API is absent.
 
-SQLite is the zero-service development default. Set `DATABASE_URL` for
-PostgreSQL/Supabase; the server selects the PostgreSQL adapter without
-exposing that connection string to the browser. See
+SQLite is the zero-service development default. Set `DATABASE_URL` for a
+portable PostgreSQL override, or let Supabase's Vercel integration provide its
+server-only `POSTGRES_URL`; the server selects the PostgreSQL adapter without
+exposing either connection string to the browser. See
 [.env.example](.env.example) for the complete runtime contract.
 
 ## Workers

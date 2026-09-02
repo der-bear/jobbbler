@@ -1,5 +1,7 @@
 import { DomainError, resolvePublicOrigin } from "@jobbbler/core-domain";
 
+import { configuredDatabaseUrl } from "./database-url";
+
 type RuntimeEnvironment = Readonly<Record<string, string | undefined>>;
 
 export interface RuntimeConfigurationSummary {
@@ -18,9 +20,11 @@ function databaseDriver(
   environment: RuntimeEnvironment,
   production: boolean,
 ): "sqlite" | "postgres" {
-  const configured = environment["DATABASE_URL"]?.trim();
+  const configured = configuredDatabaseUrl(environment);
   if (configured === undefined || configured.length === 0) {
-    if (production) configurationError("Production requires a PostgreSQL DATABASE_URL.");
+    if (production) {
+      configurationError("Production requires a PostgreSQL DATABASE_URL or POSTGRES_URL.");
+    }
     return "sqlite";
   }
   try {
@@ -30,12 +34,12 @@ function databaseDriver(
       url.hostname.length === 0 ||
       url.pathname.length < 2
     ) {
-      configurationError("DATABASE_URL must identify a PostgreSQL database.");
+      configurationError("The configured database URL must identify a PostgreSQL database.");
     }
     return "postgres";
   } catch (error) {
     if (error instanceof DomainError) throw error;
-    return configurationError("DATABASE_URL must identify a PostgreSQL database.");
+    return configurationError("The configured database URL must identify a PostgreSQL database.");
   }
 }
 

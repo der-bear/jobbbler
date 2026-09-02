@@ -64,8 +64,15 @@ function actionLabel(item: ApplicationListItem): string {
   }
 }
 
+/*
+ * Formatted in UTC on purpose: this list renders on the server and again on
+ * the client, and a zone-dependent day would differ between the two around
+ * midnight and trip React's hydration check. The receipt uses the same rule.
+ */
 function updatedLabel(value: string): string {
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(value));
+  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "UTC" }).format(
+    new Date(value),
+  );
 }
 
 export function ApplicationHistory({

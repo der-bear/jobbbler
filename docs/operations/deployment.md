@@ -65,6 +65,12 @@ credentials, plus its server-only `TOKEN_HASH_SECRET`. The workflow never uses
 a catalog or combined worker mode, so the first-party demonstration catalog
 cannot be mixed with live external feeds.
 
+The official Supabase integration may expose the web app's connection as
+`POSTGRES_URL`; Jobbbler accepts that server-only name automatically while
+keeping `DATABASE_URL` as the explicit portable override. The independent
+GitHub Actions worker still uses its documented `DATABASE_URL` repository
+secret.
+
 Connect the repository as a monorepo and set the Vercel project's Root
 Directory to `apps/web`. The checked-in `apps/web/vercel.json` runs installation
 and the filtered build from the repository root so pnpm can resolve every

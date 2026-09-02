@@ -12,6 +12,8 @@ import type { Storage } from "@jobbbler/storage";
 import { createPostgresStorage, type PostgresStorage } from "@jobbbler/storage-postgres";
 import { createSqliteStorage } from "@jobbbler/storage-sqlite";
 
+import { configuredDatabaseUrl } from "./database-url";
+
 interface StorageRegistration {
   readonly fingerprint: string;
   readonly storage: RuntimeStorage;
@@ -32,14 +34,14 @@ function sqlitePath(environment: RuntimeEnvironment): string {
 export function createConfiguredStorage(
   environment: RuntimeEnvironment = process.env,
 ): RuntimeStorage {
-  const databaseUrl = environment["DATABASE_URL"]?.trim();
+  const databaseUrl = configuredDatabaseUrl(environment);
   return databaseUrl === undefined || databaseUrl.length === 0
     ? createSqliteStorage(sqlitePath(environment))
     : createPostgresStorage(databaseUrl);
 }
 
 export function getServerStorage(): RuntimeStorage {
-  const databaseUrl = process.env["DATABASE_URL"]?.trim();
+  const databaseUrl = configuredDatabaseUrl(process.env);
   const fingerprint = createHash("sha256")
     .update(
       databaseUrl === undefined || databaseUrl.length === 0
@@ -89,14 +91,7 @@ export function getRateLimitKey(
     });
   }
   const candidate = trustProxyHeaders
-    ? [
-        request.headers.get("cf-connecting-ip"),
-        request.headers.get("x-vercel-forwarded-for")?.split(",", 1)[0],
-        request.headers.get("x-forwarded-for")?.split(",", 1)[0],
-        request.headers.get("x-real-ip"),
-      ]
-        .map((value) => value?.trim())
-        .find((value): value is string => value !== undefined && value.length > 0)
+    ? request.headers.get("x-vercel-forwarded-for")?.split(",", 1)[0]?.trim()
     : undefined;
   if (trustProxyHeaders && (candidate === undefined || isIP(candidate) === 0)) {
     throw new DomainError({

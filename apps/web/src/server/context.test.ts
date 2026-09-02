@@ -36,6 +36,15 @@ describe("web server context", () => {
     await storage.close();
   });
 
+  it("uses the server-only POSTGRES_URL installed by the Vercel Supabase integration", async () => {
+    const storage = createConfiguredStorage({
+      POSTGRES_URL: "postgres://jobbbler:secret@localhost:5432/jobbbler",
+    });
+
+    expect(storage).toHaveProperty("sql");
+    await storage.close();
+  });
+
   it("creates a public read context with one correlation boundary", () => {
     const requestId = "req_550e8400-e29b-41d4-a716-446655440000";
     expect(createPublicCommandContext(requestId)).toMatchObject({
@@ -68,10 +77,10 @@ describe("web server context", () => {
 
   it("uses a forwarded client address only behind an explicitly trusted proxy", () => {
     const first = new Request("https://jobbbler.example/api", {
-      headers: { "x-forwarded-for": "203.0.113.24" },
+      headers: { "x-vercel-forwarded-for": "203.0.113.24" },
     });
     const second = new Request("https://jobbbler.example/api", {
-      headers: { "x-forwarded-for": "198.51.100.42" },
+      headers: { "x-vercel-forwarded-for": "198.51.100.42" },
     });
     const environment = {
       TRUST_PROXY_HEADERS: "true",
@@ -101,17 +110,35 @@ describe("web server context", () => {
     ).toThrow("client address");
   });
 
-  it("accepts provider-specific addresses only across the explicit production proxy boundary", () => {
-    const request = new Request("https://jobbbler.example/api", {
-      headers: { "cf-connecting-ip": "203.0.113.24" },
+  it("uses only Vercel's protected forwarding header across the production proxy boundary", () => {
+    const trusted = new Request("https://jobbbler.example/api", {
+      headers: { "x-vercel-forwarded-for": "203.0.113.24" },
     });
+    const spoofedAlternatives = new Request("https://jobbbler.example/api", {
+      headers: {
+        "x-vercel-forwarded-for": "203.0.113.24",
+        "cf-connecting-ip": "198.51.100.42",
+        "x-forwarded-for": "198.51.100.43",
+        "x-real-ip": "198.51.100.44",
+      },
+    });
+    const production = {
+      NODE_ENV: "production",
+      TRUST_PROXY_HEADERS: "true",
+      TOKEN_HASH_SECRET: "test-secret-that-is-at-least-32-bytes",
+    };
 
-    expect(
-      getRateLimitKey(request, "identity-session", {
-        NODE_ENV: "production",
-        TRUST_PROXY_HEADERS: "true",
-        TOKEN_HASH_SECRET: "test-secret-that-is-at-least-32-bytes",
-      }),
-    ).toHaveLength(64);
+    expect(getRateLimitKey(spoofedAlternatives, "identity-session", production)).toBe(
+      getRateLimitKey(trusted, "identity-session", production),
+    );
+    expect(() =>
+      getRateLimitKey(
+        new Request("https://jobbbler.example/api", {
+          headers: { "cf-connecting-ip": "198.51.100.42" },
+        }),
+        "identity-session",
+        production,
+      ),
+    ).toThrow("client address");
   });
 });
