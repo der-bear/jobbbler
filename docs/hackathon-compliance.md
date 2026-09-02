@@ -6,29 +6,29 @@ media, and live-browser checks that must be recorded for the final submitted
 revision. The live rules and submission form are rechecked immediately before
 submission; their copied text is not redistributed in this repository.
 
-| Requirement                                               | Jobbbler evidence                                                                                                                                          | Evidence status                                                          |
-| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| New or meaningfully extended during the submission period | Repository baseline begins on 29 August 2026; implementation uses dated commits after the 25 August start                                                  | Verified in repository                                                   |
-| WebMCP-powered web app                                    | Imperative `document.modelContext.registerTool` integration with the same 29 tools on every route, shared UI state, activity feedback, and lifecycle tests | Repository and supported local browser verified; production pending      |
-| Working and consistent with video/text                    | The production smoke suite, final browser walkthrough, and media plan require the same deployed revision                                                   | Pending production and media evidence                                    |
-| Authorized third-party SDK/API/data use                   | The submitted catalog is first-party synthetic data; optional external connectors remain policy-controlled and disabled in the release worker              | Repository verified; production catalog smoke pending                    |
-| Accessible live URL                                       | Search is designed for signed-out access without payment or a mandatory account                                                                            | Pending production signed-out smoke                                      |
-| Strong WebMCP explanation                                 | English project story and README explain why the browser-local semantic layer improves discovery, monitoring, and reviewed applications                    | Verified in repository                                                   |
-| Public source repository                                  | Source, lockfile, migrations, instructions, and MIT license are public                                                                                     | Repository verified; final revision pending                              |
-| Required WebMCP code visible                              | Registration implementation and capability evidence are linked from README                                                                                 | Repository verified; default-branch sync pending                         |
-| Demo video under three minutes with audio                 | The checked-in storyboard targets 2:40 and puts working WebMCP near the beginning                                                                          | Pending final video, duration, and audio check                           |
-| No unlicensed media or trademarks                         | Product UI is original; source names are used only as factual attribution                                                                                  | Repository verified; final media review pending                          |
-| Free judging access through judging period                | Public search and the loginless owner-session design require no payment or demo account                                                                    | Pending production availability check                                    |
-| English submission materials                              | Checked-in UI, README, story, instructions, captions, and narration are English                                                                            | Repository verified; final form/media check pending                      |
-| Original submission and IP ownership                      | Original design system and implementation; dependency licenses retained                                                                                    | Verified in repository                                                   |
-| Stage-one viability                                       | Coherent conventional UI, durable backend, and non-trivial WebMCP implementation                                                                           | Local release gates verified; production pending                         |
-| WebMCP Leverage                                           | Search, compare, alerts, applications, route lifecycle, visible feedback, and model evaluation fixtures                                                    | Repository and supported local browser verified; production demo pending |
-| Human-controlled agent authority                          | Resource/action/expiry-bound delegations, request-bound decisions, backend re-evaluation, revoke, and denied-retry tests                                   | Repository verified; live journey pending                                |
-| Consent and privacy by design                             | Granular data grants, exact recipient/purpose/payload binding, withdrawal, redaction, and public architecture                                              | Repository verified; live journey pending                                |
-| Observable agent interaction                              | Redacted cursor activity, point-of-effect feedback, optional Supabase wake-up broadcasts, reconnect/refetch semantics, and polling fallback                | Repository verified; production transport pending                        |
-| Execution                                                 | Conventional UI, worker, storage adapters, scheduler, notifications, security controls, and observability contracts                                        | Repository verified; production smoke pending                            |
-| Potential Impact                                          | Focused IT/adjacent-tech audience; explainable discovery and safer applications                                                                            | Verified in repository narrative                                         |
-| Creativity and Ambition                                   | Agent-native web workflow without separate MCP setup, durable alerts, and human-confirmed actions                                                          | Repository verified; final demo pending                                  |
+| Requirement                                               | Jobbbler evidence                                                                                                                                          | Evidence status                                                         |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| New or meaningfully extended during the submission period | Repository baseline begins on 29 August 2026; implementation uses dated commits after the 25 August start                                                  | Verified in repository                                                  |
+| WebMCP-powered web app                                    | Imperative `document.modelContext.registerTool` integration with the same 29 tools on every route, shared UI state, activity feedback, and lifecycle tests | Repository, production, and supported in-app browser verified           |
+| Working and consistent with video/text                    | The production smoke suite, final browser walkthrough, and media plan require the same deployed revision                                                   | Production verified; final media evidence pending                       |
+| Authorized third-party SDK/API/data use                   | The submitted catalog is first-party synthetic data; optional external connectors remain policy-controlled and disabled in the release worker              | Repository and production catalog verified                              |
+| Accessible live URL                                       | Signed-out search at `https://jobbbler.com` requires no payment or mandatory account                                                                       | Production signed-out smoke verified                                    |
+| Strong WebMCP explanation                                 | English project story and README explain why the browser-local semantic layer improves discovery, monitoring, and reviewed applications                    | Verified in repository                                                  |
+| Public source repository                                  | Source, lockfile, migrations, instructions, and MIT license are public                                                                                     | Repository verified; final revision pending                             |
+| Required WebMCP code visible                              | Registration implementation and capability evidence are linked from README                                                                                 | Repository verified; default-branch sync pending                        |
+| Demo video under three minutes with audio                 | The checked-in storyboard targets 2:40 and puts working WebMCP near the beginning                                                                          | Pending final video, duration, and audio check                          |
+| No unlicensed media or trademarks                         | Product UI is original; source names are used only as factual attribution                                                                                  | Repository verified; final media review pending                         |
+| Free judging access through judging period                | Public search and the loginless owner-session design require no payment or demo account                                                                    | Production access verified; availability monitoring remains operational |
+| English submission materials                              | Checked-in UI, README, story, instructions, captions, and narration are English                                                                            | Repository verified; final form/media check pending                     |
+| Original submission and IP ownership                      | Original design system and implementation; dependency licenses retained                                                                                    | Verified in repository                                                  |
+| Stage-one viability                                       | Coherent conventional UI, durable backend, and non-trivial WebMCP implementation                                                                           | Local and production release gates verified                             |
+| WebMCP Leverage                                           | Search, compare, alerts, applications, route lifecycle, visible feedback, and model evaluation fixtures                                                    | Production browser verified; final recorded demo pending                |
+| Human-controlled agent authority                          | Resource/action/expiry-bound delegations, request-bound decisions, backend re-evaluation, revoke, and denied-retry tests                                   | Repository verified; live journey pending                               |
+| Consent and privacy by design                             | Granular data grants, exact recipient/purpose/payload binding, withdrawal, redaction, and public architecture                                              | Repository verified; live journey pending                               |
+| Observable agent interaction                              | Redacted cursor activity, point-of-effect feedback, optional Supabase wake-up broadcasts, reconnect/refetch semantics, and polling fallback                | Production API and scheduler verified; final live journey pending       |
+| Execution                                                 | Conventional UI, worker, storage adapters, scheduler, notifications, security controls, and observability contracts                                        | Repository and production smoke verified                                |
+| Potential Impact                                          | Focused IT/adjacent-tech audience; explainable discovery and safer applications                                                                            | Verified in repository narrative                                        |
+| Creativity and Ambition                                   | Agent-native web workflow without separate MCP setup, durable alerts, and human-confirmed actions                                                          | Repository verified; final demo pending                                 |
 
 ## Product separation
 
@@ -53,7 +53,7 @@ these deliberate, testable choices:
 The fresh 2 September 2026 release-candidate check on the current tree
 recorded:
 
-- `pnpm verify`: formatting, lint, every workspace typecheck, 977 deterministic
+- `pnpm verify`: formatting, lint, every workspace typecheck, 990 deterministic
   tests, and both production builds passed;
 - Playwright: 50/50 browser journeys passed, including the complete
   agent-prepared application flow, saved-search schedules, location
@@ -66,6 +66,21 @@ recorded:
   with three bounded results; `open_job_details` opened one of those roles;
   `get_job_details` returned its source-backed record; and a warm
   `open_jobbbler_page` call returned to search without losing a tool;
+- the public `https://jobbbler.com` deployment returned ready with PostgreSQL,
+  19 migrations, 30 organizations, and 300 roles; HTTP, `www`, and the Vercel
+  project hostname resolve through permanent redirects to that canonical HTTPS
+  origin;
+- Chrome's official Model Context Tool Inspector discovered all 29 tools on the
+  production origin without a model key and completed `get_search_filters`, an
+  exact Phoenix `search_jobs` request, and `get_job_details`; Jobbbler's visible
+  activity log recorded all three calls;
+- the production Supabase catalog contains exactly 300 first-party fictional
+  roles and no enabled live-source policy; the scheduled alert cycle produced
+  a current heartbeat, the security advisor returned no findings, and its only
+  performance notices were expected unused-index information on the fresh
+  release database;
+- a production email-verification request was accepted by Jobbbler and recorded
+  as delivered by the configured Resend transport on the verified domain;
 - low-effort model review: Luna evaluated 50 realistic intents (43 immediate
   safe routes and seven clarification- or state-sensitive cases); Terra
   evaluated 10 multi-step journeys and exposed three guidance gaps that drove
@@ -87,9 +102,8 @@ The infrastructure rehearsal on 1 September 2026 additionally recorded:
   present, the `jobbbler` schema contains 300 demo roles, RLS is enabled on its
   tables, and the security advisor reports no findings.
 
-These checks prove the current code and prepared database state. They do not
-replace the required smoke test on the eventual public deployment or the final
-video and Devpost checks.
+These checks prove the current code and public deployment. They do not replace
+the final same-revision media, default-branch sync, and Devpost checks.
 
 ## Current known deadline
 

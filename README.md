@@ -26,9 +26,11 @@ Built for the OpenAI WebMCP Challenge with a fictional 300-role demo catalog.
 
 ## Try it
 
-Open [jobbbler.com](https://jobbbler.com) in ChatGPT Desktop's built-in browser,
-or in Chrome with WebMCP enabled through the origin trial or testing flag. For
-Chrome agent testing, Google documents the official
+Open [jobbbler.com](https://jobbbler.com) in ChatGPT Desktop's built-in browser
+with GPT-5.6 Sol or Terra, as described in OpenAI's official
+[Site tools guide](https://learn.chatgpt.com/docs/webmcp). Or inspect the same
+production tools in Chrome through the active origin trial. Google documents the
+official
 [Model Context Tool Inspector](https://developer.chrome.com/docs/ai/webmcp#imitate_agent_chat_with_the_inspector_extension).
 
 ```text

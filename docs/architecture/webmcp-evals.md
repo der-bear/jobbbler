@@ -54,6 +54,26 @@ decision points.
 5. Deterministic tests still own tool logic, atomicity, output size, and UI
    synchronization; probabilistic evals own model routing quality.
 
+## Supported-client verification
+
+OpenAI's current [Site tools documentation](https://learn.chatgpt.com/docs/webmcp)
+identifies the ChatGPT Desktop built-in browser with GPT-5.6 Sol or Terra as the
+supported agent path and says Luna currently has WebMCP disabled. Jobbbler
+therefore keeps model routing reviews separate from claims about live browser
+execution.
+
+The production release was exercised through both supported browser surfaces:
+
+- ChatGPT Desktop discovered the same 29 tools on the live top-level page and
+  completed search, pagination, role-detail, and navigation calls;
+- Chrome's official Model Context Tool Inspector discovered all 29 tools on
+  `https://jobbbler.com` and manually completed `get_search_filters`,
+  `search_jobs`, and `get_job_details`. The Phoenix query returned the one exact
+  matching role and the visible activity panel recorded all three calls.
+
+The Inspector's manual invocation path does not require a model API key. Its
+optional natural-language chat is not part of this compatibility claim.
+
 ## Current deterministic release inventory — 30 August 2026
 
 The checked-in set contains 51 uniquely identified cases against the current
@@ -74,9 +94,9 @@ surface. Any published model score must come from a fresh run of these exact
 fixtures. Deterministic suites separately verify schemas, execution,
 cancellation, bounded output, UI synchronization, storage atomicity, and builds.
 
-### Fresh low-effort model review — 2 September 2026
+### Fresh low-effort manifest review — 2 September 2026
 
-- **Luna, low effort:** 50 realistic intents were reviewed against the global
+- **Luna, low effort:** 50 realistic intents were reviewed offline against the global
   manifests. Forty-three had an immediate safe route; seven were deliberately
   clarification- or state-sensitive (ordinal references, page-number wording,
   missing save/alert details, and decisions without exact request state). No
@@ -89,9 +109,10 @@ cancellation, bounded output, UI synchronization, storage atomicity, and builds.
   management and consent-withdrawal goals, removes redundant comparison and
   application reads, and makes readiness the application workflow boundary.
 
-These are design-routing reviews, not a post-fix probabilistic benchmark and
-not proof of handler correctness. We intentionally publish no inflated 50/50 or
-10/10 claim. Deterministic suites remain authoritative for execution,
+These are offline design-routing reviews, not live Site tools sessions, a
+post-fix probabilistic benchmark, or proof of handler correctness. We
+intentionally publish no inflated 50/50 or 10/10 claim. Deterministic suites and
+the supported-client production smokes remain authoritative for execution,
 authorization, idempotency, persistence, output bounds, and UI behaviour.
 
 The judge demo should show one natural-language search, one comparison, one
