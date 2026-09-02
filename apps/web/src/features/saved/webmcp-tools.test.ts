@@ -135,7 +135,7 @@ describe("saved-route WebMCP tools", () => {
         name: "request_search_alert",
         purpose: "Prepare email updates for one job search for the person to review.",
         description:
-          "Prepare a review showing the exact job search, when it will be checked, and the email address that will receive updates. Use only search choices the person gave now or exact choices from get_search_state(detail=exact). Never add filters from a guess or another request. If the name, search choices, check time, or email address is missing, ask only for the missing information. A new email address needs a 6-digit code; an email address already confirmed does not. Turn on updates only after the person clearly approves them with decide_search_alert.",
+          "Prepare a review for one job search, schedule, and email address. Use only choices the person supplied now or exact choices from get_search_state(detail=exact). Never infer filters or reuse them from another task. If the name, search choices, schedule, or email is missing, ask only for the missing information. A new email address requires a 6-digit code; a verified one does not. Turn on updates only after explicit approval through decide_search_alert.",
       },
       {
         name: "decide_search_alert",

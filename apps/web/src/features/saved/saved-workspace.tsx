@@ -1109,7 +1109,9 @@ export function SavedWorkspace({
                       hint: styles["hint"],
                       submitButton: styles["primaryButton"],
                     }}
+                    disabled={status === "working"}
                     intent="updates"
+                    onBusyChange={(busy) => setStatus(busy ? "working" : "ready")}
                     onVerified={async (verifiedOwner) => {
                       setOwner(verifiedOwner);
                       await loadPrivateResources();
