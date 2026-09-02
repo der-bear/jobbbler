@@ -100,6 +100,34 @@ answers with agent provenance, the exact submission review, the person's final
 approval, the submitted state, and the immutable receipt. Every value is
 synthetic and the employer is visibly a Jobbbler demo organization.
 
+## Tool choreography in the picture
+
+Jobbbler exposes one stable vocabulary, but the film must make its two visible
+behaviours easy to understand:
+
+- semantic reads such as `get_search_filters`, `get_job_details`,
+  `get_latest_search_update`, and `get_application_readiness` can run quietly
+  in the agent flow and return structured evidence without forcing a page
+  change;
+- surface-changing tools such as `search_jobs`, `open_job_details`,
+  `open_jobbbler_page`, and the workflow actions deliberately synchronize the
+  browser URL, visible product state, and Activity entry with the agent's next
+  step.
+
+Consent is the intentional pause between autonomous work and a consequential
+action, not a third interaction mode. A request tool such as
+`request_search_alert`, `request_application_assistance`, or
+`request_submission_review` returns the exact decision context and leaves the
+product waiting. Codex asks the person in chat. Only the matching decision tool
+may continue that unchanged request; a refusal or stale request completes
+nothing. Show this pattern once for notification setup and once for the final
+application path.
+
+Do not turn every quiet read into a cut. Hold on Codex while the short tool
+sequence resolves, then move the camera to Jobbbler when a surface-changing
+call makes the result visible. This contrast is the proof: the agent can work
+efficiently without hiding the outcome from the person or the judges.
+
 ## Composition and camera
 
 The film uses focus shifts, not a permanently tiny split screen.
