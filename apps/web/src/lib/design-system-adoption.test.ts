@@ -85,23 +85,33 @@ describe("design system adoption", () => {
     );
   });
 
-  // The secondary rank is an outline now — the ink block read as a white wall in the dark theme.
-  it("keeps custom secondary actions on the shared outline hover", async () => {
-    const secondaryActions = [
-      join(sourceRoot, "components/agent-guide.module.css"),
-      join(sourceRoot, "features/application/application-list.module.css"),
-      join(sourceRoot, "app/status.module.css"),
-    ];
+  it("keeps primary, secondary, and quiet actions on one semantic hierarchy", async () => {
+    const uiStyles = await readFile(join(uiRoot, "styles.css"), "utf8");
+    const saved = await readFile(
+      join(sourceRoot, "features/saved/saved-workspace.module.css"),
+      "utf8",
+    );
+    const about = await readFile(join(sourceRoot, "app/about/webmcp/page.module.css"), "utf8");
+    const status = await readFile(join(sourceRoot, "app/status.module.css"), "utf8");
 
-    for (const path of secondaryActions) {
-      const css = await readFile(path, "utf8");
-      expect(css, `${path} must use the shared outline hover`).toContain(
-        "border-color: var(--jb-hover-line);",
-      );
-      expect(css, `${path} must use the shared hover ground`).toContain(
-        "background: var(--jb-hover-surface);",
-      );
-    }
+    expect(uiStyles).toMatch(
+      /\.jb-button--primary \{[^}]*background: var\(--jb-signal-gradient\);/u,
+    );
+    expect(uiStyles).toMatch(
+      /\.jb-button--secondary \{[^}]*background: var\(--jb-action-gradient\);[^}]*color: var\(--jb-action-contrast\);/u,
+    );
+    expect(uiStyles).toMatch(
+      /\.jb-button--quiet \{[^}]*background: var\(--jb-glass-control\);/u,
+    );
+    expect(saved).toMatch(/\.primaryButton \{[^}]*background: var\(--jb-signal-gradient\);/u);
+    expect(saved).toMatch(
+      /\.secondaryButton \{[^}]*background: var\(--jb-action-gradient\);/u,
+    );
+    expect(saved).toMatch(/\.quietButton \{[^}]*background: var\(--jb-glass-control\);/u);
+    expect(about).toMatch(
+      /\.secondaryAction \{[^}]*background: var\(--jb-action-gradient\);/u,
+    );
+    expect(status).toMatch(/\.secondary \{[^}]*background: var\(--jb-action-gradient\);/u);
   });
 
   it("keeps panel dividers and marketing actions on the shared stroke and radius scale", async () => {
@@ -169,7 +179,7 @@ describe("design system adoption", () => {
       search.match(/\.jobResult:hover \{\s*background: var\(--jb-hover-surface\);/gu),
     ).toHaveLength(2);
     expect(saved).toContain(
-      ".secondaryButton:hover,\n.quietButton:hover {\n  background: var(--jb-hover-surface);",
+      ".quietButton:hover {\n  background: var(--jb-hover-surface);",
     );
   });
 });

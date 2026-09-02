@@ -65,10 +65,13 @@ button:disabled {
   background: var(--jb-signal-disabled);
   color: var(--jb-signal-disabled-contrast);
 }
-.jb-button--secondary:disabled,
 .jb-button--quiet:disabled,
 .jb-button--danger:disabled {
   color: var(--jb-text-muted);
+}
+.jb-button--secondary:disabled {
+  background: var(--jb-action-disabled);
+  color: var(--jb-action-disabled-contrast);
 }
 .jb-button--sm {
   font-size: var(--jb-type-label);
@@ -98,19 +101,17 @@ button:disabled {
  * in two colours, and the same action drawn as a pill on one page and a
  * rectangle on the next. An outline is the weakest way to say "control" — it
  * adds a line to every screen and still reads as secondary to a fill. So the
- * fill carries the rank instead: signal for the primary action, a quiet grey
- * for the secondary, nothing at all for the third.
+ * fill carries the rank instead: signal for the primary action, ink for the
+ * secondary, and quiet frosted glass for the third.
  */
 .jb-button--secondary {
-  background: var(--jb-glass-control);
-  border-color: var(--jb-border-control);
-  color: var(--jb-text);
-  backdrop-filter: var(--jb-glass-blur-control);
-  -webkit-backdrop-filter: var(--jb-glass-blur-control);
+  background: var(--jb-action-gradient);
+  border-color: var(--jb-border-strong);
+  color: var(--jb-action-contrast);
 }
 .jb-button--secondary:hover:not(:disabled) {
-  background: var(--jb-hover-surface);
-  border-color: var(--jb-hover-line);
+  background: var(--jb-action-gradient-hover);
+  border-color: var(--jb-border-strong);
 }
 
 .jb-button--quiet:hover:not(:disabled) {

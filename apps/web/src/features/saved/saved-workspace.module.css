@@ -385,13 +385,13 @@
 }
 
 .primaryButton {
-  border: 1px solid var(--jb-signal);
-  background: var(--jb-signal);
+  border: 1px solid transparent;
+  background: var(--jb-signal-gradient);
   color: var(--jb-signal-contrast);
 }
 
 .primaryButton:hover {
-  background: var(--jb-signal-strong);
+  background: var(--jb-signal-gradient-hover);
 }
 
 .dangerButton {
@@ -404,11 +404,18 @@
   background: color-mix(in srgb, var(--jb-danger) 88%, var(--color-ink));
 }
 
-.secondaryButton,
+.secondaryButton {
+  border: 1px solid var(--jb-border-strong);
+  background: var(--jb-action-gradient);
+  color: var(--jb-action-contrast);
+}
+
 .quietButton {
-  border: 1px solid var(--jb-border-control);
-  background: transparent;
+  border: 1px solid transparent;
+  background: var(--jb-glass-control);
   color: var(--color-ink);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
 }
 
 .identityCard .secondaryButton {
@@ -493,14 +500,14 @@
   font-size: var(--jb-type-caption);
 }
 
-.quietButton {
-  border-color: transparent;
-}
-
-.secondaryButton:hover,
 .quietButton:hover {
   background: var(--jb-hover-surface);
   border-color: var(--jb-hover-line);
+}
+
+.secondaryButton:hover {
+  border-color: var(--jb-border-strong);
+  background: var(--jb-action-gradient-hover);
 }
 
 /*
@@ -508,6 +515,7 @@
  * label and the fill together and leave the text unreadable against it.
  */
 .primaryButton:disabled,
+.secondaryButton:disabled,
 .quietButton:disabled,
 .dangerButton:disabled {
   cursor: wait;
@@ -522,6 +530,12 @@
 
 .quietButton:disabled {
   color: var(--color-ink-muted);
+}
+
+.secondaryButton:disabled {
+  border-color: var(--jb-action-disabled);
+  background: var(--jb-action-disabled);
+  color: var(--jb-action-disabled-contrast);
 }
 
 .hint {

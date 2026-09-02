@@ -1464,7 +1464,7 @@ export function SavedWorkspace({
                       ) : null}
                       <div className={styles["savedActions"]}>
                         <Link
-                          className={styles["secondaryButton"]}
+                          className={styles["quietButton"]}
                           href={searchHref(saved.criteria)}
                         >
                           View matches

@@ -64,21 +64,19 @@
 }
 
 .secondary {
-  border: 1px solid var(--jb-border-control);
-  background: var(--jb-veil-control);
-  color: var(--color-ink);
+  border: 1px solid var(--jb-border-strong);
+  background: var(--jb-action-gradient);
+  color: var(--jb-action-contrast);
   padding: 8px 14px;
   cursor: pointer;
   transition:
     background var(--motion-fast) var(--ease-standard),
     border-color var(--motion-fast) var(--ease-standard);
-  backdrop-filter: var(--jb-glass-blur-control);
-  -webkit-backdrop-filter: var(--jb-glass-blur-control);
 }
 
 .secondary:hover {
-  border-color: var(--jb-hover-line);
-  background: var(--jb-hover-surface);
+  border-color: var(--jb-border-strong);
+  background: var(--jb-action-gradient-hover);
 }
 
 .primary:focus-visible,

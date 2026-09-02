@@ -45,6 +45,18 @@
   --jb-signal: #107f3e;
   --jb-signal-strong: #0b6531;
   --jb-signal-contrast: #ffffff;
+  /*
+   * The second action is always ink, in both themes. Tying it to `--jb-text`
+   * made it turn white in dark mode and inverted the action hierarchy. These
+   * fixed brand neutrals keep primary green, secondary black, and quiet glass
+   * regardless of the page underneath.
+   */
+  --jb-action: #292f2b;
+  --jb-action-strong: #171b18;
+  --jb-action-hover: #373e39;
+  --jb-action-contrast: #ffffff;
+  --jb-action-disabled: #e4eae6;
+  --jb-action-disabled-contrast: #55625b;
   --jb-danger: #a63c35;
   --jb-warning: #8a5d10;
   --jb-focus: #0b6f37;
@@ -208,13 +220,13 @@
 
   --jb-action-gradient: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--jb-text) 95%, white) 0%,
-    var(--jb-text) 62%
+    var(--jb-action) 0%,
+    var(--jb-action-strong) 72%
   );
   --jb-action-gradient-hover: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--jb-text) 84%, white) 0%,
-    color-mix(in srgb, var(--jb-text) 90%, white) 62%
+    var(--jb-action-hover) 0%,
+    var(--jb-action) 72%
   );
   --jb-signal-gradient: linear-gradient(
     180deg,
@@ -296,4 +308,6 @@
   --jb-toast-danger: #97352f;
   --jb-signal-disabled: #2a322d;
   --jb-signal-disabled-contrast: #8d9a93;
+  --jb-action-disabled: #2a2e2c;
+  --jb-action-disabled-contrast: #929b96;
 }
