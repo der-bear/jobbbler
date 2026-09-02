@@ -8,6 +8,8 @@
   padding: 7px 11px;
   color: var(--color-ink-muted);
   background: var(--jb-veil-control);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
   font: inherit;
   font-size: var(--jb-type-label);
   font-weight: 650;

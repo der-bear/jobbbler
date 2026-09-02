@@ -168,7 +168,7 @@
 .sectionHeading h2 {
   margin: 8px 0 0;
   color: var(--color-ink);
-  font-size: clamp(21px, 2vw, 30px);
+  font-size: var(--jb-section-title-size);
   font-weight: 560;
   letter-spacing: -0.045em;
   line-height: 1.12;
@@ -297,6 +297,8 @@
   border-radius: var(--radius-sm);
   outline: 0;
   background: var(--jb-veil-control);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
   color: var(--color-ink);
   padding: 9px 11px;
   font-size: var(--jb-type-ui);
@@ -457,6 +459,8 @@
   gap: 5px;
   border-radius: var(--radius-sm);
   background: var(--jb-veil-control-subtle);
+  backdrop-filter: var(--jb-glass-blur);
+  -webkit-backdrop-filter: var(--jb-glass-blur);
   padding: 10px;
 }
 
@@ -688,6 +692,8 @@
   border-radius: var(--radius-sm);
   outline: 0;
   background: var(--jb-veil-control);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
   color: var(--color-ink);
   padding: 9px 11px;
   font-size: var(--jb-type-ui);

@@ -50,7 +50,7 @@
   max-inline-size: 18ch;
   margin: 10px 0 0;
   color: var(--color-ink);
-  font-size: clamp(24px, 3vw, 34px);
+  font-size: var(--jb-section-title-size);
   font-weight: 560;
   letter-spacing: -0.045em;
   line-height: 1.08;

@@ -79,8 +79,9 @@
 }
 
 .hero h1 {
+  /* The same size as the explainer's hero: two heroes, one voice. */
   margin: 0;
-  font-size: clamp(24px, 2.6vw, 34px);
+  font-size: var(--jb-hero-title-size);
   font-weight: 640;
   letter-spacing: -0.035em;
   text-align: center;
@@ -88,7 +89,8 @@
 }
 
 .heroSub {
-  margin: -6px 0 0;
+  /* Under a title this size the negative pull-up read as a collision. */
+  margin: 4px 0 0;
   color: var(--color-ink-muted);
   font-size: var(--jb-type-ui);
   text-align: center;
@@ -295,6 +297,8 @@
   border: 1px solid var(--color-line-strong);
   border-radius: var(--radius-sm);
   background: var(--jb-veil-control);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
   padding-inline: 9px;
 }
 
@@ -440,6 +444,8 @@
   border-radius: var(--radius-sm);
   outline: 0;
   background: var(--jb-veil-control);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
   color: var(--color-ink);
   padding: 7px 10px;
   font-size: var(--jb-type-ui);
@@ -570,6 +576,8 @@
   border: var(--jb-stroke-control) solid var(--color-line-strong);
   border-radius: var(--radius-sm);
   background: var(--jb-veil-control);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
   transition: border-color var(--motion-fast) var(--ease-standard);
 }
 
@@ -618,6 +626,8 @@
   border: var(--jb-stroke-control) solid var(--color-line-strong);
   border-radius: var(--radius-sm);
   background: var(--jb-veil-control);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
   color: var(--color-ink);
   font-size: var(--jb-type-label);
   font-weight: 620;
@@ -770,6 +780,14 @@
  */
 .jobResult:hover {
   background: var(--jb-hover-surface);
+}
+
+/*
+ * The label and the hover ground are the same veil, so on hover the label
+ * used to sink into the row. It steps one veil up and stays a label.
+ */
+.jobResult:hover :global(.jb-chip--static) {
+  background: var(--jb-veil-strong);
 }
 
 .jobTitleLink::after {

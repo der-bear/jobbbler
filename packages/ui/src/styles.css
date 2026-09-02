@@ -200,6 +200,8 @@ button.jb-chip {
   border: 0;
   background: var(--jb-hover-surface);
   color: var(--jb-text-muted);
+  /* A label is foreground: it darkens the light ground and lightens the dark one. */
+  mix-blend-mode: var(--jb-blend-fg);
   padding: 0 0.5625rem;
   font-size: var(--jb-type-caption);
   font-weight: 620;

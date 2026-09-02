@@ -42,7 +42,7 @@
 .hero h1 {
   max-inline-size: 17ch;
   margin: 17px 0 20px;
-  font-size: clamp(40px, 5.8vw, 66px);
+  font-size: var(--jb-hero-title-size);
   line-height: 1.01;
 }
 
@@ -71,7 +71,7 @@
 .section h2 {
   max-inline-size: 13ch;
   margin: 0;
-  font-size: clamp(24px, 3.2vw, 34px);
+  font-size: var(--jb-section-title-size);
   line-height: 1.08;
 }
 

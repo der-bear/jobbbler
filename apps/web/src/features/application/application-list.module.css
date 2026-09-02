@@ -220,6 +220,8 @@
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: var(--jb-veil-control-subtle);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
   color: var(--color-ink);
   padding: 8px 14px;
   font-size: var(--jb-type-label);

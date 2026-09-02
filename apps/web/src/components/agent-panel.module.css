@@ -79,8 +79,8 @@
 
 .header h2 {
   margin: 0;
-  /* Top of the panel's own ladder: 22 / 18 / 15 / 13 / 12. */
-  font-size: var(--jb-type-heading);
+  /* Top of the panel's own ladder: 20 / 18 / 15 / 13 / 12. */
+  font-size: var(--jb-type-heading-xs);
   font-weight: 670;
   letter-spacing: -0.035em;
 }

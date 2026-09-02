@@ -109,6 +109,8 @@
   padding: 10px 14px;
   color: var(--color-ink);
   background: var(--jb-veil-subtle);
+  backdrop-filter: var(--jb-glass-blur);
+  -webkit-backdrop-filter: var(--jb-glass-blur);
   font-size: var(--jb-type-ui);
   line-height: 1.5;
 }
@@ -123,7 +125,7 @@
   max-inline-size: 26ch;
   margin: 9px 0 0;
   color: var(--color-ink);
-  font-size: clamp(26px, 2.8vw, 36px);
+  font-size: var(--jb-section-title-size);
   font-weight: 550;
   letter-spacing: -0.045em;
   line-height: 1.08;
@@ -260,6 +262,8 @@
   padding: 11px 12px;
   color: var(--color-ink);
   background: var(--jb-veil-control);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
   font: inherit;
   font-size: var(--jb-type-body-sm);
   line-height: 1.5;

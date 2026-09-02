@@ -93,6 +93,8 @@
   border-radius: var(--radius-sm);
   outline: 0;
   background: var(--jb-veil-control);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
   color: var(--color-ink);
   padding: 8px 10px;
   font-size: var(--jb-type-label);
@@ -167,6 +169,8 @@
 
 .hint {
   background: var(--jb-veil-subtle);
+  backdrop-filter: var(--jb-glass-blur);
+  -webkit-backdrop-filter: var(--jb-glass-blur);
 }
 
 .warning,
