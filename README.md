@@ -2,41 +2,40 @@
 
 [![CI](https://github.com/der-bear/jobbbler/actions/workflows/ci.yml/badge.svg)](https://github.com/der-bear/jobbbler/actions/workflows/ci.yml)
 
+[Open the live app](https://jobbbler.com) · [See how it works](https://jobbbler.com/about/webmcp)
+
 **Find once. Stay updated. Apply with control.**
 
-Job search is repetitive. People rerun the same queries every day, rebuild the
-same filters, and still risk missing the one meaningful change — a new role, a
-salary revision, a posting that quietly closed.
+Job search repeats itself: people rerun the same filters, reread the same roles,
+and still miss the one change that matters. Jobbbler is a simple technology-job
+portal that works equally well by hand or through a compatible browser agent.
 
-Jobbbler answers that with a plain, typography-first job portal for technology
-roles: search, filters, saved searches with optional email updates, and one
-deliberate application at a time.
-Describe what you want once, in plain words, to a compatible browser agent; the
-agent runs the search on the real site, the server keeps checking after you
-close the page, and the next answer contains only what changed. When it is time
-to apply, the agent prepares the exact application and the external agent
-client presents every value, recipient, and data-use term for one explicit
-decision bound to that unchanged application. The ordinary site remains a
-complete manual alternative and a readable record of what was submitted.
+Give the agent the Jobbbler URL and describe the outcome you want. The page
+exposes 29 focused WebMCP tools automatically — no separate MCP server or setup.
+The agent can search and compare roles, save a search, report only what changed,
+and prepare an application. Before any personal data is used or an application
+is submitted, the agent client must present the exact request for one explicit,
+server-bound decision.
 
-The technology that makes this possible is WebMCP — no separately installed or
-declared MCP server. A global agent activity panel is available on every page:
-the same 29 focused tools stay discoverable across navigation, while private
-and workflow-specific actions enforce IDs, ownership, and state when executed.
+Jobbbler makes no model call of its own. The chosen agent supplies language and
+drafting; the product supplies typed data, durable state, bounded actions, and
+server-enforced authority. The normal website remains a complete manual
+alternative and a readable record of completed work.
 
-> Not an AI job board. A proof that any data-rich website can become safely
-> operable by an external browser agent — without a separate MCP server,
-> without hiding what changed, and without confusing tool access with human
-> authority.
+Built for the OpenAI WebMCP Challenge with a fictional 300-role demo catalog.
 
-Built for the OpenAI WebMCP Challenge.
+## Try it
 
-Jobbbler deliberately makes no model call of its own. The visiting external
-agent already understands the person's language and can draft text; the site
-contributes the part a general agent cannot safely invent: typed live data,
-deterministic filters, durable state, bounded actions, and server-enforced
-authority. This keeps intelligence in the chosen client and product truth in
-the product.
+Open [jobbbler.com](https://jobbbler.com) in ChatGPT Desktop's built-in browser,
+or in Chrome with WebMCP enabled through the origin trial or testing flag. For
+Chrome agent testing, Google documents the official
+[Model Context Tool Inspector](https://developer.chrome.com/docs/ai/webmcp#imitate_agent_chat_with_the_inspector_extension).
+
+```text
+Open https://jobbbler.com. Find senior remote product or design roles in Europe,
+compare the best three, save the search, and later tell me only what changed.
+Before using my email or preparing an application, explain what you need and ask.
+```
 
 ## Why it is different
 
