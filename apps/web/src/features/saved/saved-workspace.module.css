@@ -293,7 +293,7 @@
 .form select {
   inline-size: 100%;
   min-block-size: 43px;
-  border: 1px solid var(--color-line-strong);
+  border: 1px solid var(--jb-border-control);
   border-radius: var(--radius-sm);
   outline: 0;
   background: var(--jb-veil-control);
@@ -304,10 +304,16 @@
   font-size: var(--jb-type-ui);
 }
 
+.form input:hover:not(:focus-visible),
+.form select:hover:not(:focus-visible) {
+  border-color: var(--jb-hover-line);
+}
+
 .form input:focus-visible,
 .form select:focus-visible {
   outline: var(--jb-focus-width) solid var(--jb-focus);
-  outline-offset: var(--jb-focus-offset);
+  outline-offset: calc(-1 * var(--jb-focus-width));
+  border-color: transparent;
 }
 
 .formGrid {
@@ -345,7 +351,7 @@
   display: grid;
   min-block-size: 35px;
   place-items: center;
-  border: 1px solid var(--color-line-strong);
+  border: 1px solid var(--jb-border-control);
   border-radius: var(--radius-sm);
   color: var(--color-ink-muted);
   font-size: var(--jb-type-caption);
@@ -400,7 +406,7 @@
 
 .secondaryButton,
 .quietButton {
-  border: 1px solid var(--color-line-strong);
+  border: 1px solid var(--jb-border-control);
   background: transparent;
   color: var(--color-ink);
 }
@@ -457,11 +463,8 @@
 .revokePrompt {
   display: grid;
   gap: 5px;
-  border-radius: var(--radius-sm);
-  background: var(--jb-veil-control-subtle);
-  backdrop-filter: var(--jb-glass-blur);
-  -webkit-backdrop-filter: var(--jb-glass-blur);
-  padding: 10px;
+  padding: 12px 0;
+  border-block: var(--jb-stroke-structure) solid var(--color-line);
 }
 
 .revokePrompt strong,
@@ -497,6 +500,7 @@
 .secondaryButton:hover,
 .quietButton:hover {
   background: var(--jb-hover-surface);
+  border-color: var(--jb-hover-line);
 }
 
 /*
@@ -688,7 +692,7 @@
 .removeConfirmation input {
   inline-size: min(100%, 420px);
   min-block-size: 42px;
-  border: 1px solid var(--color-line-strong);
+  border: 1px solid var(--jb-border-control);
   border-radius: var(--radius-sm);
   outline: 0;
   background: var(--jb-veil-control);
@@ -699,9 +703,14 @@
   font-size: var(--jb-type-ui);
 }
 
+.removeConfirmation input:hover:not(:focus-visible) {
+  border-color: var(--jb-hover-line);
+}
+
 .removeConfirmation input:focus-visible {
   outline: var(--jb-focus-width) solid var(--jb-focus);
-  outline-offset: var(--jb-focus-offset);
+  outline-offset: calc(-1 * var(--jb-focus-width));
+  border-color: transparent;
 }
 
 .removeConfirmation > div {
@@ -776,21 +785,24 @@
   gap: 6px;
   min-block-size: 44px;
   /* Secondary rank: the last button that still drew itself as an outline. */
-  border: var(--jb-stroke-control) solid transparent;
+  border: var(--jb-stroke-control) solid var(--jb-border-control);
   border-radius: var(--radius-sm);
-  background: var(--jb-action-gradient);
+  background: var(--jb-veil-control);
   padding-inline: 16px;
-  color: var(--color-canvas);
+  color: var(--color-ink);
   font-size: var(--jb-type-ui);
   font-weight: 620;
   text-decoration: none;
   transition:
     border-color var(--motion-fast) var(--ease-standard),
     background var(--motion-fast) var(--ease-standard);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
 }
 
 .emptyAction:hover {
-  background: var(--jb-action-gradient-hover);
+  background: var(--jb-hover-surface);
+  border-color: var(--jb-hover-line);
 }
 
 .emptyAction:focus-visible {

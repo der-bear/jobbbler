@@ -89,7 +89,7 @@
 
 .form input {
   min-block-size: 39px;
-  border: 1px solid var(--color-line-strong);
+  border: 1px solid var(--jb-border-control);
   border-radius: var(--radius-sm);
   outline: 0;
   background: var(--jb-veil-control);
@@ -100,9 +100,14 @@
   font-size: var(--jb-type-label);
 }
 
+.form input:hover:not(:focus-visible) {
+  border-color: var(--jb-hover-line);
+}
+
 .form input:focus-visible {
   outline: var(--jb-focus-width) solid var(--jb-focus);
-  outline-offset: var(--jb-focus-offset);
+  outline-offset: calc(-1 * var(--jb-focus-width));
+  border-color: transparent;
 }
 
 /* A fill states the control; the outline around it was one line doing nothing. */

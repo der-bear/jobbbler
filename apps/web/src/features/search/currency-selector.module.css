@@ -2,7 +2,7 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   overflow: hidden;
-  border: var(--jb-stroke-control) solid var(--color-line-strong);
+  border: var(--jb-stroke-control) solid var(--jb-border-control);
   border-radius: var(--radius-sm);
   background: var(--jb-veil-control);
   backdrop-filter: var(--jb-glass-blur-control);

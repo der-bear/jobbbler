@@ -257,7 +257,7 @@
 .field textarea,
 .field select {
   inline-size: 100%;
-  border: 1px solid var(--color-line-strong);
+  border: 1px solid var(--jb-border-control);
   border-radius: var(--radius-sm);
   padding: 11px 12px;
   color: var(--color-ink);
@@ -267,6 +267,13 @@
   font: inherit;
   font-size: var(--jb-type-body-sm);
   line-height: 1.5;
+}
+
+/* The edge answers the pointer; the ground stays, it is where you type. */
+.field input:hover:not(:focus-visible),
+.field textarea:hover:not(:focus-visible),
+.field select:hover:not(:focus-visible) {
+  border-color: var(--jb-hover-line);
 }
 
 .field textarea {
@@ -322,7 +329,8 @@
 .field textarea:focus-visible,
 .field select:focus-visible {
   outline: var(--jb-focus-width) solid var(--jb-focus);
-  outline-offset: var(--jb-focus-offset);
+  outline-offset: calc(-1 * var(--jb-focus-width));
+  border-color: transparent;
 }
 
 .suggestion {

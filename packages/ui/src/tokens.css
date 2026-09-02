@@ -38,7 +38,9 @@
   --jb-text: #303633;
   --jb-text-muted: #646c67;
   --jb-border: #e6eae8;
-  --jb-border-chip: color-mix(in srgb, var(--jb-border-strong) 82%, var(--jb-border));
+  /* The rest edge of every control and outline button: a step lighter than the strong line. */
+  --jb-border-control: color-mix(in srgb, var(--jb-border-strong) 82%, var(--jb-border));
+  --jb-border-chip: var(--jb-border-control);
   --jb-border-strong: #8c9790;
   --jb-signal: #107f3e;
   --jb-signal-strong: #0b6531;

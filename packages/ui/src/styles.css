@@ -102,12 +102,15 @@ button:disabled {
  * for the secondary, nothing at all for the third.
  */
 .jb-button--secondary {
-  background: var(--jb-action-gradient);
-  border-color: transparent;
-  color: var(--jb-canvas);
+  background: var(--jb-glass-control);
+  border-color: var(--jb-border-control);
+  color: var(--jb-text);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
 }
 .jb-button--secondary:hover:not(:disabled) {
-  background: var(--jb-action-gradient-hover);
+  background: var(--jb-hover-surface);
+  border-color: var(--jb-hover-line);
 }
 
 .jb-button--quiet:hover:not(:disabled) {
@@ -141,7 +144,7 @@ button:disabled {
 }
 .jb-input {
   background: var(--jb-surface);
-  border: 1px solid var(--jb-border-strong);
+  border: 1px solid var(--jb-border-control);
   border-radius: var(--jb-radius-sm);
   color: var(--jb-text);
   min-height: 2.625rem;
@@ -150,6 +153,10 @@ button:disabled {
     border-color var(--jb-duration-fast) var(--jb-ease),
     box-shadow var(--jb-duration-fast) var(--jb-ease);
   width: 100%;
+}
+
+.jb-input:hover:not(:focus-visible) {
+  border-color: var(--jb-hover-line);
 }
 .jb-input::placeholder {
   color: var(--jb-text-muted);
@@ -244,7 +251,7 @@ button.jb-chip {
 }
 
 .jb-theme-toggle:hover {
-  border-color: var(--jb-state-line);
+  border-color: var(--jb-hover-line);
   background: var(--jb-hover-surface);
 }
 
@@ -437,7 +444,7 @@ button.jb-chip {
   background: var(--jb-glass-fill-strong);
   backdrop-filter: var(--jb-glass-blur);
   -webkit-backdrop-filter: var(--jb-glass-blur);
-  border: 1px solid var(--jb-border-strong);
+  border: 1px solid var(--jb-border-control);
   color: var(--jb-text);
   height: 2.75rem;
   width: 2.75rem;
@@ -484,13 +491,17 @@ button.jb-chip {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  border: 1px solid var(--jb-border-strong);
+  border: 1px solid var(--jb-border-control);
   border-radius: var(--jb-radius-sm);
   background: var(--jb-surface);
   color: var(--jb-text);
   padding: 7px 10px;
   font-size: var(--jb-type-ui);
   text-align: start;
+}
+
+.jb-multiselect__control:hover {
+  border-color: var(--jb-hover-line);
 }
 
 .jb-multiselect__control svg {
@@ -590,7 +601,7 @@ button.jb-chip {
   block-size: 16px;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid var(--jb-border-strong);
+  border: 1px solid var(--jb-border-control);
   border-radius: var(--jb-radius-sm);
   color: var(--jb-signal-contrast);
 }

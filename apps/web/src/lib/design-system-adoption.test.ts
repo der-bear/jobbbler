@@ -85,7 +85,8 @@ describe("design system adoption", () => {
     );
   });
 
-  it("keeps custom secondary actions dark on hover", async () => {
+  // The secondary rank is an outline now — the ink block read as a white wall in the dark theme.
+  it("keeps custom secondary actions on the shared outline hover", async () => {
     const secondaryActions = [
       join(sourceRoot, "components/agent-guide.module.css"),
       join(sourceRoot, "features/application/application-list.module.css"),
@@ -94,8 +95,11 @@ describe("design system adoption", () => {
 
     for (const path of secondaryActions) {
       const css = await readFile(path, "utf8");
-      expect(css, `${path} must use the shared dark secondary hover`).toContain(
-        "background: var(--jb-action-gradient-hover);",
+      expect(css, `${path} must use the shared outline hover`).toContain(
+        "border-color: var(--jb-hover-line);",
+      );
+      expect(css, `${path} must use the shared hover ground`).toContain(
+        "background: var(--jb-hover-surface);",
       );
     }
   });

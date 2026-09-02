@@ -102,7 +102,7 @@
   inline-size: min(680px, 100%);
   align-items: center;
   gap: 4px;
-  border: 1px solid var(--color-line-strong);
+  border: 1px solid var(--jb-border-control);
   border-radius: var(--radius-pill);
   background: var(--jb-glass-float);
   backdrop-filter: var(--jb-glass-blur-float);
@@ -120,6 +120,10 @@
   transition:
     inline-size var(--jb-duration-base) var(--ease-standard),
     box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+.heroSearch:hover {
+  border-color: var(--jb-hover-line);
 }
 
 .heroSearch:focus-within {
@@ -294,7 +298,7 @@
   min-block-size: 38px;
   align-items: center;
   gap: 7px;
-  border: 1px solid var(--color-line-strong);
+  border: 1px solid var(--jb-border-control);
   border-radius: var(--radius-sm);
   background: var(--jb-veil-control);
   backdrop-filter: var(--jb-glass-blur-control);
@@ -450,7 +454,7 @@
   inline-size: 100%;
   min-inline-size: 0;
   min-block-size: 36px;
-  border: var(--jb-stroke-control) solid var(--color-line-strong);
+  border: var(--jb-stroke-control) solid var(--jb-border-control);
   border-radius: var(--radius-sm);
   outline: 0;
   background: var(--jb-veil-control);
@@ -593,7 +597,7 @@
   display: inline-flex;
   min-block-size: 36px;
   align-items: center;
-  border: var(--jb-stroke-control) solid var(--color-line-strong);
+  border: var(--jb-stroke-control) solid var(--jb-border-control);
   border-radius: var(--radius-sm);
   background: var(--jb-veil-control);
   backdrop-filter: var(--jb-glass-blur-control);
@@ -643,7 +647,7 @@
    * weights of edge, so the row read as two unrelated things.
    */
   min-block-size: 36px;
-  border: var(--jb-stroke-control) solid var(--color-line-strong);
+  border: var(--jb-stroke-control) solid var(--jb-border-control);
   border-radius: var(--radius-sm);
   background: var(--jb-veil-control);
   backdrop-filter: var(--jb-glass-blur-control);
@@ -993,7 +997,7 @@
 }
 
 .errorState button:hover {
-  border-color: var(--jb-state-line);
+  border-color: var(--jb-hover-line);
   background: linear-gradient(var(--jb-state-hover), var(--jb-state-hover)), var(--jb-veil-control);
 }
 

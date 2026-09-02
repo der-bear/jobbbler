@@ -309,19 +309,27 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  border: 1px solid transparent;
+  border: var(--jb-stroke-control) solid var(--jb-border-control);
   border-radius: var(--radius-sm);
-  background: var(--jb-action-gradient);
+  background: var(--jb-veil-control);
   padding: 9px 14px;
-  color: var(--color-canvas);
+  color: var(--color-ink);
   font-size: var(--jb-type-label);
   font-weight: 650;
   text-decoration: none;
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
 }
 
 .primaryAction {
   color: var(--jb-signal-contrast);
   background: var(--jb-signal-gradient);
+  border-color: transparent;
+}
+
+.secondaryAction:hover {
+  border-color: var(--jb-hover-line);
+  background: var(--jb-hover-surface);
 }
 
 .primaryAction:focus-visible,

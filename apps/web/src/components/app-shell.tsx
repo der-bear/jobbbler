@@ -148,7 +148,7 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const agentPanelInitialStateSet = useRef(false);
 
   useEffect(() => {
-    const query = window.matchMedia("(max-width: 1080px)");
+    const query = window.matchMedia("(max-width: 960px)");
     const update = () => {
       setCompactAgentPanel(query.matches);
       if (!agentPanelInitialStateSet.current) {

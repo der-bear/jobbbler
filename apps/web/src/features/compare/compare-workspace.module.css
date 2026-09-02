@@ -163,19 +163,22 @@
 .stateActions button {
   min-block-size: 44px;
   /* Secondary rank — this was the last outline control left on the site. */
-  border: var(--jb-stroke-control) solid transparent;
+  border: var(--jb-stroke-control) solid var(--jb-border-control);
   border-radius: var(--radius-sm);
-  background: var(--jb-action-gradient);
-  color: var(--color-canvas);
+  background: var(--jb-veil-control);
+  color: var(--color-ink);
   padding-inline: 14px;
   font: inherit;
   font-size: var(--jb-type-label);
   font-weight: 650;
   cursor: pointer;
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
 }
 
 .stateActions button:hover {
-  background: var(--jb-action-gradient-hover);
+  background: var(--jb-hover-surface);
+  border-color: var(--jb-hover-line);
 }
 
 /* Tertiary: a link drawn as the quiet control it is, with a real target. */

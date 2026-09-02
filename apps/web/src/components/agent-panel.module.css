@@ -148,13 +148,18 @@
 
 .connection button {
   min-block-size: 32px;
-  border: 1px solid var(--color-line-strong);
+  border: 1px solid var(--jb-border-control);
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-ink);
   padding-inline: 10px;
   font-size: var(--jb-type-caption);
   font-weight: 620;
+}
+
+.connection button:hover {
+  border-color: var(--jb-hover-line);
+  background: var(--jb-hover-surface);
 }
 
 .tabs {
