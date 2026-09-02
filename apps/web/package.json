@@ -20,6 +20,7 @@
     "@jobbbler/storage-sqlite": "workspace:*",
     "@jobbbler/ui": "workspace:*",
     "@jobbbler/webmcp": "workspace:*",
+    "@jobbbler/worker": "workspace:*",
     "@phosphor-icons/react": "2.1.10",
     "@supabase/supabase-js": "2.112.4",
     "better-sqlite3": "13.0.3",

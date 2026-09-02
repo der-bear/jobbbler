@@ -76,6 +76,9 @@ importers:
       "@jobbbler/webmcp":
         specifier: workspace:*
         version: link:../../packages/webmcp
+      "@jobbbler/worker":
+        specifier: workspace:*
+        version: link:../worker
       "@phosphor-icons/react":
         specifier: 2.1.10
         version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
