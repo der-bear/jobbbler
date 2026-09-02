@@ -17,13 +17,14 @@
 ## WebMCP and demo proof
 
 - [x] Verify WebMCP in a supported browser context using the real registered
-      tools. The in-app browser discovered 29 unique tools and
-      completed real read-only calls.
+      tools. The in-app browser discovered 29 unique tools, completed a real
+      Platform + Remote search, opened one returned role, read its details, and
+      navigated back without losing discovery.
 - [x] Verify the global agent activity panel on more than one route: the same
       29 focused imperative tools stay registered everywhere, and state-gated
       tools answer with a clear next step when they are not ready. The live
-      surface was checked on `/` and `/saved`; an unavailable application
-      returned a bounded `NOT_FOUND` result.
+      surface was checked across search, role detail, and the WebMCP guide;
+      fresh discovery after each navigation still returned 29 unique tools.
 - [ ] Record actual registration/readiness, tool activity, search, compare,
       saved alert, and application boundaries.
 - [ ] Demonstrate the agent-native alert pair from the external client:
@@ -86,7 +87,7 @@
       groups Find / Inspect and compare / Alerts / Apply — not an older rail.
 - [x] Re-run `pnpm verify`, the focused E2E suite, and the local PostgreSQL
       contract suite on the final code revision and record the fresh numbers:
-      958 deterministic tests and 50/50 browser journeys on the 2 September
+      973 deterministic tests and 50/50 browser journeys on the 2 September
       release candidate; 103/103 PostgreSQL contract tests in the 1 September
       infrastructure rehearsal.
 - [x] Build the web and worker Docker targets from a clean isolated context;

@@ -54,17 +54,19 @@ choices:
 The fresh 2 September 2026 release-candidate check on the current tree
 recorded:
 
-- `pnpm verify`: formatting, lint, every workspace typecheck, 958 deterministic
+- `pnpm verify`: formatting, lint, every workspace typecheck, 973 deterministic
   tests, and both production builds passed;
 - Playwright: 50/50 browser journeys passed, including the complete
   agent-prepared application flow, saved-search schedules, location
   autocomplete, keyboard navigation, responsive layouts, and reduced motion;
 - the release SQLite database contained exactly 300 `jobbbler_demo` roles and
   its backup/restore integrity check passed with the same 300-role catalog;
-- live WebMCP in the supported in-app browser: 29 unique tools were discovered
-  on both `/` and `/saved`; `get_search_filters` and `get_saved_alerts` executed
-  successfully, and an unavailable owner application returned a bounded
-  `NOT_FOUND` result instead of pretending to succeed;
+- live WebMCP in the supported in-app browser: the same 29 unique tools stayed
+  discoverable before and after real navigation. `search_jobs` applied a
+  Platform + Remote + Newest request to the visible URL and returned 61 matches
+  with three bounded results; `open_job_details` opened one of those roles;
+  `get_job_details` returned its source-backed record; and a warm
+  `open_jobbbler_page` call returned to search without losing a tool;
 - low-effort model review: Luna evaluated 50 realistic intents (43 immediate
   safe routes and seven clarification- or state-sensitive cases); Terra
   evaluated 10 multi-step journeys and exposed three guidance gaps that drove
