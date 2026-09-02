@@ -295,15 +295,18 @@ function ReviewDocument({
               : `${String(missingFields.length)} ${missingFields.length === 1 ? "detail" : "details"} needed`}
           </p>
         </div>
-        <p className={styles["sectionIntro"]}>
-          {agentAssisted
-            ? readiness.readyForReview
+        {/*
+         * Only the agent case needs a sentence here: it has to say why the
+         * page is read-only. Filling in by hand needs none — the counter
+         * beside the title already says what is left.
+         */}
+        {agentAssisted ? (
+          <p className={styles["sectionIntro"]}>
+            {readiness.readyForReview
               ? "Review the application here. This page stays read-only while agent assistance is active; ask your agent to change anything before the final decision."
-              : "Your agent still needs information. Answer in your agent app; this page stays read-only while assistance is active."
-            : readiness.readyForReview
-              ? "Everything required is ready. Edit anything that does not sound like you."
-              : "Fill in the missing details below."}
-        </p>
+              : "Your agent still needs information. Answer in your agent app; this page stays read-only while assistance is active."}
+          </p>
+        ) : null}
 
         {/*
          * This used to stand there from the moment the page opened, listing
@@ -323,10 +326,7 @@ function ReviewDocument({
          * what happens to an answer once it is typed. The saving line used to
          * be underneath the last field, where it arrives after the fact.
          */}
-        <p className={styles["requiredNote"]}>
-          Required unless marked optional.
-          {agentAssisted ? null : " Your answers save when you move to the next field."}
-        </p>
+        <p className={styles["requiredNote"]}>Required unless marked optional.</p>
         {agentAssisted ? null : (
           <p aria-live="polite" className={styles["saveStatus"]}>
             {saveState === "saving"
@@ -335,7 +335,7 @@ function ReviewDocument({
                 ? "Changes could not be saved. Leave the field again to retry."
                 : saveState === "saved"
                   ? "Changes saved."
-                  : ""}
+                  : "Saves when you move to the next field."}
           </p>
         )}
 

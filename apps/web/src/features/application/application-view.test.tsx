@@ -391,7 +391,8 @@ describe("ApplicationView", () => {
     expect(markup).toContain("1 detail needed");
     expect(markup).toContain("Cover letter");
     expect(markup).toContain("Complete the form below. Nothing is sent until you choose Submit.");
-    expect(markup).toContain("Fill in the missing details below.");
+    // The counter beside the title already says what is left; no sentence repeats it.
+    expect(markup).not.toContain("Fill in the missing details below.");
     expect(markup).not.toContain("Approve and continue");
 
     /*
@@ -405,9 +406,7 @@ describe("ApplicationView", () => {
 
     /* And nothing is flagged as an error before anyone has tried to submit. */
     expect(markup).not.toContain('aria-invalid="true"');
-    expect(markup).toContain(
-      "Required unless marked optional. Your answers save when you move to the next field.",
-    );
+    expect(markup).toContain("Required unless marked optional.");
   });
 
   it("enables submission as soon as the visible required fields are complete", () => {
@@ -459,7 +458,7 @@ describe("ApplicationView", () => {
   });
 
   it.each([
-    ["idle" as const, "Your answers save when you move to the next field."],
+    ["idle" as const, "Saves when you move to the next field."],
     ["saving" as const, "Saving changes…"],
     ["saved" as const, "Changes saved."],
   ])("states the actual field-save behavior when saveState is %s", (saveState, message) => {
