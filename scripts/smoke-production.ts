@@ -118,7 +118,7 @@ export async function runProductionSmoke(input: SmokeInput): Promise<SmokeSummar
 
   const searchResponse = await request(
     fetchImpl,
-    `${baseUrl}/api/v1/jobs/search?query=TypeScript&limit=3`,
+    `${baseUrl}/api/v1/jobs/search?q=TypeScript&limit=3`,
   );
   const search = await jsonEnvelope(searchResponse, "Discovery");
   if (!searchResponse.ok || !search.ok || !Array.isArray(search.data["jobs"])) {

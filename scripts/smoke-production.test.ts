@@ -66,6 +66,9 @@ describe("production smoke", () => {
       searchResults: 1,
     });
     expect(request).toHaveBeenCalledTimes(5);
+    expect(request.mock.calls[3]?.[0]).toBe(
+      "https://jobbbler.example/api/v1/jobs/search?q=TypeScript&limit=3",
+    );
   });
 
   it("fails closed when readiness does not report a populated database", async () => {
