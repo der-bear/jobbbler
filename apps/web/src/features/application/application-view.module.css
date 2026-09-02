@@ -120,7 +120,7 @@
 }
 
 .stagePanel h2 {
-  max-inline-size: 18ch;
+  max-inline-size: 26ch;
   margin: 9px 0 0;
   color: var(--color-ink);
   font-size: clamp(26px, 2.8vw, 36px);
@@ -509,7 +509,7 @@
 .sharingSummary {
   margin-block-start: 38px;
   border: var(--jb-stroke-structure) solid var(--color-line);
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   padding: 20px 22px;
   background: var(--jb-glass-fill-strong);
   backdrop-filter: var(--jb-glass-blur);
@@ -630,8 +630,51 @@
 
 .submittedSnapshot {
   margin-block-start: 34px;
-  border-block-start: var(--jb-stroke-control) solid var(--jb-signal);
-  padding-block-start: 20px;
+  border-block-start: var(--jb-stroke-structure) solid var(--color-line);
+  padding-block-start: 24px;
+}
+
+/*
+ * The filled-in form without the boxes: same two columns, same order, the
+ * cover letter full width. Labels take the form's label weight so a person
+ * can hold the two pages side by side and see they match.
+ */
+.sentFields {
+  display: grid;
+  gap: 24px 28px;
+  margin: 20px 0 0;
+}
+
+@media (min-width: 680px) {
+  .sentFields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sentFields div[data-wide="true"] {
+    grid-column: 1 / -1;
+  }
+}
+
+.sentFields div {
+  display: grid;
+  gap: 5px;
+  min-inline-size: 0;
+}
+
+.sentFields dt {
+  color: var(--color-ink-muted);
+  font-size: var(--jb-type-label);
+  font-weight: 620;
+}
+
+.sentFields dd {
+  max-inline-size: 66ch;
+  margin: 0;
+  color: var(--color-ink);
+  font-size: var(--jb-type-body-sm);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .submittedSnapshot h3 {
@@ -647,10 +690,6 @@
   color: var(--color-ink-muted);
   font-size: var(--jb-type-ui);
   line-height: 1.55;
-}
-
-.submittedSnapshot dd {
-  white-space: pre-wrap;
 }
 
 .primaryLink {

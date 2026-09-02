@@ -69,7 +69,7 @@
   align-content: center;
   justify-items: start;
   border: var(--jb-stroke-structure) solid var(--color-line);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   background: var(--jb-glass-fill-strong);
   backdrop-filter: var(--jb-glass-blur);
   -webkit-backdrop-filter: var(--jb-glass-blur);
@@ -92,9 +92,14 @@
   list-style: none;
 }
 
+/*
+ * The status and the button sit in fixed columns. With `auto` columns the
+ * status moved left or right with the width of the button beside it, so the
+ * one row that said "Submitted" started in a different place from the rest.
+ */
 .row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(150px, auto) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 190px) 12.5rem;
   gap: clamp(20px, 4vw, 52px);
   align-items: center;
   border-block-end: var(--jb-stroke-structure) solid var(--color-line);
@@ -156,7 +161,7 @@
 .rowLink {
   display: inline-flex;
   align-items: center;
-  justify-self: start;
+  justify-self: end;
   gap: 7px;
   min-block-size: 40px;
   border: 1px solid transparent;

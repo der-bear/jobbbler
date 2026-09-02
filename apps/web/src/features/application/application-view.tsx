@@ -59,6 +59,12 @@ function receiptTimestamp(value: string): string {
   }).format(new Date(value))} UTC`;
 }
 
+function receiptDay(value: string): string {
+  return new Intl.DateTimeFormat("en", { dateStyle: "long", timeZone: "UTC" }).format(
+    new Date(value),
+  );
+}
+
 function submittedAnswerValue(
   value: ApplicationWorkspace["draft"]["answers"][number]["value"],
 ): string | null {
@@ -280,7 +286,7 @@ function ReviewDocument({
       <section aria-labelledby="review-heading" className={styles["stagePanel"]}>
         <div className={styles["sectionHeading"]}>
           <div>
-            <p className={styles["eyebrow"]}>In progress</p>
+            <p className={styles["eyebrow"]}>Not submitted yet</p>
             <h2 id="review-heading">Application details</h2>
           </div>
           <p className={styles["completion"]} data-ready={readiness.readyForReview}>
@@ -456,34 +462,58 @@ function ReviewDocument({
 }
 
 function SubmittedApplicationSnapshot({
+  workspace,
   fields,
-}: Readonly<{ fields: SubmittedReceipt["submission"]["fields"] }>) {
-  const presentedFields = fields.flatMap((field) => {
-    const value = submittedAnswerValue(field.value);
-    return value === null
-      ? []
-      : [
-          {
-            ...field,
-            label: field.fieldKey === "motivation" ? "Cover letter" : field.label,
-            value,
-          },
-        ];
-  });
+}: Readonly<{
+  workspace: ApplicationWorkspace;
+  fields: SubmittedReceipt["submission"]["fields"];
+}>) {
+  /*
+   * The same order and the same shape as the form the person just filled in:
+   * short answers in two columns, the written one last and full width. The
+   * receipt is the form with the boxes taken away, so nothing has to be
+   * re-learned to check it.
+   */
+  const formOrder = [...workspace.requirements]
+    .sort((a, b) => Number(a.input === "textarea") - Number(b.input === "textarea"))
+    .map((field) => field.fieldKey);
+  const wide = new Set(
+    workspace.requirements
+      .filter((field) => field.input === "textarea")
+      .map((field) => field.fieldKey),
+  );
+  wide.add("motivation");
+  const rank = (fieldKey: string) => {
+    const index = formOrder.indexOf(fieldKey);
+    return index === -1 ? formOrder.length : index;
+  };
+  const presentedFields = fields
+    .flatMap((field) => {
+      const value = submittedAnswerValue(field.value);
+      return value === null
+        ? []
+        : [
+            {
+              ...field,
+              label: field.fieldKey === "motivation" ? "Cover letter" : field.label,
+              value,
+            },
+          ];
+    })
+    .sort((a, b) => rank(a.fieldKey) - rank(b.fieldKey));
 
   return (
     <section
       aria-labelledby="submitted-application-heading"
       className={styles["submittedSnapshot"]}
     >
-      <h3 id="submitted-application-heading">Application sent</h3>
-      <p>Read-only copy of the exact fields stored with this Jobbbler demo submission.</p>
+      <h3 id="submitted-application-heading">What was sent</h3>
       {presentedFields.length === 0 ? (
         <p>No application fields were included.</p>
       ) : (
-        <dl className={styles["reviewList"]}>
+        <dl className={styles["sentFields"]}>
           {presentedFields.map((field) => (
-            <div key={field.fieldKey}>
+            <div data-wide={wide.has(field.fieldKey)} key={field.fieldKey}>
               <dt>{field.label}</dt>
               <dd>{field.value}</dd>
             </div>
@@ -525,14 +555,28 @@ function CompletePanel({ workspace }: Readonly<{ workspace: ApplicationWorkspace
   const handedOff = receipt.status === "handed_off";
   const externalUrl = handedOff ? receipt.externalUrl : null;
   const submission = receipt.status === "submitted" ? receipt.submission : null;
+  /*
+   * A person either sent this themselves or let their agent send it; the
+   * receipt says which. The data decision records its channel, and an earlier
+   * delegation means an agent had a hand in it even if that record is gone.
+   */
+  const throughAgent =
+    workspace.dataGrant?.decisionChannel === "agent_client" ||
+    workspace.delegationRequests.length > 0;
   return (
     <section aria-labelledby="complete-heading" className={styles["stagePanel"]}>
       <CheckCircleIcon aria-hidden="true" className={styles["completeIcon"]} weight="fill" />
-      <p className={styles["eyebrow"]}>{handedOff ? "Next step" : "Done"}</p>
+      <p className={styles["eyebrow"]}>
+        {handedOff
+          ? "Next step"
+          : throughAgent
+            ? "Submitted through your agent"
+            : "Submitted by you"}
+      </p>
       <h2 id="complete-heading">
         {handedOff
           ? "Ready to continue on the employer's website"
-          : "Jobbbler demo submission complete"}
+          : `Sent to ${submission?.recipient.name ?? "the saved demo recipient"}`}
       </h2>
       {handedOff ? (
         <p className={styles["receiptDate"]}>
@@ -540,9 +584,18 @@ function CompletePanel({ workspace }: Readonly<{ workspace: ApplicationWorkspace
         </p>
       ) : null}
       <p className={styles["sectionIntro"]}>
-        {handedOff
-          ? "Jobbbler did not submit this application. It prepared the reviewed details for the exact employer link below."
-          : `Jobbbler delivered the exact reviewed application to its managed demo inbox for ${submission?.recipient.name ?? "the saved demo recipient"}. This receipt records the acknowledged Jobbbler demo submission.`}
+        {handedOff ? (
+          "Jobbbler did not submit this application. It prepared the reviewed details for the exact employer link below."
+        ) : (
+          <>
+            Sent on{" "}
+            <time dateTime={submission?.submittedAt}>
+              {receiptDay(submission?.submittedAt ?? receipt.createdAt)}
+            </time>
+            . This is a Jobbbler demo, so the application went to Jobbbler&apos;s demo inbox for{" "}
+            {submission?.recipient.name ?? "the saved demo recipient"}, not to the employer.
+          </>
+        )}
       </p>
       {externalUrl === null ? null : (
         <a className={styles["primaryLink"]} href={externalUrl} rel="noreferrer" target="_blank">
@@ -571,33 +624,40 @@ function CompletePanel({ workspace }: Readonly<{ workspace: ApplicationWorkspace
         </details>
       ) : submission === null ? null : (
         <>
-          <dl aria-label="Submission receipt" className={styles["permissionGrid"]}>
-            <div>
-              <dt>Sent to</dt>
-              <dd>{submission.recipient.name}</dd>
-            </div>
-            <div>
-              <dt>Submitted at</dt>
-              <dd>
-                <time dateTime={submission.submittedAt}>
-                  {receiptTimestamp(submission.submittedAt)}
-                </time>
-              </dd>
-            </div>
-            <div>
-              <dt>Receipt reference</dt>
-              <dd>{submission.providerReferenceId}</dd>
-            </div>
-            <div>
-              <dt>Role</dt>
-              <dd>{submission.role.title}</dd>
-            </div>
-            <div>
-              <dt>Job ID</dt>
-              <dd>{submission.role.id}</dd>
-            </div>
-          </dl>
-          <SubmittedApplicationSnapshot fields={submission.fields} />
+          <SubmittedApplicationSnapshot fields={submission.fields} workspace={workspace} />
+          {/*
+           * The references are for support and for the agent's audit trail,
+           * not for reading. Folded, as the employer-link details already are.
+           */}
+          <details className={styles["technicalDetails"]}>
+            <summary>Receipt details</summary>
+            <dl aria-label="Submission receipt" className={styles["permissionGrid"]}>
+              <div>
+                <dt>Sent to</dt>
+                <dd>{submission.recipient.name}</dd>
+              </div>
+              <div>
+                <dt>Submitted at</dt>
+                <dd>
+                  <time dateTime={submission.submittedAt}>
+                    {receiptTimestamp(submission.submittedAt)}
+                  </time>
+                </dd>
+              </div>
+              <div>
+                <dt>Role</dt>
+                <dd>{submission.role.title}</dd>
+              </div>
+              <div>
+                <dt>Job ID</dt>
+                <dd>{submission.role.id}</dd>
+              </div>
+              <div>
+                <dt>Receipt reference</dt>
+                <dd>{submission.providerReferenceId}</dd>
+              </div>
+            </dl>
+          </details>
         </>
       )}
       <Link className={styles["secondaryLink"]} href="/applications">
@@ -696,7 +756,7 @@ export function ApplicationView({
         </Link>
         <h1>
           {submitted
-            ? "Application receipt"
+            ? "Application submitted"
             : handedOff
               ? "Continue on the employer's website"
               : missingReceipt
@@ -715,7 +775,7 @@ export function ApplicationView({
         </h1>
         <p className={styles["heroSub"]}>
           {submittedReceipt !== null
-            ? `Jobbbler demo · ${submittedReceipt.submission.recipient.name}`
+            ? `${titleWithoutEmploymentSuffix(submittedReceipt.submission.role.title)} · ${submittedReceipt.submission.recipient.name}`
             : terminal
               ? `${job.title} · ${job.organizationName}`
               : closedDraft

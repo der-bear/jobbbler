@@ -70,9 +70,11 @@ describe("ApplicationHistory", () => {
     expect(markup).toContain("Northstar Labs");
     expect(markup).toContain("Submitted");
     expect(markup).toContain("Open application");
-    expect(markup).toContain("Ready to review");
-    expect(markup).toContain("Your decision needed");
-    expect(markup).toContain("Review application");
+    // One question per row: submitted or not. The stages in between stay on the application page.
+    expect(markup).toContain("Not submitted");
+    expect(markup).not.toContain("Ready to review");
+    expect(markup).not.toContain("Your decision needed");
+    expect(markup).not.toContain("In progress");
     expect(markup).toContain("View receipt");
     expect(markup).toContain("Not submitted by Jobbbler");
     expect(markup).toContain("View next step");

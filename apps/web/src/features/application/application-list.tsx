@@ -22,6 +22,12 @@ function closedNonterminal(item: ApplicationListItem): boolean {
   );
 }
 
+/*
+ * From where the person stands an application is either submitted or it is
+ * not. The stages in between — validated, reviewed, waiting on a decision —
+ * are the machine's business and belong on the application page, where the
+ * next step is explained; here they only made the list read like a workflow.
+ */
 function stateLabel(item: ApplicationListItem): string {
   if (closedNonterminal(item)) return "Role closed";
   const { state } = item;
@@ -36,15 +42,8 @@ function stateLabel(item: ApplicationListItem): string {
       return "Needs attention";
     case "submitting":
       return "Submitting";
-    case "valid":
-      return "Ready to review";
-    case "reviewed":
-    case "awaiting_confirmation":
-      return "Your decision needed";
-    case "draft":
-      return "In progress";
     default:
-      return "In progress";
+      return "Not submitted";
   }
 }
 
@@ -56,17 +55,12 @@ function actionLabel(item: ApplicationListItem): string {
       return "View receipt";
     case "handed_off":
       return "View next step";
-    case "valid":
-    case "reviewed":
-    case "awaiting_confirmation":
-    case "failed":
-      return "Review application";
     case "submitting":
       return "View status";
-    case "draft":
-      return "Open application";
-    default:
+    case "withdrawn":
       return "View application";
+    default:
+      return "Open application";
   }
 }
 

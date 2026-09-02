@@ -682,8 +682,11 @@ describe("ApplicationView", () => {
       />,
     );
 
-    expect(markup).toContain("Jobbbler demo submission complete");
-    expect(markup).toContain("Jobbbler demo submission");
+    // Plain words for a person, the demo caveat kept: it says where the application went.
+    expect(markup).toContain("Application submitted");
+    expect(markup).toContain("Sent to Northstar Systems");
+    expect(markup).toContain("This is a Jobbbler demo");
+    expect(markup).not.toContain("Jobbbler demo submission complete");
     expect(markup).not.toContain("The employer received");
     expect(markup).toContain("<dt>Sent to</dt><dd>Northstar Systems</dd>");
     expect(markup).toContain("<dt>Submitted at</dt>");
@@ -693,10 +696,10 @@ describe("ApplicationView", () => {
     expect(markup).toContain("demo_submission_550e8400-e29b-41d4-a716-446655440000");
     expect(markup).toContain("<dt>Role</dt><dd>Senior Product Engineer</dd>");
     expect(markup).toContain(`<dt>Job ID</dt><dd>${workspace.draft.jobId}</dd>`);
-    expect(markup).toContain("Application sent");
-    expect(markup).toContain(
-      "Read-only copy of the exact fields stored with this Jobbbler demo submission.",
-    );
+    // The references are folded away; the fields read as the form did.
+    expect(markup).toContain("<summary>Receipt details</summary>");
+    expect(markup).toContain("What was sent");
+    expect(markup).not.toContain("Read-only copy");
     expect(markup).toContain("<dt>Full name</dt><dd>Ada Lovelace</dd>");
     expect(markup).toContain("<dt>Cover letter</dt><dd>A candidate-authored cover letter.</dd>");
     expect(markup).not.toContain("Mutable organization name");
