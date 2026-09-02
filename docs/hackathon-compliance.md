@@ -1,10 +1,10 @@
 # OpenAI WebMCP Challenge Compliance
 
-This checklist maps the captured rules in
-[`docs/rules/rules.md`](rules/rules.md) to concrete Jobbbler evidence. The
-status separates what the repository proves from deployment, media, and live
-browser checks that must be recorded for the final submitted revision. The
-live rules and submission form are rechecked immediately before submission.
+This checklist maps the live challenge requirements to concrete Jobbbler
+evidence. The status separates what the repository proves from deployment,
+media, and live-browser checks that must be recorded for the final submitted
+revision. The live rules and submission form are rechecked immediately before
+submission; their copied text is not redistributed in this repository.
 
 | Requirement                                               | Jobbbler evidence                                                                                                                                          | Evidence status                                                          |
 | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
@@ -34,11 +34,10 @@ live rules and submission form are rechecked immediately before submission.
 
 Jobbbler is the only product in this repository and submission. It covers IT and adjacent-technology vacancies. Local Services is a distinct future product; if built for the challenge, it must have a separate product identity, repository context, case study, story, media package, live URL, and Devpost submission.
 
-## Kickoff scope disposition
+## Scope disposition
 
-The preserved kickoff is an explored shared-engine specification, not the
-release contract. The challenge release makes these deliberate, testable
-choices:
+Early planning explored a broader shared engine. The challenge release makes
+these deliberate, testable choices:
 
 | Kickoff direction                             | Release decision                                                                                                                                      |
 | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -94,4 +93,7 @@ video and Devpost checks.
 
 ## Current known deadline
 
-The locally captured rules state 3 September 2026 at 1:00 pm Pacific Time. Devpost displays the localized equivalent in the authenticated UI. Because rules may change, the live rules and submission form remain the final source of truth.
+At the final release check, Devpost listed 3 September 2026 at 1:00 pm Pacific
+Time. Devpost displays the localized equivalent in the authenticated UI.
+Because rules may change, the live rules and submission form remain the final
+source of truth.

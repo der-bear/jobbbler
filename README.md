@@ -194,8 +194,7 @@ More detail: [architecture index](docs/architecture/README.md),
 ## Documentation
 
 The [documentation index](docs/README.md) separates implemented architecture,
-security and operations, challenge evidence, submission materials, and the
-preserved source specification and rules. Useful starting points are the
+security and operations, challenge evidence, and submission materials. Useful starting points are the
 [WebMCP evaluation evidence](docs/architecture/webmcp-evals.md),
 [challenge compliance map](docs/hackathon-compliance.md), and
 [design and accessibility QA contract](docs/design/qa.md).

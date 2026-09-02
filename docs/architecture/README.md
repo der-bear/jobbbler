@@ -75,8 +75,7 @@ Application-generated sortable IDs and UTC timestamps cross database boundaries 
 - [Operations](../operations.md)
 - [Sources and availability](../sources.md)
 
-The original [kickoff specification](../kickoff/webmcp_universal_discovery_action_platform_spec.md)
-and captured [challenge rules](../rules/rules.md) are preserved as source
-material. They record the input and constraints, not a claim that every
-explored capability shipped. These architecture documents and the tested code
-are the durable source of truth for the implemented product.
+These architecture documents and the tested code are the durable source of
+truth for the implemented product. Early exploration material is intentionally
+kept out of the public release so proposed directions cannot be mistaken for
+shipped behavior.

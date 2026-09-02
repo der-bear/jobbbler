@@ -2,7 +2,7 @@
 
 Start with the repository [README](../README.md) for the product story, local
 setup, and WebMCP catalog. This index separates implemented behavior from
-submission work and preserved source material.
+submission work.
 
 ## Product and architecture
 
@@ -34,13 +34,6 @@ submission work and preserved source material.
 - [Final submission checklist](submission/final-checklist.md)
 
 The compliance map distinguishes repository evidence from production, media,
-and live-browser checks that still require the exact submitted revision.
-
-## Preserved source material
-
-- [Original kickoff specification](kickoff/webmcp_universal_discovery_action_platform_spec.md)
-- [Captured challenge rules](rules/rules.md)
-
-These files preserve the input, explored scope, and challenge constraints.
-They are not a claim that every explored capability shipped. The architecture
-documents and tested code describe the implemented product.
+and live-browser checks that still require the exact submitted revision. The
+public repository keeps only implementation-relevant architecture and evidence;
+early exploration notes and copied third-party rules are intentionally omitted.
