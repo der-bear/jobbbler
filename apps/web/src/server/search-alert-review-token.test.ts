@@ -38,7 +38,7 @@ const payload: SearchAlertReviewPayload = {
   scheduleId: "schedule_550e8400-e29b-41d4-a716-446655440005",
   recurrence: { frequency: "daily", time: "09:00", timeZone: "Europe/Kyiv" },
   firstRunAt: "2026-08-31T06:00:48.000Z",
-  privacyNoticeVersion: "search-alert-v1",
+  privacyNoticeVersion: "search-alert-v2",
   issuedAt: "2026-08-30T09:00:00.000Z",
   expiresAt: "2026-08-30T09:15:00.000Z",
 };

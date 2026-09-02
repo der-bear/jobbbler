@@ -1253,7 +1253,7 @@ describe("agent-native search alert route handlers", () => {
         endpointId,
         recurrence,
         firstRunAt,
-        privacyNoticeVersion: "search-alert-v1",
+        privacyNoticeVersion: "search-alert-v2",
         channel: "agent_client",
       },
     });
