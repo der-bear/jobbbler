@@ -232,7 +232,7 @@ export function privateAccessCopy(
     eyebrow: "Verified email",
     title: "Access from another device",
     description:
-      "Use your verified email to restore saved searches and applications. Search updates are still optional.",
+      "Use your verified email to restore saved searches and applications. Email updates are still optional.",
   };
 }
 
@@ -258,6 +258,19 @@ export function savedComposerPresentation({
 function message(error: unknown): string {
   if (error instanceof ApiClientError) return error.message;
   return "Something went wrong. Your saved searches are unchanged.";
+}
+
+/*
+ * Every zone the browser knows, for the picker under the time-zone field. The
+ * field is prefilled with the browser's own zone, so most people never open
+ * it; the list is there so nobody has to type "Europe/Kyiv" from memory.
+ */
+function knownTimeZones(): readonly string[] {
+  try {
+    return typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
+  } catch {
+    return [];
+  }
 }
 
 function localTimeZone(): string {
@@ -586,7 +599,7 @@ export function SavedWorkspace({
       setStatus("ready");
       toast.show({
         title: "Email removed",
-        description: "Search updates to this address were paused. Verify an email to resume them.",
+        description: "Email updates to this address were paused. Verify an email to resume them.",
         tone: "success",
       });
     } catch (caught) {
@@ -1035,7 +1048,7 @@ export function SavedWorkspace({
                   .then(() => {
                     setOwner(verifiedOwner);
                     toast.show({
-                      title: "Recovery email added",
+                      title: "Email added",
                       description:
                         "You can now restore saved searches and applications on another device.",
                       tone: "success",
@@ -1145,14 +1158,14 @@ export function SavedWorkspace({
                   <div className={styles["privacyNote"]}>
                     <LockKeyIcon aria-hidden="true" size={18} />
                     <p>
-                      We use this address only for search updates and recovery. You can remove it at
-                      any time.
+                      We use this address only for email updates and to get you back in. You can
+                      remove it at any time.
                     </p>
                   </div>
                   {challengeId === null ? (
                     <form className={styles["form"]} onSubmit={beginVerification}>
                       <label>
-                        <span>Email for updates</span>
+                        <span>Your email</span>
                         <input
                           autoComplete="email"
                           maxLength={320}
@@ -1164,7 +1177,7 @@ export function SavedWorkspace({
                         />
                       </label>
                       <button className={styles["primaryButton"]} disabled={status === "working"}>
-                        Send verification code
+                        Send code
                         <ArrowRightIcon aria-hidden="true" size={16} />
                       </button>
                     </form>
@@ -1250,10 +1263,16 @@ export function SavedWorkspace({
                   <label>
                     <span>Time zone</span>
                     <input
+                      list="saved-search-time-zones"
                       onChange={(event) => setTimeZone(event.target.value)}
                       required
                       value={timeZone}
                     />
+                    <datalist id="saved-search-time-zones">
+                      {knownTimeZones().map((zone) => (
+                        <option key={zone} value={zone} />
+                      ))}
+                    </datalist>
                   </label>
                   <label>
                     <span>Send updates to</span>

@@ -93,7 +93,7 @@ test.describe("saved-search ownership workspace", () => {
   test("moves focus into recovery and deletion confirmation steps", async ({ page }) => {
     await page.goto("/saved");
     await page.getByText("Restore with email", { exact: true }).click();
-    await page.getByLabel("Verified email").fill("focus-check@example.test");
+    await page.getByLabel("Your email").fill("focus-check@example.test");
     await page.getByRole("button", { name: "Send code" }).click();
     await expect(page.getByLabel("Six-digit code")).toBeFocused();
 
@@ -117,12 +117,12 @@ test.describe("saved-search ownership workspace", () => {
     await page.getByText("Keep access on other devices", { exact: true }).click();
     await page
       .getByRole("complementary", { name: "Saved search access" })
-      .getByLabel("Recovery email")
+      .getByLabel("Email to get back in")
       .fill(`workspace-recovery-${String(Date.now())}@example.test`);
-    await page.getByRole("button", { name: "Send verification code" }).click();
+    await page.getByRole("button", { name: "Send code" }).click();
     await expect(page.getByLabel("Six-digit code")).toBeFocused();
-    await expect(page.getByRole("button", { name: "Verify email" })).toBeEnabled();
-    await page.getByRole("button", { name: "Verify email" }).click();
+    await expect(page.getByRole("button", { name: "Verify" })).toBeEnabled();
+    await page.getByRole("button", { name: "Verify" }).click();
 
     await expect(page.getByText("Recovery email added", { exact: true })).toBeVisible();
     await expect(page.getByText("Access from another device", { exact: true })).toBeVisible();
@@ -140,10 +140,10 @@ test.describe("saved-search ownership workspace", () => {
     await page.getByText("Keep access on other devices", { exact: true }).click();
     await page
       .getByRole("complementary", { name: "Saved search access" })
-      .getByLabel("Recovery email")
+      .getByLabel("Email to get back in")
       .fill(`remove-email-${String(Date.now())}@example.test`);
-    await page.getByRole("button", { name: "Send verification code" }).click();
-    await page.getByRole("button", { name: "Verify email" }).click();
+    await page.getByRole("button", { name: "Send code" }).click();
+    await page.getByRole("button", { name: "Verify" }).click();
 
     const removeEmail = page.getByRole("button", { name: /Remove verified email/u });
     await expect(removeEmail).toBeVisible();
@@ -183,9 +183,9 @@ test.describe("saved-search ownership workspace", () => {
     await page.getByLabel("Email me when results change").check();
     await page
       .getByRole("region", { name: "Save this search" })
-      .getByLabel("Email for updates")
+      .getByLabel("Your email")
       .fill(`schedule-edit-${String(Date.now())}@example.test`);
-    await page.getByRole("button", { name: "Send verification code" }).click();
+    await page.getByRole("button", { name: "Send code" }).click();
     await page.getByRole("button", { name: "Verify and continue" }).click();
 
     await page.getByLabel("How often").selectOption("weekly");

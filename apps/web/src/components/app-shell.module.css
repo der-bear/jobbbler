@@ -630,6 +630,13 @@
   }
 }
 
+/*
+ * The panel becomes a sheet only when it no longer fits beside a usable page:
+ * the panel needs 320px, a page needs 640px to keep its desktop layout, so
+ * 960px is the last width where both fit. The same figure lives in
+ * app-shell.tsx (matchMedia), layout.tsx (pre-paint), agent-panel.module.css
+ * and search-workspace.module.css — change all of them together.
+ */
 @media (max-width: 960px) {
   /* Below this width the panel is a sheet over the product, so it reserves
      nothing and the header keeps the full window. */

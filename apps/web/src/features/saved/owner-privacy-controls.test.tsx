@@ -49,7 +49,7 @@ describe("OwnerPrivacyControls", () => {
     expect(markup).toContain("Your data");
     expect(markup).toContain("<strong>Delete private data</strong>");
     expect(markup).toContain("DELETE MY PRIVATE DATA");
-    expect(markup).not.toContain("Add a recovery email");
+    expect(markup).not.toContain("Add your email");
     expect(markup).not.toContain("Recover a verified workspace");
     expect(markup).not.toContain(owner.id);
   });
@@ -66,8 +66,8 @@ describe("OwnerPrivacyControls", () => {
     );
 
     expect(markup).toContain("<strong>Delete private data</strong>");
-    expect(markup).toContain("Keep access on other devices");
-    expect(markup).toContain("Add a recovery email");
+    expect(markup).toContain("Get back in from another device");
+    expect(markup).toContain("Add your email");
     expect(markup).toContain("This does not turn on email updates");
     expect(markup).not.toContain("Restore with email");
     expect(markup).toContain('type="email"');

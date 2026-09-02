@@ -148,6 +148,8 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const agentPanelInitialStateSet = useRef(false);
 
   useEffect(() => {
+    // Sheet mode only when the panel (320px) and a usable page (640px) no longer
+    // fit side by side; the same 960px lives in layout.tsx and three stylesheets.
     const query = window.matchMedia("(max-width: 960px)");
     const update = () => {
       setCompactAgentPanel(query.matches);

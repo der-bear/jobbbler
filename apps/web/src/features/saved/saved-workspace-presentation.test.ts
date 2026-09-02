@@ -45,7 +45,7 @@ const recoverableCopy = {
   eyebrow: "Verified email",
   title: "Access from another device",
   description:
-    "Use your verified email to restore saved searches and applications. Search updates are still optional.",
+    "Use your verified email to restore saved searches and applications. Email updates are still optional.",
 };
 
 describe("privateAccessCopy", () => {

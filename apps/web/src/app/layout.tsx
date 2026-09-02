@@ -70,6 +70,7 @@ export const viewport: Viewport = {
  * removes it in the same effect that opens the panel and takes over the
  * reservation itself.
  */
+// 960px: panel (320px) + usable page (640px); the same figure lives in app-shell.tsx and three stylesheets.
 const documentBootstrap = `(()=>{try{const s=localStorage.getItem("jobbbler-theme");const t=s==="dark"||s==="light"?s:matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch{document.documentElement.dataset.theme="light"}try{if(!matchMedia("(max-width: 960px)").matches)document.documentElement.dataset.agentRail="on"}catch{}})()`;
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

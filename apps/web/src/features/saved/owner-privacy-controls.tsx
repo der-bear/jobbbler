@@ -217,7 +217,7 @@ export function OwnerPrivacyControls({
           {recoveryId === null ? (
             <form className={styles["form"]} onSubmit={(event) => void startRecovery(event)}>
               <label>
-                <span>Verified email</span>
+                <span>Your email</span>
                 <input
                   autoComplete="email"
                   maxLength={320}
@@ -280,14 +280,14 @@ export function OwnerPrivacyControls({
         <details className={styles["panel"]}>
           <summary className={styles["summary"]}>
             <span>Optional</span>
-            <strong>Keep access on other devices</strong>
+            <strong>Get back in from another device</strong>
           </summary>
           <div className={styles["content"]}>
             <div>
-              <h2>Add a recovery email</h2>
+              <h2>Add your email</h2>
               <p>
-                Verify once to restore saved searches and applications if this browser loses access.
-                This does not turn on email updates.
+                Verify it once. It brings back your saved searches and applications on another
+                device. This does not turn on email updates.
               </p>
             </div>
             {verificationId === null ? (
@@ -296,7 +296,7 @@ export function OwnerPrivacyControls({
                 onSubmit={(event) => void startRecoveryEmailVerification(event)}
               >
                 <label>
-                  <span>Recovery email</span>
+                  <span>Email to get back in</span>
                   <input
                     autoComplete="email"
                     maxLength={320}
@@ -307,7 +307,7 @@ export function OwnerPrivacyControls({
                   />
                 </label>
                 <button disabled={busy} type="submit">
-                  Send verification code
+                  Send code
                 </button>
               </form>
             ) : (
@@ -343,7 +343,7 @@ export function OwnerPrivacyControls({
                     Start over
                   </button>
                   <button disabled={busy || verificationCode.length !== 6} type="submit">
-                    Verify email
+                    Verify
                   </button>
                 </div>
               </form>
