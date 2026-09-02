@@ -1,8 +1,31 @@
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
-import { postgresMigrationManifest } from "./index.js";
+import { postgresMigrationManifest, resolvePostgresMigrationDirectory } from "./index.js";
 
 describe("PostgreSQL migration manifest", () => {
+  it("finds traced migration files from a Vercel monorepo function working directory", () => {
+    const root = mkdtempSync(join(tmpdir(), "jobbbler-migrations-"));
+    try {
+      const webDirectory = join(root, "apps", "web");
+      const migrationDirectory = join(root, "migrations", "postgres");
+      mkdirSync(webDirectory, { recursive: true });
+      mkdirSync(migrationDirectory, { recursive: true });
+
+      expect(
+        resolvePostgresMigrationDirectory(
+          "file:///var/task/apps/web/.next/server/chunks/runtime.js",
+          webDirectory,
+        ),
+      ).toBe(migrationDirectory);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("contains sequential checksummed migrations including authorization bindings", () => {
     const migrations = postgresMigrationManifest();
     const versions = migrations.map((migration) => migration.version);

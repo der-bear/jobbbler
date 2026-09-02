@@ -14,12 +14,20 @@ export interface PostgresMigration {
   readonly sql: string;
 }
 
+export function resolvePostgresMigrationDirectory(
+  moduleUrl: string,
+  workingDirectory: string,
+): string {
+  const candidates = [
+    resolve(dirname(fileURLToPath(moduleUrl)), "../../../migrations/postgres"),
+    resolve(workingDirectory, "migrations/postgres"),
+    resolve(workingDirectory, "../../migrations/postgres"),
+  ];
+  return candidates.find((candidate) => existsSync(candidate)) ?? candidates[1]!;
+}
+
 export function defaultPostgresMigrationDirectory(): string {
-  const fromModule = resolve(
-    dirname(fileURLToPath(import.meta.url)),
-    "../../../migrations/postgres",
-  );
-  return existsSync(fromModule) ? fromModule : resolve(process.cwd(), "migrations/postgres");
+  return resolvePostgresMigrationDirectory(import.meta.url, process.cwd());
 }
 
 export function postgresMigrationManifest(
