@@ -52,21 +52,20 @@ describe("production deployment artifacts", () => {
     expect(workflow).toContain("docker build --target worker");
   });
 
-  it("runs the deployed alert worker on a bounded recurring schedule without enabling live feeds", async () => {
-    const workflow = await readRepositoryFile(".github/workflows/alert-worker.yml");
+  it("schedules the bounded alert cycle from Supabase without enabling live feeds", async () => {
+    const scheduler = await readRepositoryFile("infra/supabase/alert-cycle-scheduler.sql");
 
-    expect(workflow).toContain("schedule:");
-    expect(workflow).toContain("workflow_dispatch:");
-    expect(workflow).toContain("concurrency:");
-    expect(workflow).toContain("timeout-minutes: 10");
-    expect(workflow).toContain("JOBBBLER_WORKER_MODE: alert_once");
-    expect(workflow).toContain("DATABASE_URL: ${{ secrets.DATABASE_URL }}");
-    expect(workflow).toContain("PII_ENCRYPTION_KEY: ${{ secrets.PII_ENCRYPTION_KEY }}");
-    expect(workflow).toContain("RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}");
-    expect(workflow).toContain("PUBLIC_BASE_URL: ${{ secrets.PUBLIC_BASE_URL }}");
-    expect(workflow).toContain("pnpm --filter @jobbbler/worker start");
-    expect(workflow).not.toContain("all_service");
-    expect(workflow).not.toContain("catalog_service");
+    expect(scheduler).toContain("create extension if not exists pg_net");
+    expect(scheduler).toContain("create extension if not exists pg_cron");
+    expect(scheduler).toContain("jobbbler_public_base_url");
+    expect(scheduler).toContain("jobbbler_alert_cycle_secret");
+    expect(scheduler).toContain("cron.schedule(");
+    expect(scheduler).toContain("jobbbler-alert-cycle");
+    expect(scheduler).toContain("/api/internal/alert-cycle");
+    expect(scheduler).toContain("'Authorization', 'Bearer '");
+    expect(scheduler).toContain("timeout_milliseconds := 50000");
+    expect(scheduler).not.toContain("all_service");
+    expect(scheduler).not.toContain("catalog_service");
   });
 
   it("pins the Vercel web build to the Next.js workspace without losing monorepo packages", async () => {
@@ -95,7 +94,8 @@ describe("production deployment artifacts", () => {
     expect(runbook).toContain("--target worker");
     expect(runbook).toContain("/api/health/ready");
     expect(runbook).toContain("WEBMCP_ORIGIN_TRIAL_TOKEN");
-    expect(runbook).toContain("alert worker workflow");
+    expect(runbook).toMatch(/Supabase\s+Cron invokes that endpoint every ten minutes/u);
+    expect(runbook).toContain("infra/supabase/alert-cycle-scheduler.sql");
     expect(runbook).toContain("alert_once");
     expect(runbook).toMatch(/Root\s+Directory to `apps\/web`/u);
   });

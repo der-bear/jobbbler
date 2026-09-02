@@ -461,6 +461,76 @@ describe.skipIf(databaseUrl === undefined)("PostgreSQL storage integration", () 
     ).resolves.toEqual([{ normalized: "malaga" }]);
   });
 
+  it("does not broaden a city location to every role in the same country", async () => {
+    const storage = createPostgresStorage(databaseUrl!);
+    close = async () => storage.close();
+    await resetPostgresSchema(storage.sql);
+    await migratePostgres(storage.sql);
+
+    const organizationId = "org_550e8400-e29b-41d4-a716-446655440198";
+    await storage.organizations.upsert({
+      id: organizationId,
+      name: "PostgreSQL Location Parity",
+      slug: "postgres-location-parity",
+      website: null,
+      description: "Test fixture.",
+      createdAt: ingestionNow,
+      updatedAt: ingestionNow,
+    });
+
+    const locationJob = (id: string, city: string): Job => ({
+      id,
+      organizationId,
+      organizationName: "PostgreSQL Location Parity",
+      title: `${city} Platform Engineer`,
+      summary: "Build reliable TypeScript services.",
+      categories: ["software_engineering"],
+      workModel: "remote",
+      employmentType: "full_time",
+      seniority: "senior",
+      locations: [`${city}, United States`, "United States", "North America"],
+      skills: ["TypeScript", "PostgreSQL"],
+      salary: null,
+      source: { key: "test", label: "Test", url: null },
+      applyMode: "internal",
+      status: "open",
+      publishedAt: ingestionNow,
+      updatedAt: ingestionNow,
+    });
+
+    const phoenix = locationJob("job_550e8400-e29b-41d4-a716-446655440198", "Phoenix");
+    const denver = locationJob("job_550e8400-e29b-41d4-a716-446655440199", "Denver");
+    await storage.jobs.upsert(phoenix);
+    await storage.jobs.upsert(denver);
+
+    await expect(
+      storage.jobs.search({
+        criteria: {
+          query: null,
+          categories: [],
+          workModels: [],
+          employmentTypes: [],
+          seniorities: [],
+          locations: ["Phoenix, United States"],
+          skills: [],
+          excludeKeywords: [],
+          salary: null,
+          postedWithinDays: null,
+          sort: "newest",
+          cursor: null,
+          limit: 20,
+          unresolvedAssumptions: [],
+        },
+        now: ingestionLater,
+        limit: 20,
+      }),
+    ).resolves.toMatchObject({
+      jobs: [{ id: phoenix.id }],
+      total: 1,
+      nextCursor: null,
+    });
+  });
+
   it("maintains the bounded open-job projection and paginates more than one page", async () => {
     const storage = createPostgresStorage(databaseUrl!);
     close = async () => storage.close();

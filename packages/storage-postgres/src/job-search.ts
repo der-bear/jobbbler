@@ -106,10 +106,7 @@ export async function searchPostgresJobs(
                 SELECT 1
                 FROM unnest(search.location_terms) AS actual(term)
                 WHERE actual.term <> ''
-                  AND (
-                    strpos(actual.term, normalized.term) > 0
-                    OR strpos(normalized.term, actual.term) > 0
-                  )
+                  AND strpos(actual.term, normalized.term) > 0
               )
           )
         )
@@ -262,10 +259,7 @@ export async function searchPostgresJobs(
               SELECT 1
               FROM unnest(location_terms) AS actual(term)
               WHERE actual.term <> ''
-                AND (
-                  strpos(actual.term, normalized.term) > 0
-                  OR strpos(normalized.term, actual.term) > 0
-                )
+                AND strpos(actual.term, normalized.term) > 0
             )
         ) AS location_matches,
         (
