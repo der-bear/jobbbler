@@ -114,7 +114,7 @@ test.describe("saved-search ownership workspace", () => {
     await createPrivateSession(page);
     await page.goto("/saved");
 
-    await page.getByText("Keep access on other devices", { exact: true }).click();
+    await page.getByText("Get back in from another device", { exact: true }).click();
     await page
       .getByRole("complementary", { name: "Saved search access" })
       .getByLabel("Email to get back in")
@@ -124,11 +124,11 @@ test.describe("saved-search ownership workspace", () => {
     await expect(page.getByRole("button", { name: "Verify" })).toBeEnabled();
     await page.getByRole("button", { name: "Verify" }).click();
 
-    await expect(page.getByText("Recovery email added", { exact: true })).toBeVisible();
+    await expect(page.getByText("Email added", { exact: true })).toBeVisible();
     await expect(page.getByText("Access from another device", { exact: true })).toBeVisible();
-    await expect(page.getByText("Keep access on other devices", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Get back in from another device", { exact: true })).toHaveCount(0);
     await expect(
-      page.getByText("Search updates are still optional.", { exact: false }),
+      page.getByText("Email updates are still optional.", { exact: false }),
     ).toBeVisible();
     await expect(page.getByText("Email updates on", { exact: true })).toHaveCount(0);
   });
@@ -137,7 +137,7 @@ test.describe("saved-search ownership workspace", () => {
     await createPrivateSession(page);
     await page.goto("/saved");
 
-    await page.getByText("Keep access on other devices", { exact: true }).click();
+    await page.getByText("Get back in from another device", { exact: true }).click();
     await page
       .getByRole("complementary", { name: "Saved search access" })
       .getByLabel("Email to get back in")
@@ -163,7 +163,7 @@ test.describe("saved-search ownership workspace", () => {
     await page.setViewportSize({ width: 1_440, height: 1_200 });
     await createPrivateSession(page);
     await page.goto("/saved");
-    await page.getByText("Keep access on other devices", { exact: true }).click();
+    await page.getByText("Get back in from another device", { exact: true }).click();
 
     const titleBox = await page
       .getByRole("heading", { name: "Saved searches", exact: true })
