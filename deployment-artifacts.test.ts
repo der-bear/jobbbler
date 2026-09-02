@@ -52,6 +52,23 @@ describe("production deployment artifacts", () => {
     expect(workflow).toContain("docker build --target worker");
   });
 
+  it("runs the deployed alert worker on a bounded recurring schedule without enabling live feeds", async () => {
+    const workflow = await readRepositoryFile(".github/workflows/alert-worker.yml");
+
+    expect(workflow).toContain("schedule:");
+    expect(workflow).toContain("workflow_dispatch:");
+    expect(workflow).toContain("concurrency:");
+    expect(workflow).toContain("timeout-minutes: 10");
+    expect(workflow).toContain("JOBBBLER_WORKER_MODE: alert_once");
+    expect(workflow).toContain("DATABASE_URL: ${{ secrets.DATABASE_URL }}");
+    expect(workflow).toContain("PII_ENCRYPTION_KEY: ${{ secrets.PII_ENCRYPTION_KEY }}");
+    expect(workflow).toContain("RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}");
+    expect(workflow).toContain("PUBLIC_BASE_URL: ${{ secrets.PUBLIC_BASE_URL }}");
+    expect(workflow).toContain("pnpm --filter @jobbbler/worker start");
+    expect(workflow).not.toContain("all_service");
+    expect(workflow).not.toContain("catalog_service");
+  });
+
   it("documents server-only PostgreSQL configuration and independent web and worker deployment", async () => {
     const runbook = await readRepositoryFile("docs/operations/deployment.md");
 
@@ -61,5 +78,7 @@ describe("production deployment artifacts", () => {
     expect(runbook).toContain("--target worker");
     expect(runbook).toContain("/api/health/ready");
     expect(runbook).toContain("WEBMCP_ORIGIN_TRIAL_TOKEN");
+    expect(runbook).toContain("alert worker workflow");
+    expect(runbook).toContain("alert_once");
   });
 });

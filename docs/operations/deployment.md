@@ -55,6 +55,23 @@ docker run --rm \
   jobbbler-web:local
 ```
 
+For the challenge-hosted topology, the Next.js web app can run on Vercel while
+the checked-in [alert worker workflow](../../.github/workflows/alert-worker.yml)
+runs one bounded `alert_once` cycle every ten minutes and can also be started
+manually. Configure the workflow with repository secrets named `DATABASE_URL`,
+`PUBLIC_BASE_URL`, `PII_ENCRYPTION_KEY`, `RESEND_API_KEY`, and `EMAIL_FROM`.
+The web deployment uses the same database, origin, encryption key, provider
+credentials, plus its server-only `TOKEN_HASH_SECRET`. The workflow never uses
+a catalog or combined worker mode, so the first-party demonstration catalog
+cannot be mixed with live external feeds.
+
+The scheduled workflow is a deployment adapter for the same idempotent worker,
+not a second implementation of alert logic. Its concurrency group prevents
+overlapping cycles; the database leases and provider idempotency keys remain the
+authoritative retry boundary. Keep the web readiness heartbeat window longer
+than the external scheduler's normal interval, but short enough to fail closed
+when the worker has actually stopped.
+
 Through the public HTTPS ingress, wait for `GET /api/health/live`, then
 `GET /api/health/ready` to report `driver: "postgres"`, the release migration
 count, exactly 300 jobs and 30 organizations. Work leases make normal worker
