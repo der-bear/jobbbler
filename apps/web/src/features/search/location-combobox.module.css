@@ -65,10 +65,13 @@
   box-shadow: var(--shadow-floating);
 }
 
+/*
+ * A line of text, not a band: its own fill and rule sat on top of the option
+ * under it, which draws its own hairline, so the list opened on a grey strip
+ * and two lines.
+ */
 .lookupStatus {
   margin: 0;
-  border-block-end: var(--jb-stroke-structure) solid var(--color-line);
-  background: var(--color-surface-subtle);
   color: var(--color-ink-muted);
   padding: 9px 12px;
   font-size: var(--jb-type-label);

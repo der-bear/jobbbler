@@ -383,7 +383,7 @@
 }
 
 .moreLink:hover {
-  border-color: transparent;
+  border-color: var(--jb-hover-line);
   background: var(--jb-hover-surface);
 }
 

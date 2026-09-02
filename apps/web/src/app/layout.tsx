@@ -70,7 +70,7 @@ export const viewport: Viewport = {
  * removes it in the same effect that opens the panel and takes over the
  * reservation itself.
  */
-const documentBootstrap = `(()=>{try{const s=localStorage.getItem("jobbbler-theme");const t=s==="dark"||s==="light"?s:matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch{document.documentElement.dataset.theme="light"}try{if(!matchMedia("(max-width: 1080px)").matches)document.documentElement.dataset.agentRail="on"}catch{}})()`;
+const documentBootstrap = `(()=>{try{const s=localStorage.getItem("jobbbler-theme");const t=s==="dark"||s==="light"?s:matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=t}catch{document.documentElement.dataset.theme="light"}try{if(!matchMedia("(max-width: 960px)").matches)document.documentElement.dataset.agentRail="on"}catch{}})()`;
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
