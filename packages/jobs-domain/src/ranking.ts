@@ -1,4 +1,4 @@
-import { convertSalaryAmount } from "./currency.js";
+import { annualizeSalaryAmount, convertSalaryAmount } from "./currency.js";
 import type { JobSearchCriteria } from "@jobbbler/contracts";
 
 import { getJobSearchDocument, type Job } from "./job.js";
@@ -120,6 +120,19 @@ function makeDimension(
   };
 }
 
+function salaryEvidence(
+  converted: boolean,
+  jobCurrency: string,
+  jobPeriod: string,
+  requestedPeriod: string,
+): string {
+  const annualized = jobPeriod !== requestedPeriod;
+  if (converted && annualized) return `salary (≈ converted from ${jobCurrency} per ${jobPeriod})`;
+  if (converted) return `salary (≈ converted from ${jobCurrency})`;
+  if (annualized) return `salary (≈ converted from ${jobPeriod} pay)`;
+  return "salary";
+}
+
 function rankSalary(job: Job, criteria: JobSearchCriteria): RankDimension {
   const requested = criteria.salary;
   if (requested === null) return emptyDimension;
@@ -169,20 +182,17 @@ function rankSalary(job: Job, criteria: JobSearchCriteria): RankDimension {
     };
   }
 
-  if (job.salary.period !== requested.period) {
-    return {
-      status: "unknown",
-      score: requested.unknownPolicy === "exclude" ? 0 : 0.4,
-      matched: [],
-      missing: ["comparable salary"],
-    };
-  }
-
   const requestedCurrency = requested.currency;
   const jobCurrency = job.salary.currency ?? requestedCurrency;
   const converted = jobCurrency !== requestedCurrency;
-  const convert = (amount: number | null): number | null =>
-    amount === null ? null : convertSalaryAmount(amount, jobCurrency, requestedCurrency);
+  const jobPeriod = job.salary.period;
+  const annualizeRequested = (amount: number | null): number | null =>
+    amount === null ? null : annualizeSalaryAmount(amount, requested.period);
+  const convert = (amount: number | null): number | null => {
+    if (amount === null) return null;
+    const exchanged = convertSalaryAmount(amount, jobCurrency, requestedCurrency);
+    return exchanged === null ? null : annualizeSalaryAmount(exchanged, jobPeriod);
+  };
   const jobLow = convert(job.salary.minimum);
   const jobHigh = convert(job.salary.maximum) ?? jobLow;
   if (converted && jobLow === null && jobHigh === null) {
@@ -206,7 +216,9 @@ function rankSalary(job: Job, criteria: JobSearchCriteria): RankDimension {
     };
   }
 
-  if (requested.minimum !== null && (jobHigh === null || jobHigh < requested.minimum)) {
+  const requestedLow = annualizeRequested(requested.minimum);
+  const requestedHigh = annualizeRequested(requested.maximum);
+  if (requestedLow !== null && (jobHigh === null || jobHigh < requestedLow)) {
     return {
       status: "below",
       score: 0,
@@ -215,7 +227,7 @@ function rankSalary(job: Job, criteria: JobSearchCriteria): RankDimension {
     };
   }
 
-  if (requested.maximum !== null && jobLow !== null && jobLow > requested.maximum) {
+  if (requestedHigh !== null && jobLow !== null && jobLow > requestedHigh) {
     return {
       status: "mismatch",
       score: 0,
@@ -225,12 +237,12 @@ function rankSalary(job: Job, criteria: JobSearchCriteria): RankDimension {
   }
 
   const partiallyOverlapsMinimum =
-    requested.minimum !== null && jobLow !== null && jobLow < requested.minimum;
+    requestedLow !== null && jobLow !== null && jobLow < requestedLow;
 
   return {
     status: partiallyOverlapsMinimum ? "partial" : "match",
     score: partiallyOverlapsMinimum ? 0.7 : 1,
-    matched: [converted ? `salary (≈ converted from ${jobCurrency})` : "salary"],
+    matched: [salaryEvidence(converted, jobCurrency, jobPeriod, requested.period)],
     missing: [],
   };
 }

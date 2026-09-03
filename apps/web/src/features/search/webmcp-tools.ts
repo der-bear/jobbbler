@@ -405,7 +405,7 @@ export function createSearchToolManifests(
     name: "search_jobs",
     purpose: "Search Jobbbler's public technology roles without leaving the current page.",
     description:
-      "Search Jobbbler's source-backed catalog directly. Do not use external job sources when the person asks for this site's tools. Ask one useful preference only when no search criterion is supplied. Use get_search_filters only for an unclear enum. For ‘Berlin or remote’, pass locations=['Berlin'] with remoteOrLocations=true. Default headless keeps the page unchanged; use follow only when the person asks to watch. Results include IDs, salary, seniority, evidence, and a cursor.",
+      "Search Jobbbler's source-backed catalog directly. Do not use external job sources when the person asks for this site's tools. Pass only the criteria the person stated; leave categories, employmentTypes and unknownPolicy unset so nothing is narrowed silently. For ‘Berlin or remote’, pass locations=['Berlin'] with remoteOrLocations=true. Default headless keeps the page unchanged; use follow only when asked to watch. Results include IDs, salary, seniority, evidence, and a cursor.",
     inputSchema: searchJobsToolInputJsonSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {

@@ -759,6 +759,63 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
       ).resolves.toMatchObject({ jobs: [titleMatch, bodyMatch], total: 2 });
     });
 
+    it("ranks a stronger title match ahead of a fresher summary-only match", async () => {
+      const current = await create();
+      await current.organizations.upsert(organization);
+      const titleMatch = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440022",
+        title: "Senior Product Designer",
+        summary: "Shape onboarding for technology teams.",
+        publishedAt: "2026-08-20T09:00:00.000Z",
+      };
+      const summaryMatch = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440023",
+        title: "Staff Platform Engineer",
+        summary: "Partner with every product designer working on the platform.",
+        publishedAt: "2026-08-28T09:00:00.000Z",
+      };
+      await current.jobs.upsert(titleMatch);
+      await current.jobs.upsert(summaryMatch);
+
+      await expect(
+        current.jobs.search({
+          criteria: { ...emptyCriteria, query: "product designer", sort: "relevance" },
+          now,
+          limit: 10,
+        }),
+      ).resolves.toMatchObject({ jobs: [titleMatch, summaryMatch], total: 2 });
+    });
+
+    it("compares hourly pay against an annual salary floor", async () => {
+      const current = await create();
+      await current.organizations.upsert(organization);
+      const hourly = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440024",
+        salary: { minimum: 65, maximum: 90, currency: "USD", period: "hour" as const },
+      };
+      await current.jobs.upsert(hourly);
+
+      await expect(
+        current.jobs.search({
+          criteria: {
+            ...emptyCriteria,
+            salary: {
+              minimum: 80_000,
+              maximum: null,
+              currency: "USD",
+              period: "year",
+              unknownPolicy: "exclude",
+            },
+          },
+          now,
+          limit: 10,
+        }),
+      ).resolves.toMatchObject({ jobs: [hourly], total: 1 });
+    });
+
     it("keeps a job's application mode immutable across upserts", async () => {
       const current = await create();
       await current.organizations.upsert(organization);

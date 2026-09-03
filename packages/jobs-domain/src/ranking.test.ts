@@ -98,9 +98,12 @@ describe("rankJob", () => {
       evaluation,
     );
     const hourlyUsd = rankJob(
-      job({
-        salary: { minimum: 130_000, maximum: 150_000, currency: "USD", period: "hour" },
-      }),
+      job({ salary: { minimum: 65, maximum: 90, currency: "USD", period: "hour" } }),
+      criteria,
+      evaluation,
+    );
+    const hourlyBelow = rankJob(
+      job({ salary: { minimum: 20, maximum: 30, currency: "USD", period: "hour" } }),
       criteria,
       evaluation,
     );
@@ -110,7 +113,10 @@ describe("rankJob", () => {
     expect(usdBelow.dimensions.salary.status).toBe("below");
     expect(usdBelow.eligible).toBe(false);
     expect(unknownCurrency.dimensions.salary.status).toBe("unknown");
-    expect(hourlyUsd.dimensions.salary.status).toBe("unknown");
+    expect(hourlyUsd.dimensions.salary.status).toBe("match");
+    expect(hourlyUsd.dimensions.salary.matched[0]).toContain("hour");
+    expect(hourlyBelow.dimensions.salary.status).toBe("below");
+    expect(hourlyBelow.eligible).toBe(false);
   });
 
   it("can intentionally return only jobs with undisclosed compensation", () => {

@@ -177,7 +177,13 @@ export async function searchPostgresJobs(
                 END
             )
           ELSE NULL
-        END AS converted_maximum
+        END AS converted_maximum,
+        CASE job_salary->>'period'
+          WHEN 'hour' THEN 2080 WHEN 'month' THEN 12 ELSE 1
+        END::numeric AS job_period_factor,
+        CASE requested_salary->>'period'
+          WHEN 'hour' THEN 2080 WHEN 'month' THEN 12 ELSE 1
+        END::numeric AS requested_period_factor
       FROM salary_inputs
     ),
     salary_scored AS NOT MATERIALIZED (
@@ -192,8 +198,6 @@ export async function searchPostgresJobs(
             THEN CASE WHEN requested_salary->>'unknownPolicy' = 'include' THEN 0.4 ELSE NULL END
           WHEN requested_salary->>'minimum' IS NULL
             AND requested_salary->>'maximum' IS NULL THEN 1.0
-          WHEN job_salary->>'period' <> requested_salary->>'period'
-            THEN CASE WHEN requested_salary->>'unknownPolicy' = 'include' THEN 0.4 ELSE NULL END
           WHEN converted_minimum IS NULL AND converted_maximum IS NULL
             THEN CASE WHEN requested_salary->>'unknownPolicy' = 'include' THEN 0.4 ELSE NULL END
           WHEN requested_salary->>'minimum' IS NOT NULL AND converted_minimum IS NULL
@@ -201,12 +205,14 @@ export async function searchPostgresJobs(
           WHEN requested_salary->>'maximum' IS NOT NULL AND converted_maximum IS NULL
             THEN CASE WHEN requested_salary->>'unknownPolicy' = 'include' THEN 0.4 ELSE NULL END
           WHEN requested_salary->>'minimum' IS NOT NULL
-            AND coalesce(converted_maximum, converted_minimum)
-              < (requested_salary->>'minimum')::numeric THEN NULL
+            AND coalesce(converted_maximum, converted_minimum) * job_period_factor
+              < (requested_salary->>'minimum')::numeric * requested_period_factor THEN NULL
           WHEN requested_salary->>'maximum' IS NOT NULL
-            AND converted_minimum > (requested_salary->>'maximum')::numeric THEN NULL
+            AND converted_minimum * job_period_factor
+              > (requested_salary->>'maximum')::numeric * requested_period_factor THEN NULL
           WHEN requested_salary->>'minimum' IS NOT NULL
-            AND converted_minimum < (requested_salary->>'minimum')::numeric THEN 0.7
+            AND converted_minimum * job_period_factor
+              < (requested_salary->>'minimum')::numeric * requested_period_factor THEN 0.7
           ELSE 1.0
         END::double precision AS score
       ) AS salary
@@ -298,7 +304,7 @@ export async function searchPostgresJobs(
                 + CASE WHEN criteria->>'postedWithinDays' IS NULL THEN 0 ELSE 5 END
               ) = 0 THEN 50
               ELSE floor(0.5 + 100 * (
-                CASE WHEN criteria->>'query' IS NULL THEN 0 ELSE 30 END
+                CASE WHEN criteria->>'query' IS NULL THEN 0 ELSE 30 * text_score END
                 + CASE WHEN jsonb_array_length(criteria->'categories') = 0 THEN 0
                     ELSE 15 * category_matches / jsonb_array_length(criteria->'categories') END
                 + CASE WHEN jsonb_array_length(criteria->'workModels') = 0 THEN 0

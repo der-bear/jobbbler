@@ -238,7 +238,9 @@ describe("route-scoped WebMCP tool manifests", () => {
       true,
       false,
     ]);
-    expect(tool(manifests, "search_jobs").description).toContain("Ask one useful preference");
+    expect(tool(manifests, "search_jobs").description).toContain(
+      "Pass only the criteria the person stated",
+    );
     expect(tool(manifests, "search_jobs").description).toContain("Default headless");
     expect(JSON.stringify(tool(manifests, "search_jobs").inputSchema)).toContain(
       "for remote-only, use workModels=['remote'].",
