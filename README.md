@@ -275,6 +275,14 @@ does not drift while the release candidate changes.
 
 Please report vulnerabilities through the process in [SECURITY.md](SECURITY.md).
 
+## Author
+
+Created by [Alex Derkach](https://www.linkedin.com/in/aderkach/), a product
+strategist and systems designer working across product architecture, UX,
+research, frontend implementation and agentic systems. Jobbbler is his worked
+example of a website that serves people through its pages and agents through
+its tools, with one set of rules for both.
+
 ## License
 
 [MIT](LICENSE) © 2026 Alex Derkach
