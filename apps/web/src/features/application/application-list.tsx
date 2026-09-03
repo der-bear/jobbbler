@@ -126,7 +126,6 @@ export function ApplicationHistory({
           <Link className={styles["primaryLink"]} href="/jobs">
             Browse open roles <ArrowRightIcon aria-hidden="true" />
           </Link>
-          {recovery}
         </div>
       ) : (
         <ol className={styles["list"]}>
@@ -161,6 +160,14 @@ export function ApplicationHistory({
           ))}
         </ol>
       )}
+
+      {/*
+       * Getting back into a workspace belongs to the page, not to the empty
+       * state. Nested inside that outlined pane, its hairline rule ran into the
+       * pane's own edge and read as a seam; on /saved the same control already
+       * sits at page level, so the two pages now agree.
+       */}
+      {recovery === null ? null : <div className={styles["recovery"]}>{recovery}</div>}
     </section>
   );
 }

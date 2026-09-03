@@ -249,6 +249,11 @@
   background: var(--jb-hover-surface);
 }
 
+.recovery {
+  max-inline-size: 46rem;
+  margin-block-start: 32px;
+}
+
 .primaryLink {
   display: inline-flex;
   align-items: center;
