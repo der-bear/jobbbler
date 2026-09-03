@@ -254,15 +254,32 @@
   margin-block-start: 32px;
 }
 
+/*
+ * The way out of an empty state is the same secondary button everywhere: the
+ * row control here, "Browse roles" on /saved, "Return to search" on /compare.
+ * The three used to be a filled pill, an outlined button and a bare green link.
+ */
 .primaryLink {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   min-block-size: 44px;
+  border: 1px solid var(--jb-border-control);
+  border-radius: var(--radius-sm);
+  background: var(--jb-veil-control);
   color: var(--color-ink);
+  padding: 8px 14px;
   font-size: var(--jb-type-label);
   font-weight: 650;
   text-decoration: none;
+  transition:
+    background var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+}
+
+.primaryLink:hover {
+  border-color: var(--jb-hover-line);
+  background: var(--jb-hover-surface);
 }
 
 .rowLink svg,

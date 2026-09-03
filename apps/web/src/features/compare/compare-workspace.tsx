@@ -1,6 +1,11 @@
 "use client";
 
-import { ArrowSquareOutIcon, CheckCircleIcon, WarningCircleIcon } from "@phosphor-icons/react";
+import {
+  ArrowRightIcon,
+  ArrowSquareOutIcon,
+  CheckCircleIcon,
+  WarningCircleIcon,
+} from "@phosphor-icons/react";
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
 
@@ -347,7 +352,7 @@ function EmptyComparison({ kind }: Readonly<{ kind: "missing" | "invalid" }>) {
           : "Pick up to three roles from search to see their facts side by side. The link you get is shareable."}
       </p>
       <Link className={styles["stateLink"]} href="/jobs">
-        Return to search
+        Return to search <ArrowRightIcon aria-hidden="true" />
       </Link>
     </section>
   );

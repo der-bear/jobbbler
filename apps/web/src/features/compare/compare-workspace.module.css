@@ -161,10 +161,13 @@
   min-block-size: 44px;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 7px;
   margin-block-start: 14px;
-  color: var(--color-signal-strong);
-  padding-inline: 8px;
+  border: 1px solid var(--jb-border-control);
+  border-radius: var(--radius-sm);
+  background: var(--jb-veil-control);
+  color: var(--color-ink);
+  padding: 8px 14px;
   font-size: var(--jb-type-label);
   font-weight: 650;
   text-decoration: none;
@@ -176,7 +179,8 @@
 .comparisonActions a:hover,
 .empty a:hover,
 .state a:hover {
-  color: var(--jb-signal);
+  border-color: var(--jb-hover-line);
+  background: var(--jb-hover-surface);
 }
 
 .jobActions a,

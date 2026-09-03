@@ -34,17 +34,18 @@ official
 [Model Context Tool Inspector](https://developer.chrome.com/docs/ai/webmcp#imitate_agent_chat_with_the_inspector_extension).
 
 ```text
-Open https://jobbbler.com. Find senior remote product or design roles in Europe,
-compare the best three, save the search, and later tell me only what changed.
-Before using my email or preparing an application, explain what you need and ask.
+Open https://jobbbler.com. Looking for a Product Designer position, remote,
+$90k+. Compare options, pick the top 2, and apply. Schedule for daily updates
+(every morning). My CV is attached.
 ```
 
 ## Why it is different
 
 - **Explainable discovery.** Structured criteria, source provenance, freshness,
   salary semantics, known limits, and search-fit evidence stay visible in the
-  interface. Salary ranking is currency-aware (USD, EUR, GBP, and CAD at pinned
-  rates, shown in USD by default) and explains itself with evidence strings.
+  interface. Salary ranking is currency- and period-aware (USD, EUR,
+  GBP, and CAD at pinned rates, shown in USD by default; an hourly contract rate
+  is compared at 2,080 hours a year) and explains itself with evidence strings.
 - **Global agent activity.** Twenty-nine focused tools for search, roles,
   comparison, saved searches, optional updates, and applications — all
   registered on every page, so navigation never costs an agent a capability.
@@ -71,6 +72,11 @@ Before using my email or preparing an application, explain what you need and ask
   only decisions bound to the exact server-issued request and draft version.
   Active assistance can be withdrawn through that same request-bound decision
   tool.
+- **Answers given once.** A new application arrives holding the answers this
+  person already gave on an earlier one, so only the role-specific letter is
+  ever asked for twice. An application that was never sent can be removed; one
+  that was sent keeps its receipt, because that receipt is the evidence of what
+  the person agreed to disclose.
 - **Truthful actions.** Every fictional-demo role supports Jobbbler-managed
   delivery and can produce an immutable receipt only after the exact
   request-bound decision. The server still fails closed for any unsupported
