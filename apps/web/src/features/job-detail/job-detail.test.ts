@@ -282,13 +282,13 @@ describe("job-detail fit explanation", () => {
     const selectedMarkup = renderToStaticMarkup(
       createElement(JobDetail, {
         jobId: job.id,
-        criteriaSearch: "?currency=USD",
+        criteriaSearch: "?currency=EUR",
         initialResult: { job: salariedJob, fit: noEvidenceFit },
       }),
     );
 
-    expect(defaultMarkup).toContain("€86k–€103k / yr");
-    expect(selectedMarkup).toContain("$100k–$120k / yr");
+    expect(defaultMarkup).toContain("$100k–$120k / yr");
+    expect(selectedMarkup).toContain("€86k–€103k / yr");
   });
 
   it("shows concrete cities without repeating broader search scopes", () => {

@@ -52,7 +52,7 @@ const employmentLabels: Readonly<Record<EmploymentType, string>> = {
   internship: "Internship",
 };
 
-export const defaultDisplayCurrency = "EUR";
+export const defaultDisplayCurrency = "USD";
 const displayCurrencies = new Set(comparableCurrencies);
 
 export function displayCurrencyFromSearch(criteriaSearch: string): string {

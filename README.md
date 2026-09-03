@@ -43,8 +43,8 @@ Before using my email or preparing an application, explain what you need and ask
 
 - **Explainable discovery.** Structured criteria, source provenance, freshness,
   salary semantics, known limits, and search-fit evidence stay visible in the
-  interface. Salary ranking is currency-aware (EUR, USD, GBP, and CAD at pinned
-  rates) and explains itself with evidence strings.
+  interface. Salary ranking is currency-aware (USD, EUR, GBP, and CAD at pinned
+  rates, shown in USD by default) and explains itself with evidence strings.
 - **Global agent activity.** Twenty-nine focused tools for search, roles,
   comparison, saved searches, optional updates, and applications — all
   registered on every page, so navigation never costs an agent a capability.

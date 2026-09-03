@@ -6,8 +6,8 @@ import type { SalaryPeriod, SalaryRange } from "@jobbbler/contracts";
  * Values express how many EUR one unit of the currency is worth.
  */
 const EUR_PER_UNIT: Readonly<Record<string, number>> = {
+  USD: 0.86, // listed first: the default display currency
   EUR: 1,
-  USD: 0.86,
   GBP: 1.16,
   CAD: 0.63,
 };

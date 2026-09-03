@@ -4,7 +4,7 @@ import { type KeyboardEvent, useRef } from "react";
 
 import styles from "./currency-selector.module.css";
 
-export const displayCurrencies = ["EUR", "USD", "GBP", "CAD"] as const;
+export const displayCurrencies = ["USD", "EUR", "GBP", "CAD"] as const;
 export type DisplayCurrency = (typeof displayCurrencies)[number];
 
 export function isDisplayCurrency(value: string): value is DisplayCurrency {
