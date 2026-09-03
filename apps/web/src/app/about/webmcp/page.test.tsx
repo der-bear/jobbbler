@@ -11,8 +11,8 @@ describe("WebMCP explanation", () => {
     expect(markup).toContain("No separate MCP connection or server setup is needed");
     expect(markup).toContain("One conversation, from search to application");
     expect(markup).toContain("Open this Jobbbler site");
-    expect(markup).toContain("compare the best matches");
-    expect(markup).toContain("before using my personal data or submitting anything");
+    expect(markup).toContain("Compare options, pick the top 2, and apply");
+    expect(markup).toContain("asks before preparing one private application");
     expect(markup).toContain("Example request");
     expect(markup).toContain('aria-label="Copy prompt"');
     expect(markup).toContain("Search");

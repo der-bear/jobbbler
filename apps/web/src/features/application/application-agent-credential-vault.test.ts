@@ -4,7 +4,9 @@ import type { ApplicationAgentCredential } from "./application-model";
 import {
   clearApplicationAgentCredential,
   restoreApplicationAgentCredential,
+  restoreApplicationSubmissionReview,
   storeApplicationAgentCredential,
+  storeApplicationSubmissionReview,
   type ApplicationAgentCredentialStorage,
 } from "./application-agent-credential-vault";
 
@@ -103,5 +105,62 @@ describe("application agent credential vault", () => {
     expect(() => storeApplicationAgentCredential(unavailable, draftId, current, now)).not.toThrow();
     expect(restoreApplicationAgentCredential(unavailable, draftId, now)).toBeNull();
     expect(() => clearApplicationAgentCredential(unavailable, draftId)).not.toThrow();
+  });
+});
+
+describe("submission review envelope", () => {
+  const envelope = {
+    id: "interaction_550e8400-e29b-41d4-a716-446655440099",
+    draftId: "application_550e8400-e29b-41d4-a716-446655440000",
+    draftVersion: 3,
+    recipient: "Solstice Health Systems",
+    purpose: "Send this application to the employer.",
+    noticeVersion: "privacy-2026-08-31",
+    expiresAt: "2026-09-03T10:52:00.000Z",
+  };
+  const reviewNow = "2026-09-03T10:47:00.000Z";
+
+  function memoryStorage(): ApplicationAgentCredentialStorage & {
+    readonly map: Map<string, string>;
+  } {
+    const map = new Map<string, string>();
+    return {
+      map,
+      getItem: (key) => map.get(key) ?? null,
+      setItem: (key, value) => void map.set(key, value),
+      removeItem: (key) => void map.delete(key),
+    };
+  }
+
+  it("carries a pending review across a remount without storing any answer", () => {
+    const storage = memoryStorage();
+    storeApplicationSubmissionReview(storage, envelope.draftId, envelope, reviewNow);
+
+    expect([...storage.map.values()].join()).not.toContain("cover_letter");
+    expect(restoreApplicationSubmissionReview(storage, envelope.draftId, reviewNow)).toEqual(
+      envelope,
+    );
+  });
+
+  it("drops a review that expired while the page was away", () => {
+    const storage = memoryStorage();
+    storeApplicationSubmissionReview(storage, envelope.draftId, envelope, reviewNow);
+
+    expect(
+      restoreApplicationSubmissionReview(storage, envelope.draftId, "2026-09-03T10:53:00.000Z"),
+    ).toBeNull();
+    expect(storage.map.size).toBe(0);
+  });
+
+  it("never returns a review stored under another application", () => {
+    const storage = memoryStorage();
+    storeApplicationSubmissionReview(
+      storage,
+      envelope.draftId,
+      { ...envelope, draftId: "application_550e8400-e29b-41d4-a716-446655440001" },
+      reviewNow,
+    );
+
+    expect(restoreApplicationSubmissionReview(storage, envelope.draftId, reviewNow)).toBeNull();
   });
 });

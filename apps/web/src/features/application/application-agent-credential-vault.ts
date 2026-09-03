@@ -91,3 +91,99 @@ export function restoreApplicationAgentCredential(
     return null;
   }
 }
+
+/*
+ * The envelope of a pending submission review — never its values.
+ *
+ * A person who opens the application page to look at what they are approving
+ * remounts this surface, and the review the agent is holding used to disappear
+ * with it: the agent then had to ask for the same approval a second time. Only
+ * the identifiers travel through storage; the answers stay on the server, and
+ * the decision is still checked there against the exact frozen payload.
+ */
+export interface StoredSubmissionReviewEnvelope {
+  readonly id: string;
+  readonly draftId: string;
+  readonly draftVersion: number;
+  readonly recipient: string;
+  readonly purpose: string;
+  readonly noticeVersion: string;
+  readonly expiresAt: string;
+}
+
+const REVIEW_KEY_PREFIX = "jobbbler:application-submission-review:";
+
+function reviewKey(draftId: string): string {
+  return `${REVIEW_KEY_PREFIX}${draftId}`;
+}
+
+export function clearApplicationSubmissionReview(
+  storage: ApplicationAgentCredentialStorage,
+  draftId: string,
+): void {
+  try {
+    storage.removeItem(reviewKey(draftId));
+  } catch {
+    // The in-memory review expires on its own when storage is unavailable.
+  }
+}
+
+export function storeApplicationSubmissionReview(
+  storage: ApplicationAgentCredentialStorage,
+  draftId: string,
+  review: StoredSubmissionReviewEnvelope,
+  now: string,
+): void {
+  if (review.draftId !== draftId || !isLive(review.expiresAt, now)) {
+    clearApplicationSubmissionReview(storage, draftId);
+    return;
+  }
+  try {
+    storage.setItem(reviewKey(draftId), JSON.stringify({ version: 1, draftId, review }));
+  } catch {
+    // Without storage the review still works for as long as this page stays open.
+  }
+}
+
+export function restoreApplicationSubmissionReview(
+  storage: ApplicationAgentCredentialStorage,
+  draftId: string,
+  now: string,
+): StoredSubmissionReviewEnvelope | null {
+  let raw: string | null;
+  try {
+    raw = storage.getItem(reviewKey(draftId));
+  } catch {
+    return null;
+  }
+  if (raw === null) return null;
+
+  try {
+    const candidate = JSON.parse(raw) as {
+      version?: number;
+      draftId?: string;
+      review?: Partial<StoredSubmissionReviewEnvelope>;
+    };
+    const review = candidate.review;
+    if (
+      candidate.version !== 1 ||
+      candidate.draftId !== draftId ||
+      review === undefined ||
+      review.id === undefined ||
+      review.draftId !== draftId ||
+      typeof review.draftVersion !== "number" ||
+      review.recipient === undefined ||
+      review.purpose === undefined ||
+      review.noticeVersion === undefined ||
+      review.expiresAt === undefined ||
+      !isLive(review.expiresAt, now)
+    ) {
+      clearApplicationSubmissionReview(storage, draftId);
+      return null;
+    }
+    return review as StoredSubmissionReviewEnvelope;
+  } catch {
+    clearApplicationSubmissionReview(storage, draftId);
+    return null;
+  }
+}

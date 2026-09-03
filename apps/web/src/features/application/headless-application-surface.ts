@@ -18,7 +18,10 @@ import { ApiClientError, type QueryApiOptions } from "@/lib/query-client";
 
 import {
   clearApplicationAgentCredential,
+  clearApplicationSubmissionReview,
   restoreApplicationAgentCredential,
+  restoreApplicationSubmissionReview,
+  storeApplicationSubmissionReview,
   storeApplicationAgentCredential,
   type ApplicationAgentCredentialStorage,
 } from "./application-agent-credential-vault";
@@ -146,7 +149,10 @@ function createController(
     dependencies.storage === null
       ? null
       : restoreApplicationAgentCredential(dependencies.storage, draftId, clock.now());
-  let submissionReview: ApplicationSubmissionReviewRequest | null = null;
+  let submissionReview: ApplicationSubmissionReviewRequest | null =
+    dependencies.storage === null
+      ? null
+      : restoredSubmissionReview(dependencies.storage, draftId, clock.now());
 
   const currentReview = (): ApplicationSubmissionReviewRequest | null => {
     if (
@@ -338,11 +344,29 @@ function createController(
         ...serverRequest,
         href: `/apply/${encodeURIComponent(draftId)}`,
       };
+      if (dependencies.storage !== null) {
+        storeApplicationSubmissionReview(
+          dependencies.storage,
+          draftId,
+          {
+            id: serverRequest.id,
+            draftId,
+            draftVersion: serverRequest.draftVersion,
+            recipient: serverRequest.recipient,
+            purpose: serverRequest.purpose,
+            noticeVersion: serverRequest.noticeVersion,
+            expiresAt: serverRequest.expiresAt,
+          },
+          clock.now(),
+        );
+      }
       return submissionReview;
     },
     async decideSubmission(expectedVersion, decision, { signal, channel }) {
       const currentCredential = requireCredential();
       const review = currentReview();
+      if (dependencies.storage !== null)
+        clearApplicationSubmissionReview(dependencies.storage, draftId);
       if (workspace.draft.version !== expectedVersion || review === null) {
         throw new ApiClientError({
           code: "CONFLICT",
@@ -399,6 +423,22 @@ function createController(
   };
 
   return { surface, reload };
+}
+
+/*
+ * A review that outlived its page keeps only what identifies it. The answers are
+ * re-read from the server for any new review; this envelope exists so the person
+ * is not asked to approve the same frozen application twice.
+ */
+function restoredSubmissionReview(
+  storage: ApplicationAgentCredentialStorage,
+  draftId: string,
+  now: string,
+): ApplicationSubmissionReviewRequest | null {
+  const envelope = restoreApplicationSubmissionReview(storage, draftId, now);
+  return envelope === null
+    ? null
+    : { ...envelope, fields: [], href: `/apply/${encodeURIComponent(draftId)}` };
 }
 
 export function createHeadlessApplicationSurfaceStore(

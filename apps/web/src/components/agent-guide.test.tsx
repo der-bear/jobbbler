@@ -63,8 +63,7 @@ describe("AgentGuide", () => {
     expect(markup).toContain("Start in your agent chat");
     expect(markup).toContain("Copy prompt");
     expect(markup).toContain("Open this Jobbbler site");
-    expect(markup).toContain("compare the best matches");
-    expect(markup).toContain("before using my personal data or submitting anything");
+    expect(markup).toContain("Compare options, pick the top 2, and apply");
     expect(markup).toContain("1");
     expect(markup).toContain("Share the link and say what you need");
     expect(markup).toContain("2");
