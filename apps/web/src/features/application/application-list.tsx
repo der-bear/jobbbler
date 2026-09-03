@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightIcon } from "@phosphor-icons/react";
+import { ArrowRightIcon, FileTextIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
@@ -100,6 +100,7 @@ export function ApplicationHistory({
 
       {items.length === 0 ? (
         <div className={styles["empty"]}>
+          <FileTextIcon aria-hidden="true" size={25} />
           <h2>No applications yet</h2>
           <p>
             Browse roles to apply yourself, or ask your agent to apply for you. It must ask before

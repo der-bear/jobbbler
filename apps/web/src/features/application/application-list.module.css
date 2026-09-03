@@ -70,19 +70,37 @@
   justify-items: start;
   border: var(--jb-stroke-structure) solid var(--color-line);
   border-radius: 0;
-  background: var(--jb-glass-fill-strong);
+  /* The same untinted veil as the saved-searches pane; the icon takes the subtle ink. */
+  background: var(--jb-veil-subtle);
   backdrop-filter: var(--jb-glass-blur);
   -webkit-backdrop-filter: var(--jb-glass-blur);
   padding: clamp(28px, 4vw, 44px);
+  color: var(--color-ink-subtle);
 }
 
-.lede,
-.empty > p {
+.empty h2 {
+  margin: 14px 0 7px;
+  color: var(--color-ink);
+  font-size: var(--jb-type-heading-sm);
+  font-weight: 620;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+
+.lede {
   max-inline-size: 61ch;
   margin: 0;
   color: var(--color-ink-muted);
   font-size: var(--jb-type-body-sm);
   line-height: 1.65;
+}
+
+.empty > p {
+  max-inline-size: 48ch;
+  margin: 0 0 18px;
+  color: var(--color-ink-muted);
+  font-size: var(--jb-type-label);
+  line-height: 1.55;
 }
 
 .list {
@@ -110,8 +128,7 @@
   min-inline-size: 0;
 }
 
-.role h2,
-.empty h2 {
+.role h2 {
   margin: 0;
   color: var(--color-ink);
   font-size: var(--jb-type-heading-sm);
