@@ -84,7 +84,8 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
         intent: "Read readiness; repeat for another chosen role",
         tool: "get_application_readiness",
         requiredInputs: ["draftId; follow nextTool"],
-        humanAction: false,
+        humanAction:
+          "Ask once, in one message, for every missing fact, the assistance approval, and the update email.",
       },
       {
         intent: "Prepare daily updates",

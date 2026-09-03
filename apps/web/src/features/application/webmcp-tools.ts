@@ -361,6 +361,7 @@ function assistanceTool(
             prompt:
               "The agent can fill in answers using facts you provide and prepare the completed application for review. It cannot submit anything until you approve that exact application.",
             confirmLabel: "Allow once",
+            declineLabel: "Not now",
             facts: [
               { key: "Scope", value: "This application only" },
               {

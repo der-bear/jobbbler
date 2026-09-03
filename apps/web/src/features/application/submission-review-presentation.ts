@@ -35,6 +35,7 @@ export function buildSubmissionReviewPresentation(
       prompt:
         "Show the person the exact values below in the agent client before asking for this final decision. The optional review link opens the same unchanged application.",
       confirmLabel: "Submit this application",
+      declineLabel: "Do not submit",
       facts: [
         { key: "Recipient", value: review.recipient },
         { key: "Purpose", value: review.purpose },

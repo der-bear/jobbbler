@@ -472,6 +472,7 @@ function searchAlertReviewResult(
         ? "Check the search, email address, and timing. Then enter the 6-digit code sent to that email."
         : "Check the search, email address, timing, how the information is used, how long it is kept, and how to stop the emails.",
       confirmLabel: verificationRequired ? "Verify and turn on" : "Turn on alert",
+      declineLabel: "Not now",
       facts: [
         { key: "Search", value: describeSearchCriteria(result.review.criteria) },
         { key: "Delivery", value: result.review.maskedDestination },

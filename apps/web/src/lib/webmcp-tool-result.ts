@@ -25,6 +25,7 @@ export interface UserActionPresentation {
   readonly title: string;
   readonly prompt: string;
   readonly confirmLabel: string;
+  readonly declineLabel?: string;
   readonly facts?: readonly ResultFact[];
 }
 
