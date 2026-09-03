@@ -181,7 +181,7 @@ async function expectSafeRejection(execution: Promise<ToolOutput>): Promise<void
 }
 
 describe("route-scoped WebMCP tool manifests", () => {
-  it("keeps agent retrieval separate from the visible top-twenty search", async () => {
+  it("keeps agent retrieval separate from the visible top-twenty search in follow mode", async () => {
     const agentResult: SearchJobsResult = {
       ...searchResult,
       criteria: { ...searchResult.criteria, query: "platform", cursor: null, limit: 3 },
@@ -238,14 +238,15 @@ describe("route-scoped WebMCP tool manifests", () => {
       true,
       false,
     ]);
-    expect(tool(manifests, "search_jobs").description).toContain("Ask for one useful preference");
-    expect(tool(manifests, "search_jobs").description).toContain(
-      "visible portal keeps the first 20",
+    expect(tool(manifests, "search_jobs").description).toContain("Ask one useful preference");
+    expect(tool(manifests, "search_jobs").description).toContain("Default headless");
+    expect(JSON.stringify(tool(manifests, "search_jobs").inputSchema)).toContain(
+      "for remote-only, use workModels=['remote'].",
     );
 
     const controller = new AbortController();
     const execution = tool(manifests, "search_jobs").execute(
-      { query: "platform", limit: 3 },
+      { query: "platform", limit: 3, presentation: "follow" },
       { signal: controller.signal },
     );
     expect(searchJobs).toHaveBeenCalledTimes(2);
@@ -270,7 +271,16 @@ describe("route-scoped WebMCP tool manifests", () => {
     expect(success).toMatchObject({
       status: "completed",
       data: {
-        jobs: [{ location: "Berlin, Germany" }],
+        presentation: "follow",
+        jobs: [
+          {
+            location: "Berlin, Germany",
+            seniority: "senior",
+            salaryMaximum: 130_000,
+            salaryPeriod: "year",
+            matchEvidence: ["Matches the requested remote work model."],
+          },
+        ],
         nextCursor: "cursor-3",
       },
     });
@@ -294,6 +304,69 @@ describe("route-scoped WebMCP tool manifests", () => {
     expect(searchJobs).toHaveBeenCalledTimes(2);
   });
 
+  it("searches headlessly by default without navigation or duplicate retrieval", async () => {
+    const headlessResult: SearchJobsResult = {
+      ...searchResult,
+      criteria: { ...searchResult.criteria, query: "platform", cursor: null, limit: 3 },
+      total: 4,
+      nextCursor: "cursor-3",
+    };
+    const searchJobs = vi.fn(async () => headlessResult);
+    const onSearchCommitted = vi.fn();
+    const onHeadlessSearchCommitted = vi.fn();
+    const onNavigate = vi.fn();
+    const signal = new AbortController().signal;
+    const manifests = createSearchToolManifests({
+      searchJobs,
+      getSearchState: () => null,
+      onSearchCommitted,
+      onHeadlessSearchCommitted,
+      onNavigate,
+    }) as readonly ToolManifest[];
+
+    const result = await tool(manifests, "search_jobs").execute({ query: "platform" }, { signal });
+
+    expect(searchJobs).toHaveBeenCalledOnce();
+    expect(searchJobs).toHaveBeenCalledWith(
+      { query: "platform", sort: "relevance", limit: 3 },
+      { signal },
+    );
+    expect(onNavigate).not.toHaveBeenCalled();
+    expect(onSearchCommitted).not.toHaveBeenCalled();
+    expect(onHeadlessSearchCommitted).toHaveBeenCalledWith({
+      criteria: { ...headlessResult.criteria, cursor: null, limit: 20 },
+      total: 4,
+      presentation: "headless",
+    });
+    expect(result).toMatchObject({
+      status: "completed",
+      data: { presentation: "headless", total: 4, nextCursor: "cursor-3" },
+    });
+    expectBoundedJson(result);
+  });
+
+  it("describes headless search state without claiming it is visible", async () => {
+    const manifests = createSearchToolManifests({
+      searchJobs: async () => searchResult,
+      getSearchState: () => ({ criteria: searchCriteria, total: 4, presentation: "headless" }),
+      onSearchCommitted: () => undefined,
+      onNavigate: () => undefined,
+    }) as readonly ToolManifest[];
+
+    const result = await tool(manifests, "get_search_state").execute(
+      { detail: "exact" },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toMatchObject({
+      status: "completed",
+      summary: "Read the exact search criteria for reuse.",
+      data: { presentation: "headless", visible: false },
+      facts: [{ key: "search_total", value: 4 }],
+    });
+    expect(JSON.stringify(result)).not.toContain("visible_total");
+  });
+
   it("publishes the complete search vocabulary and exact cursor protocol", async () => {
     const manifests = createSearchToolManifests({
       searchJobs: async () => searchResult,
@@ -314,6 +387,7 @@ describe("route-scoped WebMCP tool manifests", () => {
         },
         cursor: { type: "string" },
         limit: { minimum: 3, maximum: 3, default: 3 },
+        presentation: { enum: ["headless", "follow"], default: "headless" },
       },
     });
 
@@ -440,7 +514,7 @@ describe("route-scoped WebMCP tool manifests", () => {
     });
 
     const firstPage = await tool(manifests, "search_jobs").execute(
-      { query: "platform" },
+      { query: "platform", presentation: "follow" },
       { signal: controller.signal },
     );
     expect(firstPage).toMatchObject({
@@ -467,7 +541,7 @@ describe("route-scoped WebMCP tool manifests", () => {
     ]);
 
     const secondPage = await tool(manifests, "search_jobs").execute(
-      { query: "platform", cursor: "cursor-3" },
+      { query: "platform", cursor: "cursor-3", presentation: "follow" },
       { signal: controller.signal },
     );
     expect(secondPage).toMatchObject({
@@ -527,7 +601,7 @@ describe("route-scoped WebMCP tool manifests", () => {
       let settled = false;
       const execution = tool(manifests, "search_jobs")
         .execute(
-          { query: "platform", workModels: ["remote"] },
+          { query: "platform", workModels: ["remote"], presentation: "follow" },
           { signal: new AbortController().signal },
         )
         .then((result) => {
@@ -690,7 +764,7 @@ describe("route-scoped WebMCP tool manifests", () => {
     expectBoundedJson(detail);
 
     const comparison = await tool(manifests, "compare_jobs").execute(
-      { jobIds: [firstJobId, secondJobId] },
+      { jobIds: [firstJobId, secondJobId], presentation: "follow" },
       { signal: controller.signal },
     );
     expect(compareSignal).toBe(controller.signal);
@@ -717,6 +791,39 @@ describe("route-scoped WebMCP tool manifests", () => {
         { signal: controller.signal },
       ),
     );
+  });
+
+  it("compares headlessly by default and follows only when requested", async () => {
+    const compareJobs = vi.fn(async () => comparisonResult);
+    const onNavigate = vi.fn();
+    const manifests = createJobDetailToolManifests({
+      getJobDetails: async () => detailResult,
+      compareJobs,
+      onDetailCommitted: () => undefined,
+      onNavigate,
+      getCriteriaSearch: () => "q=platform",
+    }) as readonly ToolManifest[];
+    const signal = new AbortController().signal;
+
+    const headless = await tool(manifests, "compare_jobs").execute(
+      { jobIds: [firstJobId, secondJobId] },
+      { signal },
+    );
+    expect(headless).toMatchObject({
+      status: "completed",
+      data: { presentation: "headless" },
+    });
+    expect(onNavigate).not.toHaveBeenCalled();
+
+    const followed = await tool(manifests, "compare_jobs").execute(
+      { jobIds: [firstJobId, secondJobId], presentation: "follow" },
+      { signal },
+    );
+    expect(followed).toMatchObject({
+      status: "completed",
+      data: { presentation: "follow" },
+    });
+    expect(onNavigate).toHaveBeenCalledOnce();
   });
 
   it("creates comparison route tools, guards removal to selected IDs, and commits URL state after removal", async () => {

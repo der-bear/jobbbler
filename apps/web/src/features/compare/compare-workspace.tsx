@@ -2,7 +2,7 @@
 
 import { ArrowSquareOutIcon, CheckCircleIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import {
   compareJobsResultSchema,
@@ -142,8 +142,21 @@ function ComparisonTable({
 }>) {
   const visible = comparisonRowVisibility(result.jobs.map(({ fit }) => fit));
   const displayCurrency = displayCurrencyFromSearch(criteriaSearch);
+  const scrollHelpId = useId();
   return (
-    <div className={styles["tableScroll"]}>
+    <div
+      aria-describedby={result.jobs.length > 2 ? scrollHelpId : undefined}
+      aria-label="Role comparison table"
+      className={styles["tableScroll"]}
+      data-columns={result.jobs.length}
+      role="region"
+      tabIndex={0}
+    >
+      {result.jobs.length > 2 ? (
+        <p className="sr-only" id={scrollHelpId}>
+          Scroll horizontally to review each role. Columns snap into place.
+        </p>
+      ) : null}
       <table className={styles["comparisonTable"]}>
         <thead>
           <tr>

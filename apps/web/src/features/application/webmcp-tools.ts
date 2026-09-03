@@ -22,7 +22,6 @@ import {
   type RequiresUserActionWebMcpResult,
   type SafeWebMcpErrorResult,
 } from "@/lib/webmcp-tool-result";
-import type { WebMcpNavigate } from "@/lib/webmcp-navigation";
 import {
   buildSubmissionReviewPresentation,
   MAX_APPLICATION_SUBMISSION_REVIEW_RESULT_BYTES,
@@ -724,24 +723,17 @@ const stableApplicationToolDefinitions: readonly StableApplicationToolDefinition
 ];
 
 export interface StableApplicationToolDependencies {
-  currentSurface(): ApplicationToolDependencies | null;
-  readApplication(
+  resolveApplication(
     draftId: string,
     options: Readonly<{ signal: AbortSignal }>,
-  ): Promise<ApplicationToolReadiness | null>;
+  ): Promise<Readonly<{
+    readiness: ApplicationToolReadiness;
+    surface: ApplicationToolDependencies | null;
+  }> | null>;
   withdrawConsent(
     draftId: string,
     options: Readonly<{ signal: AbortSignal }>,
   ): Promise<ApplicationConsentWithdrawal>;
-  onNavigate: WebMcpNavigate;
-  waitForSurface?(
-    draftId: string,
-    signal: AbortSignal,
-  ): Promise<ApplicationToolDependencies | null>;
-}
-
-function surfaceDraftId(surface: ApplicationToolDependencies | null): string | null {
-  return surface?.currentReadiness().state.draftId ?? null;
 }
 
 export function createStableApplicationToolManifests(
@@ -777,14 +769,15 @@ export function createStableApplicationToolManifests(
           parsedAssistanceDecision ??
           parsedSubmissionDecision ??
           stableDraftInput.parse(input);
-        const verified = await dependencies.readApplication(parsed.draftId, { signal });
-        if (verified === null) {
+        const resolved = await dependencies.resolveApplication(parsed.draftId, { signal });
+        if (resolved === null) {
           return failedWebMcpResult({
             code: "NOT_FOUND",
             message: "That owner-accessible application could not be found.",
             retryable: false,
           });
         }
+        const { readiness: verified, surface } = resolved;
 
         if (definition.name === "get_application_readiness") {
           return completed("Checked what this application needs next.", verified);
@@ -810,17 +803,10 @@ export function createStableApplicationToolManifests(
           });
         }
 
-        let surface = dependencies.currentSurface();
-        if (surfaceDraftId(surface) !== parsed.draftId) {
-          await dependencies.onNavigate(`/apply/${encodeURIComponent(parsed.draftId)}`, { signal });
-          surface =
-            (await dependencies.waitForSurface?.(parsed.draftId, signal)) ??
-            dependencies.currentSurface();
-        }
-        if (surface === null || surfaceDraftId(surface) !== parsed.draftId) {
+        if (surface === null || surface.currentReadiness().state.draftId !== parsed.draftId) {
           return failedWebMcpResult({
             code: "NOT_FOUND",
-            message: "The verified application could not be opened for this action.",
+            message: "The verified application could not be prepared for this action.",
             retryable: false,
           });
         }

@@ -67,5 +67,21 @@ describe("normalizeJobSearchCriteria", () => {
 
     expect(criteria.workModels).toEqual(["hybrid", "remote"]);
     expect(criteria.locations).toEqual(["Europe"]);
+    expect(criteria.remoteOrLocations).toBe(true);
+  });
+
+  it("expresses a city-or-remote request as one normalized search", () => {
+    const criteria = normalizeJobSearchCriteria({ locations: ["Berlin", "Remote"] });
+
+    expect(criteria.locations).toEqual(["Berlin"]);
+    expect(criteria.workModels).toEqual(["flexible", "hybrid", "onsite", "remote"]);
+    expect(criteria.remoteOrLocations).toBe(true);
+  });
+
+  it("rejects city-or-remote mode without a concrete location", () => {
+    expect(() => normalizeJobSearchCriteria({ remoteOrLocations: true })).toThrow(
+      "remoteOrLocations requires at least one city, country, or region",
+    );
+    expect(normalizeJobSearchCriteria({ workModels: ["remote"] }).workModels).toEqual(["remote"]);
   });
 });

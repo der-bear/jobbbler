@@ -61,6 +61,16 @@ describe("shareable job-search URL state", () => {
     expect(searchInputToSearchParams(input).toString()).toBe("work=remote");
   });
 
+  it("round-trips one city-or-remote search without expanding it into two requests", () => {
+    const input = { locations: ["Berlin", "Remote"] } satisfies JobSearchInput;
+    const parameters = searchInputToSearchParams(input);
+
+    expect(parameters.toString()).toBe("location=Berlin&remote_or_location=1");
+    expect(normalizeJobSearchCriteria(searchParamsToInput(parameters))).toEqual(
+      normalizeJobSearchCriteria(input),
+    );
+  });
+
   it("rejects malformed numeric state rather than silently changing the search", () => {
     expect(() => searchParamsToInput(new URLSearchParams("salary_min=not-a-number"))).toThrow();
     expect(() => searchParamsToInput(new URLSearchParams("limit=999"))).toThrow();

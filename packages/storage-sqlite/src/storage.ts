@@ -1327,6 +1327,7 @@ function searchJobs(
   const where = ["j.status = 'open'"];
   const parameters: SqlParameter[] = [];
   const ftsQuery = criteria.query === null ? null : toFts5Query(criteria.query);
+  const remoteOrLocations = criteria.remoteOrLocations === true && criteria.locations.length > 0;
 
   if (ftsQuery !== null) {
     joins.push("JOIN jobs_fts ON jobs_fts.job_id = j.id");
@@ -1344,7 +1345,7 @@ function searchJobs(
     parameters.push(...criteria.categories);
   }
 
-  if (criteria.workModels.length > 0) {
+  if (criteria.workModels.length > 0 && !remoteOrLocations) {
     where.push(`j.work_model IN (${criteria.workModels.map(() => "?").join(", ")})`);
     parameters.push(...criteria.workModels);
   }
@@ -1365,12 +1366,21 @@ function searchJobs(
       () =>
         "instr(jobbbler_normalize_search_text(location.value), jobbbler_normalize_search_text(?)) > 0 OR instr(jobbbler_normalize_search_text(?), jobbbler_normalize_search_text(location.value)) > 0",
     );
-    where.push(
-      `EXISTS (
+    const locationExists = `EXISTS (
          SELECT 1 FROM json_each(j.locations_json) location
          WHERE ${locationClauses.map((clause) => `(${clause})`).join(" OR ")}
-       )`,
-    );
+       )`;
+    if (remoteOrLocations) {
+      const localWorkModels = criteria.workModels.filter((workModel) => workModel !== "remote");
+      const localWorkModelClause =
+        localWorkModels.length === 0
+          ? ""
+          : `j.work_model IN (${localWorkModels.map(() => "?").join(", ")}) AND `;
+      where.push(`(j.work_model = 'remote' OR (${localWorkModelClause}${locationExists}))`);
+      parameters.push(...localWorkModels);
+    } else {
+      where.push(locationExists);
+    }
     for (const location of criteria.locations) parameters.push(location, location);
   }
 

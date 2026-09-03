@@ -33,7 +33,7 @@ async function createDraft(
 export async function startApplication(
   jobId: string,
   dependencies: StartApplicationDependencies,
-  options: Readonly<{ signal?: AbortSignal }> = {},
+  options: Readonly<{ signal?: AbortSignal; navigate?: boolean }> = {},
 ): Promise<ApplicationStartResult> {
   let result: ApplicationStartResult;
   let sessionExpiresAt: string | undefined;
@@ -49,7 +49,9 @@ export async function startApplication(
     result = await createDraft(jobId, dependencies.request, options.signal);
   }
   markOwnerSessionStarted(sessionExpiresAt);
-  await dependencies.navigate(`/apply/${encodeURIComponent(result.draft.id)}`);
+  if (options.navigate !== false) {
+    await dependencies.navigate(`/apply/${encodeURIComponent(result.draft.id)}`);
+  }
   return result;
 }
 

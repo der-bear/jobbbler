@@ -16,7 +16,6 @@ import {
 import {
   applicationConsentWithdrawalSchema,
   applicationListSchema,
-  applicationWorkspaceSchema,
   compareJobsResultSchema,
   completeEmailVerificationResultSchema,
   jobAlertScheduleSchema,
@@ -38,15 +37,8 @@ import {
 import { createCompareToolManifests } from "@/features/compare/webmcp-tools";
 import { startApplication } from "@/features/application/start-application";
 import { createStableApplicationToolManifests } from "@/features/application/webmcp-tools";
-import {
-  applicationAgentState,
-  applicationNextAction,
-  applicationReadiness,
-} from "@/features/application/application-model";
-import {
-  readApplicationWebMcpSurface,
-  waitForApplicationWebMcpSurface,
-} from "@/features/application/webmcp-surface";
+import { createHeadlessApplicationSurfaceStore } from "@/features/application/headless-application-surface";
+import { readApplicationWebMcpSurface } from "@/features/application/webmcp-surface";
 import { compareApiUrl } from "@/features/compare/compare-state";
 import { createJobDetailToolManifests } from "@/features/job-detail/webmcp-tools";
 import { createSearchToolManifests } from "@/features/search/webmcp-tools";
@@ -82,6 +74,7 @@ import {
   commitWebMcpSavedSearchDeletion,
   commitWebMcpSchedule,
   commitWebMcpSearch,
+  publishSearchSurfaceState,
   readSearchSurfaceState,
 } from "@/lib/webmcp-ui-bridge";
 
@@ -132,14 +125,28 @@ const fallbackContext: WebMcpContextValue = {
 
 const WebMcpContext = createContext<WebMcpContextValue>(fallbackContext);
 
+const browserSessionStorage = {
+  getItem: (key: string) => window.sessionStorage.getItem(key),
+  setItem: (key: string, value: string) => window.sessionStorage.setItem(key, value),
+  removeItem: (key: string) => window.sessionStorage.removeItem(key),
+};
+
 function currentCriteriaSearch(): string {
   const parameters = new URLSearchParams(window.location.search);
   parameters.delete("id");
   return parameters.toString();
 }
 
+function latestCriteriaSearch(): string {
+  const state = readSearchSurfaceState();
+  if (state === null) return currentCriteriaSearch();
+  const href = searchHrefFromCriteria(state.criteria);
+  const queryIndex = href.indexOf("?");
+  return queryIndex === -1 ? "" : href.slice(queryIndex + 1);
+}
+
 function currentSearchInput() {
-  return searchParamsToInput(new URLSearchParams(currentCriteriaSearch()));
+  return searchParamsToInput(new URLSearchParams(latestCriteriaSearch()));
 }
 
 function selectedComparisonIds(): readonly string[] {
@@ -164,8 +171,10 @@ function searchManifests(navigate: WebMcpNavigate): readonly ToolManifest<unknow
       queryApi(searchUrl(input), searchJobsResultSchema, { signal }),
     getSearchState: readSearchSurfaceState,
     onSearchCommitted: commitWebMcpSearch,
+    onHeadlessSearchCommitted: (state) =>
+      publishSearchSurfaceState({ ...state, presentation: "headless" }),
     onNavigate: navigate,
-    getCriteriaSearch: currentCriteriaSearch,
+    getCriteriaSearch: latestCriteriaSearch,
   });
 }
 
@@ -178,12 +187,12 @@ function detailManifests(
     getJobDetails: (input, { signal }) =>
       queryApi(detailUrl(input.jobId), jobDetailResultSchema, { signal }),
     compareJobs: (input, { signal }) =>
-      queryApi(compareApiUrl(input.jobIds, currentCriteriaSearch()), compareJobsResultSchema, {
+      queryApi(compareApiUrl(input.jobIds, latestCriteriaSearch()), compareJobsResultSchema, {
         signal,
       }),
     onDetailCommitted: commitWebMcpJobDetail,
     onNavigate: navigate,
-    getCriteriaSearch: currentCriteriaSearch,
+    getCriteriaSearch: latestCriteriaSearch,
   });
 }
 
@@ -192,7 +201,7 @@ function comparisonManifests(navigate: WebMcpNavigate): readonly ToolManifest<un
     selectedJobIds: selectedComparisonIds,
     getComparison: ({ signal }) =>
       queryApi(
-        compareApiUrl(selectedComparisonIds(), currentCriteriaSearch()),
+        compareApiUrl(selectedComparisonIds(), latestCriteriaSearch()),
         compareJobsResultSchema,
         { signal },
       ),
@@ -204,7 +213,7 @@ function comparisonManifests(navigate: WebMcpNavigate): readonly ToolManifest<un
     },
     onComparisonCommitted: () => undefined,
     onNavigate: navigate,
-    getCriteriaSearch: currentCriteriaSearch,
+    getCriteriaSearch: latestCriteriaSearch,
   });
 }
 
@@ -244,6 +253,12 @@ function savedManifests(navigate: WebMcpNavigate): readonly ToolManifest<unknown
 export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) {
   const router = useRouter();
   const [activitiesStore] = useState(() => new AgentActivityStore());
+  const [headlessApplicationSurfaces] = useState(() =>
+    createHeadlessApplicationSurfaceStore({
+      request: queryApi,
+      storage: browserSessionStorage,
+    }),
+  );
   const [status, setStatus] = useState<WebMcpRegistrationStatus>("checking");
   const [registeredTools, setRegisteredTools] =
     useState<readonly RegisteredToolSummary[]>(emptyTools);
@@ -314,34 +329,9 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
     const publicComparisonTools = comparisonManifests(navigate);
     const privateSavedTools = savedManifests(navigate);
     const privateApplicationTools = createStableApplicationToolManifests({
-      currentSurface: readApplicationWebMcpSurface,
-      async readApplication(draftId, { signal }) {
-        try {
-          const workspace = await queryApi(
-            `/api/v1/applications/${encodeURIComponent(draftId)}`,
-            applicationWorkspaceSchema,
-            { signal },
-          );
-          const progress = applicationReadiness(workspace);
-          const roleStatus = workspace.job?.status ?? "closed";
-          const state = applicationAgentState(workspace, false, workspace.serverNow, roleStatus);
-          return {
-            state,
-            roleStatus,
-            missingFieldKeys: progress.missingFieldKeys,
-            missingFieldLabels: progress.missingFieldKeys.map(
-              (fieldKey) =>
-                workspace.requirements.find((field) => field.fieldKey === fieldKey)?.label ??
-                fieldKey,
-            ),
-            nextAction: applicationNextAction(workspace, workspace.serverNow, false, roleStatus),
-          };
-        } catch (error) {
-          if (error instanceof ApiClientError && error.code === "NOT_FOUND") {
-            return null;
-          }
-          throw error;
-        }
+      async resolveApplication(draftId, { signal }) {
+        const visibleSurface = readApplicationWebMcpSurface();
+        return headlessApplicationSurfaces.resolve(draftId, { signal, visibleSurface });
       },
       async withdrawConsent(draftId, { signal }) {
         return queryApi(
@@ -361,16 +351,14 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
           },
         );
       },
-      onNavigate: navigate,
-      waitForSurface: waitForApplicationWebMcpSurface,
     });
     const siteWideManifests = createSiteWideToolManifests({
       onNavigate: navigate,
-      startApplication: async (jobId, { signal }) => {
+      startApplication: async (jobId, { signal, presentation }) => {
         const result = await startApplication(
           jobId,
           { request: queryApi, navigate: (href) => navigate(href, { signal }) },
-          { signal },
+          { signal, navigate: presentation === "follow" },
         );
         return {
           draftId: result.draft.id,
@@ -468,7 +456,7 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
       registrationController.abort();
       unregister?.();
     };
-  }, [activitiesStore, registrationRevision, retry, router]);
+  }, [activitiesStore, headlessApplicationSurfaces, registrationRevision, retry, router]);
 
   const value = useMemo<WebMcpContextValue>(
     () => ({

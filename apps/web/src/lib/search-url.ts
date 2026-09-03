@@ -21,6 +21,13 @@ function numberParameter(parameters: URLSearchParams, name: string): number | un
   return parsed;
 }
 
+function booleanFlag(parameters: URLSearchParams, name: string): boolean | undefined {
+  const value = single(parameters, name);
+  if (value === undefined) return undefined;
+  if (value !== "1") throw new Error(`${name} must be 1 when present.`);
+  return true;
+}
+
 function appendAll(parameters: URLSearchParams, name: string, values: readonly string[]): void {
   for (const value of values) parameters.append(name, value);
 }
@@ -31,10 +38,16 @@ export function searchInputToSearchParams(input: JobSearchInput): URLSearchParam
 
   if (criteria.query !== null) parameters.set("q", criteria.query);
   appendAll(parameters, "category", criteria.categories);
-  appendAll(parameters, "work", criteria.workModels);
+  const allWorkModels = ["flexible", "hybrid", "onsite", "remote"] as const;
+  const inferredAllWorkModels =
+    criteria.remoteOrLocations === true &&
+    criteria.workModels.length === allWorkModels.length &&
+    allWorkModels.every((workModel) => criteria.workModels.includes(workModel));
+  if (!inferredAllWorkModels) appendAll(parameters, "work", criteria.workModels);
   appendAll(parameters, "employment", criteria.employmentTypes ?? []);
   appendAll(parameters, "seniority", criteria.seniorities);
   appendAll(parameters, "location", criteria.locations);
+  if (criteria.remoteOrLocations === true) parameters.set("remote_or_location", "1");
   appendAll(parameters, "skill", criteria.skills);
   appendAll(parameters, "exclude", criteria.excludeKeywords);
 
@@ -80,6 +93,7 @@ export function searchParamsToInput(parameters: URLSearchParams): ParsedJobSearc
     employmentTypes: parameters.getAll("employment"),
     seniorities: parameters.getAll("seniority"),
     locations: parameters.getAll("location"),
+    remoteOrLocations: booleanFlag(parameters, "remote_or_location"),
     skills: parameters.getAll("skill"),
     excludeKeywords: parameters.getAll("exclude"),
     salary: hasSalary
@@ -111,6 +125,7 @@ export function criteriaToSearchInput(criteria: JobSearchCriteria): JobSearchInp
     employmentTypes: criteria.employmentTypes ?? [],
     seniorities: criteria.seniorities,
     locations: criteria.locations,
+    ...(criteria.remoteOrLocations === true ? { remoteOrLocations: true } : {}),
     skills: criteria.skills,
     excludeKeywords: criteria.excludeKeywords,
     ...(criteria.salary === null

@@ -38,6 +38,18 @@ describe("startApplication", () => {
     expect(marker.markOwnerSessionStarted).toHaveBeenCalledWith(undefined);
   });
 
+  it("creates a draft without navigating when headless presentation is requested", async () => {
+    const request = vi.fn().mockResolvedValue({ draft, disposition: "created" });
+    const navigate = vi.fn();
+
+    await expect(
+      startApplication(draft.jobId, { request, navigate }, { navigate: false }),
+    ).resolves.toEqual({ draft, disposition: "created" });
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(marker.markOwnerSessionStarted).toHaveBeenCalledOnce();
+  });
+
   it("does not complete until the application workspace navigation commits", async () => {
     const request = vi.fn().mockResolvedValue({ draft, disposition: "created" });
     let releaseNavigation!: () => void;

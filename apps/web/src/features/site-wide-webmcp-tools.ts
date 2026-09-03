@@ -61,7 +61,10 @@ const openPageInputSchema = {
   ],
 } as const satisfies JsonSchema;
 
-const startApplicationInput = z.strictObject({ jobId: jobIdSchema });
+const startApplicationInput = z.strictObject({
+  jobId: jobIdSchema,
+  presentation: z.enum(["headless", "follow"]).default("headless"),
+});
 const applicationIdSchema = entityIdSchema.refine((value) => value.startsWith("application_"), {
   message: "Expected an application ID.",
 });
@@ -113,7 +116,10 @@ export interface SiteWideToolDependencies {
   onNavigate: WebMcpNavigate;
   startApplication(
     jobId: string,
-    options: Readonly<{ signal: AbortSignal }>,
+    options: Readonly<{
+      signal: AbortSignal;
+      presentation: "headless" | "follow";
+    }>,
   ): Promise<
     Readonly<{
       draftId: string;
@@ -190,7 +196,7 @@ export function createSiteWideToolManifests(
     name: "prepare_application",
     purpose: "Create or reopen one private application for a chosen role.",
     description:
-      "Use one job ID the person selected to create or reopen its private application and return the application ID, URL, and next tool; this grants no preparation authority, shares no candidate data, and submits nothing.",
+      "Use one job ID the person selected to create or reopen its private application and return the application ID, URL, and next tool. Default headless keeps the current page; use presentation=follow only when the person asks to open it. This grants no preparation authority, shares no candidate data, and submits nothing.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -200,6 +206,13 @@ export function createSiteWideToolManifests(
           description: "A job ID returned by search_jobs or get_job_details.",
           pattern: "^job_[0-9a-f-]{36}$",
         },
+        presentation: {
+          type: "string",
+          description:
+            "headless keeps the current page unchanged; follow opens the application workspace.",
+          enum: ["headless", "follow"],
+          default: "headless",
+        },
       },
       required: ["jobId"],
     },
@@ -207,13 +220,16 @@ export function createSiteWideToolManifests(
     async execute(input, { signal }) {
       try {
         const parsed = startApplicationInput.parse(input);
-        const workspace = await dependencies.startApplication(parsed.jobId, { signal });
+        const workspace = await dependencies.startApplication(parsed.jobId, {
+          signal,
+          presentation: parsed.presentation,
+        });
         return completedWebMcpResult({
           summary:
             workspace.disposition === "created"
               ? "Application created and ready for preparation."
               : "Application reopened and ready for preparation.",
-          data: workspace,
+          data: { ...workspace, presentation: parsed.presentation },
           resources: [{ type: "application", id: workspace.draftId, label: "Private application" }],
         });
       } catch (error) {

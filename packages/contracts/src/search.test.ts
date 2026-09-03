@@ -13,6 +13,7 @@ describe("jobSearchInputSchema", () => {
       categories: ["software_engineering", "product"],
       employmentTypes: ["full_time", "contract"],
       locations: [" Europe ", "Kyiv"],
+      remoteOrLocations: true,
       salary: {
         minimum: 100_000,
         currency: "eur",
@@ -25,6 +26,7 @@ describe("jobSearchInputSchema", () => {
     expect(parsed.query).toBe("Senior product engineer");
     expect(parsed.locations).toEqual(["Europe", "Kyiv"]);
     expect(parsed.employmentTypes).toEqual(["full_time", "contract"]);
+    expect(parsed.remoteOrLocations).toBe(true);
     expect(parsed.salary?.currency).toBe("EUR");
     expect(parsed.limit).toBe(24);
   });

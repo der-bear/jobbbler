@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 import type { ToolActivity } from "@jobbbler/contracts";
@@ -29,6 +30,17 @@ const activities: readonly ToolActivity[] = [
 ];
 
 describe("AgentActivityRail", () => {
+  it("keeps timeline connectors quieter than entries and status markers", async () => {
+    const css = await readFile(
+      new URL("./agent-activity-rail.module.css", import.meta.url),
+      "utf8",
+    );
+
+    expect(css).toMatch(
+      /\.timeline\s+li:not\(:last-child\)::after\s*\{[^}]*inline-size:\s*var\(--jb-stroke-structure\);[^}]*opacity:\s*0\.48;/su,
+    );
+  });
+
   it("translates legacy application receipts into the current product language", () => {
     const markup = renderToStaticMarkup(
       <AgentActivityRail

@@ -49,6 +49,18 @@ const searchStateInputSchema = {
 export const jobSearchToolInputJsonSchema = {
   type: "object",
   additionalProperties: false,
+  allOf: [
+    {
+      if: {
+        properties: { remoteOrLocations: { const: true } },
+        required: ["remoteOrLocations"],
+      },
+      then: {
+        required: ["locations"],
+        properties: { locations: { minItems: 1 } },
+      },
+    },
+  ],
   properties: {
     query: {
       type: "string",
@@ -112,9 +124,15 @@ export const jobSearchToolInputJsonSchema = {
     },
     locations: {
       type: "array",
-      description: "Countries, regions, or cities to include.",
+      description:
+        "Cities, countries, or regions to include. Do not use Remote as a place; use remoteOrLocations for requests such as ‘Berlin or remote’.",
       maxItems: 12,
       items: { type: "string", maxLength: 120 },
+    },
+    remoteOrLocations: {
+      type: "boolean",
+      description:
+        "Match listed locations OR remote roles anywhere. Requires a location; for remote-only, use workModels=['remote'].",
     },
     skills: {
       type: "array",
@@ -172,6 +190,13 @@ const searchJobsToolInputJsonSchema = {
   ...jobSearchToolInputJsonSchema,
   properties: {
     ...jobSearchToolInputJsonSchema.properties,
+    presentation: {
+      type: "string",
+      description:
+        "headless keeps the current page unchanged; follow opens and synchronizes the visible search.",
+      enum: ["headless", "follow"],
+      default: "headless",
+    },
     limit: {
       type: "integer",
       description:
@@ -190,11 +215,13 @@ const searchStateInput = z.strictObject({
 export const jobSearchToolInput = jobSearchInputSchema;
 const searchJobsToolInput = jobSearchInputSchema.extend({
   limit: z.literal(searchJobsPageSize).default(searchJobsPageSize),
+  presentation: z.enum(["headless", "follow"]).default("headless"),
 });
 
 export interface SearchWebMcpState {
   readonly criteria: JobSearchCriteria;
   readonly total: number | null;
+  readonly presentation?: "headless" | "follow";
 }
 
 const openJobInputSchema = {
@@ -219,6 +246,7 @@ export interface SearchToolDependencies {
   ): Promise<SearchJobsResult>;
   getSearchState(): JobSearchInput | SearchWebMcpState | null;
   onSearchCommitted(input: JobSearchInput, result: SearchJobsResult): Promise<void> | void;
+  onHeadlessSearchCommitted?(state: SearchWebMcpState): Promise<void> | void;
   onNavigate: WebMcpNavigate;
   getCriteriaSearch?(): string;
 }
@@ -259,6 +287,7 @@ function compactCriteria(criteria: JobSearchCriteria): JsonValue {
     employmentTypes: (criteria.employmentTypes ?? []).slice(0, 2),
     seniorities: criteria.seniorities.slice(0, 2),
     locations: criteria.locations.slice(0, 2).map((value) => short(value, 32)),
+    remoteOrLocations: criteria.remoteOrLocations === true,
     skills: criteria.skills.slice(0, 1).map((value) => short(value, 30)),
     excludeKeywords: criteria.excludeKeywords.slice(0, 1).map((value) => short(value, 30)),
     unresolvedAssumptions: criteria.unresolvedAssumptions
@@ -287,6 +316,7 @@ function reusableCriteria(criteria: JobSearchCriteria): JsonValue {
       : { employmentTypes: criteria.employmentTypes ?? [] }),
     ...(criteria.seniorities.length === 0 ? {} : { seniorities: criteria.seniorities }),
     ...(criteria.locations.length === 0 ? {} : { locations: criteria.locations }),
+    ...(criteria.remoteOrLocations === true ? { remoteOrLocations: true } : {}),
     ...(criteria.skills.length === 0 ? {} : { skills: criteria.skills }),
     ...(criteria.excludeKeywords.length === 0 ? {} : { excludeKeywords: criteria.excludeKeywords }),
     ...(criteria.salary === null
@@ -306,26 +336,36 @@ function reusableCriteria(criteria: JobSearchCriteria): JsonValue {
   };
 }
 
-function compactSearchResult(result: SearchJobsResult): JsonValue {
+function compactSearchResult(
+  result: SearchJobsResult,
+  presentation: "headless" | "follow",
+): JsonValue {
   const locationGuidance =
     result.total === 0 && result.criteria.locations.length > 0
       ? "No role matched the requested location and other filters. Keep the place literal: check its spelling, or ask before broadening or removing it."
       : null;
   return {
+    presentation,
     total: result.total,
-    jobs: result.jobs.slice(0, 3).map((job) => ({
-      id: job.id,
-      title: short(job.title, 80),
-      organization: short(job.organizationName, 32),
-      location: short(
-        locationForSearch(job.locations, result.criteria.locations) ?? "Location not stated",
-        24,
-      ),
-      workModel: job.workModel,
-      salaryMinimum: job.salary?.minimum ?? null,
-      salaryCurrency: job.salary?.currency ?? null,
-      matchScore: job.matchScore ?? null,
-    })),
+    jobs: result.jobs.slice(0, 3).map((job) => {
+      const matchEvidence = (job.matchEvidence ?? []).slice(0, 2).map((value) => short(value, 72));
+      return {
+        id: job.id,
+        title: short(job.title, 80),
+        organization: short(job.organizationName, 32),
+        location: short(
+          locationForSearch(job.locations, result.criteria.locations) ?? "Location not stated",
+          24,
+        ),
+        workModel: job.workModel,
+        seniority: job.seniority,
+        salaryMinimum: job.salary?.minimum ?? null,
+        salaryMaximum: job.salary?.maximum ?? null,
+        salaryCurrency: job.salary?.currency ?? null,
+        salaryPeriod: job.salary?.period ?? null,
+        ...(matchEvidence.length === 0 ? {} : { matchEvidence }),
+      };
+    }),
     nextCursor: result.nextCursor,
     hasMore: result.nextCursor !== null,
     ...(locationGuidance === null ? {} : { locationGuidance }),
@@ -337,14 +377,27 @@ export function createSearchToolManifests(
 ): readonly ToolManifest<unknown, SearchToolOutput>[] {
   const searchJobs: ToolManifest<unknown, SearchToolOutput> = {
     name: "search_jobs",
-    purpose: "Search the public technology-job catalog and synchronize the visible results.",
+    purpose: "Search Jobbbler's public technology roles without leaving the current page.",
     description:
-      "Search Jobbbler's source-backed technology roles with the preferences the person supplied. Ask for one useful preference when the request gives no role, skill, location, work model, or other search criterion. Applies validated criteria and returns compact matches with IDs. With cursor, agent matches advance while the visible portal keeps the first 20 matches as a readable overview of the same criteria.",
+      "Search Jobbbler's source-backed catalog directly. Do not use external job sources when the person asks for this site's tools. Ask one useful preference only when no search criterion is supplied. Use get_search_filters only for an unclear enum. For ‘Berlin or remote’, pass locations=['Berlin'] with remoteOrLocations=true. Default headless keeps the page unchanged; use follow only when the person asks to watch. Results include IDs, salary, seniority, evidence, and a cursor.",
     inputSchema: searchJobsToolInputJsonSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
       try {
-        const agentInput = searchJobsToolInput.parse(input);
+        const parsed = searchJobsToolInput.parse(input);
+        const { presentation, ...agentInput } = parsed;
+        if (presentation === "headless") {
+          const agentResult = await dependencies.searchJobs(agentInput, { signal });
+          await dependencies.onHeadlessSearchCommitted?.({
+            criteria: { ...agentResult.criteria, cursor: null, limit: visibleSearchPageSize },
+            total: agentResult.total,
+            presentation: "headless",
+          });
+          return completedWebMcpResult({
+            summary: `Found ${String(agentResult.total)} matching technology role${agentResult.total === 1 ? "" : "s"}.`,
+            data: compactSearchResult(agentResult, presentation),
+          });
+        }
         const visibleInput = { ...agentInput, limit: visibleSearchPageSize };
         delete visibleInput.cursor;
         const [agentResult, visibleResult] = await Promise.all([
@@ -357,11 +410,7 @@ export function createSearchToolManifests(
         await dependencies.onSearchCommitted(visibleInput, visibleResult);
         return completedWebMcpResult({
           summary: `Found ${String(agentResult.total)} matching technology role${agentResult.total === 1 ? "" : "s"}.`,
-          data: compactSearchResult(agentResult),
-          facts: [
-            { key: "total", value: agentResult.total },
-            { key: "catalog_updated_at", value: agentResult.catalogUpdatedAt },
-          ],
+          data: compactSearchResult(agentResult, presentation),
         });
       } catch (error) {
         return safeWebMcpErrorResult(error, signal, "The job-search criteria are invalid.");
@@ -371,9 +420,9 @@ export function createSearchToolManifests(
 
   const getSearchState: ToolManifest<unknown, SearchToolOutput> = {
     name: "get_search_state",
-    purpose: "Read the visible search constraints and result count without rerunning the search.",
+    purpose: "Read the latest completed search constraints and result count without rerunning it.",
     description:
-      "Read the visible filters and result count. Use detail=summary for a bounded explanation, or detail=exact to receive complete criteria accepted by save_job_search and request_search_alert. This never runs a new search.",
+      "Read the latest headless or visible search. Use detail=summary for a bounded explanation, or detail=exact for criteria accepted by save_job_search and request_search_alert. Returns whether the search is visible and never reruns it.",
     inputSchema: searchStateInputSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -382,7 +431,7 @@ export function createSearchToolManifests(
         const rawState = dependencies.getSearchState();
         if (rawState === null) {
           return completedWebMcpResult({
-            summary: "The visible search is still preparing.",
+            summary: "No completed search is available yet.",
             data: { ready: false },
           });
         }
@@ -390,25 +439,30 @@ export function createSearchToolManifests(
           "criteria" in rawState
             ? rawState
             : { criteria: normalizeJobSearchCriteria(rawState), total: null };
+        const presentation = state.presentation ?? "follow";
         if (parsed.detail === "exact") {
           return completedWebMcpResult({
-            summary: "Read the exact visible search criteria for reuse.",
+            summary: "Read the exact search criteria for reuse.",
             data: {
               ready: true,
               total: state.total,
+              presentation,
+              visible: presentation === "follow",
               criteria: reusableCriteria(state.criteria),
             },
-            facts: [{ key: "visible_total", value: state.total }],
+            facts: [{ key: "search_total", value: state.total }],
           });
         }
         return completedWebMcpResult({
-          summary: "Read the visible search state.",
+          summary: "Read the latest search state.",
           data: {
             ready: true,
             total: state.total,
+            presentation,
+            visible: presentation === "follow",
             criteria: compactCriteria(state.criteria),
           },
-          facts: [{ key: "visible_total", value: state.total }],
+          facts: [{ key: "search_total", value: state.total }],
         });
       } catch (error) {
         return safeWebMcpErrorResult(error, signal, "Search state accepts no arguments.");
@@ -418,9 +472,9 @@ export function createSearchToolManifests(
 
   const getSearchFilters: ToolManifest<unknown, SearchToolOutput> = {
     name: "get_search_filters",
-    purpose: "Read every filter value this site accepts before composing a search.",
+    purpose: "Read accepted filter values only when the search vocabulary is unclear.",
     description:
-      "Read Jobbbler's exact search vocabulary: accepted categories, work models, seniorities, salary options, and sort orders. Use instead of guessing enum values before calling search_jobs.",
+      "Read Jobbbler's exact search vocabulary: accepted categories, work models, seniorities, salary options, and sort orders. Use when an enum is unclear, not before every search; search_jobs already documents common values.",
     inputSchema: emptyInputSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: false },
     async execute(input, { signal }) {

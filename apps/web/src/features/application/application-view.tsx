@@ -1,7 +1,6 @@
 import {
   ArrowLeftIcon,
   CheckCircleIcon,
-  PencilSimpleIcon,
   ShieldCheckIcon,
   WarningCircleIcon,
 } from "@phosphor-icons/react";
@@ -88,7 +87,6 @@ function ApplicationField({
 }>) {
   const field = workspace.requirements.find((candidate) => candidate.fieldKey === fieldKey);
   if (field === undefined) return null;
-  const answer = workspace.draft.answers.find((candidate) => candidate.fieldKey === field.fieldKey);
   const shared = {
     id: `application-${field.fieldKey}`,
     name: field.fieldKey,
@@ -127,19 +125,6 @@ function ApplicationField({
            */}
           {field.required ? null : <span className={styles["optionalMark"]}> · optional</span>}
         </label>
-        {/*
-         * Only provenance goes here now. "Private" sat on five of the six
-         * fields, which told the reader nothing about any of them — and the
-         * block above the button already names the exact list that leaves,
-         * which is the same promise stated once and precisely.
-         */}
-        <span>
-          {answer?.provenance === "agent_suggestion" ? (
-            <>
-              <PencilSimpleIcon aria-hidden="true" /> Agent suggestion
-            </>
-          ) : null}
-        </span>
       </div>
       {field.input === "textarea" ? (
         <textarea
@@ -321,109 +306,100 @@ function ReviewDocument({
          * thing. The submit button lives outside the section and reaches it
          * through its `form` attribute.
          */}
-        <form
-          className={styles["fields"]}
-          id="application-form"
-          noValidate
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (busy) return;
-            if (!readiness.readyForReview) {
-              setShowErrors(true);
-              const first = readiness.missingFieldKeys[0];
-              if (first !== undefined) document.getElementById(`application-${first}`)?.focus();
-              return;
-            }
-            onAction("review_and_submit");
-          }}
-        >
-          {/*
-           * Short answers first, the written one last. In source order the
-           * cover letter sits mid-list, and once it spans both columns the
-           * field after it is stranded alone beside an empty cell.
-           */}
-          {[...workspace.requirements]
-            .sort((a, b) => Number(a.input === "textarea") - Number(b.input === "textarea"))
-            .map((field) => (
-              <ApplicationField
-                fieldKey={field.fieldKey}
-                fieldValues={fieldValues}
-                key={field.fieldKey}
-                onFieldChange={onFieldChange}
-                {...(onFieldCommit === undefined ? {} : { onFieldCommit })}
-                readOnly={agentAssisted}
-                showErrors={showErrors}
-                workspace={workspace}
-              />
-            ))}
-        </form>
+        <div className={styles["reviewLayout"]}>
+          <form
+            className={styles["fields"]}
+            id="application-form"
+            noValidate
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (busy) return;
+              if (!readiness.readyForReview) {
+                setShowErrors(true);
+                const first = readiness.missingFieldKeys[0];
+                if (first !== undefined) document.getElementById(`application-${first}`)?.focus();
+                return;
+              }
+              onAction("review_and_submit");
+            }}
+          >
+            {[...workspace.requirements]
+              .sort((a, b) => Number(a.input === "textarea") - Number(b.input === "textarea"))
+              .map((field) => (
+                <ApplicationField
+                  fieldKey={field.fieldKey}
+                  fieldValues={fieldValues}
+                  key={field.fieldKey}
+                  onFieldChange={onFieldChange}
+                  {...(onFieldCommit === undefined ? {} : { onFieldCommit })}
+                  readOnly={agentAssisted}
+                  showErrors={showErrors}
+                  workspace={workspace}
+                />
+              ))}
+          </form>
 
-        <section aria-labelledby="sharing-heading" className={styles["sharingSummary"]}>
-          <div className={styles["sharingTitle"]}>
-            <ShieldCheckIcon aria-hidden="true" weight="fill" />
-            <h3 id="sharing-heading">What this application will send</h3>
-          </div>
-          <dl className={styles["permissionGrid"]}>
-            <div>
-              <dt>Sending to</dt>
-              <dd>{workspace.recipient.name}</dd>
-            </div>
-            <div>
-              <dt>Included</dt>
-              <dd>
-                {disclosedLabels.length === 0 ? "No information yet" : disclosedLabels.join(" · ")}
-              </dd>
-            </div>
-            {/*
-             * Only when an agent is involved. The plain case said the same
-             * thing the line under the submit button says, one screen-inch
-             * apart; the agent case makes a claim nothing else on the page
-             * makes, so it stays.
-             */}
-            {agentAssisted ? (
-              <div>
-                <dt>Your control</dt>
-                <dd>
-                  Your agent can submit only this unchanged application after your final decision.
-                </dd>
+          <aside aria-label="Submission summary" className={styles["reviewAside"]}>
+            <section aria-labelledby="sharing-heading" className={styles["sharingSummary"]}>
+              <div className={styles["sharingTitle"]}>
+                <ShieldCheckIcon aria-hidden="true" weight="fill" />
+                <h3 id="sharing-heading">What this application will send</h3>
               </div>
-            ) : null}
-          </dl>
-          <Link className={styles["privacyLink"]} href="/privacy">
-            Read our privacy notice
-          </Link>
-        </section>
+              <dl className={styles["permissionGrid"]}>
+                <div>
+                  <dt>Sending to</dt>
+                  <dd>{workspace.recipient.name}</dd>
+                </div>
+                <div>
+                  <dt>Included</dt>
+                  <dd>
+                    {disclosedLabels.length === 0
+                      ? "No information yet"
+                      : disclosedLabels.join(" · ")}
+                  </dd>
+                </div>
+                {agentAssisted ? (
+                  <div>
+                    <dt>Your control</dt>
+                    <dd>
+                      Your agent can submit only this unchanged application after your final
+                      decision.
+                    </dd>
+                  </div>
+                ) : null}
+              </dl>
+              <Link className={styles["privacyLink"]} href="/privacy">
+                Read our privacy notice
+              </Link>
+            </section>
 
-        {agentAssisted ? null : (
-          <div aria-busy={busy} className={styles["actions"]}>
-            {/*
-             * Enabled even when the form is incomplete. A greyed-out button
-             * cannot say what is wrong: pressing it is how a person asks, and
-             * the answer belongs on the fields that are empty.
-             */}
-            <button
-              aria-describedby="application-submit-guidance"
-              aria-busy={busy}
-              className={styles["primaryAction"]}
-              disabled={busy}
-              form="application-form"
-              type="submit"
-            >
-              {busy ? "Submitting…" : `Submit to ${workspace.recipient.name}`}
-            </button>
-            {busy ? (
-              <p aria-live="polite" id="application-submit-guidance" role="status">
-                Submitting your application.
-              </p>
-            ) : (
-              <p id="application-submit-guidance">
-                {readiness.readyForReview
-                  ? "Nothing is sent until this final action succeeds."
-                  : `Complete ${String(missingFields.length)} required ${missingFields.length === 1 ? "detail" : "details"} before submitting.`}
-              </p>
+            {agentAssisted ? null : (
+              <div aria-busy={busy} className={styles["actions"]}>
+                <button
+                  aria-describedby="application-submit-guidance"
+                  aria-busy={busy}
+                  className={styles["primaryAction"]}
+                  disabled={busy}
+                  form="application-form"
+                  type="submit"
+                >
+                  {busy ? "Submitting…" : `Submit to ${workspace.recipient.name}`}
+                </button>
+                {busy ? (
+                  <p aria-live="polite" id="application-submit-guidance" role="status">
+                    Submitting your application.
+                  </p>
+                ) : (
+                  <p id="application-submit-guidance">
+                    {readiness.readyForReview
+                      ? "Nothing is sent until this final action succeeds."
+                      : `Complete ${String(missingFields.length)} required ${missingFields.length === 1 ? "detail" : "details"} before submitting.`}
+                  </p>
+                )}
+              </div>
             )}
-          </div>
-        )}
+          </aside>
+        </div>
       </section>
     </>
   );

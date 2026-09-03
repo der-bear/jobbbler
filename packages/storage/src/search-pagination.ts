@@ -26,6 +26,7 @@ function criteriaFingerprint(criteria: JobSearchCriteria): string {
     employmentTypes: criteria.employmentTypes ?? [],
     seniorities: criteria.seniorities,
     locations: criteria.locations,
+    remoteOrLocations: criteria.remoteOrLocations === true,
     skills: criteria.skills,
     excludeKeywords: criteria.excludeKeywords,
     salary: criteria.salary,

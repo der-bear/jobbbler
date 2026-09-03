@@ -493,11 +493,10 @@ describe("site-wide application tools", () => {
   ];
 
   it("keeps the reduced outcome inventory discoverable on every page", () => {
+    const surface = dependencies(base);
     const manifests = createStableApplicationToolManifests({
-      currentSurface: () => dependencies(base),
-      readApplication: vi.fn(async () => readiness(base)),
+      resolveApplication: vi.fn(async () => ({ readiness: readiness(base), surface })),
       withdrawConsent: vi.fn(),
-      onNavigate: vi.fn(),
     });
     expect(names(manifests)).toEqual(stableNames);
     for (const manifest of manifests) expect(manifest.description).toContain("draftId");
@@ -510,19 +509,18 @@ describe("site-wide application tools", () => {
   });
 
   it("reads readiness without navigating or mounting a private page", async () => {
-    const onNavigate = vi.fn();
-    const readApplication = vi.fn(async () => readiness(base));
+    const resolveApplication = vi.fn(async () => ({
+      readiness: readiness(base),
+      surface: null,
+    }));
     const manifests = createStableApplicationToolManifests({
-      currentSurface: () => null,
-      readApplication,
+      resolveApplication,
       withdrawConsent: vi.fn(),
-      onNavigate,
     });
     const signal = new AbortController().signal;
     const result = await manifests[0]!.execute({ draftId: base.draftId }, { signal });
 
-    expect(readApplication).toHaveBeenCalledWith(base.draftId, { signal });
-    expect(onNavigate).not.toHaveBeenCalled();
+    expect(resolveApplication).toHaveBeenCalledWith(base.draftId, { signal });
     expect(result).toMatchObject({
       status: "completed",
       data: {
@@ -545,10 +543,8 @@ describe("site-wide application tools", () => {
       nextAction: "withdraw",
     } as ApplicationToolReadiness;
     const manifests = createStableApplicationToolManifests({
-      currentSurface: () => null,
-      readApplication: vi.fn(async () => externalReadiness),
+      resolveApplication: vi.fn(async () => ({ readiness: externalReadiness, surface: null })),
       withdrawConsent: vi.fn(),
-      onNavigate: vi.fn(),
     });
 
     const result = await manifests[0]!.execute(
@@ -583,7 +579,6 @@ describe("site-wide application tools", () => {
       "get_application_readiness",
     ]);
 
-    const onNavigate = vi.fn();
     const withdrawConsent = vi.fn(async () => ({
       draftId: closedState.draftId,
       withdrawnGrantIds: [],
@@ -592,10 +587,8 @@ describe("site-wide application tools", () => {
       pastSubmissionUnaffected: false,
     }));
     const manifests = createStableApplicationToolManifests({
-      currentSurface: () => null,
-      readApplication: vi.fn(async () => closedReadiness),
+      resolveApplication: vi.fn(async () => ({ readiness: closedReadiness, surface: null })),
       withdrawConsent,
-      onNavigate,
     });
     const signal = new AbortController().signal;
     const readinessResult = await manifests
@@ -618,21 +611,16 @@ describe("site-wide application tools", () => {
         retryable: false,
       },
     });
-    expect(onNavigate).not.toHaveBeenCalled();
-
     await manifests
       .find(({ name }) => name === "withdraw_application_consent")!
       .execute({ draftId: closedState.draftId }, { signal });
     expect(withdrawConsent).toHaveBeenCalledWith(closedState.draftId, { signal });
   });
 
-  it("validates ownership before an action navigates and returns structured NOT_FOUND", async () => {
-    const onNavigate = vi.fn();
+  it("validates ownership before an action and returns structured NOT_FOUND", async () => {
     const manifests = createStableApplicationToolManifests({
-      currentSurface: () => null,
-      readApplication: vi.fn(async () => null),
+      resolveApplication: vi.fn(async () => null),
       withdrawConsent: vi.fn(),
-      onNavigate,
     });
     const result = await manifests[1]!.execute(
       { draftId: base.draftId },
@@ -642,24 +630,20 @@ describe("site-wide application tools", () => {
       status: "failed",
       error: { code: "NOT_FOUND", retryable: false },
     });
-    expect(onNavigate).not.toHaveBeenCalled();
   });
 
-  it("opens a verified draft for an action and returns an actionable conflict", async () => {
-    const onNavigate = vi.fn();
+  it("uses a headless verified surface for an action and returns an actionable conflict", async () => {
     const surface = dependencies(base);
+    const resolveApplication = vi.fn(async () => ({ readiness: readiness(base), surface }));
     const manifests = createStableApplicationToolManifests({
-      currentSurface: () => null,
-      readApplication: vi.fn(async () => readiness(base)),
+      resolveApplication,
       withdrawConsent: vi.fn(),
-      onNavigate,
-      waitForSurface: vi.fn(async () => surface),
     });
     const result = await manifests[4]!.execute(
       { draftId: base.draftId },
       { signal: new AbortController().signal },
     );
-    expect(onNavigate).toHaveBeenCalledWith(`/apply/${base.draftId}`, {
+    expect(resolveApplication).toHaveBeenCalledWith(base.draftId, {
       signal: expect.any(AbortSignal),
     });
     expect(result).toMatchObject({
@@ -669,7 +653,6 @@ describe("site-wide application tools", () => {
   });
 
   it("withdraws consent directly without navigating to the application page", async () => {
-    const onNavigate = vi.fn();
     const withdrawConsent = vi.fn(async () => ({
       draftId: base.draftId,
       withdrawnGrantIds: ["grant_550e8400-e29b-41d4-a716-446655440000"],
@@ -678,10 +661,8 @@ describe("site-wide application tools", () => {
       pastSubmissionUnaffected: false,
     }));
     const manifests = createStableApplicationToolManifests({
-      currentSurface: () => null,
-      readApplication: vi.fn(async () => readiness(base)),
+      resolveApplication: vi.fn(async () => ({ readiness: readiness(base), surface: null })),
       withdrawConsent,
-      onNavigate,
     });
 
     const result = await manifests[6]!.execute(
@@ -692,7 +673,6 @@ describe("site-wide application tools", () => {
     expect(withdrawConsent).toHaveBeenCalledWith(base.draftId, {
       signal: expect.any(AbortSignal),
     });
-    expect(onNavigate).not.toHaveBeenCalled();
     expect(result).toMatchObject({
       status: "completed",
       data: { futureConsentProcessingStopped: true },

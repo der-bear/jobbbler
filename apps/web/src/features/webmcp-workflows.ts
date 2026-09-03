@@ -10,6 +10,7 @@ import {
 } from "@/lib/webmcp-tool-result";
 
 export const workflowGoals = [
+  "complete_job_hunt",
   "find_roles",
   "compare_roles",
   "save_search",
@@ -41,7 +42,7 @@ interface WorkflowPlan {
   readonly branches?: readonly WorkflowBranch[];
 }
 
-export const workflowVersion = "2.10";
+export const workflowVersion = "2.12";
 export const workflowBoundaries: readonly string[] = [
   "Advice only; grants no authority.",
   "Decide in the agent client.",
@@ -50,6 +51,55 @@ export const workflowBoundaries: readonly string[] = [
 ];
 
 export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
+  complete_job_hunt: {
+    title: "Find, compare, apply, and keep watching",
+    steps: [
+      {
+        intent: "Search requested roles",
+        tool: "search_jobs",
+        requiredInputs: [
+          "known criteria; omit presentation for headless; for city OR remote, pass locations plus remoteOrLocations=true",
+        ],
+        humanAction: false,
+      },
+      {
+        intent: "Compare strongest shortlist",
+        tool: "compare_jobs",
+        requiredInputs: ["2–3 jobIds from search_jobs; omit presentation for headless"],
+        humanAction: false,
+      },
+      {
+        intent: "Inspect chosen role",
+        tool: "get_job_details",
+        requiredInputs: ["chosen jobId"],
+        humanAction: false,
+      },
+      {
+        intent: "Create or reopen application",
+        tool: "prepare_application",
+        requiredInputs: ["chosen jobId; omit presentation for headless"],
+        humanAction: false,
+      },
+      {
+        intent: "Continue consent-aware flow; repeat for another chosen role",
+        tool: "plan_job_workflow",
+        requiredInputs: ["goal=prepare_application"],
+        humanAction: false,
+      },
+      {
+        intent: "Prepare daily search updates",
+        tool: "request_search_alert",
+        requiredInputs: ["name", "criteria", "daily time + IANA zone", "email"],
+        humanAction: "Ask in chat only for missing values.",
+      },
+      {
+        intent: "Activate approved updates",
+        tool: "decide_search_alert",
+        requiredInputs: ["requestId", "reviewToken", "decision"],
+        humanAction: false,
+      },
+    ],
+  },
   find_roles: {
     title: "Find matching roles",
     steps: [
@@ -375,7 +425,7 @@ export function createWorkflowPlannerTool(
     name: "plan_job_workflow",
     purpose: "Return the recommended safe steps for one Jobbbler goal from the current page.",
     description:
-      "Pass one required goal: find_roles, compare_roles, save_search, monitor_search, manage_saved_search, prepare_application, withdraw_application_consent, enable_recovery, or recover_workspace. For Jobbbler-managed email updates, use monitor_search and its request_search_alert decision flow, not a client-side scheduler. The result is a concise route-aware sequence with human decision points. Advisory only: it executes, grants, and confirms nothing.",
+      "Pass one required goal: complete_job_hunt, find_roles, compare_roles, save_search, monitor_search, manage_saved_search, prepare_application, withdraw_application_consent, enable_recovery, or recover_workspace. Search, compare, and prepare default to headless; use follow only when asked to open them. Jobbbler-managed email updates use monitor_search, not a client-side scheduler. Returns route-aware decision steps. Advisory only; grants nothing.",
     inputSchema: planInputSchema,
     annotations: { readOnlyHint: true, untrustedContentHint: false },
     async execute(input, { signal }) {

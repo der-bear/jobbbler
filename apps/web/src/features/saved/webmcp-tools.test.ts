@@ -318,6 +318,38 @@ describe("saved-route WebMCP tools", () => {
     expect(webMcpResultSize(result)).toBeLessThanOrEqual(MAX_WEBMCP_RESULT_BYTES);
   });
 
+  it("preserves a city-or-remote search when the agent saves it", async () => {
+    const saveSearch = vi.fn(async () => savedSearch);
+    const manifests = createSavedToolManifests(dependencies({ saveSearch }));
+    const manifest = manifests.find(({ name }) => name === "save_job_search");
+    const signal = new AbortController().signal;
+
+    await manifest!.execute(
+      {
+        name: "Principal design · Berlin or remote",
+        criteria: {
+          query: "Principal Product Designer",
+          locations: ["Berlin"],
+          remoteOrLocations: true,
+          salary: { minimum: 120_000, currency: "USD" },
+        },
+      },
+      { signal },
+    );
+
+    expect(saveSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        criteria: expect.objectContaining({
+          locations: ["Berlin"],
+          remoteOrLocations: true,
+          workModels: expect.arrayContaining(["remote", "hybrid", "onsite", "flexible"]),
+          salary: expect.objectContaining({ minimum: 120_000, currency: "USD" }),
+        }),
+      }),
+      { signal },
+    );
+  });
+
   it("paginates the bounded change references for a saved search", async () => {
     const changes = Array.from({ length: 12 }, (_, index) => ({
       id: `change_0000000${String(index + 1)}-0000-7000-8000-00000000000${String(index + 1)}`,
@@ -434,6 +466,48 @@ describe("saved-route WebMCP tools", () => {
     expect(JSON.stringify(result)).not.toContain("ada@example.com");
     expect(JSON.stringify(result)).not.toContain('"review"');
     expect(new TextEncoder().encode(JSON.stringify(result)).byteLength).toBeLessThanOrEqual(1_500);
+  });
+
+  it("describes city-or-remote scope plainly in the agent-client consent review", async () => {
+    const cityOrRemoteReview: RequestSearchAlertResult = {
+      ...alertReview,
+      review: {
+        ...alertReview.review,
+        criteria: {
+          ...alertReview.review.criteria,
+          locations: ["Berlin"],
+          workModels: ["flexible", "hybrid", "onsite", "remote"],
+          remoteOrLocations: true,
+        },
+      },
+    };
+    const manifests = createSavedToolManifests(
+      dependencies({ requestSearchAlert: vi.fn(async () => cityOrRemoteReview) }),
+    );
+
+    const result = await manifests[1]!.execute(
+      {
+        name: "Berlin or remote",
+        criteria: {
+          query: "platform",
+          locations: ["Berlin"],
+          remoteOrLocations: true,
+        },
+        recurrence: schedule.recurrence,
+        email: "ada@example.com",
+      },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toMatchObject({
+      status: "requires_user_action",
+      presentation: {
+        facts: expect.arrayContaining([
+          { key: "Search", value: expect.stringContaining("location: Berlin or remote") },
+        ]),
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain("work model: Flexible, Hybrid, Onsite, Remote");
   });
 
   it("keeps a real server-signed alert review inside the operational output budget", async () => {

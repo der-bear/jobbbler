@@ -50,7 +50,7 @@ describe("site-wide WebMCP tools", () => {
         name: "prepare_application",
         purpose: "Create or reopen one private application for a chosen role.",
         description:
-          "Use one job ID the person selected to create or reopen its private application and return the application ID, URL, and next tool; this grants no preparation authority, shares no candidate data, and submits nothing.",
+          "Use one job ID the person selected to create or reopen its private application and return the application ID, URL, and next tool. Default headless keeps the current page; use presentation=follow only when the person asks to open it. This grants no preparation authority, shares no candidate data, and submits nothing.",
       },
       {
         name: "get_applications",
@@ -171,9 +171,22 @@ describe("site-wide WebMCP tools", () => {
         href: `/apply/${draftId}`,
         disposition: "reopened",
         nextTool: "get_application_readiness",
+        presentation: "headless",
       },
     });
-    expect(startApplication).toHaveBeenCalledWith(firstJobId, { signal });
+    expect(startApplication).toHaveBeenCalledWith(firstJobId, {
+      signal,
+      presentation: "headless",
+    });
+
+    await findTool(manifests, "prepare_application").execute(
+      { jobId: firstJobId, presentation: "follow" },
+      { signal },
+    );
+    expect(startApplication).toHaveBeenLastCalledWith(firstJobId, {
+      signal,
+      presentation: "follow",
+    });
   });
 
   it("starts recovery without revealing the email or locally captured code", async () => {

@@ -15,8 +15,59 @@ describe("plan_job_workflow", () => {
     for (const goal of workflowGoals) expect(planner.description).toContain(goal);
     expect(workflowGoals).toContain("manage_saved_search");
     expect(workflowGoals).toContain("withdraw_application_consent");
+    expect(workflowGoals).toContain("complete_job_hunt");
     expect(planner.description).toContain("Jobbbler-managed email updates");
     expect(planner.description).toContain("not a client-side scheduler");
+  });
+
+  it("plans one compound search, shortlist, application, and monitoring journey", async () => {
+    const planner = createWorkflowPlannerTool({
+      route: "/",
+      availableTools: () => [
+        "search_jobs",
+        "compare_jobs",
+        "get_job_details",
+        "prepare_application",
+        "plan_job_workflow",
+        "request_search_alert",
+        "decide_search_alert",
+      ],
+    });
+
+    const result = await planner.execute(
+      { goal: "complete_job_hunt" },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toMatchObject({
+      status: "completed",
+      data: {
+        nextTool: "search_jobs",
+        steps: [
+          expect.objectContaining({
+            tool: "search_jobs",
+            needs: [
+              "known criteria; omit presentation for headless; for city OR remote, pass locations plus remoteOrLocations=true",
+            ],
+          }),
+          expect.objectContaining({
+            tool: "compare_jobs",
+            needs: ["2–3 jobIds from search_jobs; omit presentation for headless"],
+          }),
+          expect.objectContaining({ tool: "get_job_details", needs: ["chosen jobId"] }),
+          expect.objectContaining({
+            tool: "prepare_application",
+            needs: ["chosen jobId; omit presentation for headless"],
+          }),
+          expect.objectContaining({
+            tool: "plan_job_workflow",
+            needs: ["goal=prepare_application"],
+          }),
+          expect.objectContaining({ tool: "request_search_alert" }),
+          expect.objectContaining({ tool: "decide_search_alert" }),
+        ],
+      },
+    });
   });
 
   it("reads the current page when invoked instead of capturing a stale registration route", async () => {

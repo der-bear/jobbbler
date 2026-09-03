@@ -46,6 +46,9 @@ export async function searchPostgresJobs(
     query.criteria.cursor === null
       ? null
       : decodeJobSearchCursor(query.criteria.cursor, query.criteria);
+  const remoteOrLocations =
+    query.criteria.remoteOrLocations === true && query.criteria.locations.length > 0;
+  const localWorkModels = query.criteria.workModels.filter((workModel) => workModel !== "remote");
   const rows = await sql<SearchRow[]>`
     WITH input AS NOT MATERIALIZED (
       SELECT
@@ -82,7 +85,7 @@ export async function searchPostgresJobs(
           OR search.categories && ${sql.array(query.criteria.categories)}::text[]
         )
         AND (
-          ${query.criteria.workModels.length === 0}::boolean
+          ${remoteOrLocations || query.criteria.workModels.length === 0}::boolean
           OR search.work_model = ANY(${sql.array(query.criteria.workModels)}::text[])
         )
         AND (
@@ -95,19 +98,26 @@ export async function searchPostgresJobs(
         )
         AND (
           ${query.criteria.locations.length === 0}::boolean
-          OR EXISTS (
-            SELECT 1
-            FROM unnest(${sql.array(query.criteria.locations)}::text[]) AS requested(value)
-            CROSS JOIN LATERAL (
-              SELECT jobbbler.normalize_search_text(requested.value) AS term
-            ) AS normalized
-            WHERE normalized.term <> ''
-              AND EXISTS (
-                SELECT 1
-                FROM unnest(search.location_terms) AS actual(term)
-                WHERE actual.term <> ''
-                  AND strpos(actual.term, normalized.term) > 0
-              )
+          OR (${remoteOrLocations}::boolean AND search.work_model = 'remote')
+          OR (
+            (
+              ${!remoteOrLocations || localWorkModels.length === 0}::boolean
+              OR search.work_model = ANY(${sql.array(localWorkModels)}::text[])
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM unnest(${sql.array(query.criteria.locations)}::text[]) AS requested(value)
+              CROSS JOIN LATERAL (
+                SELECT jobbbler.normalize_search_text(requested.value) AS term
+              ) AS normalized
+              WHERE normalized.term <> ''
+                AND EXISTS (
+                  SELECT 1
+                  FROM unnest(search.location_terms) AS actual(term)
+                  WHERE actual.term <> ''
+                    AND strpos(actual.term, normalized.term) > 0
+                )
+            )
           )
         )
         AND (

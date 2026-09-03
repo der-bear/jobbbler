@@ -23,12 +23,24 @@ describe("AppHeaderSurface", () => {
     expect(markup).not.toContain("Agent view");
     expect(markup).toContain('aria-expanded="false"');
     expect(markup).toContain("24 tools ready");
+    expect(markup).toContain('data-status-indicator="ready"');
     expect(markup).toContain('href="/jobs"');
     expect(markup).toContain('aria-label="Jobbbler home"');
     expect(markup).toMatch(/aria-label="Jobbbler home"[^>]*data-status="ready"/);
     expect(markup).not.toContain("Find once. Stay updated.");
     expect(markup).not.toContain("Works with agents");
     expect(markup).not.toContain("Agent layer");
+  });
+
+  it("uses a neutral pressed state while the status dot carries WebMCP readiness", async () => {
+    const css = await readFile(new URL("./app-shell.module.css", import.meta.url), "utf8");
+
+    expect(css).toMatch(
+      /\.agentView\[aria-expanded="true"\]\s*\{[^}]*background:\s*var\(--jb-veil-strong\);[^}]*color:\s*var\(--color-ink\);/su,
+    );
+    expect(css).toMatch(
+      /\.agentView\[data-status="ready"\]\s+\.agentStatusDot\s*\{[^}]*color:\s*var\(--jb-signal\);/su,
+    );
   });
 
   it("keeps My applications selected while an application is open", () => {

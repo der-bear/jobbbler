@@ -312,9 +312,16 @@ export function rankJob(job: Job, criteria: JobSearchCriteria, context: RankJobC
     0,
   );
 
-  const hardMismatch = [text, categories, workModel, locations, freshness].some(
-    (dimension) => dimension.status === "mismatch",
-  );
+  const remoteLocationAlternative = criteria.remoteOrLocations === true;
+  const geographyMismatch = remoteLocationAlternative
+    ? !(
+        job.workModel === "remote" ||
+        (workModel.status !== "mismatch" && locations.status !== "mismatch")
+      )
+    : workModel.status === "mismatch" || locations.status === "mismatch";
+  const hardMismatch =
+    geographyMismatch ||
+    [text, categories, freshness].some((dimension) => dimension.status === "mismatch");
   const seniorityMismatch = ["mismatch", "unknown"].includes(seniority.status);
   const salaryMismatch = ["below", "mismatch"].includes(salary.status);
   const excludedUnknownSalary =
@@ -333,6 +340,9 @@ export function rankJob(job: Job, criteria: JobSearchCriteria, context: RankJobC
   if (text.status === "match") evidence.push("Search terms match the job content.");
   if (categories.status === "match") evidence.push("Category matches the requested work.");
   if (workModel.status === "match") evidence.push(`Work model is ${job.workModel}.`);
+  if (remoteLocationAlternative && job.workModel === "remote" && locations.status === "mismatch") {
+    evidence.push("Remote work matches the location alternative.");
+  }
   if (requestedEmploymentTypes.length > 0 && employmentTypeMatches) {
     evidence.push(`Employment type is ${job.employmentType}.`);
   }

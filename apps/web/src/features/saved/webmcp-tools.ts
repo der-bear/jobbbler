@@ -398,17 +398,26 @@ function naturalList(values: readonly string[]): string {
 
 function describeSearchCriteria(criteria: RequestSearchAlertResult["review"]["criteria"]): string {
   const parts: string[] = [];
+  const cityOrRemote = criteria.remoteOrLocations === true && criteria.locations.length > 0;
   if (criteria.query !== null) parts.push(`“${criteria.query}”`);
   if (criteria.categories.length > 0) {
     parts.push(`categories: ${criteria.categories.map(humanize).join(", ")}`);
   }
-  if (criteria.workModels.length > 0) {
+  const localWorkModels = cityOrRemote
+    ? criteria.workModels.filter((value) => value !== "remote")
+    : criteria.workModels;
+  const includesEveryLocalModel = ["flexible", "hybrid", "onsite"].every((value) =>
+    localWorkModels.includes(value as (typeof localWorkModels)[number]),
+  );
+  if (localWorkModels.length > 0 && !(cityOrRemote && includesEveryLocalModel)) {
     parts.push(`work model: ${criteria.workModels.map(humanize).join(", ")}`);
   }
   if (criteria.seniorities.length > 0) {
     parts.push(`seniority: ${criteria.seniorities.map(humanize).join(", ")}`);
   }
-  if (criteria.locations.length > 0) parts.push(`location: ${criteria.locations.join(", ")}`);
+  if (criteria.locations.length > 0) {
+    parts.push(`location: ${criteria.locations.join(", ")}${cityOrRemote ? " or remote" : ""}`);
+  }
   if (criteria.skills.length > 0) parts.push(`skills: ${criteria.skills.join(", ")}`);
   if (criteria.excludeKeywords.length > 0) {
     parts.push(`exclude: ${criteria.excludeKeywords.join(", ")}`);

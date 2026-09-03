@@ -34,7 +34,6 @@ import {
 import { isRemoteLocationIntent } from "@jobbbler/jobs-domain";
 import { Chip, MultiSelect } from "@jobbbler/ui";
 
-import { useWebMcp } from "@/components/webmcp-provider";
 import {
   categoryLabel,
   compactDate,
@@ -78,13 +77,14 @@ export function shouldPulseResultsForActivity(
   );
 }
 
-interface SearchDraft {
+export interface SearchDraft {
   readonly query: string;
   readonly categories: readonly JobCategory[];
   readonly workModels: readonly WorkModel[];
   readonly employmentTypes: readonly EmploymentType[];
   readonly seniorities: readonly Seniority[];
   readonly location: string;
+  readonly remoteOrLocations: boolean;
   readonly postedWithinDays: string;
   readonly minimumSalary: string;
   readonly currency: DisplayCurrency;
@@ -92,7 +92,7 @@ interface SearchDraft {
   readonly sort: JobSearchCriteria["sort"];
 }
 
-function draftFromInput(input: JobSearchInput): SearchDraft {
+export function searchDraftFromInput(input: JobSearchInput): SearchDraft {
   return {
     query: input.query ?? "",
     categories: input.categories ?? [],
@@ -100,6 +100,7 @@ function draftFromInput(input: JobSearchInput): SearchDraft {
     employmentTypes: input.employmentTypes ?? [],
     seniorities: input.seniorities ?? [],
     location: input.locations?.[0] ?? "",
+    remoteOrLocations: input.remoteOrLocations === true,
     postedWithinDays: input.postedWithinDays === undefined ? "" : String(input.postedWithinDays),
     minimumSalary: input.salary?.minimum === undefined ? "" : String(input.salary.minimum),
     currency:
@@ -111,7 +112,7 @@ function draftFromInput(input: JobSearchInput): SearchDraft {
   };
 }
 
-function inputFromDraft(draft: SearchDraft): JobSearchInput {
+export function inputFromSearchDraft(draft: SearchDraft): JobSearchInput {
   const minimumSalary = draft.minimumSalary.trim();
   const salaryAmount = minimumSalary.length === 0 ? undefined : Number(minimumSalary);
   return {
@@ -121,6 +122,9 @@ function inputFromDraft(draft: SearchDraft): JobSearchInput {
     employmentTypes: [...draft.employmentTypes],
     seniorities: [...draft.seniorities],
     locations: draft.location.trim().length === 0 ? [] : [draft.location.trim()],
+    ...(draft.remoteOrLocations && draft.location.trim().length > 0
+      ? { remoteOrLocations: true }
+      : {}),
     ...(draft.postedWithinDays === "" ? {} : { postedWithinDays: Number(draft.postedWithinDays) }),
     excludeKeywords: draft.excludeKeywords
       .split(",")
@@ -301,7 +305,7 @@ function SearchFilters({
     draft.minimumSalary !== "",
     draft.excludeKeywords.trim().length > 0,
   ].filter(Boolean).length;
-  const hasActiveFilters = hasMeaningfulSearchCriteria(inputFromDraft(draft));
+  const hasActiveFilters = hasMeaningfulSearchCriteria(inputFromSearchDraft(draft));
 
   function toggleWorkModel(value: WorkModel) {
     const workModels = draft.workModels.includes(value)
@@ -361,7 +365,7 @@ function SearchFilters({
             className={styles["resetFilters"]}
             onClick={() => {
               cancelScheduledTextCommit();
-              onCommit(draftFromInput(defaultSearch));
+              onCommit(searchDraftFromInput(defaultSearch));
             }}
             type="button"
           >
@@ -642,9 +646,8 @@ export function SearchWorkspace({
   mode,
 }: Readonly<{ initialSearch: InitialSearchState; mode: "home" | "catalog" }>) {
   const router = useRouter();
-  const webMcp = useWebMcp();
   const [applied, setApplied] = useState<JobSearchInput>(initialSearch.input);
-  const [draft, setDraft] = useState<SearchDraft>(() => draftFromInput(initialSearch.input));
+  const [draft, setDraft] = useState<SearchDraft>(() => searchDraftFromInput(initialSearch.input));
   const [result, setResult] = useState<SearchJobsResult | null>(initialSearch.result);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">(
     initialSearch.error === null ? "ready" : "error",
@@ -652,9 +655,7 @@ export function SearchWorkspace({
   const [error, setError] = useState<string | null>(initialSearch.error);
   const [failedPageCursor, setFailedPageCursor] = useState<string | null>(null);
   const [agentPulse, setAgentPulse] = useState(false);
-  const mountedAt = useRef(Date.now());
-  const lastPulsedActivityId = useRef<string | null>(null);
-  const latestActivity = webMcp.activities.at(-1);
+  const agentPulseTimer = useRef<number | null>(null);
 
   useEffect(() => {
     if (mode !== "catalog" || initialSearch.error !== null || window.location.search.length === 0) {
@@ -667,19 +668,6 @@ export function SearchWorkspace({
     }
   }, [applied, initialSearch.error, mode]);
 
-  useEffect(() => {
-    if (
-      latestActivity === undefined ||
-      !shouldPulseResultsForActivity(latestActivity, mountedAt.current) ||
-      lastPulsedActivityId.current === latestActivity.id
-    ) {
-      return undefined;
-    }
-    lastPulsedActivityId.current = latestActivity.id;
-    setAgentPulse(true);
-    const timer = window.setTimeout(() => setAgentPulse(false), 900);
-    return () => window.clearTimeout(timer);
-  }, [latestActivity]);
   const requestSequence = useRef(0);
   const activeSearch = useRef<AbortController | null>(null);
 
@@ -764,7 +752,7 @@ export function SearchWorkspace({
       try {
         const restored = searchFromLocation();
         setApplied(restored);
-        setDraft(draftFromInput(restored));
+        setDraft(searchDraftFromInput(restored));
         void runSearch(restored, "replace");
       } catch {
         activeSearch.current?.abort();
@@ -777,30 +765,41 @@ export function SearchWorkspace({
     return () => window.removeEventListener("popstate", restore);
   }, [runSearch]);
 
-  useEffect(
-    () =>
-      subscribeWebMcpSearchCommit(({ input, result: committedResult }) => {
-        activeSearch.current?.abort();
-        requestSequence.current += 1;
-        publishSearchSurfaceState({
-          criteria: committedResult.criteria,
-          total: committedResult.total,
-        });
-        flushSync(() => {
-          setApplied(input);
-          setDraft(draftFromInput(input));
-          setResult(committedResult);
-          setError(null);
-          setFailedPageCursor(null);
-          setStatus("ready");
-        });
-      }),
-    [],
-  );
+  useEffect(() => {
+    const unsubscribe = subscribeWebMcpSearchCommit(({ input, result: committedResult }) => {
+      activeSearch.current?.abort();
+      requestSequence.current += 1;
+      if (agentPulseTimer.current !== null) window.clearTimeout(agentPulseTimer.current);
+      setAgentPulse(true);
+      agentPulseTimer.current = window.setTimeout(() => {
+        setAgentPulse(false);
+        agentPulseTimer.current = null;
+      }, 900);
+      publishSearchSurfaceState({
+        criteria: committedResult.criteria,
+        total: committedResult.total,
+        presentation: "follow",
+      });
+      flushSync(() => {
+        setApplied(input);
+        setDraft(searchDraftFromInput(input));
+        setResult(committedResult);
+        setError(null);
+        setFailedPageCursor(null);
+        setStatus("ready");
+      });
+    });
+    return () => {
+      unsubscribe();
+      if (agentPulseTimer.current !== null) window.clearTimeout(agentPulseTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     publishSearchSurfaceState(
-      result === null ? null : { criteria: result.criteria, total: result.total },
+      result === null
+        ? null
+        : { criteria: result.criteria, total: result.total, presentation: "follow" },
     );
   }, [result]);
 
@@ -824,7 +823,7 @@ export function SearchWorkspace({
 
   function commitDraft(next: SearchDraft) {
     const locationNormalizedDraft = normalizeLocationDraftIntent(next);
-    const draftInput = inputFromDraft(locationNormalizedDraft);
+    const draftInput = inputFromSearchDraft(locationNormalizedDraft);
     const sort = searchSortAfterQueryChange(applied, draftInput);
     const committedDraft =
       sort === locationNormalizedDraft.sort
@@ -860,7 +859,7 @@ export function SearchWorkspace({
 
   function clearInvalidFilters() {
     setApplied(defaultSearch);
-    setDraft(draftFromInput(defaultSearch));
+    setDraft(searchDraftFromInput(defaultSearch));
     void runSearch(defaultSearch, "replace");
   }
 

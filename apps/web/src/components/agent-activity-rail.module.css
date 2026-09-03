@@ -23,6 +23,7 @@
   inset-inline-start: 7px;
   inline-size: var(--jb-stroke-structure);
   background: var(--color-line);
+  opacity: 0.48;
   content: "";
 }
 

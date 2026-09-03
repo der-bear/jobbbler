@@ -947,6 +947,48 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
       });
     });
 
+    it("matches a requested city or remote roles outside that city in one query", async () => {
+      const current = await create();
+      await current.organizations.upsert(organization);
+      const remoteElsewhere = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440117",
+        workModel: "remote" as const,
+        locations: ["Lisbon, Portugal", "Portugal", "Europe"],
+      };
+      const berlinOnsite = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440118",
+        workModel: "onsite" as const,
+        locations: ["Berlin, Germany", "Germany", "Europe"],
+      };
+      const parisOnsite = {
+        ...job,
+        id: "job_550e8400-e29b-41d4-a716-446655440119",
+        workModel: "onsite" as const,
+        locations: ["Paris, France", "France", "Europe"],
+      };
+      await current.jobs.upsert(remoteElsewhere);
+      await current.jobs.upsert(berlinOnsite);
+      await current.jobs.upsert(parisOnsite);
+
+      const result = await current.jobs.search({
+        criteria: {
+          ...emptyCriteria,
+          workModels: ["flexible", "hybrid", "onsite", "remote"],
+          locations: ["Berlin"],
+          remoteOrLocations: true,
+        },
+        now,
+        limit: 10,
+      });
+
+      expect(result.jobs.map(({ id }) => id).sort()).toEqual(
+        [remoteElsewhere.id, berlinOnsite.id].sort(),
+      );
+      expect(result.total).toBe(2);
+    });
+
     it("uses diacritic-normalized skills as soft relevance evidence", async () => {
       const current = await create();
       await current.organizations.upsert(organization);

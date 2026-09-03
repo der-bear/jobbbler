@@ -23,6 +23,7 @@ const savedSearchDeletionCommitEvent = "jobbbler:webmcp-saved-search-deletion-co
 export interface SearchSurfaceState {
   readonly criteria: JobSearchCriteria;
   readonly total: number | null;
+  readonly presentation: "headless" | "follow";
 }
 
 export interface SearchCommit {
@@ -41,7 +42,11 @@ export function readSearchSurfaceState(): SearchSurfaceState | null {
 }
 
 export function commitWebMcpSearch(input: JobSearchInput, result: SearchJobsResult): void {
-  publishSearchSurfaceState({ criteria: result.criteria, total: result.total });
+  publishSearchSurfaceState({
+    criteria: result.criteria,
+    total: result.total,
+    presentation: "follow",
+  });
   window.dispatchEvent(
     new CustomEvent<SearchCommit>(searchCommitEvent, { detail: { input, result } }),
   );

@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
@@ -337,10 +338,24 @@ describe("ApplicationView", () => {
     expect(markup).toContain("Agent preparation access ended");
     expect(markup).toContain("Continue here");
     expect(markup).toContain("Submit to Northstar Systems");
-    expect(markup).toContain("Agent suggestion");
+    expect(markup).not.toContain("Agent suggestion");
     expect(markup).not.toContain('readOnly=""');
     expect(markup).not.toContain("Waiting for your decision in the agent chat");
     expect(markup).not.toContain("Agent preparation is active");
+  });
+
+  it("keeps every answer in one readable column and moves submission context beside it only when space allows", async () => {
+    const css = await readFile(new URL("./application-view.module.css", import.meta.url), "utf8");
+
+    expect(css).toMatch(
+      /\.fields\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/su,
+    );
+    expect(css).toMatch(
+      /\.field\[data-wide="true"\]\s+textarea\s*\{[^}]*min-block-size:\s*320px;/su,
+    );
+    expect(css).toMatch(
+      /@container\s+application-review\s*\(min-width:\s*960px\)[\s\S]*?\.reviewLayout\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(280px,\s*0\.5fr\);/u,
+    );
   });
 
   it("reclassifies an expiring request when the mounted server clock advances", () => {

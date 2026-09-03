@@ -4,8 +4,10 @@ import {
   type JobSearchCriteria,
   type JobSearchInput,
 } from "@jobbbler/contracts";
+import { DomainError } from "@jobbbler/core-domain";
 
 const collator = new Intl.Collator("en", { sensitivity: "base" });
+const everyWorkModel = ["flexible", "hybrid", "onsite", "remote"] as const;
 
 const canonicalCountryByAlias = new Map<string, string>([
   ["global", "Worldwide"],
@@ -49,17 +51,31 @@ export function normalizeJobSearchCriteria(input: JobSearchInput): JobSearchCrit
   const parsed = jobSearchInputSchema.parse(input);
   const normalizedLocations = uniqueDisplayValues(parsed.locations?.map(canonicalizeLocation));
   const remoteLocationIntent = normalizedLocations.some(isRemoteLocationIntent);
+  const locations = normalizedLocations.filter((location) => !isRemoteLocationIntent(location));
+  if (parsed.remoteOrLocations === true && locations.length === 0) {
+    throw new DomainError({
+      code: "VALIDATION",
+      message:
+        "remoteOrLocations requires at least one city, country, or region; use workModels=['remote'] for remote-only searches.",
+    });
+  }
+  const remoteOrLocations =
+    locations.length > 0 && (parsed.remoteOrLocations === true || remoteLocationIntent);
+  const requestedWorkModels = parsed.workModels ?? [];
+  const workModels = remoteOrLocations
+    ? requestedWorkModels.length === 0
+      ? everyWorkModel
+      : [...requestedWorkModels, "remote" as const]
+    : [...requestedWorkModels, ...(remoteLocationIntent ? (["remote"] as const) : [])];
 
   return jobSearchCriteriaSchema.parse({
     query: parsed.query === undefined ? null : collapseWhitespace(parsed.query),
     categories: uniqueEnumValues(parsed.categories),
-    workModels: uniqueEnumValues([
-      ...(parsed.workModels ?? []),
-      ...(remoteLocationIntent ? (["remote"] as const) : []),
-    ]),
+    workModels: uniqueEnumValues(workModels),
     employmentTypes: uniqueEnumValues(parsed.employmentTypes),
     seniorities: uniqueEnumValues(parsed.seniorities),
-    locations: normalizedLocations.filter((location) => !isRemoteLocationIntent(location)),
+    locations,
+    ...(remoteOrLocations ? { remoteOrLocations: true } : {}),
     skills: uniqueDisplayValues(parsed.skills),
     excludeKeywords: uniqueDisplayValues(parsed.excludeKeywords),
     salary:

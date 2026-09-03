@@ -36,9 +36,6 @@ import {
 import { persistApplicationField } from "./application-field-persistence";
 import { finalizeApplication } from "./application-finalization";
 import {
-  applicationAgentState,
-  applicationNextAction,
-  applicationReadiness,
   bindApplicationServerClock,
   createApplicationAgentAuthorization,
   isAgentAssistedApplication,
@@ -46,10 +43,10 @@ import {
   type ApplicationAgentCredential,
   type BoundApplicationServerClock,
 } from "./application-model";
+import { applicationToolReadiness } from "./headless-application-surface";
 import type {
   ApplicationSubmissionDecisionOutcome,
   ApplicationSubmissionReviewRequest,
-  ApplicationToolReadiness,
 } from "./webmcp-tools";
 import { publishApplicationWebMcpSurface } from "./webmcp-surface";
 import styles from "./application-view.module.css";
@@ -86,26 +83,6 @@ function fieldValues(workspace: ApplicationWorkspaceState): Record<string, strin
       displayValue(workspace.draft.answers.find((answer) => answer.fieldKey === field.fieldKey)),
     ]),
   );
-}
-
-function toolReadiness(
-  workspace: ApplicationWorkspaceState,
-  roleStatus: Job["status"],
-  finalConfirmationReady = false,
-  now = workspace.serverNow,
-): ApplicationToolReadiness {
-  const progress = applicationReadiness(workspace);
-  const state = applicationAgentState(workspace, finalConfirmationReady, now, roleStatus);
-  return {
-    state,
-    roleStatus,
-    missingFieldKeys: progress.missingFieldKeys,
-    missingFieldLabels: progress.missingFieldKeys.map(
-      (fieldKey) =>
-        workspace.requirements.find((field) => field.fieldKey === fieldKey)?.label ?? fieldKey,
-    ),
-    nextAction: applicationNextAction(workspace, now, finalConfirmationReady, roleStatus),
-  };
 }
 
 function laterServerTime(left: string, right: string): string {
@@ -314,12 +291,17 @@ function DraftApplicationWorkspace({
       const roleStatus =
         reloaded.job?.status ??
         (reloadedState.kind === "ready" ? reloadedState.job.status : "closed");
-      return toolReadiness(reloaded, roleStatus, confirmationReady, reloaded.serverNow);
+      return applicationToolReadiness(reloaded, roleStatus, confirmationReady, reloaded.serverNow);
     };
 
     publishApplicationWebMcpSurface({
       currentReadiness: () =>
-        toolReadiness(workspace, job.status, confirmation !== null, applicationClock.current()),
+        applicationToolReadiness(
+          workspace,
+          job.status,
+          confirmation !== null,
+          applicationClock.current(),
+        ),
       allowsAgentSubmission: () => job.applyMode === "internal" && job.status === "open",
       hasAgentCredential: () => authorization.currentCredential() !== null,
       isOperationAuthorized: authorization.isOperationAuthorized,

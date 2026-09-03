@@ -128,6 +128,13 @@ export function AppHeaderSurface({
           ref={agentButtonRef}
           type="button"
         >
+          <CircleIcon
+            aria-hidden="true"
+            className={styles["agentStatusDot"]}
+            data-status-indicator={agentStatus}
+            size={7}
+            weight="fill"
+          />
           <span>Agent activity</span>
           <span className="sr-only">{agentStatusLabel}</span>
         </button>

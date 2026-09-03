@@ -484,15 +484,28 @@
 /* An open control still answers the pointer; the selected fill alone left it
    feeling stuck. */
 .agentView[aria-expanded="true"]:hover {
-  border-color: var(--jb-state-active-line);
-  background: linear-gradient(var(--jb-state-hover), var(--jb-state-hover)), var(--jb-state-active);
+  border-color: var(--jb-hover-line);
+  background: var(--jb-veil-strong);
 }
 
 .agentView[aria-expanded="true"] {
-  /* The chip's own values, so the two greens on screen are one green. */
-  border-color: var(--jb-state-active-line);
-  background: var(--jb-state-active);
-  color: var(--jb-state-active-ink);
+  border-color: var(--color-line-strong);
+  background: var(--jb-veil-strong);
+  color: var(--color-ink);
+}
+
+.agentStatusDot {
+  flex: none;
+  color: var(--color-ink-subtle);
+  transition: color var(--motion-fast) var(--ease-standard);
+}
+
+.agentView[data-status="ready"] .agentStatusDot {
+  color: var(--jb-signal);
+}
+
+.agentView[data-status="error"] .agentStatusDot {
+  color: var(--jb-danger);
 }
 
 .agentView[data-status="error"] {

@@ -310,8 +310,10 @@ function criteriaInput(criteria: JobSearchCriteria): JobSearchInput {
     ...(criteria.query === null ? {} : { query: criteria.query }),
     categories: criteria.categories,
     workModels: criteria.workModels,
+    employmentTypes: criteria.employmentTypes ?? [],
     seniorities: criteria.seniorities,
     locations: criteria.locations,
+    ...(criteria.remoteOrLocations === true ? { remoteOrLocations: true } : {}),
     skills: criteria.skills,
     excludeKeywords: criteria.excludeKeywords,
     ...(criteria.salary === null
@@ -331,18 +333,33 @@ function criteriaInput(criteria: JobSearchCriteria): JobSearchInput {
   };
 }
 
-function searchHref(criteria: JobSearchCriteria): string {
+export function savedSearchHref(criteria: JobSearchCriteria): string {
   const parameters = searchInputToSearchParams(criteriaInput(criteria));
   return parameters.size === 0 ? "/jobs" : `/jobs?${parameters.toString()}`;
+}
+
+function cityOrRemoteLocationLabel(criteria: JobSearchCriteria): string | null {
+  if (criteria.remoteOrLocations !== true || criteria.locations.length === 0) return null;
+  return `${compactGroup(criteria.locations, (value) => value)} or remote`;
+}
+
+function visibleWorkModels(criteria: JobSearchCriteria): JobSearchCriteria["workModels"] {
+  if (criteria.remoteOrLocations !== true) return criteria.workModels;
+  const localModels = criteria.workModels.filter((workModel) => workModel !== "remote");
+  const unrestrictedLocalModels = (["flexible", "hybrid", "onsite"] as const).every((workModel) =>
+    localModels.includes(workModel),
+  );
+  return unrestrictedLocalModels ? [] : localModels;
 }
 
 export function savedSearchCriteriaSummary(criteria: JobSearchCriteria): readonly string[] {
   const summary: string[] = [];
   if (criteria.query !== null) summary.push(criteria.query);
   summary.push(...criteria.categories.map(categoryLabel));
-  summary.push(...criteria.workModels.map(workModelLabel));
+  summary.push(...visibleWorkModels(criteria).map(workModelLabel));
   summary.push(...criteria.seniorities.map(seniorityLabel));
-  summary.push(...criteria.locations);
+  const cityOrRemote = cityOrRemoteLocationLabel(criteria);
+  summary.push(...(cityOrRemote === null ? criteria.locations : [cityOrRemote]));
   if (criteria.salary?.minimum !== null && criteria.salary?.minimum !== undefined) {
     summary.push(
       `${criteria.salary.currency ?? ""} ${Intl.NumberFormat("en").format(criteria.salary.minimum)}+`,
@@ -363,8 +380,9 @@ export function defaultSavedSearchName(criteria: JobSearchCriteria): string {
 
   const seniority = compactGroup(criteria.seniorities, seniorityLabel);
   const category = compactGroup(criteria.categories, categoryLabel) || "Technology";
-  const workModel = compactGroup(criteria.workModels, workModelLabel);
-  const location = compactGroup(criteria.locations, (value) => value);
+  const workModel = compactGroup(visibleWorkModels(criteria), workModelLabel);
+  const location =
+    cityOrRemoteLocationLabel(criteria) ?? compactGroup(criteria.locations, (value) => value);
   const focus = [seniority, category].filter(Boolean).join(" ");
   const context = [workModel, location].filter(Boolean);
   return `${focus} roles${context.length === 0 ? "" : ` · ${context.join(" · ")}`}`.slice(0, 100);
@@ -1383,7 +1401,10 @@ export function SavedWorkspace({
                         </div>
                       ) : null}
                       <div className={styles["savedActions"]}>
-                        <Link className={styles["quietButton"]} href={searchHref(saved.criteria)}>
+                        <Link
+                          className={styles["quietButton"]}
+                          href={savedSearchHref(saved.criteria)}
+                        >
                           View matches
                         </Link>
                         {schedule === undefined ? (

@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { invalidSearchFiltersMessage } from "./initial-search-state";
-import { SearchWorkspace } from "./search-workspace";
+import { SearchWorkspace, inputFromSearchDraft, searchDraftFromInput } from "./search-workspace";
 
 const initialSearch = {
   input: { sort: "newest" as const, limit: 20 },
@@ -19,6 +19,28 @@ vi.mock("@/components/webmcp-provider", () => ({
 }));
 
 describe("SearchFilters", () => {
+  it("keeps city-or-remote semantics when a visible filter draft is edited", () => {
+    const draft = searchDraftFromInput({
+      query: "Principal Product Designer",
+      locations: ["Berlin"],
+      workModels: ["flexible", "hybrid", "onsite", "remote"],
+      remoteOrLocations: true,
+      sort: "relevance",
+      limit: 20,
+    });
+
+    expect(
+      inputFromSearchDraft({
+        ...draft,
+        query: "Principal Product Design",
+      }),
+    ).toMatchObject({
+      query: "Principal Product Design",
+      locations: ["Berlin"],
+      remoteOrLocations: true,
+    });
+  });
+
   it("keeps search and location visible while grouping optional filters for small screens", () => {
     const markup = renderToStaticMarkup(
       <SearchWorkspace initialSearch={initialSearch} mode="catalog" />,

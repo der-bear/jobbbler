@@ -47,6 +47,25 @@
 .tableScroll {
   overflow-x: auto;
   border-block-end: var(--jb-stroke-structure) solid var(--color-line);
+  overscroll-behavior-inline: contain;
+  scroll-padding-inline-start: 160px;
+  scroll-snap-type: inline mandatory;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tableScroll:focus-visible {
+  outline: 1px solid var(--jb-focus);
+  outline-offset: 3px;
+}
+
+.tableScroll[data-columns="3"] .comparisonTable {
+  min-inline-size: max(100%, 1240px);
+  /* Leave enough trailing track for the last 360px role column to snap
+   * directly after the sticky 160px criterion column. Without this space,
+   * the browser reaches its scroll limit with the final role stranded on
+   * the far side of the viewport. */
+  margin-inline-end: max(0px, calc(100% - 520px));
 }
 
 .mobileComparison {
@@ -55,7 +74,10 @@
 
 .comparisonTable {
   inline-size: 100%;
-  min-inline-size: 780px;
+  /* Two roles remain comfortably readable without introducing a needless
+   * horizontal scrollbar when the agent rail is open. Three roles opt into
+   * the wider snapped track above. */
+  min-inline-size: min(100%, 780px);
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -76,6 +98,10 @@
 .comparisonTable thead th:first-child,
 .comparisonTable tbody th {
   inline-size: 160px;
+  position: sticky;
+  z-index: 2;
+  inset-inline-start: 0;
+  background: var(--color-canvas);
   color: var(--color-ink-muted);
   font-size: var(--jb-type-caption);
   font-weight: 500;
@@ -87,6 +113,12 @@
   color: var(--color-ink-muted);
   font-size: var(--jb-type-ui);
   line-height: 1.5;
+}
+
+.comparisonTable thead th:not(:first-child),
+.comparisonTable td {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 .jobHeading h2 {

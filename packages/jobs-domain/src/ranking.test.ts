@@ -246,6 +246,29 @@ describe("rankJob", () => {
     expect(denver.eligible).toBe(false);
   });
 
+  it("matches roles in the requested city or remote roles anywhere", () => {
+    const criteria = normalizeJobSearchCriteria({ locations: ["Berlin", "Remote"] });
+    const remoteElsewhere = rankJob(
+      job({ workModel: "remote", locations: ["Lisbon, Portugal", "Portugal", "Europe"] }),
+      criteria,
+      evaluation,
+    );
+    const berlinOnsite = rankJob(
+      job({ workModel: "onsite", locations: ["Berlin, Germany", "Germany", "Europe"] }),
+      criteria,
+      evaluation,
+    );
+    const parisOnsite = rankJob(
+      job({ workModel: "onsite", locations: ["Paris, France", "France", "Europe"] }),
+      criteria,
+      evaluation,
+    );
+
+    expect(remoteElsewhere.eligible).toBe(true);
+    expect(berlinOnsite.eligible).toBe(true);
+    expect(parisOnsite.eligible).toBe(false);
+  });
+
   it("returns deterministic dimension evidence for an eligible match", () => {
     const criteria = normalizeJobSearchCriteria({
       query: "TypeScript product engineer",

@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { jobCategorySchema, jobSchema } from "@jobbbler/contracts";
+import { normalizeJobSearchCriteria, rankJob } from "@jobbbler/jobs-domain";
 
 const fixturePath = fileURLToPath(new URL("../../../fixtures/demo-catalog.json", import.meta.url));
 
@@ -120,5 +121,35 @@ describe("presentation demo catalog", () => {
         ),
       )
       .toBe(true);
+  });
+
+  it("supports a principal product-design search without relaxing role, seniority, work, or pay", async () => {
+    const catalog = JSON.parse(await readFile(fixturePath, "utf8")) as DemoCatalog;
+    const jobs = catalog.jobs.map((job) => jobSchema.parse(job));
+    const criteria = normalizeJobSearchCriteria({
+      query: "Principal Product Designer",
+      categories: ["design_research"],
+      workModels: ["remote"],
+      seniorities: ["principal"],
+      salary: {
+        minimum: 120_000,
+        currency: "USD",
+        period: "year",
+        unknownPolicy: "exclude",
+      },
+      sort: "salary_desc",
+      limit: 3,
+    });
+
+    const matches = jobs
+      .map((job) => ({ job, rank: rankJob(job, criteria, { now: new Date("2026-09-03") }) }))
+      .filter(({ rank }) => rank.eligible);
+
+    expect(matches).toHaveLength(2);
+    expect(matches.map(({ job }) => job.title)).toEqual([
+      "Principal Product Designer, Grower Platform",
+      "Principal Product Designer, Clinical Workflows",
+    ]);
+    expect(matches.every(({ rank }) => rank.dimensions.salary.status === "match")).toBe(true);
   });
 });

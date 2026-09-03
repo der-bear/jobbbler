@@ -1,5 +1,5 @@
 .page {
-  max-inline-size: 1180px;
+  max-inline-size: 1360px;
   margin-inline: auto;
   padding: clamp(24px, 3vw, 44px) clamp(20px, 4vw, 54px) 112px;
 }
@@ -117,7 +117,7 @@
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(0, 820px);
+  grid-template-columns: minmax(0, 1fr);
   padding-block-start: clamp(28px, 3vw, 40px);
 }
 
@@ -129,6 +129,10 @@
   font-weight: 550;
   letter-spacing: -0.045em;
   line-height: 1.08;
+}
+
+.stagePanel {
+  container: application-review / inline-size;
 }
 
 .sectionHeading {
@@ -180,17 +184,34 @@
  */
 .fields {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 22px 28px;
+  min-inline-size: 0;
+}
+
+.reviewLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
   margin-block-start: 34px;
 }
 
-@media (min-width: 680px) {
-  .fields {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+.reviewAside {
+  display: grid;
+  gap: 18px;
+  min-inline-size: 0;
+}
+
+@container application-review (min-width: 960px) {
+  .reviewLayout {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.5fr);
+    gap: clamp(36px, 4vw, 60px);
   }
 
-  .field[data-wide="true"] {
-    grid-column: 1 / -1;
+  .reviewAside {
+    position: sticky;
+    inset-block-start: calc(var(--app-header-height, 68px) + 24px);
   }
 }
 
@@ -199,7 +220,7 @@
  * five rows of it meant scrolling a box to reread your own paragraph.
  */
 .field[data-wide="true"] textarea {
-  min-block-size: 220px;
+  min-block-size: 320px;
 }
 
 .saveStatus {
@@ -217,8 +238,7 @@
 .fieldLabel {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 8px;
 }
 
 .fieldLabel label {
@@ -227,8 +247,7 @@
   font-weight: 650;
 }
 
-.fieldLabel span,
-.suggestion {
+.fieldLabel span {
   color: var(--color-ink-subtle);
   font-size: var(--jb-type-caption);
   letter-spacing: 0.06em;
@@ -325,17 +344,6 @@
   outline: var(--jb-focus-width) solid var(--jb-focus);
   outline-offset: calc(-1 * var(--jb-focus-width));
   border-color: transparent;
-}
-
-.suggestion {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--jb-signal);
-}
-
-.suggestion svg {
-  inline-size: 14px;
 }
 
 .actions {
@@ -513,13 +521,17 @@
  * heading already carries the meaning — the frame can be a hairline.
  */
 .sharingSummary {
-  margin-block-start: 28px;
+  margin-block-start: 0;
   border: var(--jb-stroke-structure) solid var(--color-line);
   border-radius: 0;
   padding: 16px 18px;
   background: var(--jb-glass-fill-strong);
   backdrop-filter: var(--jb-glass-blur);
   -webkit-backdrop-filter: var(--jb-glass-blur);
+}
+
+.reviewAside .actions {
+  margin-block-start: 0;
 }
 
 .sharingSummary .reviewList {

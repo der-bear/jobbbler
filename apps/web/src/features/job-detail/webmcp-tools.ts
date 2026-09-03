@@ -43,6 +43,13 @@ const comparisonInputJsonSchema = {
       uniqueItems: true,
       items: jobIdProperty,
     },
+    presentation: {
+      type: "string",
+      description:
+        "headless keeps the current page unchanged; follow opens the visible comparison.",
+      enum: ["headless", "follow"],
+      default: "headless",
+    },
   },
   required: ["jobIds"],
 } as const satisfies JsonSchema;
@@ -103,7 +110,7 @@ function detailData(result: JobDetailResult): JsonValue {
   };
 }
 
-function comparisonData(result: CompareJobsResult): JsonValue {
+function comparisonData(result: CompareJobsResult) {
   return {
     jobs: result.jobs.map(({ job, fit }) => ({
       id: job.id,
@@ -130,7 +137,10 @@ export function createJobDetailToolManifests(
 ): readonly ToolManifest<unknown, JobDetailToolOutput>[] {
   const currentDetailInput = z.strictObject({ jobId: jobIdSchema });
   const currentComparisonInput = z
-    .strictObject({ jobIds: z.array(jobIdSchema).min(1).max(3) })
+    .strictObject({
+      jobIds: z.array(jobIdSchema).min(1).max(3),
+      presentation: z.enum(["headless", "follow"]).default("headless"),
+    })
     .superRefine((input, context) => {
       if (new Set(input.jobIds).size !== input.jobIds.length) {
         context.addIssue({
@@ -183,20 +193,25 @@ export function createJobDetailToolManifests(
     name: "compare_jobs",
     purpose: "Compare two or three explicitly identified technology roles.",
     description:
-      "Compare source-backed roles only after two or three exact job IDs are known. Pass every selected ID together in the jobIds array, then open the visible comparison. Never call it with one role; if a target is missing, search or ask which other role to compare first.",
+      "Compare source-backed roles after two or three exact job IDs are known. Pass every selected ID in jobIds. Default headless keeps the current page; use presentation=follow only when the person asks to open the comparison. Never call it with one role; search or ask for the missing target first.",
     inputSchema: comparisonInputJsonSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
       try {
         const parsed = currentComparisonInput.parse(input);
-        const result = await dependencies.compareJobs(parsed, { signal });
-        await dependencies.onNavigate(
-          comparisonHref(parsed.jobIds, dependencies.getCriteriaSearch?.() ?? ""),
-          { signal },
-        );
+        const result = await dependencies.compareJobs({ jobIds: parsed.jobIds }, { signal });
+        if (parsed.presentation === "follow") {
+          await dependencies.onNavigate(
+            comparisonHref(parsed.jobIds, dependencies.getCriteriaSearch?.() ?? ""),
+            { signal },
+          );
+        }
         return completedWebMcpResult({
-          summary: `Compared ${String(result.jobs.length)} technology roles and opened the comparison.`,
-          data: comparisonData(result),
+          summary:
+            parsed.presentation === "follow"
+              ? `Compared ${String(result.jobs.length)} technology roles and opened the comparison.`
+              : `Compared ${String(result.jobs.length)} technology roles.`,
+          data: { presentation: parsed.presentation, ...comparisonData(result) },
           resources: result.jobs.map(({ job }) => ({
             type: "job",
             id: job.id,

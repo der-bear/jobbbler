@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type {
   JobAlertSchedule,
+  JobSearchCriteria,
   OwnerSummary,
   VerificationEndpointSummary,
 } from "@jobbbler/contracts";
@@ -12,6 +13,7 @@ import {
   privateAccessCopy,
   savedComposerPresentation,
   savedSearchCriteriaSummary,
+  savedSearchHref,
   scheduleFormValues,
   scheduleReviewChanges,
 } from "./saved-workspace";
@@ -231,6 +233,45 @@ describe("saved-search composer", () => {
         unresolvedAssumptions: [],
       }),
     ).toBe("platform reliability");
+  });
+
+  it("keeps a city-or-remote search readable and reusable without broadening it", () => {
+    const criteria: JobSearchCriteria = {
+      query: null,
+      categories: ["design_research"],
+      workModels: ["flexible", "hybrid", "onsite", "remote"],
+      employmentTypes: ["full_time"],
+      seniorities: ["principal"],
+      locations: ["Berlin"],
+      remoteOrLocations: true,
+      skills: [],
+      excludeKeywords: [],
+      salary: {
+        minimum: 120_000,
+        maximum: null,
+        currency: "USD",
+        period: "year",
+        unknownPolicy: "include",
+      },
+      postedWithinDays: null,
+      sort: "relevance",
+      cursor: null,
+      limit: 20,
+      unresolvedAssumptions: [],
+    };
+
+    expect(savedSearchCriteriaSummary(criteria)).toEqual([
+      "Design & research",
+      "Principal",
+      "Berlin or remote",
+      "USD 120,000+",
+    ]);
+    expect(defaultSavedSearchName(criteria)).toBe(
+      "Principal Design & research roles · Berlin or remote",
+    );
+    expect(savedSearchHref(criteria)).toBe(
+      "/jobs?category=design_research&employment=full_time&seniority=principal&location=Berlin&remote_or_location=1&salary_min=120000&currency=USD",
+    );
   });
 
   it("treats adding updates to an existing saved search as a distinct task", () => {
