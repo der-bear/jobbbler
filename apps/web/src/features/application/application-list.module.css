@@ -263,6 +263,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  margin-block-start: 24px;
   min-block-size: 44px;
   border: var(--jb-stroke-control) solid var(--jb-border-control);
   border-radius: var(--radius-sm);
@@ -304,7 +305,6 @@
   margin-block-start: 9px;
 }
 
-.primaryLink,
 .retry {
   margin-block-start: 24px;
   min-block-size: 40px;
