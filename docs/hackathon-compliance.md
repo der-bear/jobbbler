@@ -54,13 +54,13 @@ proof.
 
 The 3 September 2026 release candidate passed:
 
-- formatting, lint, all workspace typechecks, 1,018 deterministic tests, and the
+- formatting, lint, all workspace typechecks, 1,025 deterministic tests, and the
   production web and worker builds through `pnpm verify`;
 - 51 browser journeys covering search, pagination, location autocomplete,
   saved-search schedules, the complete agent-prepared application path,
   a keyboard-scrollable three-role comparison, responsive layouts, and reduced
   motion;
-- 103 PostgreSQL repository, concurrency, migration, and RLS contract tests in
+- 109 PostgreSQL repository, concurrency, migration, and RLS contract tests in
   a disposable database;
 - production readiness with 19 PostgreSQL migrations, 30 organizations, and
   exactly 300 `jobbbler_demo` roles;
