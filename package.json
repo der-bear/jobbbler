@@ -32,6 +32,7 @@
     "db:export-sqlite": "node --disable-warning=DEP0205 --import tsx scripts/export-sqlite.ts",
     "db:migrate-postgres": "node --disable-warning=DEP0205 --import tsx scripts/migrate-postgres.ts",
     "db:import-postgres": "node --disable-warning=DEP0205 --import tsx scripts/import-postgres.ts",
+    "db:seed-postgres": "node --disable-warning=DEP0205 --import tsx scripts/seed-postgres.ts",
     "db:verify-postgres": "node --disable-warning=DEP0205 --import tsx scripts/verify-migration.ts",
     "smoke:production": "node --disable-warning=DEP0205 --import tsx scripts/smoke-production.ts",
     "ingest": "node --disable-warning=DEP0205 --import tsx scripts/ingest-catalog.ts",

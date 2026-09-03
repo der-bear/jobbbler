@@ -65,8 +65,19 @@ function parseCatalog(value: unknown): DemoCatalog {
   return { version: 1, organizations, jobs };
 }
 
-export async function seedDemoCatalog(
-  databasePath: string,
+/** The two repositories the demo catalog writes to; any storage adapter provides them. */
+export interface CatalogSeedTarget {
+  readonly organizations: { upsert(record: OrganizationRecord): Promise<unknown> };
+  readonly jobs: { upsert(job: Job): Promise<unknown> };
+}
+
+/**
+ * Upserts the fixture catalog into an already-open storage adapter by id, so a
+ * later run refreshes organizations and jobs in place and leaves every other
+ * table alone. The caller owns the adapter's lifetime.
+ */
+export async function seedDemoCatalogInto(
+  storage: CatalogSeedTarget,
   fixturePath: string,
 ): Promise<SeedCatalogResult> {
   const source = await readFile(fixturePath, "utf8");
@@ -79,20 +90,27 @@ export async function seedDemoCatalog(
     }
   }
 
+  for (const organization of catalog.organizations) {
+    const record: OrganizationRecord = {
+      ...organization,
+      createdAt: seededAt,
+      updatedAt: seededAt,
+    };
+    await storage.organizations.upsert(record);
+  }
+  for (const job of catalog.jobs) await storage.jobs.upsert(job);
+
+  return { organizations: catalog.organizations.length, jobs: catalog.jobs.length };
+}
+
+export async function seedDemoCatalog(
+  databasePath: string,
+  fixturePath: string,
+): Promise<SeedCatalogResult> {
   const storage = createSqliteStorage(databasePath);
   try {
-    for (const organization of catalog.organizations) {
-      const record: OrganizationRecord = {
-        ...organization,
-        createdAt: seededAt,
-        updatedAt: seededAt,
-      };
-      await storage.organizations.upsert(record);
-    }
-    for (const job of catalog.jobs) await storage.jobs.upsert(job);
+    return await seedDemoCatalogInto(storage, fixturePath);
   } finally {
     storage.close();
   }
-
-  return { organizations: catalog.organizations.length, jobs: catalog.jobs.length };
 }
