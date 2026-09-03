@@ -205,13 +205,37 @@
   background: var(--jb-hover-surface);
 }
 
+/* Every action on this page is the same grey secondary button as on /saved. */
 .jobActions a,
 .comparisonActions a {
   margin-block-start: 0;
+  border: var(--jb-stroke-control) solid var(--jb-border-control);
+  border-radius: var(--radius-sm);
+  background: var(--jb-veil-control);
+  color: var(--color-ink);
+  padding-inline: 16px;
+  font-size: var(--jb-type-ui);
+  font-weight: 620;
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    background var(--motion-fast) var(--ease-standard);
+  backdrop-filter: var(--jb-glass-blur-control);
+  -webkit-backdrop-filter: var(--jb-glass-blur-control);
+}
+
+.jobActions a:hover,
+.comparisonActions a:hover {
+  border-color: var(--jb-hover-line);
+  background: var(--jb-hover-surface);
+  color: var(--color-ink);
 }
 
 .jobActions .removeLink {
   color: var(--color-ink-muted);
+}
+
+.comparisonTable tfoot td {
+  padding-block: 18px 22px;
 }
 
 .stateActions {

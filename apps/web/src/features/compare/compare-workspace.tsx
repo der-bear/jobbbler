@@ -52,30 +52,46 @@ function errorMessage(error: unknown): string {
   return "The comparison could not be loaded. Please retry.";
 }
 
-function JobHeading({
+function JobActions({
   criteriaSearch,
   job,
   removeHref,
 }: Readonly<{ criteriaSearch: string; job: Job; removeHref: string }>) {
   return (
+    <div className={styles["jobActions"]}>
+      <Link aria-label={`Open ${job.title} role`} href={comparisonJobHref(job.id, criteriaSearch)}>
+        Open role
+      </Link>
+      <Link
+        aria-label={`Remove ${job.title} from comparison`}
+        className={styles["removeLink"]}
+        href={removeHref}
+      >
+        Remove
+      </Link>
+    </div>
+  );
+}
+
+/*
+ * On the table the heading is only the name: the two actions sit in a footer
+ * row under each column, so they line up across roles whether or not a title
+ * wraps, and the eye reads facts before choices. The mobile stack has no
+ * columns to line up, so there they stay with the heading.
+ */
+function JobHeading({
+  criteriaSearch,
+  job,
+  removeHref,
+  withActions = false,
+}: Readonly<{ criteriaSearch: string; job: Job; removeHref: string; withActions?: boolean }>) {
+  return (
     <div className={styles["jobHeading"]}>
       <h2>{titleWithoutEmploymentSuffix(job.title, job.employmentType)}</h2>
       <p>{job.organizationName}</p>
-      <div className={styles["jobActions"]}>
-        <Link
-          aria-label={`Open ${job.title} role`}
-          href={comparisonJobHref(job.id, criteriaSearch)}
-        >
-          Open role
-        </Link>
-        <Link
-          aria-label={`Remove ${job.title} from comparison`}
-          className={styles["removeLink"]}
-          href={removeHref}
-        >
-          Remove
-        </Link>
-      </div>
+      {withActions ? (
+        <JobActions criteriaSearch={criteriaSearch} job={job} removeHref={removeHref} />
+      ) : null}
     </div>
   );
 }
@@ -258,6 +274,25 @@ function ComparisonTable({
             </tr>
           ) : null}
         </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row">
+              <span className="sr-only">Actions</span>
+            </th>
+            {result.jobs.map(({ job }) => (
+              <td key={job.id}>
+                <JobActions
+                  criteriaSearch={criteriaSearch}
+                  job={job}
+                  removeHref={comparePageHref(
+                    removeComparedJob(selectedJobIds, job.id),
+                    criteriaSearch,
+                  )}
+                />
+              </td>
+            ))}
+          </tr>
+        </tfoot>
       </table>
     </div>
   );
@@ -296,6 +331,7 @@ function MobileComparison({
                 removeComparedJob(selectedJobIds, job.id),
                 criteriaSearch,
               )}
+              withActions
             />
             <dl>
               {visible.eligibility ? (
