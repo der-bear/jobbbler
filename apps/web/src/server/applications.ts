@@ -251,13 +251,43 @@ async function requireExactActiveGrant(
   return grant;
 }
 
+/*
+ * Fills a still-untouched application with the answers this person already gave
+ * on another one, so a second application asks only for what belongs to that
+ * role. It runs on the first read of an empty draft — where both the page and
+ * the agent look before anyone is asked anything.
+ *
+ * Guarded to an untouched draft at version 0: nothing can be under review yet,
+ * so this cannot move a frozen payload out from under a pending decision. The
+ * values stay inside the person's own workspace; disclosing them to an employer
+ * still needs the review and its decision.
+ */
+async function hydrateReusableAnswers(
+  storage: Storage,
+  draft: ApplicationDraft,
+  now: string,
+): Promise<ApplicationDraft> {
+  if (draft.version !== 0 || draft.answers.length > 0) return draft;
+  const previous = await storage.applications.listByOwner(draft.ownerId);
+  const answers = carriedOverAnswers(previous.filter((other) => other.id !== draft.id));
+  if (answers.length === 0) return draft;
+  return storage.applications.update(
+    { ...draft, answers: [...answers], updatedAt: now },
+    draft.version,
+  );
+}
+
 export async function buildApplicationWorkspace(
   storage: Storage,
   ownerId: string,
   draftId: string,
   now: string,
 ): Promise<ApplicationWorkspace> {
-  const draft = await requireOwnedDraft(storage, ownerId, draftId);
+  const draft = await hydrateReusableAnswers(
+    storage,
+    await requireOwnedDraft(storage, ownerId, draftId),
+    now,
+  );
   const job = await requireJob(storage, draft.jobId);
   const [review, receipt, delegations, grants] = await Promise.all([
     storage.applications.getLatestReview(draft.id, ownerId),
