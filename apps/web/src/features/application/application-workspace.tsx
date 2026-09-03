@@ -29,8 +29,11 @@ import {
 } from "./application-view";
 import {
   clearApplicationAgentCredential,
+  clearApplicationSubmissionReview,
   restoreApplicationAgentCredential,
+  restoreApplicationSubmissionReview,
   storeApplicationAgentCredential,
+  storeApplicationSubmissionReview,
   type ApplicationAgentCredentialStorage,
 } from "./application-agent-credential-vault";
 import { persistApplicationField } from "./application-field-persistence";
@@ -244,6 +247,22 @@ function DraftApplicationWorkspace({
         ? null
         : restoreApplicationAgentCredential(storage, draftId, applicationClock.current()),
     );
+    /*
+     * A review the person left to look at this page comes back with it, so the
+     * agent is not made to ask for the same approval twice. Only identifiers
+     * travel; the answers are the server's, and it still checks them.
+     */
+    const envelope =
+      storage === null
+        ? null
+        : restoreApplicationSubmissionReview(storage, draftId, applicationClock.current());
+    if (envelope !== null) {
+      setSubmissionReview({
+        ...envelope,
+        fields: [],
+        href: `/apply/${encodeURIComponent(draftId)}`,
+      });
+    }
     setCredentialVaultReady(true);
   }, [applicationClock, credentialVaultReady, draftId, state.kind]);
 
@@ -456,11 +475,30 @@ function DraftApplicationWorkspace({
           ...serverRequest,
           href: `/apply/${encodeURIComponent(workspace.draft.id)}`,
         };
+        const storage = applicationCredentialStorage();
+        if (storage !== null) {
+          storeApplicationSubmissionReview(
+            storage,
+            draftId,
+            {
+              id: serverRequest.id,
+              draftId,
+              draftVersion: serverRequest.draftVersion,
+              recipient: serverRequest.recipient,
+              purpose: serverRequest.purpose,
+              noticeVersion: serverRequest.noticeVersion,
+              expiresAt: serverRequest.expiresAt,
+            },
+            applicationClock.current(),
+          );
+        }
         setSubmissionReview(requested);
         return requested;
       },
       async decideSubmission(expectedVersion, decision, { signal, channel }) {
         const currentCredential = requireCredential();
+        const vault = applicationCredentialStorage();
+        if (vault !== null) clearApplicationSubmissionReview(vault, draftId);
         if (workspace.draft.version !== expectedVersion) {
           throw new ApiClientError({
             code: "CONFLICT",
