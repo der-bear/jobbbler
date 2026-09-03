@@ -271,10 +271,19 @@ async function hydrateReusableAnswers(
   const previous = await storage.applications.listByOwner(draft.ownerId);
   const answers = carriedOverAnswers(previous.filter((other) => other.id !== draft.id));
   if (answers.length === 0) return draft;
-  return storage.applications.update(
-    { ...draft, answers: [...answers], updatedAt: now },
-    draft.version,
-  );
+  try {
+    return await storage.applications.update(
+      { ...draft, answers: [...answers], updatedAt: now },
+      draft.version,
+    );
+  } catch {
+    /*
+     * The page and the agent often read one fresh application at the same
+     * moment. Whoever loses that race reads back the draft the winner just
+     * filled instead of failing on a version that moved underneath it.
+     */
+    return requireOwnedDraft(storage, draft.ownerId, draft.id);
+  }
 }
 
 export async function buildApplicationWorkspace(
