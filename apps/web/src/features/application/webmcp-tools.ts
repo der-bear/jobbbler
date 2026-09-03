@@ -366,6 +366,7 @@ function assistanceTool(
             "Preparation is allowed for this application. Nothing is sent until the person approves the exact application.",
           data: {
             draftId: result.state.draftId,
+            requestId: request.id,
             agentAuthorityStatus: result.state.agentAuthorityStatus,
             expiresAt: request.expiresAt,
             nextTool: "propose_application_updates",

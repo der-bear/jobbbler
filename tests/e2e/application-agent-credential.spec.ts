@@ -118,7 +118,7 @@ test("keeps a draft credential through route changes and one same-tab reload", a
 
   const requested = (await callTool(page, "request_application_assistance", { draftId })) as {
     status: string;
-    data: { nextTool: string };
+    data: { requestId: string; nextTool: string };
   };
   expect(requested.status).toBe("completed");
   expect(requested.data.nextTool).toBe("propose_application_updates");
@@ -154,7 +154,7 @@ test("keeps a draft credential through route changes and one same-tab reload", a
 
   const withdrawn = (await callTool(page, "decide_application_assistance", {
     draftId,
-    requestId: requested.requestId,
+    requestId: requested.data.requestId,
     decision: "withdraw",
   })) as { status: string };
   expect(withdrawn.status).toBe("completed");
