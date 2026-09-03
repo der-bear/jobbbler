@@ -74,8 +74,7 @@ const requirements = applicationFieldDefinitionSchema.array().parse([
   {
     fieldKey: "work_authorization",
     label: "Work authorization",
-    description:
-      "Optional. Include it only when the person has already stated it; never ask for it to complete an application.",
+    description: "Optional. Add it only if you want the employer to know now.",
     input: "select",
     required: false,
     sensitive: true,
