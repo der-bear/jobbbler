@@ -514,7 +514,7 @@ export function createApplicationRouteDependencies(
           id: createEntityId("confirmation"),
           ownerId,
           now,
-          expiresAt: new Date(Date.parse(now) + 5 * 60_000).toISOString(),
+          expiresAt: new Date(Date.parse(now) + 15 * 60_000).toISOString(),
         });
         await storage.applications.insertConfirmation({ ...confirmation, confirmationHash });
         return { id: confirmation.id, expiresAt: confirmation.expiresAt };

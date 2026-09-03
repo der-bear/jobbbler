@@ -212,7 +212,7 @@ function createController(
           applicationAgentSessionResultSchema,
           {
             method: "POST",
-            body: { requestedTtlSeconds: 900 },
+            body: { requestedTtlSeconds: 1_800 },
             signal,
           },
         );
@@ -235,7 +235,7 @@ function createController(
             operations,
             purpose:
               "Prepare this application with the candidate using only the current stage's named operations.",
-            requestedTtlSeconds: 900,
+            requestedTtlSeconds: 1_800,
           },
           headers: { authorization: `Bearer ${currentCredential.token}` },
           signal,

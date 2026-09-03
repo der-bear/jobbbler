@@ -138,7 +138,7 @@ describe("job-detail application entry", () => {
         "Withdraw active consent from the same agent workflow when needed",
       ],
       submission:
-        "Jobbbler submits only the unchanged internal-demo payload after an explicit request-bound decision in the external agent client; approval is single-use and expires in five minutes.",
+        "Jobbbler submits only the unchanged internal-demo payload after an explicit request-bound decision in the external agent client; approval is single-use and expires in fifteen minutes.",
       employerSite: { required: false },
       withdrawalSupported: true,
       statusSyncSupported: false,

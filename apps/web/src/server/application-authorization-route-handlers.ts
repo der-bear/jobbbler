@@ -836,7 +836,7 @@ export async function handleCreateSubmissionReviewRequest(
       recipient: presentation.recipientName,
       purpose: presentation.purpose,
       noticeVersion: presentation.noticeVersion,
-      expiresAt: new Date(Date.parse(now) + 5 * 60_000).toISOString(),
+      expiresAt: new Date(Date.parse(now) + 15 * 60_000).toISOString(),
       ownerId,
       recipientId: presentation.recipientId,
       categories: presentation.categories,
