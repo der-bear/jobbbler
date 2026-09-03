@@ -169,7 +169,9 @@ simulated chat inside Jobbbler:
 1. The user asks for a job outcome in the agent client.
 2. The agent opens Jobbbler, discovers the same 29 focused tools on any page,
    and may ask `plan_job_workflow` for recommended safe steps when useful.
-3. It invokes `search_jobs`; the real URL, filters, and results update.
+3. It invokes `search_jobs` headlessly for efficient autonomous work. When the
+   user asks to watch the search, the agent passes `presentation=follow` and
+   the real URL, filters, and results update.
 4. Navigation preserves the entire tool set; role and application actions
    validate their explicit IDs and workflow state when invoked.
 5. The agent prepares an application and requests exact data permission. The

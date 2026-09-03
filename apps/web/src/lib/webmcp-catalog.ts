@@ -35,7 +35,8 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
       },
       {
         name: "search_jobs",
-        purpose: "Search the public technology-job catalog and synchronize the visible results.",
+        purpose:
+          "Search the public technology-job catalog headlessly, or synchronize the visible results when follow mode is requested.",
         readOnly: false,
       },
       {

@@ -13,9 +13,10 @@ reviewed application.
    and product guide require no paid account.
 2. In the ChatGPT Desktop built-in browser with a WebMCP-capable model, inspect
    Site tools. Jobbbler registers the same 29 tools on every route.
-3. Ask the agent to find and compare roles. `search_jobs` synchronizes the
-   visible URL, filters, results, and Agent activity while compact read tools
-   return source-backed evidence without unnecessary page changes.
+3. Ask the agent to find and compare roles. `search_jobs` defaults to a compact
+   headless result so the agent can work without moving the page. When the
+   person asks to watch, `presentation=follow` synchronizes the visible URL,
+   filters, results, and Agent activity.
 4. Ask it to keep watching the search or prepare an application. Jobbbler
    works autonomously until an email, personal-data permission, or final
    submission decision belongs to the person; then the agent client presents
@@ -51,13 +52,14 @@ proof.
 
 ## Verified release
 
-The 2 September 2026 release candidate passed:
+The 3 September 2026 release candidate passed:
 
-- formatting, lint, all workspace typechecks, 991 deterministic tests, and the
+- formatting, lint, all workspace typechecks, 1,018 deterministic tests, and the
   production web and worker builds through `pnpm verify`;
-- 50 browser journeys covering search, pagination, location autocomplete,
+- 51 browser journeys covering search, pagination, location autocomplete,
   saved-search schedules, the complete agent-prepared application path,
-  keyboard use, responsive layouts, and reduced motion;
+  a keyboard-scrollable three-role comparison, responsive layouts, and reduced
+  motion;
 - 103 PostgreSQL repository, concurrency, migration, and RLS contract tests in
   a disposable database;
 - production readiness with 19 PostgreSQL migrations, 30 organizations, and

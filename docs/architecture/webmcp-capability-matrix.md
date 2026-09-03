@@ -47,7 +47,9 @@ application authority.
 
 ## Agent-native monitoring sequence
 
-1. `search_jobs` finds the roles worth monitoring and updates the visible portal.
+1. `search_jobs` finds the roles worth monitoring without changing the page by
+   default. When the person asks to watch, `presentation=follow` updates the
+   visible portal.
 2. `get_search_state` confirms the exact active criteria.
 3. `request_search_alert` saves the canonical criteria and returns one expiring
    review with masked delivery, recurrence, purpose, retention, and withdrawal

@@ -39,7 +39,9 @@ Treat a suspected token, email, ciphertext, or provider-key exposure as an incid
 
 ## Scope notes
 
-- This repository does not publish a public production URL or provider credentials.
+- The public demonstration is hosted at [jobbbler.com](https://jobbbler.com),
+  while provider credentials and private deployment configuration remain
+  server-only.
 - It does not claim a complete WebSocket transport: polling remains authoritative and Supabase Realtime is an optional accelerator.
 - Passwordless recovery uses enumeration-safe start responses, short-lived single-use challenges, atomic session rotation, and encrypted verified endpoints.
 - Private-data deletion is human-only, requires two exact confirmations, atomically removes owner-owned private rows and sessions, and retains only non-identifying integrity tombstones.

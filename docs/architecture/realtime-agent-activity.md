@@ -100,7 +100,10 @@ Enable the accelerator only with all of the following:
 ## UX behavior
 
 - A running WebMCP call appears immediately as local pending activity and is replaced by the correlated committed event.
-- Accepted search changes update the visible URL, filters, result count, and result status through the same client bridge used by the conventional surface.
+- Headless searches commit a concise activity result without moving the page.
+  Searches explicitly run with `presentation=follow` update the visible URL,
+  filters, result count, and result status through the same client bridge used
+  by the conventional surface.
 - Authorization and consent requests remain visible until the human resolves them; they never auto-dismiss as success.
 - Revoke and undo actions show their scope and consequence before execution.
 - Screen readers receive concise result and activity announcements from validated state changes, not from transport retries.
