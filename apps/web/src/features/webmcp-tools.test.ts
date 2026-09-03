@@ -471,6 +471,61 @@ describe("route-scoped WebMCP tool manifests", () => {
     expectBoundedJson(result);
   });
 
+  it("stays within the result bound when every role carries long labels and two evidence lines", async () => {
+    // Production regression: a location or salary filter adds a second evidence line per role,
+    // which together with long titles pushed the compact page past 1,500 bytes and failed the call.
+    const evidence = [
+      "Search terms match the job content.",
+      "Location matches the requested region.",
+    ];
+    const wideSearch: SearchJobsResult = {
+      ...searchResult,
+      criteria: { ...searchResult.criteria, locations: ["Berlin"], limit: 3 },
+      jobs: [
+        {
+          ...firstJob,
+          title: "Principal Engineer, Climate Data Infrastructure Platforms",
+          organizationName: "Wrenfield Data Laboratories International",
+          matchScore: 59,
+          matchEvidence: evidence,
+        },
+        {
+          ...secondJob,
+          title: "Senior Software Engineer, Executive Reporting and Analytics",
+          organizationName: "Thistledown Software Collective",
+          matchScore: 59,
+          matchEvidence: evidence,
+        },
+        {
+          ...thirdJob,
+          title: "Staff Engineer, Data Platform Architecture and Governance",
+          organizationName: "Northstar Cloudworks Engineering",
+          matchScore: 59,
+          matchEvidence: evidence,
+        },
+      ],
+      total: 25,
+      nextCursor: "cursor_" + "x".repeat(152),
+    };
+    const manifests = createSearchToolManifests({
+      searchJobs: async () => wideSearch,
+      getSearchState: () => null,
+      onSearchCommitted: () => undefined,
+      onNavigate: () => undefined,
+    }) as readonly ToolManifest[];
+
+    const result = await tool(manifests, "search_jobs").execute(
+      { query: "platform", locations: ["Berlin"] },
+      { signal: new AbortController().signal },
+    );
+
+    expect(result).toMatchObject({
+      status: "completed",
+      data: { jobs: [{ id: firstJobId }, { id: secondJobId }, { id: thirdJobId }] },
+    });
+    expectBoundedJson(result);
+  });
+
   it("keeps every backend match reachable across its three-result pages", async () => {
     const jobs = [firstJob, secondJob, thirdJob, fourthJob].map((job, index) => ({
       ...job,

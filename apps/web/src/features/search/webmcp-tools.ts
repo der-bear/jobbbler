@@ -21,6 +21,7 @@ import { searchInputToSearchParams } from "@/lib/search-url";
 import { locationForSearch } from "@/lib/job-format";
 import type { WebMcpNavigate } from "@/lib/webmcp-navigation";
 import {
+  MAX_WEBMCP_RESULT_BYTES,
   completedWebMcpResult,
   safeWebMcpErrorResult,
   type CompletedWebMcpResult,
@@ -336,6 +337,16 @@ function reusableCriteria(criteria: JobSearchCriteria): JsonValue {
   };
 }
 
+/*
+ * Three roles, one cursor, and the evidence for each must fit the routine
+ * result bound. Two evidence lines per role plus long titles pushed real
+ * production searches with a location or salary filter to 1,513–1,524 bytes,
+ * so the agent got INTERNAL instead of results. The compact shape now keeps
+ * one evidence line per role and shorter labels, and it is measured against the
+ * bound before it is returned: if a page still does not fit, evidence goes
+ * first and a third role second, so the agent always gets a usable page.
+ */
+const searchResultBudget = MAX_WEBMCP_RESULT_BYTES - 120; // status + summary envelope
 function compactSearchResult(
   result: SearchJobsResult,
   presentation: "headless" | "follow",
@@ -344,32 +355,47 @@ function compactSearchResult(
     result.total === 0 && result.criteria.locations.length > 0
       ? "No role matched the requested location and other filters. Keep the place literal: check its spelling, or ask before broadening or removing it."
       : null;
-  return {
+  const compactJob = (job: SearchJobsResult["jobs"][number], withEvidence: boolean) => {
+    const matchEvidence = withEvidence
+      ? (job.matchEvidence ?? []).slice(0, 1).map((value) => short(value, 56))
+      : [];
+    return {
+      id: job.id,
+      title: short(job.title, 64),
+      organization: short(job.organizationName, 24),
+      location: short(
+        locationForSearch(job.locations, result.criteria.locations) ?? "Location not stated",
+        20,
+      ),
+      workModel: job.workModel,
+      seniority: job.seniority,
+      salaryMinimum: job.salary?.minimum ?? null,
+      salaryMaximum: job.salary?.maximum ?? null,
+      salaryCurrency: job.salary?.currency ?? null,
+      salaryPeriod: job.salary?.period ?? null,
+      ...(matchEvidence.length === 0 ? {} : { matchEvidence }),
+    };
+  };
+  const build = (count: number, withEvidence: boolean): JsonValue => ({
     presentation,
     total: result.total,
-    jobs: result.jobs.slice(0, 3).map((job) => {
-      const matchEvidence = (job.matchEvidence ?? []).slice(0, 2).map((value) => short(value, 72));
-      return {
-        id: job.id,
-        title: short(job.title, 80),
-        organization: short(job.organizationName, 32),
-        location: short(
-          locationForSearch(job.locations, result.criteria.locations) ?? "Location not stated",
-          24,
-        ),
-        workModel: job.workModel,
-        seniority: job.seniority,
-        salaryMinimum: job.salary?.minimum ?? null,
-        salaryMaximum: job.salary?.maximum ?? null,
-        salaryCurrency: job.salary?.currency ?? null,
-        salaryPeriod: job.salary?.period ?? null,
-        ...(matchEvidence.length === 0 ? {} : { matchEvidence }),
-      };
-    }),
+    jobs: result.jobs.slice(0, count).map((job) => compactJob(job, withEvidence)),
     nextCursor: result.nextCursor,
     hasMore: result.nextCursor !== null,
     ...(locationGuidance === null ? {} : { locationGuidance }),
-  };
+  });
+  const encoder = new TextEncoder();
+  const fits = (value: JsonValue) =>
+    encoder.encode(JSON.stringify(value)).byteLength <= searchResultBudget;
+  for (const [count, withEvidence] of [
+    [3, true],
+    [3, false],
+    [2, false],
+  ] as const) {
+    const candidate = build(count, withEvidence);
+    if (fits(candidate)) return candidate;
+  }
+  return build(1, false);
 }
 
 export function createSearchToolManifests(
