@@ -186,30 +186,32 @@
   display: flex;
   align-items: center;
   justify-content: end;
-  gap: 10px;
+  gap: 14px;
 }
 
+/*
+ * Removing is the rare thing a person does here, so it stays a quiet word next
+ * to the button that opens the application. It carries no edge of its own: the
+ * row already has one control with a border, and a second bordered box beside
+ * it made the destructive action look like the main one.
+ */
 .remove {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   min-block-size: 40px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border: none;
   background: none;
   color: var(--color-ink-subtle);
-  padding: 8px 10px;
+  padding: 8px 2px;
   font: inherit;
   font-size: var(--jb-type-label);
-  font-weight: 650;
+  font-weight: 500;
   cursor: pointer;
-  transition:
-    color var(--motion-fast) var(--ease-standard),
-    border-color var(--motion-fast) var(--ease-standard);
+  transition: color var(--motion-fast) var(--ease-standard);
 }
 
 .remove:hover:not(:disabled) {
-  border-color: var(--jb-hover-line);
   color: var(--color-danger);
 }
 
