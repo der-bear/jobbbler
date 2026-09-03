@@ -806,10 +806,10 @@
   align-items: center;
   gap: 6px;
   min-block-size: 44px;
-  /* Secondary rank: the last button that still drew itself as an outline. */
-  border: var(--jb-stroke-control) solid var(--jb-border-control);
+  /* Secondary rank: soft fill, the edge only under the pointer. */
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: var(--jb-veil-control);
+  background: var(--jb-veil-control-subtle);
   padding-inline: 16px;
   color: var(--color-ink);
   font-size: var(--jb-type-ui);

@@ -184,9 +184,9 @@
   justify-content: center;
   gap: 6px;
   margin-block-start: 14px;
-  border: var(--jb-stroke-control) solid var(--jb-border-control);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: var(--jb-veil-control);
+  background: var(--jb-veil-control-subtle);
   color: var(--color-ink);
   padding-inline: 16px;
   font-size: var(--jb-type-ui);
@@ -205,13 +205,16 @@
   background: var(--jb-hover-surface);
 }
 
-/* Every action on this page is the same grey secondary button as on /saved. */
+/*
+ * Every action on this page is the same secondary button as elsewhere: a soft
+ * fill and no edge of its own; the edge appears under the pointer.
+ */
 .jobActions a,
 .comparisonActions a {
   margin-block-start: 0;
-  border: var(--jb-stroke-control) solid var(--jb-border-control);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: var(--jb-veil-control);
+  background: var(--jb-veil-control-subtle);
   color: var(--color-ink);
   padding-inline: 16px;
   font-size: var(--jb-type-ui);
@@ -245,9 +248,9 @@
 .stateActions button {
   min-block-size: 44px;
   /* Secondary rank — this was the last outline control left on the site. */
-  border: var(--jb-stroke-control) solid var(--jb-border-control);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  background: var(--jb-veil-control);
+  background: var(--jb-veil-control-subtle);
   color: var(--color-ink);
   padding-inline: 14px;
   font: inherit;
