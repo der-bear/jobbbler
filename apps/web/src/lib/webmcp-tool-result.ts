@@ -5,6 +5,7 @@ import {
   type ApiErrorCode,
   type WebMcpSafeErrorReason,
 } from "@jobbbler/contracts";
+import { DomainError } from "@jobbbler/core-domain";
 import type { JsonValue } from "@jobbbler/webmcp";
 import { ApiClientError } from "./query-client";
 
@@ -199,6 +200,19 @@ export function safeWebMcpErrorResult(
       requestId: error.requestId,
       retryable: error.retryable,
       ...(reason.success ? { reason: reason.data } : {}),
+    });
+  }
+
+  /*
+   * Domain rules that reject an input in the page itself — a remote-or-location
+   * search with no location, say — used to fall through to the generic failure
+   * below, and the agent was left guessing. Their message names the fix.
+   */
+  if (error instanceof DomainError) {
+    return failedWebMcpResult({
+      code: error.code,
+      message: error.message.slice(0, 500),
+      retryable: error.retryable,
     });
   }
 

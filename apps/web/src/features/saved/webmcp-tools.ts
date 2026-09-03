@@ -81,8 +81,15 @@ const scheduleStateBranch = (action: "pause" | "resume") =>
         description: "The scheduleId returned by get_saved_alerts for this alert.",
         pattern: "^schedule_[0-9a-f-]{36}$",
       },
+      savedSearchId: {
+        type: "string",
+        description:
+          "Alternatively, the savedSearchId returned by save_job_search or decide_search_alert; its alert is resolved for you.",
+        pattern: "^saved_[0-9a-f-]{36}$",
+      },
     },
-    required: ["action", "scheduleId"],
+    required: ["action"],
+    anyOf: [{ required: ["scheduleId"] }, { required: ["savedSearchId"] }],
   }) as const;
 
 const stateInputSchema = {
@@ -115,9 +122,25 @@ const stateInputSchema = {
   ],
 } as const satisfies JsonSchema;
 
+const scheduleTarget = {
+  scheduleId: entityIdSchema.optional(),
+  savedSearchId: entityIdSchema.optional(),
+};
+const requireOneTarget = (
+  value: { scheduleId?: string; savedSearchId?: string },
+  context: z.RefinementCtx,
+) => {
+  if (value.scheduleId === undefined && value.savedSearchId === undefined) {
+    context.addIssue({
+      code: "custom",
+      path: ["scheduleId"],
+      message: "Pass the scheduleId from get_saved_alerts or the savedSearchId of the search.",
+    });
+  }
+};
 const stateInput = z.discriminatedUnion("action", [
-  z.strictObject({ action: z.literal("pause"), scheduleId: entityIdSchema }),
-  z.strictObject({ action: z.literal("resume"), scheduleId: entityIdSchema }),
+  z.strictObject({ action: z.literal("pause"), ...scheduleTarget }).superRefine(requireOneTarget),
+  z.strictObject({ action: z.literal("resume"), ...scheduleTarget }).superRefine(requireOneTarget),
   z.strictObject({
     action: z.literal("delete"),
     savedSearchId: entityIdSchema,
@@ -672,7 +695,7 @@ export function createSavedToolManifests(
     name: "set_job_alert_state",
     purpose: "Pause, resume, or permanently delete one saved job search and its email updates.",
     description:
-      "Use a scheduleId from get_saved_alerts to pause or resume email updates, or an exact savedSearchId and confirmation after the person clearly requests permanent deletion, and return the resulting state or deletion receipt; an ambiguous stop request means pause, and more than one possible match requires a question.",
+      "Pause or resume email updates with the scheduleId from get_saved_alerts or the savedSearchId of the search; delete permanently only with the exact savedSearchId and confirmation after the person clearly requests it, and return the resulting state or deletion receipt; an ambiguous stop request means pause, and more than one possible match requires a question.",
     inputSchema: stateInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -710,13 +733,20 @@ export function createSavedToolManifests(
           });
         }
         const schedules = await dependencies.listSchedules({ signal });
-        const current = schedules.find(({ id }) => id === parsed.scheduleId);
+        // An agent usually holds the savedSearchId it just saved, not the schedule's id.
+        const current =
+          parsed.scheduleId !== undefined
+            ? schedules.find(({ id }) => id === parsed.scheduleId)
+            : schedules.find(({ savedSearchId }) => savedSearchId === parsed.savedSearchId);
         if (current === undefined) {
           throw new z.ZodError([
             {
               code: "custom",
-              path: ["scheduleId"],
-              message: "This job alert was not found.",
+              path: [parsed.scheduleId !== undefined ? "scheduleId" : "savedSearchId"],
+              message:
+                parsed.scheduleId !== undefined
+                  ? "This job alert was not found."
+                  : "This saved search has no email updates yet; request_search_alert turns them on.",
             },
           ]);
         }

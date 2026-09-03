@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { toolExecutionResultSchemaFor } from "@jobbbler/contracts";
 import { z } from "zod";
 
+import { DomainError } from "@jobbbler/core-domain";
+
 import { ApiClientError } from "./query-client";
 
 import {
@@ -85,5 +87,27 @@ describe("WebMCP tool results", () => {
     expect(privateReason).toMatchObject({ status: "failed", error: { code: "INTERNAL" } });
     expect(JSON.stringify(privateReason)).not.toContain("reason");
     expect(JSON.stringify(privateReason)).not.toContain("private");
+  });
+});
+
+describe("safeWebMcpErrorResult with domain rules", () => {
+  it("passes a domain rule's own message through instead of the generic failure", () => {
+    const error = new DomainError({
+      code: "VALIDATION",
+      message:
+        "remoteOrLocations requires at least one city, country, or region; use workModels=['remote'] for remote-only searches.",
+    });
+
+    const result = safeWebMcpErrorResult(
+      error,
+      new AbortController().signal,
+      "Criteria are invalid.",
+    );
+
+    expect(result).toMatchObject({
+      status: "failed",
+      error: { code: "VALIDATION", retryable: false },
+    });
+    expect(result.error.message).toContain("remoteOrLocations requires at least one city");
   });
 });
