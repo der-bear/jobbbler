@@ -789,10 +789,20 @@
   }
 }
 
+/*
+ * Cards in one row share a height, so the summary has to fill the card, not
+ * just its own minimum: otherwise a card beside a two-line title kept its
+ * salary and date floating mid-card while its neighbour's sat at the bottom.
+ */
+.resultList[data-layout="cards"] .jobResult {
+  display: grid;
+}
+
 .resultList[data-layout="cards"] .jobSummary {
   grid-template-columns: 1fr;
   align-content: space-between;
   gap: 14px;
+  block-size: 100%;
   min-block-size: 156px;
   padding: 16px;
 }
