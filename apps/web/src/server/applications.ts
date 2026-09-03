@@ -61,6 +61,27 @@ const submitBodySchema = submitApplicationInputSchema.omit({ draftId: true });
 const requiredFieldKeys = applicationPolicy.requirements
   .filter(({ required }) => required)
   .map(({ fieldKey }) => fieldKey);
+const reusableFieldKeys = applicationPolicy.requirements
+  .filter(({ fieldKey }) => fieldKey !== "cover_letter")
+  .map(({ fieldKey }) => fieldKey);
+
+/**
+ * Carries the person's own reusable answers into a new application so a second
+ * application asks only for what is specific to that role. Values stay inside the
+ * owner's workspace: every disclosure still needs the review and its decision.
+ */
+function carriedOverAnswers(
+  previous: readonly ApplicationDraft[],
+): readonly ApplicationDraft["answers"][number][] {
+  const carried = new Map<string, ApplicationDraft["answers"][number]>();
+  for (const draft of previous) {
+    for (const answer of draft.answers) {
+      if (!reusableFieldKeys.includes(answer.fieldKey) || carried.has(answer.fieldKey)) continue;
+      carried.set(answer.fieldKey, { ...answer, acceptedByHuman: false });
+    }
+  }
+  return [...carried.values()];
+}
 const managedApplicationSubmission = createManagedDemoApplicationSubmissionAdapter();
 
 function notFound(name: string): DomainError {
@@ -341,6 +362,11 @@ export function createApplicationRouteDependencies(
         return applicationListSchema.parse(summaries.filter((summary) => summary !== null));
       },
 
+      async discard(ownerId, draftId) {
+        const removed = await storage.applications.discardOwned(draftId, ownerId);
+        if (!removed) throw notFound("Application draft");
+      },
+
       async start(ownerId, raw, now) {
         const { jobId } = startApplicationInputSchema.parse(raw);
         const job = await requireJob(storage, jobId);
@@ -360,8 +386,9 @@ export function createApplicationRouteDependencies(
           requiredFieldKeys,
           now,
         });
+        const answers = carriedOverAnswers(await storage.applications.listByOwner(ownerId));
         return {
-          draft: await storage.applications.insert(persistableDraft(draft)),
+          draft: await storage.applications.insert(persistableDraft({ ...draft, answers })),
           disposition: "created" as const,
         };
       },

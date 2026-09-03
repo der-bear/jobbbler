@@ -1547,6 +1547,33 @@ export function storageContractSuite(name: string, createStorage: StorageFactory
       ]);
     });
 
+    it("removes one never-submitted draft only for its owner", async () => {
+      const current = await create();
+      const otherOwner = { ...owner, id: "owner_550e8400-e29b-41d4-a716-446655440001" };
+      await current.owners.insert(owner);
+      await current.owners.insert(otherOwner);
+      await current.organizations.upsert(organization);
+      await current.jobs.upsert(job);
+
+      const draft: ApplicationDraft = {
+        id: "application_550e8400-e29b-41d4-a716-446655440003",
+        ownerId: owner.id,
+        jobId: job.id,
+        state: "draft",
+        version: 0,
+        answers: [],
+        createdAt: now,
+        updatedAt: now,
+      };
+      await current.applications.insert(draft);
+
+      await expect(current.applications.discardOwned(draft.id, otherOwner.id)).resolves.toBe(false);
+      await expect(current.applications.getById(draft.id)).resolves.toEqual(draft);
+      await expect(current.applications.discardOwned(draft.id, owner.id)).resolves.toBe(true);
+      await expect(current.applications.getById(draft.id)).resolves.toBeNull();
+      await expect(current.applications.discardOwned(draft.id, owner.id)).resolves.toBe(false);
+    });
+
     it("lists schedules only for their owner in most-recent-first order", async () => {
       const current = await create();
       await current.owners.insert(owner);

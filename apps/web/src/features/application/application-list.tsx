@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowRightIcon, FileTextIcon } from "@phosphor-icons/react";
+import { ArrowRightIcon, FileTextIcon, TrashIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { applicationListSchema, type ApplicationListItem } from "@jobbbler/contracts";
+import { z } from "zod";
 
 import { OwnerPrivacyControls } from "@/features/saved/owner-privacy-controls";
 import { titleWithoutEmploymentSuffix } from "@/lib/job-format";
@@ -75,10 +76,26 @@ function updatedLabel(value: string): string {
   );
 }
 
+/*
+ * Only work that was never sent can be removed. A submitted application keeps
+ * its receipt, because that receipt is the evidence of what the person agreed
+ * to disclose; withdrawing consent is the control that applies to those.
+ */
+function removable(item: ApplicationListItem): boolean {
+  return item.state !== "submitted" && item.state !== "handed_off";
+}
+
 export function ApplicationHistory({
   items,
   recovery = null,
-}: Readonly<{ items: readonly ApplicationListItem[]; recovery?: ReactNode }>) {
+  onRemove,
+  removing = null,
+}: Readonly<{
+  items: readonly ApplicationListItem[];
+  recovery?: ReactNode;
+  onRemove?: (draftId: string) => void;
+  removing?: string | null;
+}>) {
   return (
     <section aria-labelledby="applications-title" className={styles["page"]}>
       <header className={styles["header"]}>
@@ -123,9 +140,23 @@ export function ApplicationHistory({
                 <span data-state={item.state}>{stateLabel(item)}</span>
                 <time dateTime={item.updatedAt}>Updated {updatedLabel(item.updatedAt)}</time>
               </div>
-              <Link className={styles["rowLink"]} href={`/apply/${item.draftId}`}>
-                {actionLabel(item)} <ArrowRightIcon aria-hidden="true" />
-              </Link>
+              <div className={styles["rowActions"]}>
+                <Link className={styles["rowLink"]} href={`/apply/${item.draftId}`}>
+                  {actionLabel(item)} <ArrowRightIcon aria-hidden="true" />
+                </Link>
+                {onRemove === undefined || !removable(item) ? null : (
+                  <button
+                    aria-label={`Remove the draft application to ${item.job.title}`}
+                    className={styles["remove"]}
+                    disabled={removing === item.draftId}
+                    onClick={() => onRemove(item.draftId)}
+                    type="button"
+                  >
+                    <TrashIcon aria-hidden="true" />
+                    {removing === item.draftId ? "Removing…" : "Remove"}
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ol>
@@ -142,7 +173,23 @@ export function ApplicationsWorkspace({
   const [attempt, setAttempt] = useState(0);
   const [recovered, setRecovered] = useState(initialItems !== null);
 
+  const [removing, setRemoving] = useState<string | null>(null);
+
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  const remove = useCallback((draftId: string) => {
+    setRemoving(draftId);
+    setError(null);
+    void queryApi(`/api/v1/applications/${draftId}`, z.looseObject({}), { method: "DELETE" })
+      .then(() => setItems((current) => (current ?? []).filter((item) => item.draftId !== draftId)))
+      .catch((caught: unknown) => {
+        setError(
+          caught instanceof ApiClientError
+            ? caught.message
+            : "The application could not be removed. Please try again.",
+        );
+      })
+      .finally(() => setRemoving(null));
+  }, []);
   const reloadAfterRecovery = useCallback(() => {
     setRecovered(true);
     retry();
@@ -213,5 +260,12 @@ export function ApplicationsWorkspace({
       />
     ) : null;
 
-  return <ApplicationHistory items={items ?? []} recovery={recovery} />;
+  return (
+    <ApplicationHistory
+      items={items ?? []}
+      onRemove={remove}
+      recovery={recovery}
+      removing={removing}
+    />
+  );
 }

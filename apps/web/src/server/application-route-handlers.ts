@@ -43,6 +43,7 @@ export interface ConfirmationSecrets {
 
 export interface ApplicationOperations {
   list(ownerId: string, now: string): Promise<readonly ApplicationListItem[]>;
+  discard(ownerId: string, draftId: string): Promise<void>;
   start(ownerId: string, raw: unknown, now: string): Promise<ApplicationStartResult>;
   get(ownerId: string, draftId: string, now: string): Promise<ApplicationWorkspace>;
   answer(
@@ -290,6 +291,23 @@ export async function handleListApplications(
       await dependencies.operations.list(owner.owner.id, dependencies.identity.now()),
       { requestId },
     );
+  } catch (error) {
+    return apiErrorResponse(error, { requestId });
+  }
+}
+
+export async function handleDiscardApplication(
+  request: Request,
+  context: { readonly params: Promise<{ readonly draftId: string }> },
+  dependencies: ApplicationRouteDependencies,
+): Promise<Response> {
+  const requestId = createRequestId();
+  try {
+    assertTrustedMutationOrigin(request, dependencies.identity.environment);
+    const actor = await requireHumanActor(request, dependencies);
+    const { draftId: rawDraftId } = await context.params;
+    await dependencies.operations.discard(actor.ownerId, parseEntityId(rawDraftId));
+    return apiSuccessResponse({ discarded: true }, { requestId });
   } catch (error) {
     return apiErrorResponse(error, { requestId });
   }

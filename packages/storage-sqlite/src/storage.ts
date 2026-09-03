@@ -1938,6 +1938,23 @@ function createRepositories(
           .get(draftId, ownerId) as Record<string, unknown> | undefined;
         return row === undefined ? null : applicationRecord<ApplicationReviewRecord>(row);
       },
+      async discardOwned(id, ownerId) {
+        const submitted = database
+          .prepare(
+            "SELECT 1 FROM application_submission_receipts WHERE draft_id=? AND owner_id=? LIMIT 1",
+          )
+          .get(id, ownerId);
+        if (submitted !== undefined) {
+          throw new DomainError({
+            code: "CONFLICT",
+            message: "A submitted application keeps its record and cannot be removed.",
+          });
+        }
+        const result = database
+          .prepare("DELETE FROM application_drafts WHERE id=? AND owner_id=?")
+          .run(id, ownerId);
+        return result.changes > 0;
+      },
       async getLatestReceipt(draftId, ownerId) {
         const row = database
           .prepare(

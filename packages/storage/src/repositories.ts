@@ -125,6 +125,8 @@ export interface ApplicationRepository {
   getByOwner(id: string, ownerId: string): Promise<ApplicationDraft | null>;
   getByOwnerAndJob(ownerId: string, jobId: string): Promise<ApplicationDraft | null>;
   listByOwner(ownerId: string): Promise<ApplicationDraft[]>;
+  /** Removes one never-submitted draft owned by this person. Submitted work is kept. */
+  discardOwned(id: string, ownerId: string): Promise<boolean>;
   getLatestReview(draftId: string, ownerId: string): Promise<ApplicationReviewRecord | null>;
   getLatestReceipt(draftId: string, ownerId: string): Promise<ApplicationReceiptRecord | null>;
   getManagedDelivery(id: string, ownerId: string): Promise<ManagedApplicationDeliveryRecord | null>;

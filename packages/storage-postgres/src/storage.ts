@@ -2138,6 +2138,39 @@ export function createPostgresStorage(databaseUrl: string): PostgresStorage {
             right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id),
         );
       },
+      async discardOwned(id, ownerId) {
+        const draft = await get<ApplicationDraft>(sql, "application", id);
+        if (draft === null || draft.ownerId !== ownerId) return false;
+        const submitted = await sql<{ readonly id: string }[]>`
+          SELECT id FROM jobbbler.entity_records
+          WHERE kind = 'application_receipt'
+            AND owner_id = ${ownerId}
+            AND body->>'draftId' = ${id}
+          LIMIT 1`;
+        if (submitted[0] !== undefined) {
+          throw new DomainError({
+            code: "CONFLICT",
+            message: "A submitted application keeps its record and cannot be removed.",
+          });
+        }
+        await sql`
+          DELETE FROM jobbbler.entity_records
+          WHERE kind IN (
+              'application_review',
+              'application_confirmation',
+              'delegation',
+              'agent_session',
+              'rich_data_grant',
+              'data_grant'
+            )
+            AND owner_id = ${ownerId}
+            AND body->>'draftId' = ${id}`;
+        const removed = await sql<{ readonly id: string }[]>`
+          DELETE FROM jobbbler.entity_records
+          WHERE kind = 'application' AND id = ${id} AND owner_id = ${ownerId}
+          RETURNING id`;
+        return removed[0] !== undefined;
+      },
       async getLatestReview(draftId, ownerId) {
         return (
           (await list<ApplicationReviewRecord>(sql, "application_review", ownerId))

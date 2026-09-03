@@ -117,7 +117,7 @@
  */
 .row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(150px, 190px) 12.5rem;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 190px) minmax(12.5rem, auto);
   gap: clamp(20px, 4vw, 52px);
   align-items: center;
   border-block-end: var(--jb-stroke-structure) solid var(--color-line);
@@ -175,6 +175,49 @@
  * comes to this page to do. It takes the same secondary treatment as the retry
  * button below, so the page has one button shape.
  */
+/*
+ * The open action and the quiet Remove sit together in the row's last cell, so
+ * a row still reads as one thing to do plus one way to undo it.
+ */
+.rowActions {
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: 10px;
+}
+
+.remove {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-block-size: 40px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-ink-subtle);
+  padding: 8px 10px;
+  font: inherit;
+  font-size: var(--jb-type-label);
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
+}
+
+.remove:hover:not(:disabled) {
+  border-color: var(--jb-hover-line);
+  color: var(--color-danger);
+}
+
+.remove:disabled {
+  cursor: progress;
+}
+
+.remove svg {
+  inline-size: 16px;
+}
+
 .rowLink {
   display: inline-flex;
   align-items: center;
@@ -295,9 +338,9 @@
     text-align: end;
   }
 
-  .rowLink {
+  .rowActions {
     grid-column: 1 / -1;
-    justify-self: start;
+    justify-content: start;
   }
 }
 
