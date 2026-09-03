@@ -226,8 +226,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["TypeScript", "React", "Node.js", "PostgreSQL"],
       "salary": {
-        "minimum": 82000,
-        "maximum": 104000,
+        "minimum": 98000,
+        "maximum": 125000,
         "currency": "EUR",
         "period": "year"
       },
@@ -254,8 +254,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["Figma", "User research", "Design systems", "Prototyping"],
       "salary": {
-        "minimum": 76000,
-        "maximum": 94000,
+        "minimum": 91000,
+        "maximum": 113000,
         "currency": "EUR",
         "period": "year"
       },
@@ -287,8 +287,8 @@
         "Stakeholder management"
       ],
       "salary": {
-        "minimum": 56000,
-        "maximum": 71000,
+        "minimum": 67000,
+        "maximum": 85000,
         "currency": "GBP",
         "period": "year"
       },
@@ -315,8 +315,8 @@
       "locations": ["Dublin, Ireland", "Ireland", "Europe"],
       "skills": ["Kubernetes", "Go", "Terraform", "AWS"],
       "salary": {
-        "minimum": 145000,
-        "maximum": 178000,
+        "minimum": 174000,
+        "maximum": 214000,
         "currency": "CAD",
         "period": "year"
       },
@@ -343,8 +343,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["SRE", "Prometheus", "Linux", "Incident management"],
       "salary": {
-        "minimum": 125000,
-        "maximum": 150000,
+        "minimum": 150000,
+        "maximum": 180000,
         "currency": "CAD",
         "period": "year"
       },
@@ -371,8 +371,8 @@
       "locations": ["Dublin, Ireland", "Ireland", "Europe"],
       "skills": ["Python", "APIs", "Technical writing", "Customer support"],
       "salary": {
-        "minimum": 58000,
-        "maximum": 75000,
+        "minimum": 70000,
+        "maximum": 90000,
         "currency": "EUR",
         "period": "year"
       },
@@ -399,8 +399,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["Python", "SQL", "Forecasting", "Experiment design"],
       "salary": {
-        "minimum": 135000,
-        "maximum": 165000,
+        "minimum": 162000,
+        "maximum": 198000,
         "currency": "USD",
         "period": "year"
       },
@@ -427,8 +427,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["Python", "MLflow", "Docker", "Feature stores"],
       "salary": {
-        "minimum": 78000,
-        "maximum": 98000,
+        "minimum": 94000,
+        "maximum": 118000,
         "currency": "EUR",
         "period": "year"
       },
@@ -455,8 +455,8 @@
       "locations": ["Montreal, Canada", "Canada", "North America"],
       "skills": ["SQL", "dbt", "Data modeling", "Git"],
       "salary": {
-        "minimum": 28,
-        "maximum": 34,
+        "minimum": 34,
+        "maximum": 41,
         "currency": "CAD",
         "period": "hour"
       },
@@ -483,8 +483,8 @@
       "locations": ["Paris, France", "France", "Europe"],
       "skills": ["Product strategy", "Roadmapping", "Analytics", "Stakeholder management"],
       "salary": {
-        "minimum": 70000,
-        "maximum": 90000,
+        "minimum": 84000,
+        "maximum": 108000,
         "currency": "EUR",
         "period": "year"
       },
@@ -511,8 +511,8 @@
       "locations": ["Lisbon, Portugal", "Portugal", "Europe"],
       "skills": ["Interviews", "Usability testing", "Synthesis", "Research operations"],
       "salary": {
-        "minimum": 62000,
-        "maximum": 80000,
+        "minimum": 74000,
+        "maximum": 96000,
         "currency": "EUR",
         "period": "year"
       },
@@ -539,8 +539,8 @@
       "locations": ["Lisbon, Portugal", "Portugal", "Europe"],
       "skills": ["React", "CSS", "Accessibility", "Storybook"],
       "salary": {
-        "minimum": 55,
-        "maximum": 75,
+        "minimum": 66,
+        "maximum": 90,
         "currency": "EUR",
         "period": "hour"
       },
@@ -567,8 +567,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Threat modeling", "SAST", "Java", "Security reviews"],
       "salary": {
-        "minimum": 140000,
-        "maximum": 175000,
+        "minimum": 168000,
+        "maximum": 210000,
         "currency": "USD",
         "period": "year"
       },
@@ -595,8 +595,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["SIEM", "Incident response", "Python", "Threat intelligence"],
       "salary": {
-        "minimum": 92000,
-        "maximum": 118000,
+        "minimum": 110000,
+        "maximum": 142000,
         "currency": "USD",
         "period": "year"
       },
@@ -623,8 +623,8 @@
       "locations": ["Stockholm, Sweden", "Sweden", "Europe"],
       "skills": ["Privacy engineering", "Data governance", "Risk assessment", "Leadership"],
       "salary": {
-        "minimum": 125000,
-        "maximum": 155000,
+        "minimum": 150000,
+        "maximum": 186000,
         "currency": "USD",
         "period": "year"
       },
@@ -651,8 +651,8 @@
       "locations": ["Warsaw, Poland", "Poland", "Europe"],
       "skills": ["Kubernetes", "Grafana", "Terraform", "On-call operations"],
       "salary": {
-        "minimum": 72000,
-        "maximum": 94000,
+        "minimum": 86000,
+        "maximum": 113000,
         "currency": "EUR",
         "period": "year"
       },
@@ -679,8 +679,8 @@
       "locations": ["Denver, United States", "United States", "North America"],
       "skills": ["Python", "Ansible", "Networking", "CI/CD"],
       "salary": {
-        "minimum": 70,
-        "maximum": 90,
+        "minimum": 84,
+        "maximum": 108,
         "currency": "USD",
         "period": "hour"
       },
@@ -707,8 +707,8 @@
       "locations": ["Denver, United States", "United States", "North America"],
       "skills": ["Program management", "Operations", "Risk management", "Vendor management"],
       "salary": {
-        "minimum": 145000,
-        "maximum": 180000,
+        "minimum": 174000,
+        "maximum": 216000,
         "currency": "USD",
         "period": "year"
       },
@@ -735,8 +735,8 @@
       "locations": ["Prague, Czechia", "Czechia", "Europe"],
       "skills": ["Playwright", "TypeScript", "API testing", "CI/CD"],
       "salary": {
-        "minimum": 62000,
-        "maximum": 82000,
+        "minimum": 74000,
+        "maximum": 98000,
         "currency": "EUR",
         "period": "year"
       },
@@ -763,8 +763,8 @@
       "locations": ["Vancouver, Canada", "Canada", "North America"],
       "skills": ["Quality strategy", "Coaching", "Test architecture", "Release management"],
       "salary": {
-        "minimum": 125000,
-        "maximum": 148000,
+        "minimum": 150000,
+        "maximum": 178000,
         "currency": "CAD",
         "period": "year"
       },
@@ -791,8 +791,8 @@
       "locations": ["Prague, Czechia", "Czechia", "Europe"],
       "skills": ["k6", "Performance testing", "JavaScript", "Metrics analysis"],
       "salary": {
-        "minimum": 52000,
-        "maximum": 70000,
+        "minimum": 62000,
+        "maximum": 84000,
         "currency": "EUR",
         "period": "year"
       },
@@ -819,8 +819,8 @@
       "locations": ["Helsinki, Finland", "Finland", "Europe"],
       "skills": ["Technical writing", "Public speaking", "JavaScript", "Community building"],
       "salary": {
-        "minimum": 110000,
-        "maximum": 138000,
+        "minimum": 132000,
+        "maximum": 166000,
         "currency": "USD",
         "period": "year"
       },
@@ -847,8 +847,8 @@
       "locations": ["New York, United States", "United States", "North America"],
       "skills": ["Open source", "Program management", "Community operations", "Governance"],
       "salary": {
-        "minimum": 118000,
-        "maximum": 145000,
+        "minimum": 142000,
+        "maximum": 174000,
         "currency": "USD",
         "period": "year"
       },
@@ -875,8 +875,8 @@
       "locations": ["Helsinki, Finland", "Finland", "Europe"],
       "skills": ["Documentation", "APIs", "Markdown", "Information architecture"],
       "salary": {
-        "minimum": 83000,
-        "maximum": 106000,
+        "minimum": 100000,
+        "maximum": 127000,
         "currency": "EUR",
         "period": "year"
       },
@@ -903,8 +903,8 @@
       "locations": ["Chicago, United States", "United States", "North America"],
       "skills": ["Solution design", "APIs", "Discovery", "Presentations"],
       "salary": {
-        "minimum": 120000,
-        "maximum": 150000,
+        "minimum": 144000,
+        "maximum": 180000,
         "currency": "USD",
         "period": "year"
       },
@@ -931,8 +931,8 @@
       "locations": ["Chicago, United States", "United States", "North America"],
       "skills": ["Customer success", "SQL", "Project management", "Technical communication"],
       "salary": {
-        "minimum": 105000,
-        "maximum": 128000,
+        "minimum": 126000,
+        "maximum": 154000,
         "currency": "USD",
         "period": "year"
       },
@@ -959,8 +959,8 @@
       "locations": ["Madrid, Spain", "Spain", "Europe"],
       "skills": ["Zendesk", "SQL", "Workflow automation", "Reporting"],
       "salary": {
-        "minimum": 66000,
-        "maximum": 85000,
+        "minimum": 79000,
+        "maximum": 102000,
         "currency": "EUR",
         "period": "year"
       },
@@ -987,8 +987,8 @@
       "locations": ["Boston, United States", "United States", "North America"],
       "skills": ["Technical recruiting", "Sourcing", "Candidate experience", "Hiring analytics"],
       "salary": {
-        "minimum": 55000,
-        "maximum": 72000,
+        "minimum": 66000,
+        "maximum": 86000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1015,8 +1015,8 @@
       "locations": ["Boston, United States", "United States", "North America"],
       "skills": ["ATS administration", "Process design", "Reporting", "Compliance"],
       "salary": {
-        "minimum": 78000,
-        "maximum": 96000,
+        "minimum": 94000,
+        "maximum": 115000,
         "currency": "USD",
         "period": "year"
       },
@@ -1043,8 +1043,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["Service design", "User research", "Journey mapping", "Recruiting"],
       "salary": {
-        "minimum": 60000,
-        "maximum": 78000,
+        "minimum": 72000,
+        "maximum": 94000,
         "currency": "USD",
         "period": "year"
       },
@@ -1071,8 +1071,8 @@
       "locations": ["San Francisco, United States", "United States", "North America"],
       "skills": ["Salesforce", "SQL", "Forecasting", "Data visualization"],
       "salary": {
-        "minimum": 95000,
-        "maximum": 120000,
+        "minimum": 114000,
+        "maximum": 144000,
         "currency": "USD",
         "period": "year"
       },
@@ -1099,8 +1099,8 @@
       "locations": ["Seattle, United States", "United States", "North America"],
       "skills": ["Release management", "Incident management", "Automation", "Leadership"],
       "salary": {
-        "minimum": 125000,
-        "maximum": 152000,
+        "minimum": 150000,
+        "maximum": 182000,
         "currency": "USD",
         "period": "year"
       },
@@ -1127,8 +1127,8 @@
       "locations": ["San Francisco, United States", "United States", "North America"],
       "skills": ["Solution engineering", "APIs", "Discovery", "CRM"],
       "salary": {
-        "minimum": 105000,
-        "maximum": 135000,
+        "minimum": 126000,
+        "maximum": 162000,
         "currency": "USD",
         "period": "year"
       },
@@ -1155,8 +1155,8 @@
       "locations": ["Los Angeles, United States", "United States", "North America"],
       "skills": ["React", "Web performance", "Architecture", "People leadership"],
       "salary": {
-        "minimum": 175000,
-        "maximum": 220000,
+        "minimum": 210000,
+        "maximum": 264000,
         "currency": "USD",
         "period": "year"
       },
@@ -1183,8 +1183,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Mixed-method research", "Prototyping", "Synthesis", "Product strategy"],
       "salary": {
-        "minimum": 95000,
-        "maximum": 125000,
+        "minimum": 114000,
+        "maximum": 150000,
         "currency": "USD",
         "period": "year"
       },
@@ -1211,8 +1211,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Technology strategy", "AI governance", "Security", "Executive leadership"],
       "salary": {
-        "minimum": 210000,
-        "maximum": 280000,
+        "minimum": 252000,
+        "maximum": 336000,
         "currency": "USD",
         "period": "year"
       },
@@ -1239,8 +1239,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["Python", "SQL", "Git", "REST APIs", "Docker"],
       "salary": {
-        "minimum": 24000,
-        "maximum": 30000,
+        "minimum": 29000,
+        "maximum": 36000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1267,8 +1267,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["Python", "PostgreSQL", "Docker", "REST APIs", "Git"],
       "salary": {
-        "minimum": 41000,
-        "maximum": 49000,
+        "minimum": 49000,
+        "maximum": 59000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1295,8 +1295,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["JavaScript", "Node.js", "REST APIs", "PostgreSQL", "Git"],
       "salary": {
-        "minimum": 40000,
-        "maximum": 50000,
+        "minimum": 48000,
+        "maximum": 60000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1323,8 +1323,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["Go", "PostgreSQL", "gRPC", "Kafka", "Docker"],
       "salary": {
-        "minimum": 68000,
-        "maximum": 88000,
+        "minimum": 82000,
+        "maximum": 106000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1351,8 +1351,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["Go", "PostgreSQL", "Stripe API", "REST APIs", "Testing"],
       "salary": {
-        "minimum": 34000,
-        "maximum": 42000,
+        "minimum": 41000,
+        "maximum": 50000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1379,8 +1379,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["TypeScript", "React", "Node.js", "PostgreSQL", "GraphQL"],
       "salary": {
-        "minimum": 62000,
-        "maximum": 80000,
+        "minimum": 74000,
+        "maximum": 96000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1407,8 +1407,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["SQL", "dbt", "Airflow", "Python", "Snowflake"],
       "salary": {
-        "minimum": 60000,
-        "maximum": 76000,
+        "minimum": 72000,
+        "maximum": 91000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1435,8 +1435,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["Go", "Kafka", "PostgreSQL", "Kubernetes", "gRPC"],
       "salary": {
-        "minimum": 84000,
-        "maximum": 108000,
+        "minimum": 101000,
+        "maximum": 130000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1463,8 +1463,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["Go", "gRPC", "PostgreSQL", "Kubernetes", "API Design"],
       "salary": {
-        "minimum": 75,
-        "maximum": 95,
+        "minimum": 90,
+        "maximum": 114,
         "currency": "EUR",
         "period": "hour"
       },
@@ -1491,8 +1491,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["Python", "SQL", "AWS S3", "Airflow", "PostgreSQL"],
       "salary": {
-        "minimum": 78000,
-        "maximum": 98000,
+        "minimum": 94000,
+        "maximum": 118000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1519,8 +1519,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["Go", "Kubernetes", "PostgreSQL", "Kafka", "System Design"],
       "salary": {
-        "minimum": 112000,
-        "maximum": 138000,
+        "minimum": 134000,
+        "maximum": 166000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1547,8 +1547,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["Go", "Kafka", "Kubernetes", "PostgreSQL", "Distributed Systems"],
       "salary": {
-        "minimum": 128000,
-        "maximum": 158000,
+        "minimum": 154000,
+        "maximum": 190000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1575,8 +1575,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["Terraform", "Kubernetes", "AWS", "CI/CD", "Prometheus"],
       "salary": {
-        "minimum": 92000,
-        "maximum": 118000,
+        "minimum": 110000,
+        "maximum": 142000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1603,8 +1603,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["Kubernetes", "Terraform", "AWS", "People Management", "Incident Response"],
       "salary": {
-        "minimum": 105000,
-        "maximum": 130000,
+        "minimum": 126000,
+        "maximum": 156000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1631,8 +1631,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["Threat Modeling", "Python", "SAST", "OWASP", "Code Review"],
       "salary": {
-        "minimum": 78000,
-        "maximum": 100000,
+        "minimum": 94000,
+        "maximum": 120000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1659,8 +1659,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["TypeScript", "Node.js", "Git", "REST APIs", "Testing"],
       "salary": {
-        "minimum": 22000,
-        "maximum": 27000,
+        "minimum": 26000,
+        "maximum": 32000,
         "currency": "GBP",
         "period": "year"
       },
@@ -1687,8 +1687,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["TypeScript", "React", "CSS", "Git", "Jest"],
       "salary": {
-        "minimum": 34000,
-        "maximum": 40000,
+        "minimum": 41000,
+        "maximum": 48000,
         "currency": "GBP",
         "period": "year"
       },
@@ -1715,8 +1715,8 @@
       "locations": ["Dublin, Ireland", "Ireland", "Europe"],
       "skills": ["Node.js", "TypeScript", "PostgreSQL", "Redis", "RabbitMQ"],
       "salary": {
-        "minimum": 63000,
-        "maximum": 82000,
+        "minimum": 76000,
+        "maximum": 98000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1743,8 +1743,8 @@
       "locations": ["Dublin, Ireland", "Ireland", "Europe"],
       "skills": ["Elasticsearch", "TypeScript", "Node.js", "PostgreSQL", "Testing"],
       "salary": {
-        "minimum": 58000,
-        "maximum": 74000,
+        "minimum": 70000,
+        "maximum": 89000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1771,8 +1771,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Node.js", "TypeScript", "PostgreSQL", "CSV/Export Tooling", "REST APIs"],
       "salary": {
-        "minimum": 32000,
-        "maximum": 40000,
+        "minimum": 38000,
+        "maximum": 48000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1799,8 +1799,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Kotlin", "Swift", "REST APIs", "SQLite", "Testing"],
       "salary": {
-        "minimum": 55000,
-        "maximum": 70000,
+        "minimum": 66000,
+        "maximum": 84000,
         "currency": "GBP",
         "period": "year"
       },
@@ -1827,8 +1827,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Python", "PostgreSQL", "Stripe API", "REST APIs", "Testing"],
       "salary": {
-        "minimum": 59000,
-        "maximum": 76000,
+        "minimum": 71000,
+        "maximum": 91000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1855,8 +1855,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["TypeScript", "Kafka", "Event-Driven Architecture", "Node.js", "PostgreSQL"],
       "salary": {
-        "minimum": 88000,
-        "maximum": 112000,
+        "minimum": 106000,
+        "maximum": 134000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1883,8 +1883,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Python", "PostgreSQL", "ETL", "REST APIs", "Data Migration"],
       "salary": {
-        "minimum": 78000,
-        "maximum": 96000,
+        "minimum": 94000,
+        "maximum": 115000,
         "currency": "GBP",
         "period": "year"
       },
@@ -1911,8 +1911,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["TypeScript", "React", "Performance Optimization", "Testing", "Design Systems"],
       "salary": {
-        "minimum": 72000,
-        "maximum": 92000,
+        "minimum": 86000,
+        "maximum": 110000,
         "currency": "GBP",
         "period": "year"
       },
@@ -1939,8 +1939,8 @@
       "locations": ["Dublin, Ireland", "Ireland", "Europe"],
       "skills": ["Node.js", "TypeScript", "PostgreSQL", "Authorization Models", "REST APIs"],
       "salary": {
-        "minimum": 85000,
-        "maximum": 108000,
+        "minimum": 102000,
+        "maximum": 130000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1967,8 +1967,8 @@
       "locations": ["Dublin, Ireland", "Ireland", "Europe"],
       "skills": ["TypeScript", "React", "Node.js", "A/B Testing", "PostgreSQL"],
       "salary": {
-        "minimum": 82000,
-        "maximum": 104000,
+        "minimum": 98000,
+        "maximum": 125000,
         "currency": "EUR",
         "period": "year"
       },
@@ -1995,8 +1995,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Kubernetes", "Terraform", "AWS", "CI/CD", "Observability"],
       "salary": {
-        "minimum": 68000,
-        "maximum": 88000,
+        "minimum": 82000,
+        "maximum": 106000,
         "currency": "GBP",
         "period": "year"
       },
@@ -2029,8 +2029,8 @@
         "Threat Modeling"
       ],
       "salary": {
-        "minimum": 105000,
-        "maximum": 130000,
+        "minimum": 126000,
+        "maximum": 156000,
         "currency": "GBP",
         "period": "year"
       },
@@ -2057,8 +2057,8 @@
       "locations": ["Dublin, Ireland", "Ireland", "Europe"],
       "skills": ["Threat Modeling", "OWASP", "Python", "Penetration Testing Basics", "Code Review"],
       "salary": {
-        "minimum": 65000,
-        "maximum": 82000,
+        "minimum": 78000,
+        "maximum": 98000,
         "currency": "EUR",
         "period": "year"
       },
@@ -2085,8 +2085,8 @@
       "locations": ["Denver, United States", "United States", "North America"],
       "skills": ["Python", "ROS", "Git", "Linux", "Testing"],
       "salary": {
-        "minimum": 48000,
-        "maximum": 58000,
+        "minimum": 58000,
+        "maximum": 70000,
         "currency": "USD",
         "period": "year"
       },
@@ -2113,8 +2113,8 @@
       "locations": ["Denver, United States", "United States", "North America"],
       "skills": ["C++", "Embedded Linux", "Git", "Real-Time Systems Basics", "Testing"],
       "salary": {
-        "minimum": 76000,
-        "maximum": 88000,
+        "minimum": 91000,
+        "maximum": 106000,
         "currency": "USD",
         "period": "year"
       },
@@ -2141,8 +2141,8 @@
       "locations": ["Denver, United States", "United States", "North America"],
       "skills": ["C++", "ROS", "SLAM", "Python", "Linux"],
       "salary": {
-        "minimum": 105000,
-        "maximum": 130000,
+        "minimum": 126000,
+        "maximum": 156000,
         "currency": "USD",
         "period": "year"
       },
@@ -2169,8 +2169,8 @@
       "locations": ["Phoenix, United States", "United States", "North America"],
       "skills": ["TypeScript", "React", "Node.js", "PostgreSQL", "REST APIs"],
       "salary": {
-        "minimum": 46000,
-        "maximum": 58000,
+        "minimum": 55000,
+        "maximum": 70000,
         "currency": "USD",
         "period": "year"
       },
@@ -2197,8 +2197,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["C++", "Python", "Gazebo", "ROS", "Testing"],
       "salary": {
-        "minimum": 92000,
-        "maximum": 115000,
+        "minimum": 110000,
+        "maximum": 138000,
         "currency": "CAD",
         "period": "year"
       },
@@ -2225,8 +2225,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["C++", "Python", "Optimization Algorithms", "ROS", "Testing"],
       "salary": {
-        "minimum": 138000,
-        "maximum": 168000,
+        "minimum": 166000,
+        "maximum": 202000,
         "currency": "USD",
         "period": "year"
       },
@@ -2253,8 +2253,8 @@
       "locations": ["Denver, United States", "United States", "North America"],
       "skills": ["Python", "Kafka", "Time-Series Databases", "Grafana", "REST APIs"],
       "salary": {
-        "minimum": 130000,
-        "maximum": 155000,
+        "minimum": 156000,
+        "maximum": 186000,
         "currency": "USD",
         "period": "year"
       },
@@ -2281,8 +2281,8 @@
       "locations": ["Denver, United States", "United States", "North America"],
       "skills": ["C++", "Embedded Linux", "Real-Time Systems", "Sensor Fusion", "Git"],
       "salary": {
-        "minimum": 142000,
-        "maximum": 172000,
+        "minimum": 170000,
+        "maximum": 206000,
         "currency": "USD",
         "period": "year"
       },
@@ -2309,8 +2309,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["C++", "Python", "Distributed Systems", "ROS", "System Design"],
       "salary": {
-        "minimum": 175000,
-        "maximum": 205000,
+        "minimum": 210000,
+        "maximum": 246000,
         "currency": "USD",
         "period": "year"
       },
@@ -2337,8 +2337,8 @@
       "locations": ["Denver, United States", "United States", "North America"],
       "skills": ["C++", "ROS", "SLAM", "People Leadership", "Project Planning"],
       "salary": {
-        "minimum": 158000,
-        "maximum": 188000,
+        "minimum": 190000,
+        "maximum": 226000,
         "currency": "USD",
         "period": "year"
       },
@@ -2365,8 +2365,8 @@
       "locations": ["Denver, United States", "United States", "North America"],
       "skills": ["C++", "Python", "ROS", "Linux", "Git"],
       "salary": {
-        "minimum": 105000,
-        "maximum": 130000,
+        "minimum": 126000,
+        "maximum": 156000,
         "currency": "USD",
         "period": "year"
       },
@@ -2393,8 +2393,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["AWS", "Kubernetes", "Terraform", "Docker", "CI/CD"],
       "salary": {
-        "minimum": 88000,
-        "maximum": 110000,
+        "minimum": 106000,
+        "maximum": 132000,
         "currency": "CAD",
         "period": "year"
       },
@@ -2421,8 +2421,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["Kubernetes", "Prometheus", "Grafana", "AWS", "Incident Response"],
       "salary": {
-        "minimum": 95000,
-        "maximum": 118000,
+        "minimum": 114000,
+        "maximum": 142000,
         "currency": "CAD",
         "period": "year"
       },
@@ -2449,8 +2449,8 @@
       "locations": ["Denver, United States", "United States", "North America"],
       "skills": ["Kubernetes", "Edge Computing", "Docker", "Networking", "Linux"],
       "salary": {
-        "minimum": 135000,
-        "maximum": 160000,
+        "minimum": 162000,
+        "maximum": 192000,
         "currency": "USD",
         "period": "year"
       },
@@ -2483,8 +2483,8 @@
         "Linux"
       ],
       "salary": {
-        "minimum": 140000,
-        "maximum": 170000,
+        "minimum": 168000,
+        "maximum": 204000,
         "currency": "USD",
         "period": "year"
       },
@@ -2511,8 +2511,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Go", "CLI Design", "Git", "REST APIs", "Testing"],
       "salary": {
-        "minimum": 78000,
-        "maximum": 90000,
+        "minimum": 94000,
+        "maximum": 108000,
         "currency": "USD",
         "period": "year"
       },
@@ -2539,8 +2539,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Go", "Kubernetes", "gRPC", "PostgreSQL", "Testing"],
       "salary": {
-        "minimum": 108000,
-        "maximum": 132000,
+        "minimum": 130000,
+        "maximum": 158000,
         "currency": "USD",
         "period": "year"
       },
@@ -2567,8 +2567,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Go", "PostgreSQL", "Kafka", "Distributed Systems", "Testing"],
       "salary": {
-        "minimum": 145000,
-        "maximum": 178000,
+        "minimum": 174000,
+        "maximum": 214000,
         "currency": "USD",
         "period": "year"
       },
@@ -2595,8 +2595,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Terraform", "Kubernetes", "AWS", "Prometheus", "CI/CD"],
       "salary": {
-        "minimum": 112000,
-        "maximum": 138000,
+        "minimum": 134000,
+        "maximum": 166000,
         "currency": "USD",
         "period": "year"
       },
@@ -2623,8 +2623,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Kubernetes", "Ceph", "Prometheus", "Go", "Incident Response"],
       "salary": {
-        "minimum": 115000,
-        "maximum": 142000,
+        "minimum": 138000,
+        "maximum": 170000,
         "currency": "USD",
         "period": "year"
       },
@@ -2651,8 +2651,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Networking", "BGP", "Terraform", "Kubernetes", "Linux"],
       "salary": {
-        "minimum": 110000,
-        "maximum": 135000,
+        "minimum": 132000,
+        "maximum": 162000,
         "currency": "USD",
         "period": "year"
       },
@@ -2679,8 +2679,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Kubernetes", "Go", "Helm", "CI/CD", "Observability"],
       "salary": {
-        "minimum": 172000,
-        "maximum": 208000,
+        "minimum": 206000,
+        "maximum": 250000,
         "currency": "USD",
         "period": "year"
       },
@@ -2707,8 +2707,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Prometheus", "Grafana", "OpenTelemetry", "Kubernetes", "Go"],
       "salary": {
-        "minimum": 85,
-        "maximum": 120,
+        "minimum": 102,
+        "maximum": 144,
         "currency": "USD",
         "period": "hour"
       },
@@ -2735,8 +2735,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Kubernetes", "Distributed Systems", "Chaos Engineering", "Go", "System Design"],
       "salary": {
-        "minimum": 178000,
-        "maximum": 215000,
+        "minimum": 214000,
+        "maximum": 258000,
         "currency": "USD",
         "period": "year"
       },
@@ -2769,8 +2769,8 @@
         "System Design"
       ],
       "salary": {
-        "minimum": 195000,
-        "maximum": 235000,
+        "minimum": 234000,
+        "maximum": 282000,
         "currency": "USD",
         "period": "year"
       },
@@ -2797,8 +2797,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Kubernetes", "Ceph", "Storage Systems", "Go", "Project Planning"],
       "salary": {
-        "minimum": 158000,
-        "maximum": 188000,
+        "minimum": 190000,
+        "maximum": 226000,
         "currency": "USD",
         "period": "year"
       },
@@ -2831,8 +2831,8 @@
         "Incident Response"
       ],
       "salary": {
-        "minimum": 175000,
-        "maximum": 210000,
+        "minimum": 210000,
+        "maximum": 252000,
         "currency": "USD",
         "period": "year"
       },
@@ -2865,8 +2865,8 @@
         "People Leadership"
       ],
       "salary": {
-        "minimum": 210000,
-        "maximum": 250000,
+        "minimum": 252000,
+        "maximum": 300000,
         "currency": "USD",
         "period": "year"
       },
@@ -2899,8 +2899,8 @@
         "Cloud Security"
       ],
       "salary": {
-        "minimum": 245000,
-        "maximum": 295000,
+        "minimum": 294000,
+        "maximum": 354000,
         "currency": "USD",
         "period": "year"
       },
@@ -2927,8 +2927,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Cloud Security", "AWS", "Kubernetes Security", "Threat Modeling", "Python"],
       "salary": {
-        "minimum": 125000,
-        "maximum": 155000,
+        "minimum": 150000,
+        "maximum": 186000,
         "currency": "USD",
         "period": "year"
       },
@@ -2955,8 +2955,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["TypeScript", "React", "Node.js", "PostgreSQL", "REST APIs"],
       "salary": {
-        "minimum": 58000,
-        "maximum": 76000,
+        "minimum": 70000,
+        "maximum": 91000,
         "currency": "EUR",
         "period": "year"
       },
@@ -2983,8 +2983,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Go", "PostgreSQL", "gRPC", "Distributed Systems", "Testing"],
       "salary": {
-        "minimum": 82000,
-        "maximum": 104000,
+        "minimum": 98000,
+        "maximum": 125000,
         "currency": "EUR",
         "period": "year"
       },
@@ -3011,8 +3011,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Networking", "Linux", "BGP Basics", "Monitoring Tools", "Ticketing Systems"],
       "salary": {
-        "minimum": 30000,
-        "maximum": 36000,
+        "minimum": 36000,
+        "maximum": 43000,
         "currency": "GBP",
         "period": "year"
       },
@@ -3039,8 +3039,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["BGP", "Networking", "Cisco IOS", "Automation Scripting", "Monitoring"],
       "salary": {
-        "minimum": 52000,
-        "maximum": 66000,
+        "minimum": 62000,
+        "maximum": 79000,
         "currency": "GBP",
         "period": "year"
       },
@@ -3067,8 +3067,8 @@
       "locations": ["Stockholm, Sweden", "Sweden", "Europe"],
       "skills": ["Prometheus", "Grafana", "Networking", "Python", "Automation"],
       "salary": {
-        "minimum": 30000,
-        "maximum": 38000,
+        "minimum": 36000,
+        "maximum": 46000,
         "currency": "EUR",
         "period": "year"
       },
@@ -3095,8 +3095,8 @@
       "locations": ["Stockholm, Sweden", "Sweden", "Europe"],
       "skills": ["C", "Networking Protocols", "Linux", "Embedded Systems", "Testing"],
       "salary": {
-        "minimum": 56000,
-        "maximum": 72000,
+        "minimum": 67000,
+        "maximum": 86000,
         "currency": "EUR",
         "period": "year"
       },
@@ -3123,8 +3123,8 @@
       "locations": ["Stockholm, Sweden", "Sweden", "Europe"],
       "skills": ["Python", "Networking", "Ansible", "BGP", "Automation"],
       "salary": {
-        "minimum": 72000,
-        "maximum": 90000,
+        "minimum": 86000,
+        "maximum": 108000,
         "currency": "EUR",
         "period": "year"
       },
@@ -3151,8 +3151,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Kubernetes", "Prometheus", "Go", "Incident Response", "Networking"],
       "salary": {
-        "minimum": 78000,
-        "maximum": 98000,
+        "minimum": 94000,
+        "maximum": 118000,
         "currency": "GBP",
         "period": "year"
       },
@@ -3179,8 +3179,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Networking", "Kubernetes", "Distributed Systems", "System Design", "Automation"],
       "salary": {
-        "minimum": 100000,
-        "maximum": 125000,
+        "minimum": 120000,
+        "maximum": 150000,
         "currency": "GBP",
         "period": "year"
       },
@@ -3207,8 +3207,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Networking Protocols", "Distributed Systems", "System Design", "C", "Go"],
       "salary": {
-        "minimum": 118000,
-        "maximum": 145000,
+        "minimum": 142000,
+        "maximum": 174000,
         "currency": "GBP",
         "period": "year"
       },
@@ -3241,8 +3241,8 @@
         "Linux"
       ],
       "salary": {
-        "minimum": 65,
-        "maximum": 95,
+        "minimum": 78,
+        "maximum": 114,
         "currency": "GBP",
         "period": "hour"
       },
@@ -3275,8 +3275,8 @@
         "Code Review"
       ],
       "salary": {
-        "minimum": 65000,
-        "maximum": 82000,
+        "minimum": 78000,
+        "maximum": 98000,
         "currency": "GBP",
         "period": "year"
       },
@@ -3303,8 +3303,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["SIEM", "Detection Engineering", "Threat Hunting", "Python", "Incident Response"],
       "salary": {
-        "minimum": 88000,
-        "maximum": 108000,
+        "minimum": 106000,
+        "maximum": 130000,
         "currency": "GBP",
         "period": "year"
       },
@@ -3337,8 +3337,8 @@
         "Vulnerability Management"
       ],
       "salary": {
-        "minimum": 90000,
-        "maximum": 112000,
+        "minimum": 108000,
+        "maximum": 134000,
         "currency": "GBP",
         "period": "year"
       },
@@ -3371,8 +3371,8 @@
         "Threat Modeling"
       ],
       "salary": {
-        "minimum": 125000,
-        "maximum": 155000,
+        "minimum": 150000,
+        "maximum": 186000,
         "currency": "GBP",
         "period": "year"
       },
@@ -3399,8 +3399,8 @@
       "locations": ["Boston, United States", "United States", "North America"],
       "skills": ["Python", "SQL", "Git", "REST APIs", "Testing"],
       "salary": {
-        "minimum": 82000,
-        "maximum": 98000,
+        "minimum": 98000,
+        "maximum": 118000,
         "currency": "USD",
         "period": "year"
       },
@@ -3427,8 +3427,8 @@
       "locations": ["Boston, United States", "United States", "North America"],
       "skills": ["Python", "Kafka", "PostgreSQL", "Elasticsearch", "Testing"],
       "salary": {
-        "minimum": 112000,
-        "maximum": 138000,
+        "minimum": 134000,
+        "maximum": 166000,
         "currency": "USD",
         "period": "year"
       },
@@ -3455,8 +3455,8 @@
       "locations": ["Boston, United States", "United States", "North America"],
       "skills": ["Python", "REST APIs", "OAuth", "PostgreSQL", "Testing"],
       "salary": {
-        "minimum": 100000,
-        "maximum": 125000,
+        "minimum": 120000,
+        "maximum": 150000,
         "currency": "USD",
         "period": "year"
       },
@@ -3483,8 +3483,8 @@
       "locations": ["Boston, United States", "United States", "North America"],
       "skills": ["Python", "PostgreSQL", "Data Visualization", "REST APIs", "Testing"],
       "salary": {
-        "minimum": 140000,
-        "maximum": 170000,
+        "minimum": 168000,
+        "maximum": 204000,
         "currency": "USD",
         "period": "year"
       },
@@ -3511,8 +3511,8 @@
       "locations": ["Boston, United States", "United States", "North America"],
       "skills": ["Python", "Rust", "Distributed Systems", "Elasticsearch", "Testing"],
       "salary": {
-        "minimum": 148000,
-        "maximum": 180000,
+        "minimum": 178000,
+        "maximum": 216000,
         "currency": "USD",
         "period": "year"
       },
@@ -3539,8 +3539,8 @@
       "locations": ["Boston, United States", "United States", "North America"],
       "skills": ["Kubernetes", "Terraform", "AWS", "Kafka", "CI/CD"],
       "salary": {
-        "minimum": 110000,
-        "maximum": 135000,
+        "minimum": 132000,
+        "maximum": 162000,
         "currency": "USD",
         "period": "year"
       },
@@ -3567,8 +3567,8 @@
       "locations": ["Boston, United States", "United States", "North America"],
       "skills": ["Kubernetes", "AWS", "Terraform", "Distributed Systems", "Security Hardening"],
       "salary": {
-        "minimum": 145000,
-        "maximum": 175000,
+        "minimum": 174000,
+        "maximum": 210000,
         "currency": "USD",
         "period": "year"
       },
@@ -3595,8 +3595,8 @@
       "locations": ["Boston, United States", "United States", "North America"],
       "skills": ["SIEM", "Detection Engineering", "Python", "Threat Intelligence", "SQL"],
       "salary": {
-        "minimum": 105000,
-        "maximum": 130000,
+        "minimum": 126000,
+        "maximum": 156000,
         "currency": "USD",
         "period": "year"
       },
@@ -3623,8 +3623,8 @@
       "locations": ["Boston, United States", "United States", "North America"],
       "skills": ["Threat Intelligence", "OSINT", "Malware Analysis Basics", "Reporting", "SIEM"],
       "salary": {
-        "minimum": 98000,
-        "maximum": 120000,
+        "minimum": 118000,
+        "maximum": 144000,
         "currency": "USD",
         "period": "year"
       },
@@ -3651,8 +3651,8 @@
       "locations": ["Boston, United States", "United States", "North America"],
       "skills": ["Incident Response", "Digital Forensics", "SIEM", "Threat Hunting", "Scripting"],
       "salary": {
-        "minimum": 118000,
-        "maximum": 145000,
+        "minimum": 142000,
+        "maximum": 174000,
         "currency": "USD",
         "period": "year"
       },
@@ -3685,8 +3685,8 @@
         "Scripting"
       ],
       "salary": {
-        "minimum": 95,
-        "maximum": 130,
+        "minimum": 114,
+        "maximum": 156,
         "currency": "USD",
         "period": "hour"
       },
@@ -3719,8 +3719,8 @@
         "Python"
       ],
       "salary": {
-        "minimum": 172000,
-        "maximum": 210000,
+        "minimum": 206000,
+        "maximum": 252000,
         "currency": "USD",
         "period": "year"
       },
@@ -3753,8 +3753,8 @@
         "System Design"
       ],
       "salary": {
-        "minimum": 195000,
-        "maximum": 235000,
+        "minimum": 234000,
+        "maximum": 282000,
         "currency": "USD",
         "period": "year"
       },
@@ -3787,8 +3787,8 @@
         "Threat Intelligence"
       ],
       "salary": {
-        "minimum": 175000,
-        "maximum": 210000,
+        "minimum": 210000,
+        "maximum": 252000,
         "currency": "USD",
         "period": "year"
       },
@@ -3821,8 +3821,8 @@
         "Public Speaking"
       ],
       "salary": {
-        "minimum": 180000,
-        "maximum": 220000,
+        "minimum": 216000,
+        "maximum": 264000,
         "currency": "USD",
         "period": "year"
       },
@@ -3856,8 +3856,8 @@
         "Distributed systems"
       ],
       "salary": {
-        "minimum": 78000,
-        "maximum": 98000,
+        "minimum": 94000,
+        "maximum": 118000,
         "currency": "EUR",
         "period": "year"
       },
@@ -3884,8 +3884,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["dbt", "SQL", "Snowflake", "Data modeling", "ETL pipelines"],
       "salary": {
-        "minimum": 58000,
-        "maximum": 72000,
+        "minimum": 70000,
+        "maximum": 86000,
         "currency": "EUR",
         "period": "year"
       },
@@ -3912,8 +3912,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["Python", "PyTorch", "Optimization algorithms", "MLOps", "Docker"],
       "salary": {
-        "minimum": 68000,
-        "maximum": 86000,
+        "minimum": 82000,
+        "maximum": 103000,
         "currency": "EUR",
         "period": "year"
       },
@@ -3940,8 +3940,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["Python", "Survival analysis", "Statistics", "SQL", "Experimentation design"],
       "salary": {
-        "minimum": 95000,
-        "maximum": 120000,
+        "minimum": 114000,
+        "maximum": 144000,
         "currency": "EUR",
         "period": "year"
       },
@@ -3968,8 +3968,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["Snowflake", "Airflow", "SQL", "Python", "Access control", "Data governance"],
       "salary": {
-        "minimum": 62000,
-        "maximum": 78000,
+        "minimum": 74000,
+        "maximum": 94000,
         "currency": "EUR",
         "period": "year"
       },
@@ -3996,8 +3996,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["SQL", "Excel", "Data visualization", "Tableau"],
       "salary": {
-        "minimum": 38000,
-        "maximum": 48000,
+        "minimum": 46000,
+        "maximum": 58000,
         "currency": "EUR",
         "period": "year"
       },
@@ -4024,8 +4024,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["Python", "MLOps", "Kubernetes", "Docker", "Distributed systems"],
       "salary": {
-        "minimum": 100000,
-        "maximum": 125000,
+        "minimum": 120000,
+        "maximum": 150000,
         "currency": "EUR",
         "period": "year"
       },
@@ -4052,8 +4052,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["Leadership", "Python", "Statistics", "Coaching", "Stakeholder management"],
       "salary": {
-        "minimum": 92000,
-        "maximum": 115000,
+        "minimum": 110000,
+        "maximum": 138000,
         "currency": "EUR",
         "period": "year"
       },
@@ -4080,8 +4080,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["Leadership", "Statistics", "Stakeholder management", "Strategy", "Python"],
       "salary": {
-        "minimum": 130000,
-        "maximum": 160000,
+        "minimum": 156000,
+        "maximum": 192000,
         "currency": "EUR",
         "period": "year"
       },
@@ -4108,8 +4108,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["Python", "SQL", "Statistics"],
       "salary": {
-        "minimum": 24000,
-        "maximum": 30000,
+        "minimum": 29000,
+        "maximum": 36000,
         "currency": "EUR",
         "period": "year"
       },
@@ -4136,8 +4136,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["SQL", "Product analytics", "Excel", "A/B testing"],
       "salary": {
-        "minimum": 45,
-        "maximum": 60,
+        "minimum": 54,
+        "maximum": 72,
         "currency": "EUR",
         "period": "hour"
       },
@@ -4170,8 +4170,8 @@
         "Customer discovery"
       ],
       "salary": {
-        "minimum": 85000,
-        "maximum": 105000,
+        "minimum": 102000,
+        "maximum": 126000,
         "currency": "EUR",
         "period": "year"
       },
@@ -4198,8 +4198,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["Process design", "Jira", "Stakeholder communication", "Reporting"],
       "salary": {
-        "minimum": 64000,
-        "maximum": 78000,
+        "minimum": 77000,
+        "maximum": 94000,
         "currency": "EUR",
         "period": "year"
       },
@@ -4226,8 +4226,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["User interviews", "Survey design", "Research synthesis", "Usability testing"],
       "salary": {
-        "minimum": 50,
-        "maximum": 70,
+        "minimum": 60,
+        "maximum": 84,
         "currency": "EUR",
         "period": "hour"
       },
@@ -4260,8 +4260,8 @@
         "Usability testing"
       ],
       "salary": {
-        "minimum": 72000,
-        "maximum": 90000,
+        "minimum": 86000,
+        "maximum": 108000,
         "currency": "EUR",
         "period": "year"
       },
@@ -4288,8 +4288,8 @@
       "locations": ["Fort Collins, United States", "United States", "North America"],
       "skills": ["Python", "PyTorch", "Remote sensing", "Statistics", "MLOps"],
       "salary": {
-        "minimum": 158000,
-        "maximum": 188000,
+        "minimum": 190000,
+        "maximum": 226000,
         "currency": "USD",
         "period": "year"
       },
@@ -4322,8 +4322,8 @@
         "Experimentation design"
       ],
       "salary": {
-        "minimum": 108000,
-        "maximum": 132000,
+        "minimum": 130000,
+        "maximum": 158000,
         "currency": "USD",
         "period": "year"
       },
@@ -4350,8 +4350,8 @@
       "locations": ["Fort Collins, United States", "United States", "North America"],
       "skills": ["Python", "Agronomy", "Statistics", "Causal inference", "Data modeling"],
       "salary": {
-        "minimum": 195000,
-        "maximum": 235000,
+        "minimum": 234000,
+        "maximum": 282000,
         "currency": "USD",
         "period": "year"
       },
@@ -4378,8 +4378,8 @@
       "locations": ["Fort Collins, United States", "United States", "North America"],
       "skills": ["Python", "Kafka", "SQL", "Distributed systems", "MLOps"],
       "salary": {
-        "minimum": 152000,
-        "maximum": 180000,
+        "minimum": 182000,
+        "maximum": 216000,
         "currency": "USD",
         "period": "year"
       },
@@ -4406,8 +4406,8 @@
       "locations": ["Fort Collins, United States", "United States", "North America"],
       "skills": ["Statistics", "Experimentation design", "Python", "SQL", "Causal inference"],
       "salary": {
-        "minimum": 115000,
-        "maximum": 140000,
+        "minimum": 138000,
+        "maximum": 168000,
         "currency": "USD",
         "period": "year"
       },
@@ -4434,8 +4434,8 @@
       "locations": ["Fort Collins, United States", "United States", "North America"],
       "skills": ["Python", "Optimization algorithms", "MLOps", "Hydrology modeling", "PyTorch"],
       "salary": {
-        "minimum": 198000,
-        "maximum": 232000,
+        "minimum": 238000,
+        "maximum": 278000,
         "currency": "USD",
         "period": "year"
       },
@@ -4462,8 +4462,8 @@
       "locations": ["Fort Collins, United States", "United States", "North America"],
       "skills": ["Python", "Computer vision", "PyTorch", "Statistics", "Model evaluation"],
       "salary": {
-        "minimum": 90,
-        "maximum": 130,
+        "minimum": 108,
+        "maximum": 156,
         "currency": "USD",
         "period": "hour"
       },
@@ -4490,8 +4490,8 @@
       "locations": ["Fort Collins, United States", "United States", "North America"],
       "skills": ["Leadership", "Python", "MLOps", "Coaching", "Stakeholder management"],
       "salary": {
-        "minimum": 205000,
-        "maximum": 240000,
+        "minimum": 246000,
+        "maximum": 288000,
         "currency": "USD",
         "period": "year"
       },
@@ -4518,8 +4518,8 @@
       "locations": ["Fort Collins, United States", "United States", "North America"],
       "skills": ["Leadership", "Strategy", "MLOps", "Stakeholder management", "Agronomy"],
       "salary": {
-        "minimum": 265000,
-        "maximum": 315000,
+        "minimum": 318000,
+        "maximum": 378000,
         "currency": "USD",
         "period": "year"
       },
@@ -4546,8 +4546,8 @@
       "locations": ["Fort Collins, United States", "United States", "North America"],
       "skills": ["Python", "PyTorch", "SQL"],
       "salary": {
-        "minimum": 90000,
-        "maximum": 110000,
+        "minimum": 108000,
+        "maximum": 132000,
         "currency": "USD",
         "period": "year"
       },
@@ -4574,8 +4574,8 @@
       "locations": ["Fort Collins, United States", "United States", "North America"],
       "skills": ["API design", "Roadmapping", "Stakeholder management", "SQL", "Product strategy"],
       "salary": {
-        "minimum": 162000,
-        "maximum": 192000,
+        "minimum": 194000,
+        "maximum": 230000,
         "currency": "USD",
         "period": "year"
       },
@@ -4602,8 +4602,8 @@
       "locations": ["Fort Collins, United States", "United States", "North America"],
       "skills": ["Roadmapping", "Product analytics", "Stakeholder communication", "Mobile UX"],
       "salary": {
-        "minimum": 70,
-        "maximum": 95,
+        "minimum": 84,
+        "maximum": 114,
         "currency": "USD",
         "period": "hour"
       },
@@ -4630,8 +4630,8 @@
       "locations": ["Fort Collins, United States", "United States", "North America"],
       "skills": ["User interviews", "Research synthesis", "Usability testing", "Survey design"],
       "salary": {
-        "minimum": 80,
-        "maximum": 110,
+        "minimum": 96,
+        "maximum": 132,
         "currency": "USD",
         "period": "hour"
       },
@@ -4664,8 +4664,8 @@
         "Design systems"
       ],
       "salary": {
-        "minimum": 158000,
-        "maximum": 185000,
+        "minimum": 190000,
+        "maximum": 222000,
         "currency": "USD",
         "period": "year"
       },
@@ -4692,8 +4692,8 @@
       "locations": ["Fort Collins, United States", "United States", "North America"],
       "skills": ["Figma", "Prototyping", "Visual design"],
       "salary": {
-        "minimum": 42000,
-        "maximum": 52000,
+        "minimum": 50000,
+        "maximum": 62000,
         "currency": "USD",
         "period": "year"
       },
@@ -4720,8 +4720,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["dbt", "SQL", "Snowflake", "Data modeling"],
       "salary": {
-        "minimum": 58000,
-        "maximum": 74000,
+        "minimum": 70000,
+        "maximum": 89000,
         "currency": "GBP",
         "period": "year"
       },
@@ -4748,8 +4748,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["SQL", "Excel", "Data visualization"],
       "salary": {
-        "minimum": 36000,
-        "maximum": 45000,
+        "minimum": 43000,
+        "maximum": 54000,
         "currency": "GBP",
         "period": "year"
       },
@@ -4776,8 +4776,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Python", "SQL", "Data modeling", "Distributed systems", "ETL pipelines"],
       "salary": {
-        "minimum": 76000,
-        "maximum": 94000,
+        "minimum": 91000,
+        "maximum": 113000,
         "currency": "GBP",
         "period": "year"
       },
@@ -4804,8 +4804,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Roadmapping", "Stakeholder management", "Jira", "Requirements gathering"],
       "salary": {
-        "minimum": 60,
-        "maximum": 80,
+        "minimum": 72,
+        "maximum": 96,
         "currency": "GBP",
         "period": "hour"
       },
@@ -4838,8 +4838,8 @@
         "Customer discovery"
       ],
       "salary": {
-        "minimum": 82000,
-        "maximum": 100000,
+        "minimum": 98000,
+        "maximum": 120000,
         "currency": "GBP",
         "period": "year"
       },
@@ -4866,8 +4866,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Leadership", "Roadmapping", "Stakeholder management", "Strategy"],
       "salary": {
-        "minimum": 108000,
-        "maximum": 128000,
+        "minimum": 130000,
+        "maximum": 154000,
         "currency": "GBP",
         "period": "year"
       },
@@ -4894,8 +4894,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Leadership", "Strategy", "Stakeholder management", "Roadmapping"],
       "salary": {
-        "minimum": 138000,
-        "maximum": 165000,
+        "minimum": 166000,
+        "maximum": 198000,
         "currency": "GBP",
         "period": "year"
       },
@@ -4922,8 +4922,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["SQL", "Jira", "Customer discovery", "Roadmapping"],
       "salary": {
-        "minimum": 34000,
-        "maximum": 44000,
+        "minimum": 41000,
+        "maximum": 53000,
         "currency": "GBP",
         "period": "year"
       },
@@ -4955,8 +4955,8 @@
         "Project coordination"
       ],
       "salary": {
-        "minimum": 78000,
-        "maximum": 96000,
+        "minimum": 94000,
+        "maximum": 115000,
         "currency": "GBP",
         "period": "year"
       },
@@ -4988,8 +4988,8 @@
         "Roadmapping"
       ],
       "salary": {
-        "minimum": 102000,
-        "maximum": 122000,
+        "minimum": 122000,
+        "maximum": 146000,
         "currency": "GBP",
         "period": "year"
       },
@@ -5016,8 +5016,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Product strategy", "Leadership", "Stakeholder management", "Market analysis"],
       "salary": {
-        "minimum": 118000,
-        "maximum": 142000,
+        "minimum": 142000,
+        "maximum": 170000,
         "currency": "GBP",
         "period": "year"
       },
@@ -5044,8 +5044,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Figma", "Design systems", "Interaction design", "Prototyping"],
       "salary": {
-        "minimum": 65,
-        "maximum": 90,
+        "minimum": 78,
+        "maximum": 108,
         "currency": "GBP",
         "period": "hour"
       },
@@ -5072,8 +5072,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["User interviews", "Research synthesis", "Usability testing", "Survey design"],
       "salary": {
-        "minimum": 32000,
-        "maximum": 42000,
+        "minimum": 38000,
+        "maximum": 50000,
         "currency": "GBP",
         "period": "year"
       },
@@ -5100,8 +5100,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["Leadership", "Figma", "Design systems", "Coaching"],
       "salary": {
-        "minimum": 96000,
-        "maximum": 114000,
+        "minimum": 115000,
+        "maximum": 137000,
         "currency": "GBP",
         "period": "year"
       },
@@ -5128,8 +5128,8 @@
       "locations": ["London, United Kingdom", "United Kingdom", "Europe"],
       "skills": ["UX writing", "Content strategy", "Figma", "Style guides"],
       "salary": {
-        "minimum": 56000,
-        "maximum": 70000,
+        "minimum": 67000,
+        "maximum": 84000,
         "currency": "GBP",
         "period": "year"
       },
@@ -5156,8 +5156,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["Python", "SQL", "A/B testing", "Statistics", "Causal inference"],
       "salary": {
-        "minimum": 108000,
-        "maximum": 128000,
+        "minimum": 130000,
+        "maximum": 154000,
         "currency": "CAD",
         "period": "year"
       },
@@ -5184,8 +5184,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["dbt", "SQL", "Snowflake", "Data modeling"],
       "salary": {
-        "minimum": 98000,
-        "maximum": 120000,
+        "minimum": 118000,
+        "maximum": 144000,
         "currency": "CAD",
         "period": "year"
       },
@@ -5212,8 +5212,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["Python", "Statistics", "Causal inference", "Pricing models", "SQL"],
       "salary": {
-        "minimum": 138000,
-        "maximum": 165000,
+        "minimum": 166000,
+        "maximum": 198000,
         "currency": "CAD",
         "period": "year"
       },
@@ -5240,8 +5240,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["Roadmapping", "SQL", "Customer discovery", "Stakeholder management"],
       "salary": {
-        "minimum": 112000,
-        "maximum": 132000,
+        "minimum": 134000,
+        "maximum": 158000,
         "currency": "CAD",
         "period": "year"
       },
@@ -5268,8 +5268,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["Roadmapping", "Stakeholder management", "Product strategy", "Customer discovery"],
       "salary": {
-        "minimum": 148000,
-        "maximum": 172000,
+        "minimum": 178000,
+        "maximum": 206000,
         "currency": "USD",
         "period": "year"
       },
@@ -5296,8 +5296,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["SQL", "Product analytics", "Excel"],
       "salary": {
-        "minimum": 45,
-        "maximum": 60,
+        "minimum": 54,
+        "maximum": 72,
         "currency": "CAD",
         "period": "hour"
       },
@@ -5324,8 +5324,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["Product strategy", "Leadership", "Roadmapping", "Stakeholder management"],
       "salary": {
-        "minimum": 148000,
-        "maximum": 172000,
+        "minimum": 178000,
+        "maximum": 206000,
         "currency": "CAD",
         "period": "year"
       },
@@ -5352,8 +5352,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["Leadership", "Process design", "Reporting", "Stakeholder management"],
       "salary": {
-        "minimum": 158000,
-        "maximum": 185000,
+        "minimum": 190000,
+        "maximum": 222000,
         "currency": "CAD",
         "period": "year"
       },
@@ -5380,8 +5380,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["Leadership", "Strategy", "Stakeholder management", "Product strategy"],
       "salary": {
-        "minimum": 215000,
-        "maximum": 255000,
+        "minimum": 258000,
+        "maximum": 306000,
         "currency": "CAD",
         "period": "year"
       },
@@ -5408,8 +5408,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["SQL", "Customer discovery", "Roadmapping"],
       "salary": {
-        "minimum": 43000,
-        "maximum": 52000,
+        "minimum": 52000,
+        "maximum": 62000,
         "currency": "CAD",
         "period": "year"
       },
@@ -5436,8 +5436,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["API design", "Roadmapping", "Compliance", "Stakeholder management"],
       "salary": {
-        "minimum": 152000,
-        "maximum": 180000,
+        "minimum": 182000,
+        "maximum": 216000,
         "currency": "USD",
         "period": "year"
       },
@@ -5464,8 +5464,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["User interviews", "Research synthesis", "Survey design", "Usability testing"],
       "salary": {
-        "minimum": 132000,
-        "maximum": 158000,
+        "minimum": 158000,
+        "maximum": 190000,
         "currency": "USD",
         "period": "year"
       },
@@ -5492,8 +5492,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["Figma", "Prototyping", "Usability testing", "Interaction design"],
       "salary": {
-        "minimum": 65,
-        "maximum": 85,
+        "minimum": 78,
+        "maximum": 102,
         "currency": "CAD",
         "period": "hour"
       },
@@ -5520,8 +5520,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["Research strategy", "User interviews", "Research synthesis", "Leadership"],
       "salary": {
-        "minimum": 155000,
-        "maximum": 180000,
+        "minimum": 186000,
+        "maximum": 216000,
         "currency": "CAD",
         "period": "year"
       },
@@ -5548,8 +5548,8 @@
       "locations": ["Toronto, Canada", "Canada", "North America"],
       "skills": ["Figma", "Prototyping", "Visual design"],
       "salary": {
-        "minimum": 55000,
-        "maximum": 70000,
+        "minimum": 66000,
+        "maximum": 84000,
         "currency": "CAD",
         "period": "year"
       },
@@ -5576,8 +5576,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["SQL", "Excel", "Data visualization", "Data governance"],
       "salary": {
-        "minimum": 40,
-        "maximum": 55,
+        "minimum": 48,
+        "maximum": 66,
         "currency": "EUR",
         "period": "hour"
       },
@@ -5604,8 +5604,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["dbt", "SQL", "Data modeling", "Data governance"],
       "salary": {
-        "minimum": 36000,
-        "maximum": 46000,
+        "minimum": 43000,
+        "maximum": 55000,
         "currency": "EUR",
         "period": "year"
       },
@@ -5632,8 +5632,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["Roadmapping", "Stakeholder management", "SQL"],
       "salary": {
-        "minimum": 68000,
-        "maximum": 85000,
+        "minimum": 82000,
+        "maximum": 102000,
         "currency": "EUR",
         "period": "year"
       },
@@ -5665,8 +5665,8 @@
         "Healthcare compliance"
       ],
       "salary": {
-        "minimum": 84000,
-        "maximum": 102000,
+        "minimum": 101000,
+        "maximum": 122000,
         "currency": "EUR",
         "period": "year"
       },
@@ -5698,8 +5698,8 @@
         "Project coordination"
       ],
       "salary": {
-        "minimum": 62000,
-        "maximum": 76000,
+        "minimum": 74000,
+        "maximum": 91000,
         "currency": "EUR",
         "period": "year"
       },
@@ -5726,8 +5726,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["Figma", "Design systems", "Interaction design", "Accessibility (WCAG)"],
       "salary": {
-        "minimum": 65,
-        "maximum": 90,
+        "minimum": 78,
+        "maximum": 108,
         "currency": "EUR",
         "period": "hour"
       },
@@ -5759,8 +5759,8 @@
         "Contextual inquiry"
       ],
       "salary": {
-        "minimum": 60000,
-        "maximum": 74000,
+        "minimum": 72000,
+        "maximum": 89000,
         "currency": "EUR",
         "period": "year"
       },
@@ -5787,8 +5787,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["User interviews", "Usability testing", "Research synthesis"],
       "salary": {
-        "minimum": 42000,
-        "maximum": 52000,
+        "minimum": 50000,
+        "maximum": 62000,
         "currency": "EUR",
         "period": "year"
       },
@@ -5815,8 +5815,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["Interaction design", "Figma", "Prototyping", "Content strategy"],
       "salary": {
-        "minimum": 90000,
-        "maximum": 108000,
+        "minimum": 108000,
+        "maximum": 130000,
         "currency": "EUR",
         "period": "year"
       },
@@ -5843,8 +5843,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["Figma", "Design systems", "Design tokens", "Healthcare compliance"],
       "salary": {
-        "minimum": 92000,
-        "maximum": 110000,
+        "minimum": 110000,
+        "maximum": 132000,
         "currency": "EUR",
         "period": "year"
       },
@@ -5876,8 +5876,8 @@
         "Stakeholder management"
       ],
       "salary": {
-        "minimum": 102000,
-        "maximum": 124000,
+        "minimum": 122000,
+        "maximum": 149000,
         "currency": "EUR",
         "period": "year"
       },
@@ -5904,8 +5904,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["Leadership", "Figma", "Coaching", "Healthcare compliance"],
       "salary": {
-        "minimum": 96000,
-        "maximum": 114000,
+        "minimum": 115000,
+        "maximum": 137000,
         "currency": "EUR",
         "period": "year"
       },
@@ -5938,8 +5938,8 @@
         "Accessibility (WCAG)"
       ],
       "salary": {
-        "minimum": 128000,
-        "maximum": 152000,
+        "minimum": 154000,
+        "maximum": 182000,
         "currency": "EUR",
         "period": "year"
       },
@@ -5966,8 +5966,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["User interviews", "Survey design", "Participant recruitment"],
       "salary": {
-        "minimum": 24000,
-        "maximum": 30000,
+        "minimum": 29000,
+        "maximum": 36000,
         "currency": "EUR",
         "period": "year"
       },
@@ -5994,8 +5994,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["Figma", "Design systems", "Data visualization", "Stakeholder management"],
       "salary": {
-        "minimum": 98000,
-        "maximum": 118000,
+        "minimum": 118000,
+        "maximum": 142000,
         "currency": "EUR",
         "period": "year"
       },
@@ -6022,8 +6022,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Python", "Airflow", "SQL", "Kafka", "Data modeling"],
       "salary": {
-        "minimum": 118000,
-        "maximum": 140000,
+        "minimum": 142000,
+        "maximum": 168000,
         "currency": "USD",
         "period": "year"
       },
@@ -6050,8 +6050,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Python", "Time-series forecasting", "Statistics", "SQL", "Causal inference"],
       "salary": {
-        "minimum": 158000,
-        "maximum": 188000,
+        "minimum": 190000,
+        "maximum": 226000,
         "currency": "USD",
         "period": "year"
       },
@@ -6078,8 +6078,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Python", "PyTorch", "MLOps", "Docker"],
       "salary": {
-        "minimum": 75,
-        "maximum": 100,
+        "minimum": 90,
+        "maximum": 120,
         "currency": "USD",
         "period": "hour"
       },
@@ -6106,8 +6106,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["dbt", "SQL", "Data modeling"],
       "salary": {
-        "minimum": 110000,
-        "maximum": 135000,
+        "minimum": 132000,
+        "maximum": 162000,
         "currency": "USD",
         "period": "year"
       },
@@ -6134,8 +6134,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Python", "Distributed systems", "Kafka", "Kubernetes", "Data modeling"],
       "salary": {
-        "minimum": 168000,
-        "maximum": 198000,
+        "minimum": 202000,
+        "maximum": 238000,
         "currency": "USD",
         "period": "year"
       },
@@ -6162,8 +6162,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Leadership", "Python", "Statistics", "Coaching"],
       "salary": {
-        "minimum": 172000,
-        "maximum": 202000,
+        "minimum": 206000,
+        "maximum": 242000,
         "currency": "USD",
         "period": "year"
       },
@@ -6190,8 +6190,8 @@
       "locations": ["Dublin, Ireland", "Ireland", "Europe"],
       "skills": ["Time-series forecasting", "Python", "Statistics", "Weather modeling", "SQL"],
       "salary": {
-        "minimum": 70000,
-        "maximum": 88000,
+        "minimum": 84000,
+        "maximum": 106000,
         "currency": "EUR",
         "period": "year"
       },
@@ -6218,8 +6218,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Roadmapping", "API design", "Stakeholder management"],
       "salary": {
-        "minimum": 128000,
-        "maximum": 150000,
+        "minimum": 154000,
+        "maximum": 180000,
         "currency": "USD",
         "period": "year"
       },
@@ -6246,8 +6246,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Roadmapping", "Stakeholder management", "Product strategy"],
       "salary": {
-        "minimum": 150000,
-        "maximum": 178000,
+        "minimum": 180000,
+        "maximum": 214000,
         "currency": "USD",
         "period": "year"
       },
@@ -6274,8 +6274,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["SQL", "Product analytics", "Excel"],
       "salary": {
-        "minimum": 50,
-        "maximum": 70,
+        "minimum": 60,
+        "maximum": 84,
         "currency": "USD",
         "period": "hour"
       },
@@ -6302,8 +6302,8 @@
       "locations": ["Dublin, Ireland", "Ireland", "Europe"],
       "skills": ["API design", "Roadmapping", "Distributed systems", "Stakeholder management"],
       "salary": {
-        "minimum": 96000,
-        "maximum": 116000,
+        "minimum": 115000,
+        "maximum": 139000,
         "currency": "EUR",
         "period": "year"
       },
@@ -6330,8 +6330,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Leadership", "Strategy", "Stakeholder management", "Roadmapping"],
       "salary": {
-        "minimum": 198000,
-        "maximum": 232000,
+        "minimum": 238000,
+        "maximum": 278000,
         "currency": "USD",
         "period": "year"
       },
@@ -6358,8 +6358,8 @@
       "locations": ["Dublin, Ireland", "Ireland", "Europe"],
       "skills": ["Leadership", "Roadmapping", "Stakeholder management"],
       "salary": {
-        "minimum": 108000,
-        "maximum": 128000,
+        "minimum": 130000,
+        "maximum": 154000,
         "currency": "EUR",
         "period": "year"
       },
@@ -6386,8 +6386,8 @@
       "locations": ["Austin, United States", "United States", "North America"],
       "skills": ["Figma", "Design systems", "Interaction design", "Data visualization"],
       "salary": {
-        "minimum": 70000,
-        "maximum": 88000,
+        "minimum": 84000,
+        "maximum": 106000,
         "currency": "USD",
         "period": "year"
       },
@@ -6419,8 +6419,8 @@
         "Contextual inquiry"
       ],
       "salary": {
-        "minimum": 63000,
-        "maximum": 77000,
+        "minimum": 76000,
+        "maximum": 92000,
         "currency": "EUR",
         "period": "year"
       },
@@ -6447,8 +6447,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["Playwright", "TypeScript", "CI/CD", "API testing", "Payment gateways"],
       "salary": {
-        "minimum": 52000,
-        "maximum": 66000,
+        "minimum": 62000,
+        "maximum": 79000,
         "currency": "EUR",
         "period": "year"
       },
@@ -6481,8 +6481,8 @@
         "Regression testing"
       ],
       "salary": {
-        "minimum": 68000,
-        "maximum": 84000,
+        "minimum": 82000,
+        "maximum": 101000,
         "currency": "EUR",
         "period": "year"
       },
@@ -6515,8 +6515,8 @@
         "Team leadership"
       ],
       "salary": {
-        "minimum": 96000,
-        "maximum": 118000,
+        "minimum": 115000,
+        "maximum": 142000,
         "currency": "EUR",
         "period": "year"
       },
@@ -6549,8 +6549,8 @@
         "Exploratory testing"
       ],
       "salary": {
-        "minimum": 40000,
-        "maximum": 50000,
+        "minimum": 48000,
+        "maximum": 60000,
         "currency": "EUR",
         "period": "year"
       },
@@ -6577,8 +6577,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["Postman", "API testing", "Newman", "CI/CD", "Contract testing"],
       "salary": {
-        "minimum": 55,
-        "maximum": 75,
+        "minimum": 66,
+        "maximum": 90,
         "currency": "EUR",
         "period": "hour"
       },
@@ -6611,8 +6611,8 @@
         "Public speaking"
       ],
       "salary": {
-        "minimum": 80000,
-        "maximum": 96000,
+        "minimum": 96000,
+        "maximum": 115000,
         "currency": "USD",
         "period": "year"
       },
@@ -6645,8 +6645,8 @@
         "Git"
       ],
       "salary": {
-        "minimum": 102000,
-        "maximum": 125000,
+        "minimum": 122000,
+        "maximum": 150000,
         "currency": "USD",
         "period": "year"
       },
@@ -6679,8 +6679,8 @@
         "Stakeholder collaboration"
       ],
       "salary": {
-        "minimum": 132000,
-        "maximum": 158000,
+        "minimum": 158000,
+        "maximum": 190000,
         "currency": "USD",
         "period": "year"
       },
@@ -6713,8 +6713,8 @@
         "Content calendars"
       ],
       "salary": {
-        "minimum": 85000,
-        "maximum": 105000,
+        "minimum": 102000,
+        "maximum": 126000,
         "currency": "EUR",
         "period": "year"
       },
@@ -6741,8 +6741,8 @@
       "locations": ["Berlin, Germany", "Germany", "Europe"],
       "skills": ["Technical writing", "Markdown", "API reference docs", "Editorial review", "Git"],
       "salary": {
-        "minimum": 45,
-        "maximum": 65,
+        "minimum": 54,
+        "maximum": 78,
         "currency": "USD",
         "period": "hour"
       },
@@ -6769,8 +6769,8 @@
       "locations": ["Amsterdam, Netherlands", "Netherlands", "Europe"],
       "skills": ["Zendesk", "SQL", "Troubleshooting", "Merchant onboarding", "Ticket triage"],
       "salary": {
-        "minimum": 52000,
-        "maximum": 66000,
+        "minimum": 62000,
+        "maximum": 79000,
         "currency": "EUR",
         "period": "year"
       },
@@ -6803,8 +6803,8 @@
         "Data analysis"
       ],
       "salary": {
-        "minimum": 58000,
-        "maximum": 72000,
+        "minimum": 70000,
+        "maximum": 86000,
         "currency": "EUR",
         "period": "year"
       },
@@ -6837,8 +6837,8 @@
         "Candidate pipelines"
       ],
       "salary": {
-        "minimum": 48000,
-        "maximum": 60000,
+        "minimum": 58000,
+        "maximum": 72000,
         "currency": "EUR",
         "period": "year"
       },
@@ -6871,8 +6871,8 @@
         "Solution design"
       ],
       "salary": {
-        "minimum": 118000,
-        "maximum": 148000,
+        "minimum": 142000,
+        "maximum": 178000,
         "currency": "USD",
         "period": "year"
       },
@@ -6905,8 +6905,8 @@
         "Jira"
       ],
       "salary": {
-        "minimum": 70000,
-        "maximum": 85000,
+        "minimum": 84000,
+        "maximum": 102000,
         "currency": "USD",
         "period": "year"
       },
@@ -6939,8 +6939,8 @@
         "Markdown"
       ],
       "salary": {
-        "minimum": 45,
-        "maximum": 70,
+        "minimum": 54,
+        "maximum": 84,
         "currency": "USD",
         "period": "hour"
       },
@@ -6973,8 +6973,8 @@
         "Customer communication"
       ],
       "salary": {
-        "minimum": 110000,
-        "maximum": 130000,
+        "minimum": 132000,
+        "maximum": 156000,
         "currency": "USD",
         "period": "year"
       },
@@ -7007,8 +7007,8 @@
         "Customer communication"
       ],
       "salary": {
-        "minimum": 24000,
-        "maximum": 30000,
+        "minimum": 29000,
+        "maximum": 36000,
         "currency": "EUR",
         "period": "year"
       },
@@ -7041,8 +7041,8 @@
         "Technical documentation"
       ],
       "salary": {
-        "minimum": 95000,
-        "maximum": 115000,
+        "minimum": 114000,
+        "maximum": 138000,
         "currency": "USD",
         "period": "year"
       },
@@ -7075,8 +7075,8 @@
         "API debugging"
       ],
       "salary": {
-        "minimum": 42000,
-        "maximum": 52000,
+        "minimum": 50000,
+        "maximum": 62000,
         "currency": "EUR",
         "period": "year"
       },
@@ -7109,8 +7109,8 @@
         "Account health tracking"
       ],
       "salary": {
-        "minimum": 60000,
-        "maximum": 75000,
+        "minimum": 72000,
+        "maximum": 90000,
         "currency": "EUR",
         "period": "year"
       },
@@ -7143,8 +7143,8 @@
         "Solution design"
       ],
       "salary": {
-        "minimum": 98000,
-        "maximum": 118000,
+        "minimum": 118000,
+        "maximum": 142000,
         "currency": "USD",
         "period": "year"
       },
@@ -7177,8 +7177,8 @@
         "Cross-functional collaboration"
       ],
       "salary": {
-        "minimum": 125000,
-        "maximum": 150000,
+        "minimum": 150000,
+        "maximum": 180000,
         "currency": "USD",
         "period": "year"
       },
@@ -7211,8 +7211,8 @@
         "Salesforce"
       ],
       "salary": {
-        "minimum": 105000,
-        "maximum": 125000,
+        "minimum": 126000,
+        "maximum": 150000,
         "currency": "USD",
         "period": "year"
       },
@@ -7245,8 +7245,8 @@
         "Deal support"
       ],
       "salary": {
-        "minimum": 105000,
-        "maximum": 130000,
+        "minimum": 126000,
+        "maximum": 156000,
         "currency": "USD",
         "period": "year"
       },
@@ -7279,8 +7279,8 @@
         "Scheduling"
       ],
       "salary": {
-        "minimum": 26000,
-        "maximum": 32000,
+        "minimum": 31000,
+        "maximum": 38000,
         "currency": "EUR",
         "period": "year"
       },
@@ -7307,8 +7307,8 @@
       "locations": ["Dublin, Ireland", "Ireland", "Europe"],
       "skills": ["Test automation", "Network protocols", "Python", "CI/CD", "API testing"],
       "salary": {
-        "minimum": 58000,
-        "maximum": 72000,
+        "minimum": 70000,
+        "maximum": 86000,
         "currency": "EUR",
         "period": "year"
       },
@@ -7335,8 +7335,8 @@
       "locations": ["Boston, United States", "United States", "North America"],
       "skills": ["Test strategy", "Automation architecture", "Java", "CI/CD", "Mentoring"],
       "salary": {
-        "minimum": 138000,
-        "maximum": 162000,
+        "minimum": 166000,
+        "maximum": 194000,
         "currency": "USD",
         "period": "year"
       },
@@ -7363,8 +7363,8 @@
       "locations": ["Warsaw, Poland", "Poland", "Europe"],
       "skills": ["Performance testing", "JMeter", "Load testing", "Network monitoring", "SQL"],
       "salary": {
-        "minimum": 60000,
-        "maximum": 75000,
+        "minimum": 72000,
+        "maximum": 90000,
         "currency": "EUR",
         "period": "year"
       },
@@ -7391,8 +7391,8 @@
       "locations": ["Dublin, Ireland", "Ireland", "Europe"],
       "skills": ["Mobile testing", "Appium", "iOS", "Android", "Test automation"],
       "salary": {
-        "minimum": 70000,
-        "maximum": 86000,
+        "minimum": 84000,
+        "maximum": 103000,
         "currency": "EUR",
         "period": "year"
       },
@@ -7419,8 +7419,8 @@
       "locations": ["Warsaw, Poland", "Poland", "Europe"],
       "skills": ["Accessibility testing", "WCAG", "Screen readers", "Manual testing", "Jira"],
       "salary": {
-        "minimum": 45000,
-        "maximum": 58000,
+        "minimum": 54000,
+        "maximum": 70000,
         "currency": "EUR",
         "period": "year"
       },
@@ -7453,8 +7453,8 @@
         "Sample code"
       ],
       "salary": {
-        "minimum": 152000,
-        "maximum": 178000,
+        "minimum": 182000,
+        "maximum": 214000,
         "currency": "USD",
         "period": "year"
       },
@@ -7487,8 +7487,8 @@
         "Editorial planning"
       ],
       "salary": {
-        "minimum": 84000,
-        "maximum": 100000,
+        "minimum": 101000,
+        "maximum": 120000,
         "currency": "EUR",
         "period": "year"
       },
@@ -7521,8 +7521,8 @@
         "Stakeholder collaboration"
       ],
       "salary": {
-        "minimum": 45,
-        "maximum": 65,
+        "minimum": 54,
+        "maximum": 78,
         "currency": "EUR",
         "period": "hour"
       },
@@ -7555,8 +7555,8 @@
         "Git"
       ],
       "salary": {
-        "minimum": 30000,
-        "maximum": 40000,
+        "minimum": 36000,
+        "maximum": 48000,
         "currency": "EUR",
         "period": "year"
       },
@@ -7589,8 +7589,8 @@
         "Ticket triage"
       ],
       "salary": {
-        "minimum": 62000,
-        "maximum": 78000,
+        "minimum": 74000,
+        "maximum": 94000,
         "currency": "EUR",
         "period": "year"
       },
@@ -7623,8 +7623,8 @@
         "Technical documentation"
       ],
       "salary": {
-        "minimum": 66000,
-        "maximum": 80000,
+        "minimum": 79000,
+        "maximum": 96000,
         "currency": "EUR",
         "period": "year"
       },
@@ -7657,8 +7657,8 @@
         "Employer branding"
       ],
       "salary": {
-        "minimum": 28000,
-        "maximum": 36000,
+        "minimum": 34000,
+        "maximum": 43000,
         "currency": "EUR",
         "period": "year"
       },
@@ -7691,8 +7691,8 @@
         "Technical presentations"
       ],
       "salary": {
-        "minimum": 120000,
-        "maximum": 145000,
+        "minimum": 144000,
+        "maximum": 174000,
         "currency": "USD",
         "period": "year"
       },
@@ -7725,8 +7725,8 @@
         "Cross-functional collaboration"
       ],
       "salary": {
-        "minimum": 85000,
-        "maximum": 105000,
+        "minimum": 102000,
+        "maximum": 126000,
         "currency": "USD",
         "period": "year"
       },
@@ -7759,8 +7759,8 @@
         "Multiplayer systems"
       ],
       "salary": {
-        "minimum": 118000,
-        "maximum": 140000,
+        "minimum": 142000,
+        "maximum": 168000,
         "currency": "CAD",
         "period": "year"
       },
@@ -7787,8 +7787,8 @@
       "locations": ["Montreal, Canada", "Canada", "North America"],
       "skills": ["Test automation", "C#", "Unity", "CI/CD", "Team leadership"],
       "salary": {
-        "minimum": 132000,
-        "maximum": 155000,
+        "minimum": 158000,
+        "maximum": 186000,
         "currency": "CAD",
         "period": "year"
       },
@@ -7821,8 +7821,8 @@
         "Release management"
       ],
       "salary": {
-        "minimum": 155000,
-        "maximum": 185000,
+        "minimum": 186000,
+        "maximum": 222000,
         "currency": "CAD",
         "period": "year"
       },
@@ -7849,8 +7849,8 @@
       "locations": ["Montreal, Canada", "Canada", "North America"],
       "skills": ["Manual testing", "Playtesting", "Bug tracking", "Jira", "Exploratory testing"],
       "salary": {
-        "minimum": 40000,
-        "maximum": 48000,
+        "minimum": 48000,
+        "maximum": 58000,
         "currency": "CAD",
         "period": "year"
       },
@@ -7883,8 +7883,8 @@
         "Matchmaking systems"
       ],
       "salary": {
-        "minimum": 48000,
-        "maximum": 58000,
+        "minimum": 58000,
+        "maximum": 70000,
         "currency": "EUR",
         "period": "year"
       },
@@ -7917,8 +7917,8 @@
         "Community management"
       ],
       "salary": {
-        "minimum": 95000,
-        "maximum": 115000,
+        "minimum": 114000,
+        "maximum": 138000,
         "currency": "USD",
         "period": "year"
       },
@@ -7951,8 +7951,8 @@
         "Escalation management"
       ],
       "salary": {
-        "minimum": 92000,
-        "maximum": 110000,
+        "minimum": 110000,
+        "maximum": 132000,
         "currency": "CAD",
         "period": "year"
       },
@@ -7985,8 +7985,8 @@
         "Project coordination"
       ],
       "salary": {
-        "minimum": 55000,
-        "maximum": 68000,
+        "minimum": 66000,
+        "maximum": 82000,
         "currency": "EUR",
         "period": "year"
       },
@@ -8013,8 +8013,8 @@
       "locations": ["Vancouver, Canada", "Canada", "North America"],
       "skills": ["Support operations", "Data analysis", "SQL", "Reporting", "Process improvement"],
       "salary": {
-        "minimum": 62000,
-        "maximum": 75000,
+        "minimum": 74000,
+        "maximum": 90000,
         "currency": "USD",
         "period": "year"
       },
@@ -8047,8 +8047,8 @@
         "Candidate pipelines"
       ],
       "salary": {
-        "minimum": 68000,
-        "maximum": 82000,
+        "minimum": 82000,
+        "maximum": 98000,
         "currency": "CAD",
         "period": "year"
       },
@@ -8081,8 +8081,8 @@
         "Candidate pipelines"
       ],
       "salary": {
-        "minimum": 85000,
-        "maximum": 102000,
+        "minimum": 102000,
+        "maximum": 122000,
         "currency": "CAD",
         "period": "year"
       },
@@ -8115,8 +8115,8 @@
         "Stakeholder management"
       ],
       "salary": {
-        "minimum": 108000,
-        "maximum": 128000,
+        "minimum": 130000,
+        "maximum": 154000,
         "currency": "USD",
         "period": "year"
       },
@@ -8143,8 +8143,8 @@
       "locations": ["Montreal, Canada", "Canada", "North America"],
       "skills": ["Prospecting", "Cold outreach", "CRM tools", "Lead qualification", "Salesforce"],
       "salary": {
-        "minimum": 55000,
-        "maximum": 68000,
+        "minimum": 66000,
+        "maximum": 82000,
         "currency": "CAD",
         "period": "year"
       },
@@ -8177,8 +8177,8 @@
         "Cross-functional collaboration"
       ],
       "salary": {
-        "minimum": 118000,
-        "maximum": 140000,
+        "minimum": 142000,
+        "maximum": 168000,
         "currency": "CAD",
         "period": "year"
       },
@@ -8205,8 +8205,8 @@
       "locations": ["Dublin, Ireland", "Ireland", "Europe"],
       "skills": ["Test automation", "Java", "CI/CD", "Regression testing", "Claims workflows"],
       "salary": {
-        "minimum": 88000,
-        "maximum": 106000,
+        "minimum": 106000,
+        "maximum": 127000,
         "currency": "EUR",
         "period": "year"
       },
@@ -8239,8 +8239,8 @@
         "Public speaking"
       ],
       "salary": {
-        "minimum": 50,
-        "maximum": 70,
+        "minimum": 60,
+        "maximum": 84,
         "currency": "USD",
         "period": "hour"
       },
@@ -8273,8 +8273,8 @@
         "Account health tracking"
       ],
       "salary": {
-        "minimum": 56000,
-        "maximum": 70000,
+        "minimum": 67000,
+        "maximum": 84000,
         "currency": "GBP",
         "period": "year"
       },
@@ -8307,8 +8307,8 @@
         "Account management"
       ],
       "salary": {
-        "minimum": 72000,
-        "maximum": 90000,
+        "minimum": 86000,
+        "maximum": 108000,
         "currency": "EUR",
         "period": "year"
       },
@@ -8335,8 +8335,8 @@
       "locations": ["Dublin, Ireland", "Ireland", "Europe"],
       "skills": ["Support operations", "Data analysis", "SQL", "Reporting", "Process improvement"],
       "salary": {
-        "minimum": 50000,
-        "maximum": 63000,
+        "minimum": 60000,
+        "maximum": 76000,
         "currency": "EUR",
         "period": "year"
       },
@@ -8369,8 +8369,8 @@
         "Technical documentation"
       ],
       "salary": {
-        "minimum": 68000,
-        "maximum": 84000,
+        "minimum": 82000,
+        "maximum": 101000,
         "currency": "GBP",
         "period": "year"
       },
@@ -8403,8 +8403,8 @@
         "Candidate pipelines"
       ],
       "salary": {
-        "minimum": 70000,
-        "maximum": 85000,
+        "minimum": 84000,
+        "maximum": 102000,
         "currency": "USD",
         "period": "year"
       },
@@ -8437,8 +8437,8 @@
         "Candidate assessment"
       ],
       "salary": {
-        "minimum": 96000,
-        "maximum": 118000,
+        "minimum": 115000,
+        "maximum": 142000,
         "currency": "USD",
         "period": "year"
       },
@@ -8471,8 +8471,8 @@
         "Reporting"
       ],
       "salary": {
-        "minimum": 78000,
-        "maximum": 95000,
+        "minimum": 94000,
+        "maximum": 114000,
         "currency": "GBP",
         "period": "year"
       },
@@ -8505,8 +8505,8 @@
         "Process improvement"
       ],
       "salary": {
-        "minimum": 72000,
-        "maximum": 88000,
+        "minimum": 86000,
+        "maximum": 106000,
         "currency": "EUR",
         "period": "year"
       },
@@ -8539,8 +8539,8 @@
         "Cross-functional strategy"
       ],
       "salary": {
-        "minimum": 150000,
-        "maximum": 180000,
+        "minimum": 180000,
+        "maximum": 216000,
         "currency": "GBP",
         "period": "year"
       },
@@ -8567,8 +8567,8 @@
       "locations": ["Hartford, United States", "United States", "North America"],
       "skills": ["Forecasting", "CPQ", "Sales process design", "Team leadership", "Salesforce"],
       "salary": {
-        "minimum": 145000,
-        "maximum": 170000,
+        "minimum": 174000,
+        "maximum": 204000,
         "currency": "USD",
         "period": "year"
       },
@@ -8601,8 +8601,8 @@
         "Presentation skills"
       ],
       "salary": {
-        "minimum": 48000,
-        "maximum": 58000,
+        "minimum": 58000,
+        "maximum": 70000,
         "currency": "USD",
         "period": "year"
       },
@@ -8635,8 +8635,8 @@
         "Cross-functional collaboration"
       ],
       "salary": {
-        "minimum": 92000,
-        "maximum": 112000,
+        "minimum": 110000,
+        "maximum": 134000,
         "currency": "USD",
         "period": "year"
       },
@@ -8669,8 +8669,8 @@
         "Exploratory testing"
       ],
       "salary": {
-        "minimum": 75000,
-        "maximum": 92000,
+        "minimum": 90000,
+        "maximum": 110000,
         "currency": "USD",
         "period": "year"
       },
@@ -8703,8 +8703,8 @@
         "Bug triage"
       ],
       "salary": {
-        "minimum": 55000,
-        "maximum": 68000,
+        "minimum": 66000,
+        "maximum": 82000,
         "currency": "USD",
         "period": "year"
       },
@@ -8737,8 +8737,8 @@
         "Curriculum design"
       ],
       "salary": {
-        "minimum": 105000,
-        "maximum": 125000,
+        "minimum": 126000,
+        "maximum": 150000,
         "currency": "USD",
         "period": "year"
       },
@@ -8771,8 +8771,8 @@
         "Developer support"
       ],
       "salary": {
-        "minimum": 40,
-        "maximum": 60,
+        "minimum": 48,
+        "maximum": 72,
         "currency": "USD",
         "period": "hour"
       },
@@ -8805,8 +8805,8 @@
         "Renewal management"
       ],
       "salary": {
-        "minimum": 92000,
-        "maximum": 110000,
+        "minimum": 110000,
+        "maximum": 132000,
         "currency": "USD",
         "period": "year"
       },
@@ -8839,8 +8839,8 @@
         "Customer communication"
       ],
       "salary": {
-        "minimum": 118000,
-        "maximum": 138000,
+        "minimum": 142000,
+        "maximum": 166000,
         "currency": "USD",
         "period": "year"
       },
@@ -8873,8 +8873,8 @@
         "Renewal forecasting"
       ],
       "salary": {
-        "minimum": 100000,
-        "maximum": 120000,
+        "minimum": 120000,
+        "maximum": 144000,
         "currency": "EUR",
         "period": "year"
       },
@@ -8907,8 +8907,8 @@
         "Product knowledge"
       ],
       "salary": {
-        "minimum": 32000,
-        "maximum": 40000,
+        "minimum": 38000,
+        "maximum": 48000,
         "currency": "USD",
         "period": "year"
       },
@@ -8941,8 +8941,8 @@
         "Social media"
       ],
       "salary": {
-        "minimum": 58000,
-        "maximum": 72000,
+        "minimum": 70000,
+        "maximum": 86000,
         "currency": "USD",
         "period": "year"
       },
@@ -8975,8 +8975,8 @@
         "Offer negotiation"
       ],
       "salary": {
-        "minimum": 68000,
-        "maximum": 82000,
+        "minimum": 82000,
+        "maximum": 98000,
         "currency": "USD",
         "period": "year"
       },
@@ -9009,8 +9009,8 @@
         "API integrations"
       ],
       "salary": {
-        "minimum": 148000,
-        "maximum": 174000,
+        "minimum": 178000,
+        "maximum": 209000,
         "currency": "USD",
         "period": "year"
       },
@@ -9043,8 +9043,8 @@
         "Customer success planning"
       ],
       "salary": {
-        "minimum": 85000,
-        "maximum": 100000,
+        "minimum": 102000,
+        "maximum": 120000,
         "currency": "USD",
         "period": "year"
       },
@@ -9077,8 +9077,8 @@
         "Forecasting"
       ],
       "salary": {
-        "minimum": 95000,
-        "maximum": 115000,
+        "minimum": 114000,
+        "maximum": 138000,
         "currency": "USD",
         "period": "year"
       },
@@ -9111,8 +9111,8 @@
         "Reporting"
       ],
       "salary": {
-        "minimum": 45000,
-        "maximum": 55000,
+        "minimum": 54000,
+        "maximum": 66000,
         "currency": "USD",
         "period": "year"
       },
@@ -9145,8 +9145,8 @@
         "Relevance evaluation"
       ],
       "salary": {
-        "minimum": 90000,
-        "maximum": 118000,
+        "minimum": 108000,
+        "maximum": 142000,
         "currency": "EUR",
         "period": "year"
       },
@@ -9179,8 +9179,8 @@
         "API product management"
       ],
       "salary": {
-        "minimum": 92000,
-        "maximum": 122000,
+        "minimum": 110000,
+        "maximum": 146000,
         "currency": "EUR",
         "period": "year"
       },
