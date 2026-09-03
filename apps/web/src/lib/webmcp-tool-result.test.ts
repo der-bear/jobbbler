@@ -106,8 +106,11 @@ describe("safeWebMcpErrorResult with domain rules", () => {
 
     expect(result).toMatchObject({
       status: "failed",
-      error: { code: "VALIDATION", retryable: false },
+      error: {
+        code: "VALIDATION",
+        retryable: false,
+        message: expect.stringContaining("remoteOrLocations requires at least one city"),
+      },
     });
-    expect(result.error.message).toContain("remoteOrLocations requires at least one city");
   });
 });

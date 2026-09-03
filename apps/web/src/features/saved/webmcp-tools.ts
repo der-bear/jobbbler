@@ -126,21 +126,21 @@ const scheduleTarget = {
   scheduleId: entityIdSchema.optional(),
   savedSearchId: entityIdSchema.optional(),
 };
-const requireOneTarget = (
-  value: { scheduleId?: string; savedSearchId?: string },
-  context: z.RefinementCtx,
-) => {
-  if (value.scheduleId === undefined && value.savedSearchId === undefined) {
-    context.addIssue({
-      code: "custom",
-      path: ["scheduleId"],
-      message: "Pass the scheduleId from get_saved_alerts or the savedSearchId of the search.",
-    });
-  }
+const hasOneTarget = (value: {
+  scheduleId?: string | undefined;
+  savedSearchId?: string | undefined;
+}) => value.scheduleId !== undefined || value.savedSearchId !== undefined;
+const oneTargetMessage = {
+  path: ["scheduleId"],
+  message: "Pass the scheduleId from get_saved_alerts or the savedSearchId of the search.",
 };
 const stateInput = z.discriminatedUnion("action", [
-  z.strictObject({ action: z.literal("pause"), ...scheduleTarget }).superRefine(requireOneTarget),
-  z.strictObject({ action: z.literal("resume"), ...scheduleTarget }).superRefine(requireOneTarget),
+  z
+    .strictObject({ action: z.literal("pause"), ...scheduleTarget })
+    .refine(hasOneTarget, oneTargetMessage),
+  z
+    .strictObject({ action: z.literal("resume"), ...scheduleTarget })
+    .refine(hasOneTarget, oneTargetMessage),
   z.strictObject({
     action: z.literal("delete"),
     savedSearchId: entityIdSchema,

@@ -148,7 +148,7 @@ describe("saved-route WebMCP tools", () => {
         name: "set_job_alert_state",
         purpose: "Pause, resume, or permanently delete one saved job search and its email updates.",
         description:
-          "Use a scheduleId from get_saved_alerts to pause or resume email updates, or an exact savedSearchId and confirmation after the person clearly requests permanent deletion, and return the resulting state or deletion receipt; an ambiguous stop request means pause, and more than one possible match requires a question.",
+          "Pause or resume email updates with the scheduleId from get_saved_alerts or the savedSearchId of the search; delete permanently only with the exact savedSearchId and confirmation after the person clearly requests it, and return the resulting state or deletion receipt; an ambiguous stop request means pause, and more than one possible match requires a question.",
       },
       {
         name: "open_saved_search",
