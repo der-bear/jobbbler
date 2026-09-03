@@ -124,6 +124,8 @@
    * element in the product sticking out past its own mark.
    */
   --jb-page-gutter: clamp(20px, 3vw, 48px);
+  /* Inset shared by a list's header and its rows, so their text meets one edge. */
+  --jb-list-inset: 20px;
   --jb-page-top: clamp(34px, 5vw, 72px);
   --jb-page-bottom: 96px;
   /*

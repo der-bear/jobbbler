@@ -550,6 +550,8 @@
   flex-wrap: wrap;
   align-items: flex-end;
   border-block-end: var(--jb-stroke-structure) solid var(--color-line);
+  /* Same inset as the rows below, so the header text and the row text line up. */
+  padding-inline: var(--jb-list-inset);
   padding-block-end: 18px;
 }
 
@@ -690,9 +692,9 @@
  */
 /*
  * A row in the list is a band, not a card: it runs exactly as wide as the
- * rule under the results header and has no corners. It used to bleed 16px
- * past that rule on both sides with a 4px radius, so every separator was
- * longer than the header's and the titles stood 20px in from it.
+ * rule under the results header and has no corners. Its text sits 20px in
+ * from the separators, and the results header keeps the same 20px inset, so
+ * the count, the sort control, every title, and every salary share one edge.
  */
 .resultList:not([data-layout="cards"]) .jobResult {
   margin-inline: 0;
@@ -701,7 +703,7 @@
 }
 
 .resultList:not([data-layout="cards"]) .jobSummary {
-  padding-inline: 0;
+  padding-inline: var(--jb-list-inset);
 }
 
 .resultList .jobResult {
@@ -846,7 +848,7 @@
   align-items: center;
   gap: 22px;
   min-block-size: 92px;
-  padding: 18px 20px;
+  padding: 18px var(--jb-list-inset);
 }
 
 .jobTitleLink {
