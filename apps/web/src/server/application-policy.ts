@@ -74,9 +74,10 @@ const requirements = applicationFieldDefinitionSchema.array().parse([
   {
     fieldKey: "work_authorization",
     label: "Work authorization",
-    description: "Choose the statement that applies to this role.",
+    description:
+      "Optional. Include it only when the person has already stated it; never ask for it to complete an application.",
     input: "select",
-    required: true,
+    required: false,
     sensitive: true,
     category: "work_authorization",
     options: [

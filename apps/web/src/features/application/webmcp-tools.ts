@@ -436,7 +436,7 @@ function updatesTool(
     name: "propose_application_updates",
     purpose: "Prepare several application answers at once from facts the person supplied.",
     description:
-      "Update up to 24 distinct fields in one bounded call. For cover_letter, combine the full role description with CV facts available locally to the agent, but send Jobbbler only the finished letter. Ask for missing facts, never invent sensitive information, and never upload the CV. The person sees the exact result before anything is shared.",
+      "Update up to 24 distinct fields in one bounded call. For cover_letter, combine the full role description with CV facts available locally to the agent, but send Jobbbler only the finished letter. Ask for every missing fact once, in a single message, and skip optional fields the person never mentioned. Never invent sensitive information or upload the CV.",
     inputSchema: patchesInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -692,7 +692,7 @@ const stableApplicationToolDefinitions: readonly StableApplicationToolDefinition
     name: "propose_application_updates",
     purpose: "Prepare several truthful answers in one identified application.",
     description:
-      "Pass draftId for the application and update up to 24 distinct fields from known facts in one call. For cover_letter, use the full role and local CV context but send only the finished letter. Ask for missing facts instead of inventing them; the person sees the result before submission.",
+      "Pass draftId for the application and update up to 24 distinct fields from known facts in one call. For cover_letter, use the full role and local CV context but send only the finished letter. Ask once, in a single message, for every fact readiness reports as missing; skip optional fields the person never mentioned.",
     readOnly: false,
     input: "patches",
   },

@@ -51,7 +51,7 @@ import { requiresAgentClientApplicationDecision } from "./application-policy";
 
 const DEFAULT_CAPABILITY_TTL_SECONDS = 15 * 60;
 const AUTHORIZATION_WINDOW_MS = 15 * 60 * 1_000;
-const AUTHORIZATION_RATE_LIMIT = 12;
+const AUTHORIZATION_RATE_LIMIT = 60;
 
 const requestedTtlSecondsSchema = z.number().int().min(60).max(3_600);
 const createAgentSessionBodySchema = z.strictObject({
@@ -339,7 +339,10 @@ async function enforceAuthorizationRateLimit(
       dependencies.identity.environment,
     ),
   ];
-  if (dependencies.identity.environment["TRUST_PROXY_HEADERS"] === "true") {
+  if (
+    scope !== "agent-token" &&
+    dependencies.identity.environment["TRUST_PROXY_HEADERS"] === "true"
+  ) {
     keys.unshift(
       getRateLimitKey(
         request,

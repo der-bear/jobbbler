@@ -82,7 +82,11 @@ describe("application disclosure policy", () => {
       "cover_letter",
       "work_authorization",
     ]);
-    expect(applicationPolicy.requirements.filter(({ required }) => required)).toHaveLength(5);
+    expect(applicationPolicy.requirements.filter(({ required }) => required)).toHaveLength(4);
+    expect(
+      applicationPolicy.requirements.find(({ fieldKey }) => fieldKey === "work_authorization")
+        ?.required,
+    ).toBe(false);
     expect(
       applicationPolicy.requirements.find(({ fieldKey }) => fieldKey === "cover_letter"),
     ).toMatchObject({

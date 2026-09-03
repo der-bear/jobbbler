@@ -40,7 +40,7 @@ test("persists a quickly completed application before a reload", async ({ page }
   // above the generic UI timeout so a cold dev server can drain that honest
   // persistence chain without turning a completed save into a flaky failure.
   await expect(page.getByText("Changes saved.")).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText("5 of 5 details ready")).toBeVisible();
+  await expect(page.getByText("4 of 4 details ready")).toBeVisible();
   await page.reload();
 
   await expect(page.getByRole("textbox", { name: "Full name" })).toHaveValue("Alex Morgan");
@@ -259,8 +259,8 @@ test("lets an agent prepare one exact application and submit only after the fina
   expect(readiness).toMatchObject({
     status: "completed",
     data: {
-      requiredFields: 5,
-      completedRequiredFields: 5,
+      requiredFields: 4,
+      completedRequiredFields: 4,
       missingCount: 0,
       nextTool: "request_submission_review",
     },
