@@ -5,8 +5,10 @@ import type { JsonSchema, JsonValue, ToolManifest } from "@jobbbler/webmcp";
 
 import {
   completedWebMcpResult,
+  failedWebMcpResult,
   safeWebMcpErrorResult,
   type CompletedWebMcpResult,
+  type FailedWebMcpResult,
   type SafeWebMcpErrorResult,
 } from "@/lib/webmcp-tool-result";
 import type { WebMcpNavigate } from "@/lib/webmcp-navigation";
@@ -45,7 +47,8 @@ export interface CompareToolDependencies {
   getCriteriaSearch?(): string;
 }
 
-type CompareToolOutput = CompletedWebMcpResult<JsonValue> | SafeWebMcpErrorResult;
+type CompareToolOutput =
+  CompletedWebMcpResult<JsonValue> | FailedWebMcpResult | SafeWebMcpErrorResult;
 
 function selectedJobIds(dependencies: CompareToolDependencies): readonly string[] {
   return typeof dependencies.selectedJobIds === "function"
@@ -98,6 +101,18 @@ export function createCompareToolManifests(
     async execute(input, { signal }) {
       try {
         emptyInput.parse(input);
+        /*
+         * Asking to read a comparison that was never opened is a normal thing
+         * for an agent to do, and it used to come back as a validation error
+         * about the request itself. Say what is true and what to call instead.
+         */
+        if (selectedJobIds(dependencies).length === 0) {
+          return failedWebMcpResult({
+            code: "CONFLICT",
+            message: "No comparison is open. Call compare_jobs with two or three jobIds first.",
+            retryable: false,
+          });
+        }
         const result = await dependencies.getComparison({ signal });
         return completedWebMcpResult({
           summary: `Read the visible comparison of ${String(result.jobs.length)} technology role${result.jobs.length === 1 ? "" : "s"}.`,
