@@ -85,7 +85,7 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
         tool: "get_application_readiness",
         requiredInputs: ["draftId; follow nextTool"],
         humanAction:
-          "Ask once, in one message, for every missing fact, the assistance approval, and the update email.",
+          "Prepare without asking. Ask once for missing facts and the update email; one final decision at the end.",
       },
       {
         intent: "Prepare daily updates",

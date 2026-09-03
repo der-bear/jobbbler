@@ -338,40 +338,42 @@ function assistanceTool(
 ): ToolManifest<unknown, ApplicationToolOutput> {
   return {
     name: "request_application_assistance",
-    purpose: "Ask once for short-lived permission to prepare this private application.",
+    purpose:
+      "Take short-lived permission to prepare this private application; no question is asked.",
     description:
-      "Request application-bound authority so this agent client can prepare truthful answers, read them back for the final review, and run server safeguards. Nothing is sent to an employer until the person approves the exact completed application.",
+      "The person's request to apply is the authority to prepare. This call grants application-bound, short-lived assistance at once and returns propose_application_updates as the next step; it asks the person nothing. Nothing is sent to an employer until the person approves the exact completed application.",
     inputSchema: emptyInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
       try {
         emptyInput.parse(input);
+        /*
+         * Two consents made every agent stop twice per application. The person
+         * already said "apply"; preparing answers in a private draft shares
+         * nothing and sends nothing, so it needs no second yes. The decision
+         * that matters — the exact application and its recipient — stays.
+         */
         const { request } = await dependencies.requestAgentAccess(
           assistanceOperations(dependencies.allowsAgentSubmission()),
           { signal },
         );
-        return requiresUserActionWebMcpResult({
-          summary: "Application assistance is ready for the person's decision in the agent client.",
-          kind: "agent_authorization",
-          surface: "application_authorization",
-          requestId: request.id,
-          nextTool: "decide_application_assistance",
-          presentation: {
-            title: "Allow this agent to help with this application?",
-            prompt:
-              "The agent can fill in answers using facts you provide and prepare the completed application for review. It cannot submit anything until you approve that exact application.",
-            confirmLabel: "Allow once",
-            declineLabel: "Not now",
-            facts: [
-              { key: "Scope", value: "This application only" },
-              {
-                key: "Can do",
-                value: "Fill in answers and prepare the completed application for your review",
-              },
-              { key: "Cannot do", value: "Submit anything without your final approval" },
-              { key: "Expires", value: request.expiresAt },
-            ],
+        const result = await dependencies.decideAgentAccess(request.id, "approved", {
+          signal,
+          channel: "agent_client",
+        });
+        return completedWebMcpResult({
+          summary:
+            "Preparation is allowed for this application. Nothing is sent until the person approves the exact application.",
+          data: {
+            draftId: result.state.draftId,
+            agentAuthorityStatus: result.state.agentAuthorityStatus,
+            expiresAt: request.expiresAt,
+            nextTool: "propose_application_updates",
           },
+          resources: [
+            { type: "application", id: result.state.draftId, label: "Private application" },
+          ],
+          facts: [{ key: "expires", value: request.expiresAt }],
         });
       } catch (error) {
         return safeWebMcpErrorResult(error, signal, "Application assistance accepts no arguments.");
@@ -385,9 +387,9 @@ function assistanceDecisionTool(
 ): ToolManifest<unknown, ApplicationToolOutput> {
   return {
     name: "decide_application_assistance",
-    purpose: "Record the person's assistance decision from the agent client.",
+    purpose: "Withdraw or revoke assistance for this application when the person asks.",
     description:
-      "Use the exact requestId returned by request_application_assistance and the person's explicit decision: approved, declined, or withdraw. Use withdraw only to revoke active assistance bound to that request. Never infer or approve this decision on the person's behalf; when no explicit decision is present, stop and tell the person to decide in the external agent client. Approval is short-lived and application-bound; it never shares data or submits an application.",
+      "Assistance is granted automatically by request_application_assistance; call this only when the person asks to stop the agent's help: pass that requestId with withdraw (or declined) to revoke active assistance bound to it; it never shares data or submits an application.",
     inputSchema: assistanceDecisionInputSchema,
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     async execute(input, { signal }) {
@@ -675,17 +677,17 @@ const stableApplicationToolDefinitions: readonly StableApplicationToolDefinition
   },
   {
     name: "request_application_assistance",
-    purpose: "Ask once for short-lived permission to prepare one private application.",
+    purpose: "Take short-lived permission to prepare one private application; nothing is asked.",
     description:
-      "Pass the application ID returned by prepare_application as draftId. Request application-bound authority for this agent client to prepare truthful answers and read them back for final review. Nothing is sent to an employer until the person approves the exact completed application.",
+      "Pass the application ID returned by prepare_application as draftId. The person's request to apply is the authority: assistance is granted at once, without a question, and propose_application_updates is the next step. Nothing is sent to an employer until the person approves the exact completed application.",
     readOnly: false,
     input: "draft",
   },
   {
     name: "decide_application_assistance",
-    purpose: "Record the person's assistance decision from the agent client.",
+    purpose: "Withdraw assistance for one application when the person asks.",
     description:
-      "Pass draftId for the same application, the exact requestId returned by request_application_assistance, and the person's explicit decision: approved, declined, or withdraw. Use withdraw to revoke active assistance bound to that request. Never infer or approve this decision on the person's behalf; when no explicit decision is present, stop and tell the person to decide in the external agent client. Approval is short-lived and application-bound.",
+      "Assistance is granted automatically; call this only when the person asks to stop the agent's help. Pass draftId, the requestId from request_application_assistance, and withdraw (or declined) to revoke active assistance bound to it; it never shares data or submits.",
     readOnly: false,
     input: "assistance_decision",
   },

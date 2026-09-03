@@ -52,7 +52,7 @@ The current implementation keeps identity portable across both storage adapters.
 
 1. A WebMCP command reaches the Policy Enforcement Point in the BFF.
 2. The backend evaluates the owner session, agent session, resource, action, state, expiry, and risk.
-3. If authority is absent but requestable, the response is a structured denial with a non-secret, server-issued request ID, bounded presentation facts, and `requires_user_action` status. After application-bound assistance is approved, the final review may include the exact private application values because those values are the object of the decision.
+3. If authority is absent but requestable, the response is a structured denial with a non-secret, server-issued request ID, bounded presentation facts, and `requires_user_action` status. Application-bound assistance is granted on request without a separate human decision, because the person's instruction to apply is that authority and preparation discloses nothing; the final review then includes the exact private application values because those values are the object of the one decision that sends.
 4. A compatible external agent client presents the named resource, operations,
    purpose, duration, and affected data classes through its own interaction UI.
    For final application submission it presents every exact returned value; an

@@ -45,7 +45,6 @@ const agentCan = [
 
 const decisionsForYou = [
   "Facts only you can provide",
-  "Whether the agent may prepare this application",
   "The exact application and recipient shown before anything is sent",
   "The final yes or no that controls submission",
   "The right to withdraw consent for future processing",
@@ -59,10 +58,10 @@ export default function WebMcpAboutPage() {
         <h1>Search once. Let your agent handle the repetition.</h1>
         <p>
           Job search repeats itself. Tell a compatible browser agent what kind of technology role
-          you want. It can search, compare, and keep checking. If you choose a role, it asks before
-          preparing one private application and again before Jobbbler sends the exact version shown
-          to you. The conversation stays in your agent app. No separate MCP connection or server
-          setup is needed.
+          you want. It can search, compare, and keep checking. If you choose a role, it prepares one
+          private application on its own and asks you once, before Jobbbler sends the exact version
+          shown to you. The conversation stays in your agent app. No separate MCP connection or
+          server setup is needed.
         </p>
       </header>
 
@@ -115,11 +114,10 @@ export default function WebMcpAboutPage() {
           </div>
           <p className={styles["controlNote"]}>
             <ShieldCheckIcon aria-hidden="true" size={18} />
-            Opening Jobbbler gives an agent no permission to use your personal data. It asks before
-            preparing one application and again before sending it. The first yes records consent to
-            process the answers for that application. The second yes applies only to the unchanged
-            application and recipient shown to you. If you say no at either step, that step does not
-            happen.
+            Opening Jobbbler gives an agent no permission to send anything. Your request to apply
+            lets it prepare a private application; nothing leaves that draft. One yes, given after
+            you see the exact application and its recipient, is what sends it, and it applies only
+            to that unchanged version. Say no, and nothing is sent.
           </p>
         </div>
       </section>

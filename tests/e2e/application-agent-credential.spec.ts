@@ -118,15 +118,10 @@ test("keeps a draft credential through route changes and one same-tab reload", a
 
   const requested = (await callTool(page, "request_application_assistance", { draftId })) as {
     status: string;
-    requestId: string;
+    data: { nextTool: string };
   };
-  expect(requested.status).toBe("requires_user_action");
-  const approved = (await callTool(page, "decide_application_assistance", {
-    draftId,
-    requestId: requested.requestId,
-    decision: "approved",
-  })) as { status: string };
-  expect(approved.status).toBe("completed");
+  expect(requested.status).toBe("completed");
+  expect(requested.data.nextTool).toBe("propose_application_updates");
 
   await expect
     .poll(() =>
@@ -191,23 +186,11 @@ test("lets an agent prepare one exact application and submit only after the fina
 
   const requested = (await callTool(page, "request_application_assistance", { draftId })) as {
     status: string;
-    requestId: string;
-    nextTool: string;
-    presentation: {
-      title: string;
-      facts: readonly { key: string; value: string }[];
-    };
+    data: { agentAuthorityStatus: string; nextTool: string };
   };
   expect(requested).toMatchObject({
-    status: "requires_user_action",
-    nextTool: "decide_application_assistance",
-    presentation: {
-      title: "Allow this agent to help with this application?",
-      facts: expect.arrayContaining([
-        { key: "Scope", value: "This application only" },
-        { key: "Cannot do", value: "Submit anything without your final approval" },
-      ]),
-    },
+    status: "completed",
+    data: { agentAuthorityStatus: "active", nextTool: "propose_application_updates" },
   });
   await expect(
     page
@@ -215,18 +198,7 @@ test("lets an agent prepare one exact application and submit only after the fina
       .getByText("request_application_assistance", { exact: true })
       .first(),
   ).toBeVisible();
-  await expect(page.getByText("Needs your decision", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("request_agent_access", { exact: true })).toHaveCount(0);
-
-  const assistanceDecision = (await callTool(page, "decide_application_assistance", {
-    draftId,
-    requestId: requested.requestId,
-    decision: "approved",
-  })) as { status: string; data: { decision: string } };
-  expect(assistanceDecision).toMatchObject({
-    status: "completed",
-    data: { decision: "approved" },
-  });
 
   const updated = (await callTool(page, "propose_application_updates", {
     draftId,

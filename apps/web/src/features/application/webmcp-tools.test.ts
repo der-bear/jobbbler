@@ -164,7 +164,7 @@ function names(manifests: ReturnType<typeof createApplicationToolManifests>): st
 }
 
 describe("application WebMCP outcomes", () => {
-  it("requests one bounded assistance decision and does not expose lifecycle internals", async () => {
+  it("takes bounded assistance without asking and does not expose lifecycle internals", async () => {
     const deps = dependencies(base);
     const manifests = createApplicationToolManifests(deps);
     expect(names(manifests)).toEqual([
@@ -182,24 +182,19 @@ describe("application WebMCP outcomes", () => {
 
     const result = await manifests[1]!.execute({}, { signal: new AbortController().signal });
     expect(result).toMatchObject({
-      status: "requires_user_action",
-      summary: expect.stringContaining("agent client"),
-      requestId: delegationRequestId,
-      nextTool: "decide_application_assistance",
-      presentation: {
-        title: "Allow this agent to help with this application?",
-        confirmLabel: "Allow once",
-        facts: [
-          { key: "Scope", value: "This application only" },
-          {
-            key: "Can do",
-            value: "Fill in answers and prepare the completed application for your review",
-          },
-          { key: "Cannot do", value: "Submit anything without your final approval" },
-          { key: "Expires", value: "2026-08-29T10:15:00.000Z" },
-        ],
+      status: "completed",
+      summary: expect.stringContaining("Nothing is sent"),
+      data: {
+        draftId: base.draftId,
+        agentAuthorityStatus: "active",
+        nextTool: "propose_application_updates",
       },
     });
+    expect(deps.decideAgentAccess).toHaveBeenCalledWith(
+      delegationRequestId,
+      "approved",
+      expect.objectContaining({ channel: "agent_client" }),
+    );
     expect(deps.requestAgentAccess).toHaveBeenCalledWith(
       expect.arrayContaining([
         "read_application",
@@ -501,9 +496,7 @@ describe("site-wide application tools", () => {
     expect(names(manifests)).toEqual(stableNames);
     for (const manifest of manifests) expect(manifest.description).toContain("draftId");
     expect(manifests[2]!.description).toContain("revoke active assistance");
-    expect(manifests[2]!.description).toContain(
-      "tell the person to decide in the external agent client",
-    );
+    expect(manifests[2]!.description).toContain("only when the person asks to stop");
     expect(manifests[5]!.description).toContain("exact requestId and draftVersion");
     expect(manifests[6]!.description).toContain("immediately");
   });

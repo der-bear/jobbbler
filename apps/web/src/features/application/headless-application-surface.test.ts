@@ -320,18 +320,8 @@ describe("headless application surface", () => {
         { signal },
       );
       expect(assistance).toMatchObject({
-        status: "requires_user_action",
-        requestId: delegationId,
-        nextTool: "decide_application_assistance",
-      });
-
-      const approved = await tool("decide_application_assistance").execute(
-        { draftId, requestId: delegationId, decision: "approved" },
-        { signal },
-      );
-      expect(approved).toMatchObject({
         status: "completed",
-        data: { decision: "approved", agentAuthorityStatus: "active" },
+        data: { agentAuthorityStatus: "active", nextTool: "propose_application_updates" },
       });
 
       const updated = await tool("propose_application_updates").execute(

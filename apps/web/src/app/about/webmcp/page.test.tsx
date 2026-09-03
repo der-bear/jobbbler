@@ -12,7 +12,7 @@ describe("WebMCP explanation", () => {
     expect(markup).toContain("One conversation, from search to application");
     expect(markup).toContain("Open this Jobbbler site");
     expect(markup).toContain("Compare options, pick the top 2, and apply");
-    expect(markup).toContain("asks before preparing one private application");
+    expect(markup).toContain("asks you once, before Jobbbler sends");
     expect(markup).toContain("Example request");
     expect(markup).toContain('aria-label="Copy prompt"');
     expect(markup).toContain("Search");
@@ -34,9 +34,9 @@ describe("WebMCP explanation", () => {
     expect(markup).toContain("Jobbbler keeps checking after the tab closes");
     expect(markup).toContain("You stay in control");
     expect(markup).toContain("Stays with you");
-    expect(markup).toContain("records consent to process the answers for that application");
-    expect(markup).toContain("applies only to the unchanged application and recipient");
-    expect(markup).toContain("If you say no at either step");
+    expect(markup).toContain("One yes, given after you see the exact application");
+    expect(markup).toContain("Say no, and nothing is sent");
+    expect(markup).toContain("nothing leaves that draft");
     expect(markup).toContain("Every role in this demo supports Apply on Jobbbler");
     expect(markup).not.toContain("For other roles");
     expect(markup).not.toContain("employer&#x27;s website");

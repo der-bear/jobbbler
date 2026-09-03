@@ -66,10 +66,11 @@ $90k+. Compare options, pick the top 2, and apply. Schedule for daily updates
 - **Independent authority layers.** Agent delegation, payload-bound data
   permission, immutable review, and single-use confirmation are separate
   server-enforced decisions. A purely manual application can finish in the
-  first-party UI. Once assistance is requested or an agent suggestion exists,
-  the agent presents assistance, consent, and submission decisions in the
-  external agent client; the server rejects a first-party bypass and accepts
-  only decisions bound to the exact server-issued request and draft version.
+  first-party UI. The person's request to apply is the authority to prepare:
+  assistance is granted without a question. The one decision that sends —
+  the exact application and recipient — is presented in the external agent
+  client; the server rejects a first-party bypass and accepts only decisions
+  bound to the exact server-issued request and draft version.
   Active assistance can be withdrawn through that same request-bound decision
   tool.
 - **Answers given once.** A new application arrives holding the answers this
