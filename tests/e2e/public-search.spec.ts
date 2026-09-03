@@ -509,16 +509,17 @@ test.describe("public job search workspace", () => {
   });
 
   test("keeps a display-currency choice from search through role details", async ({ page }) => {
+    // USD is the default and stays out of the URL, so the persisted choice is EUR.
     await page.goto("/jobs?sort=newest");
-    await page.getByRole("radio", { name: "USD" }).click();
+    await page.getByRole("radio", { name: "EUR" }).click();
 
-    await expect.poll(() => new URL(page.url()).searchParams.get("currency")).toBe("USD");
+    await expect.poll(() => new URL(page.url()).searchParams.get("currency")).toBe("EUR");
     const firstRole = page.getByRole("article").first();
-    await expect(firstRole.locator("strong").last()).toContainText("$");
+    await expect(firstRole.locator("strong").last()).toContainText("€");
     await firstRole.getByRole("link", { name: /^View details for / }).click();
 
-    await expect.poll(() => new URL(page.url()).searchParams.get("currency")).toBe("USD");
-    await expect(page.getByRole("main")).toContainText(/\$[\d,]+k?–\$[\d,]+k? \/ yr/u);
+    await expect.poll(() => new URL(page.url()).searchParams.get("currency")).toBe("EUR");
+    await expect(page.getByRole("main")).toContainText(/€[\d,]+k?–€[\d,]+k? \/ yr/u);
   });
 
   test("persists the selected theme after a reload", async ({ page }) => {

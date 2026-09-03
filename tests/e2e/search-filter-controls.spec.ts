@@ -49,30 +49,31 @@ test("multi-select exposes one named multi-value listbox and returns focus on Es
 test("currency selector uses one tab stop and the complete radio-group keyboard contract", async ({
   page,
 }) => {
+  // Order is USD, EUR, GBP, CAD; USD is the default display currency.
   const group = page.getByRole("radiogroup", { name: "Display currency" });
-  const eur = group.getByRole("radio", { name: "EUR" });
   const usd = group.getByRole("radio", { name: "USD" });
+  const eur = group.getByRole("radio", { name: "EUR" });
   const cad = group.getByRole("radio", { name: "CAD" });
 
-  await expect(eur).toHaveAttribute("aria-checked", "true");
-  await expect(eur).toHaveAttribute("tabindex", "0");
-  await expect(group.locator('[role="radio"][tabindex="0"]')).toHaveCount(1);
-
-  await eur.focus();
-  await eur.press("ArrowRight");
   await expect(usd).toHaveAttribute("aria-checked", "true");
-  await expect(usd).toBeFocused();
+  await expect(usd).toHaveAttribute("tabindex", "0");
   await expect(group.locator('[role="radio"][tabindex="0"]')).toHaveCount(1);
 
-  await usd.press("End");
+  await usd.focus();
+  await usd.press("ArrowRight");
+  await expect(eur).toHaveAttribute("aria-checked", "true");
+  await expect(eur).toBeFocused();
+  await expect(group.locator('[role="radio"][tabindex="0"]')).toHaveCount(1);
+
+  await eur.press("End");
   await expect(cad).toHaveAttribute("aria-checked", "true");
   await expect(cad).toBeFocused();
 
   await cad.press("Home");
-  await expect(eur).toHaveAttribute("aria-checked", "true");
-  await expect(eur).toBeFocused();
+  await expect(usd).toHaveAttribute("aria-checked", "true");
+  await expect(usd).toBeFocused();
 
-  await eur.press("ArrowLeft");
+  await usd.press("ArrowLeft");
   await expect(cad).toHaveAttribute("aria-checked", "true");
   await expect(cad).toBeFocused();
 });
