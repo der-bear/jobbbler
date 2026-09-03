@@ -154,7 +154,28 @@
 .jobHeading a,
 .comparisonTable a,
 .mobileComparison a,
-.comparisonActions a,
+.comparisonActions a {
+  display: inline-flex;
+  min-block-size: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-block-start: 14px;
+  color: var(--color-signal-strong);
+  padding-inline: 8px;
+  font-size: var(--jb-type-label);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.jobHeading a:hover,
+.comparisonTable a:hover,
+.mobileComparison a:hover,
+.comparisonActions a:hover {
+  color: var(--jb-signal);
+}
+
+/* Only the way out of an empty compare page is a button: the same one as on /saved. */
 .empty a,
 .state a {
   display: inline-flex;
@@ -178,18 +199,10 @@
   -webkit-backdrop-filter: var(--jb-glass-blur-control);
 }
 
-/* The way out of an empty compare page is the same button as on /saved. */
 .empty a:hover,
 .state a:hover {
   border-color: var(--jb-hover-line);
   background: var(--jb-hover-surface);
-}
-
-.jobHeading a:hover,
-.comparisonTable a:hover,
-.mobileComparison a:hover,
-.comparisonActions a:hover {
-  color: var(--jb-signal);
 }
 
 .jobActions a,
