@@ -149,9 +149,10 @@ test.describe("agent journey through the live WebMCP surface", () => {
     };
     expect(plan.status).toBe("completed");
     expect(plan.data.steps.length).toBeGreaterThan(3);
-    expect(plan.data.boundaries.join(" ")).toContain("grants no authority");
+    expect(plan.data.boundaries.join(" ")).toContain("no authority");
 
     const search = (await callTool(page, "search_jobs", {
+      presentation: "follow",
       query: "senior full-stack engineer",
       workModels: ["remote"],
     })) as { status: string; data: { jobs: readonly { id: string }[] } };

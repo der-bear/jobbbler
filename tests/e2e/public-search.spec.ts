@@ -261,7 +261,7 @@ test.describe("public job search workspace", () => {
 
     const jobIds = await firstJobIds(page);
     await page.goto(`/compare?currency=USD&sort=newest&id=${jobIds.join("&id=")}`);
-    await expect(page.getByRole("region", { name: "Role comparison" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Role comparison", exact: true })).toBeVisible();
     const openRoleHref = await page
       .getByRole("link", { name: /^Open .+ role$/ })
       .first()
@@ -270,6 +270,39 @@ test.describe("public job search workspace", () => {
     const openRoleUrl = new URL(openRoleHref ?? "", page.url());
     expect(openRoleUrl.searchParams.get("currency")).toBe("USD");
     expect(openRoleUrl.searchParams.get("sort")).toBe("newest");
+  });
+
+  test("keeps three compared roles readable in a keyboard-scrollable snap track", async ({
+    page,
+  }) => {
+    const jobIds = await firstJobIds(page, 3);
+    await page.goto(`/compare?id=${jobIds.join("&id=")}`);
+
+    const track = page.getByRole("region", {
+      name: "Role comparison table",
+      exact: true,
+    });
+    await expect(track).toBeVisible();
+    await expect(track.getByRole("columnheader")).toHaveCount(4);
+
+    const geometry = await track.evaluate((element) => {
+      const firstRoleHeader = element.querySelector("thead th:nth-child(2)");
+      return {
+        clientWidth: element.clientWidth,
+        firstRoleSnap:
+          firstRoleHeader === null ? "" : getComputedStyle(firstRoleHeader).scrollSnapAlign,
+        scrollSnapType: getComputedStyle(element).scrollSnapType,
+        scrollWidth: element.scrollWidth,
+      };
+    });
+    expect(geometry.scrollWidth).toBeGreaterThan(geometry.clientWidth);
+    expect(geometry.scrollSnapType).toContain("mandatory");
+    expect(geometry.firstRoleSnap).toBe("start");
+
+    await track.focus();
+    await expect(track).toBeFocused();
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(() => track.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
   });
 
   test("offers retry, change-selection, and return paths when comparison loading fails", async ({
@@ -308,7 +341,7 @@ test.describe("public job search workspace", () => {
 
     failComparison = false;
     await page.getByRole("button", { name: "Retry comparison" }).click();
-    await expect(page.getByRole("region", { name: "Role comparison" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Role comparison", exact: true })).toBeVisible();
     expect(compareRequests).toBe(2);
 
     const primaryTargets = [
@@ -589,7 +622,7 @@ test.describe("mobile and reduced-motion public search", () => {
     const jobIds = await firstJobIds(page);
     await page.goto(`/compare?id=${jobIds.join("&id=")}`);
 
-    const comparison = page.getByRole("region", { name: "Role comparison" });
+    const comparison = page.getByRole("region", { name: "Role comparison", exact: true });
     await expect(comparison).toBeVisible();
     await expect(comparison.getByRole("article")).toHaveCount(2);
     await expect(page.getByRole("table")).toBeHidden();

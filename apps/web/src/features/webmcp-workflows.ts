@@ -42,12 +42,12 @@ interface WorkflowPlan {
   readonly branches?: readonly WorkflowBranch[];
 }
 
-export const workflowVersion = "2.12";
+export const workflowVersion = "2.13";
 export const workflowBoundaries: readonly string[] = [
-  "Advice only; grants no authority.",
-  "Decide in the agent client.",
-  "Applications: call readiness and follow its nextTool.",
-  "Monitoring cannot submit.",
+  "Advice only; no authority.",
+  "Decide in agent client.",
+  "Follow application readiness.nextTool.",
+  "Monitoring never submits.",
 ];
 
 export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
@@ -58,14 +58,14 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
         intent: "Search requested roles",
         tool: "search_jobs",
         requiredInputs: [
-          "known criteria; omit presentation for headless; for city OR remote, pass locations plus remoteOrLocations=true",
+          "criteria; headless unless asked; city OR remote: locations + remoteOrLocations=true",
         ],
         humanAction: false,
       },
       {
         intent: "Compare strongest shortlist",
         tool: "compare_jobs",
-        requiredInputs: ["2–3 jobIds from search_jobs; omit presentation for headless"],
+        requiredInputs: ["2 strongest jobIds; headless unless asked"],
         humanAction: false,
       },
       {
@@ -77,20 +77,20 @@ export const workflowPlans: Readonly<Record<WorkflowGoal, WorkflowPlan>> = {
       {
         intent: "Create or reopen application",
         tool: "prepare_application",
-        requiredInputs: ["chosen jobId; omit presentation for headless"],
+        requiredInputs: ["chosen jobId; headless unless asked"],
         humanAction: false,
       },
       {
-        intent: "Continue consent-aware flow; repeat for another chosen role",
-        tool: "plan_job_workflow",
-        requiredInputs: ["goal=prepare_application"],
+        intent: "Read readiness; repeat for another chosen role",
+        tool: "get_application_readiness",
+        requiredInputs: ["draftId; follow nextTool"],
         humanAction: false,
       },
       {
-        intent: "Prepare daily search updates",
+        intent: "Prepare daily updates",
         tool: "request_search_alert",
         requiredInputs: ["name", "criteria", "daily time + IANA zone", "email"],
-        humanAction: "Ask in chat only for missing values.",
+        humanAction: "Ask only for missing values.",
       },
       {
         intent: "Activate approved updates",

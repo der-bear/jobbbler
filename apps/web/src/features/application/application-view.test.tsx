@@ -90,6 +90,78 @@ const job = {
 } satisfies Job;
 
 describe("ApplicationView", () => {
+  it("offers email autofill only while an editable application field is empty", () => {
+    const emailWorkspace: ApplicationWorkspace = {
+      ...workspace,
+      draft: {
+        ...workspace.draft,
+        answers: [
+          ...workspace.draft.answers,
+          {
+            fieldKey: "email",
+            value: "ada@example.com",
+            provenance: "agent_suggestion",
+            sensitive: true,
+            acceptedByHuman: false,
+          },
+        ],
+      },
+      requirements: [
+        ...workspace.requirements,
+        {
+          fieldKey: "email",
+          label: "Email",
+          description: "A contact address for this application.",
+          input: "email",
+          required: true,
+          sensitive: true,
+          category: "contact",
+          options: [],
+        },
+      ],
+    };
+    const markup = renderToStaticMarkup(
+      <ApplicationView
+        busy={false}
+        confirmation={null}
+        error={null}
+        fieldValues={{
+          full_name: "Ada Lovelace",
+          cover_letter: "A candidate-authored cover letter.",
+          email: "ada@example.com",
+        }}
+        job={job}
+        now={emailWorkspace.serverNow}
+        onAction={() => undefined}
+        onFieldChange={() => undefined}
+        workspace={emailWorkspace}
+      />,
+    );
+
+    expect(markup).toMatch(
+      /<input[^>]*autoComplete="off"[^>]*type="email"[^>]*value="ada@example.com"/,
+    );
+
+    const emptyMarkup = renderToStaticMarkup(
+      <ApplicationView
+        busy={false}
+        confirmation={null}
+        error={null}
+        fieldValues={{
+          full_name: "Ada Lovelace",
+          cover_letter: "A candidate-authored cover letter.",
+          email: "",
+        }}
+        job={job}
+        now={emailWorkspace.serverNow}
+        onAction={() => undefined}
+        onFieldChange={() => undefined}
+        workspace={emailWorkspace}
+      />,
+    );
+    expect(emptyMarkup).toMatch(/<input[^>]*autoComplete="email"[^>]*type="email"/);
+  });
+
   it("presents one document-like review instead of a four-step approval wizard", () => {
     const markup = renderToStaticMarkup(
       <ApplicationView

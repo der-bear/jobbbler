@@ -22,13 +22,13 @@ describe("plan_job_workflow", () => {
 
   it("plans one compound search, shortlist, application, and monitoring journey", async () => {
     const planner = createWorkflowPlannerTool({
-      route: "/",
+      route: "/apply/:draftId",
       availableTools: () => [
         "search_jobs",
         "compare_jobs",
         "get_job_details",
         "prepare_application",
-        "plan_job_workflow",
+        "get_application_readiness",
         "request_search_alert",
         "decide_search_alert",
       ],
@@ -47,27 +47,28 @@ describe("plan_job_workflow", () => {
           expect.objectContaining({
             tool: "search_jobs",
             needs: [
-              "known criteria; omit presentation for headless; for city OR remote, pass locations plus remoteOrLocations=true",
+              "criteria; headless unless asked; city OR remote: locations + remoteOrLocations=true",
             ],
           }),
           expect.objectContaining({
             tool: "compare_jobs",
-            needs: ["2–3 jobIds from search_jobs; omit presentation for headless"],
+            needs: ["2 strongest jobIds; headless unless asked"],
           }),
           expect.objectContaining({ tool: "get_job_details", needs: ["chosen jobId"] }),
           expect.objectContaining({
             tool: "prepare_application",
-            needs: ["chosen jobId; omit presentation for headless"],
+            needs: ["chosen jobId; headless unless asked"],
           }),
           expect.objectContaining({
-            tool: "plan_job_workflow",
-            needs: ["goal=prepare_application"],
+            tool: "get_application_readiness",
+            needs: ["draftId; follow nextTool"],
           }),
           expect.objectContaining({ tool: "request_search_alert" }),
           expect.objectContaining({ tool: "decide_search_alert" }),
         ],
       },
     });
+    expect(webMcpResultSize(result)).toBeLessThanOrEqual(MAX_WEBMCP_RESULT_BYTES);
   });
 
   it("reads the current page when invoked instead of capturing a stale registration route", async () => {
@@ -345,7 +346,7 @@ describe("plan_job_workflow", () => {
     expect(JSON.stringify(result)).not.toContain("get_job_application_capability");
     expect(JSON.stringify(result)).not.toContain("applyMode=external");
     expect(JSON.stringify(result)).not.toContain("employer page");
-    expect(JSON.stringify(result)).toContain("follow its nextTool");
+    expect(JSON.stringify(result)).toContain("readiness.nextTool");
   });
 
   it("teaches management and withdrawal without overloading the main workflows", async () => {

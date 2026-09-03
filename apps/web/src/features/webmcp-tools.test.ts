@@ -774,7 +774,20 @@ describe("route-scoped WebMCP tool manifests", () => {
     expect(comparison.status).toBe("completed");
     expect(comparison).toMatchObject({
       data: {
-        jobs: [{ location: "Berlin, Germany" }, { location: "Berlin, Germany" }],
+        jobs: [
+          {
+            location: "Berlin, Germany",
+            salaryMinimum: 100_000,
+            salaryMaximum: 130_000,
+            salaryCurrency: "EUR",
+          },
+          {
+            location: "Berlin, Germany",
+            salaryMinimum: 100_000,
+            salaryMaximum: 130_000,
+            salaryCurrency: "EUR",
+          },
+        ],
       },
     });
     expectBoundedJson(comparison);
@@ -879,7 +892,20 @@ describe("route-scoped WebMCP tool manifests", () => {
     expect(comparison.status).toBe("completed");
     expect(comparison).toMatchObject({
       data: {
-        jobs: [{ location: "Berlin, Germany" }, { location: "Berlin, Germany" }],
+        jobs: [
+          {
+            location: "Berlin, Germany",
+            salaryMinimum: 100_000,
+            salaryMaximum: 130_000,
+            salaryCurrency: "EUR",
+          },
+          {
+            location: "Berlin, Germany",
+            salaryMinimum: 100_000,
+            salaryMaximum: 130_000,
+            salaryCurrency: "EUR",
+          },
+        ],
       },
     });
     expectBoundedJson(comparison);

@@ -86,12 +86,13 @@ function ApplicationField({
   onFieldCommit?(fieldKey: string, value: string): void;
 }>) {
   const field = workspace.requirements.find((candidate) => candidate.fieldKey === fieldKey);
+  const fieldValue = fieldValues[fieldKey] ?? "";
   if (field === undefined) return null;
   const shared = {
     id: `application-${field.fieldKey}`,
     name: field.fieldKey,
     required: field.required,
-    value: fieldValues[field.fieldKey] ?? "",
+    value: fieldValue,
     onChange: (
       event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
     ) => onFieldChange(field.fieldKey, event.target.value),
@@ -99,7 +100,7 @@ function ApplicationField({
       onFieldCommit?.(field.fieldKey, event.currentTarget.value),
   };
 
-  const empty = (fieldValues[field.fieldKey] ?? "").trim() === "";
+  const empty = fieldValue.trim() === "";
   const invalid = showErrors === true && field.required && empty;
   const describedBy = [`${shared.id}-description`, invalid ? `${shared.id}-error` : null]
     .filter((id) => id !== null)
@@ -159,7 +160,7 @@ function ApplicationField({
           {...shared}
           aria-describedby={describedBy}
           aria-invalid={invalid}
-          autoComplete={field.fieldKey === "email" ? "email" : "off"}
+          autoComplete={field.fieldKey === "email" && empty && !readOnly ? "email" : "off"}
           maxLength={500}
           readOnly={readOnly}
           type={field.input}

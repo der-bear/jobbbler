@@ -120,6 +120,7 @@ function comparisonData(result: CompareJobsResult) {
       workModel: job.workModel,
       location: short(concreteJobLocations(job.locations)[0] ?? "Location not stated", 32),
       salaryMinimum: job.salary?.minimum ?? null,
+      salaryMaximum: job.salary?.maximum ?? null,
       salaryCurrency: job.salary?.currency ?? null,
     })),
   };
@@ -215,7 +216,7 @@ export function createJobDetailToolManifests(
           resources: result.jobs.map(({ job }) => ({
             type: "job",
             id: job.id,
-            label: short(`${job.title} at ${job.organizationName}`, 60),
+            label: "Compared role",
           })),
           facts: [{ key: "compared_jobs", value: result.jobs.length }],
         });

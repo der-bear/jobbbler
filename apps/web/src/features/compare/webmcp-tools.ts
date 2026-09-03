@@ -68,6 +68,7 @@ function compactComparison(result: CompareJobsResult): JsonValue {
       workModel: job.workModel,
       location: short(concreteJobLocations(job.locations)[0] ?? "Location not stated", 30),
       salaryMinimum: job.salary?.minimum ?? null,
+      salaryMaximum: job.salary?.maximum ?? null,
       salaryCurrency: job.salary?.currency ?? null,
       unknownDimensions: Object.values(fit.dimensions).filter(
         (dimension) => dimension.status === "unknown",
