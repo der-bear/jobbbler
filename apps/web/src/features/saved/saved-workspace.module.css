@@ -777,13 +777,12 @@
   /* A pane in the flow, not a sheet. */
   border-radius: 0;
   /*
-   * No colour wash here. The neutral already carries a trace of the accent in
-   * its hue, which is the whole point of the shifted palette — tinting the
-   * surface on top of that reads as a mint block rather than as restraint.
+   * An empty state is an absence, so it is drawn as one: the outline places it
+   * in the flow and nothing fills it. Search says the same thing with a rule,
+   * and these two used to answer with a pane, which read as a filled card
+   * where there was nothing to hold.
    */
-  background: var(--jb-veil-subtle);
-  backdrop-filter: var(--jb-glass-blur);
-  -webkit-backdrop-filter: var(--jb-glass-blur);
+  background: none;
   padding: clamp(28px, 4vw, 44px);
   color: var(--color-ink-subtle);
 }

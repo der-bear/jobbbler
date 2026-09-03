@@ -70,10 +70,13 @@
   justify-items: start;
   border: var(--jb-stroke-structure) solid var(--color-line);
   border-radius: 0;
-  /* The same untinted veil as the saved-searches pane; the icon takes the subtle ink. */
-  background: var(--jb-veil-subtle);
-  backdrop-filter: var(--jb-glass-blur);
-  -webkit-backdrop-filter: var(--jb-glass-blur);
+  /*
+   * An empty state is an absence, so it is drawn as one: the outline places it
+   * in the flow and nothing fills it. Search says the same thing with a rule,
+   * and these two used to answer with a pane, which read as a filled card
+   * where there was nothing to hold.
+   */
+  background: none;
   padding: clamp(28px, 4vw, 44px);
   color: var(--color-ink-subtle);
 }
