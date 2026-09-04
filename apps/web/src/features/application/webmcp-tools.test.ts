@@ -671,6 +671,37 @@ describe("site-wide application tools", () => {
     });
   });
 
+  it("does not claim preparation is allowed once the application was submitted", async () => {
+    const submittedState = {
+      ...base,
+      state: "submitted",
+      stage: "complete",
+      agentAuthorityStatus: "active",
+    } as ApplicationAgentState;
+    const submittedReadiness = {
+      ...readiness(submittedState),
+      nextAction: "complete",
+      missingFieldKeys: [],
+      missingFieldLabels: [],
+    } as ApplicationToolReadiness;
+    const surface = dependencies(submittedState);
+    vi.mocked(surface.currentReadiness).mockReturnValue(submittedReadiness);
+    const manifests = createStableApplicationToolManifests({
+      resolveApplication: vi.fn(async () => ({ readiness: submittedReadiness, surface })),
+      withdrawConsent: vi.fn(),
+    });
+    const result = await manifests
+      .find(({ name }) => name === "request_application_assistance")!
+      .execute({ draftId: base.draftId }, { signal: new AbortController().signal });
+    expect(result).toMatchObject({
+      status: "failed",
+      error: {
+        code: "CONFLICT",
+        message: expect.stringContaining("already submitted"),
+      },
+    });
+  });
+
   it("withdraws consent directly without navigating to the application page", async () => {
     const withdrawConsent = vi.fn(async () => ({
       draftId: base.draftId,

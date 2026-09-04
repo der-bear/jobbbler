@@ -817,7 +817,10 @@ export function createStableApplicationToolManifests(
 
         if (
           definition.name === "request_application_assistance" &&
-          verified.state.agentAuthorityStatus === "active"
+          verified.state.agentAuthorityStatus === "active" &&
+          (verified.nextAction === "prepare" ||
+            verified.nextAction === "review" ||
+            verified.nextAction === "submit")
         ) {
           // Asking twice is not a fault: the answer is the same, so say so.
           return completedWebMcpResult({
