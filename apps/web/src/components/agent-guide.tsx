@@ -35,11 +35,7 @@ function toolPurpose(tool: RegisteredToolSummary): string {
   return compactPurposes[tool.name] ?? tool.purpose;
 }
 
-const requestTools = new Set([
-  "request_search_alert",
-  "request_application_assistance",
-  "request_submission_review",
-]);
+const requestTools = new Set(["request_search_alert", "request_submission_review"]);
 
 const decisionTools = new Set([
   "decide_search_alert",

@@ -42,7 +42,10 @@ interface PublicActivityCopy {
 }
 
 const publicActivityCopyByServerKey: Readonly<Record<string, PublicActivityCopy>> = {
-  approve_agent_access: { toolName: "decide_application_assistance" },
+  approve_agent_access: {
+    toolName: "request_application_assistance",
+    safeSummary: "Preparation allowed. Nothing is sent until you approve the exact application.",
+  },
   delete_saved_search: { toolName: "set_job_alert_state" },
   edit_application: {
     toolName: "propose_application_updates",
@@ -50,7 +53,7 @@ const publicActivityCopyByServerKey: Readonly<Record<string, PublicActivityCopy>
   },
   request_agent_access: {
     toolName: "request_application_assistance",
-    safeSummary: "Application assistance is ready for your decision.",
+    safeSummary: "Preparation permission requested for this application.",
   },
   revoke_agent_access: { toolName: "decide_application_assistance" },
   submit_application: {

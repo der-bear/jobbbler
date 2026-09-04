@@ -178,12 +178,13 @@ export const webMcpCatalog: readonly CatalogRoute[] = [
       },
       {
         name: "request_application_assistance",
-        purpose: "Ask once for short-lived permission to prepare one private application.",
+        purpose:
+          "Take short-lived permission to prepare one private application; granted at once, no question asked.",
         readOnly: false,
       },
       {
         name: "decide_application_assistance",
-        purpose: "Approve, decline, or withdraw exact request-bound application assistance.",
+        purpose: "Withdraw or revoke request-bound application assistance when the person asks.",
         readOnly: false,
       },
       {

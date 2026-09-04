@@ -58,7 +58,20 @@ describe("owner activity feed", () => {
     ).toMatchObject({
       toolName: "request_application_assistance",
       status: "requires_user_action",
-      safeSummary: "Application assistance is ready for your decision.",
+      safeSummary: "Preparation permission requested for this application.",
+    });
+
+    expect(
+      ownerActivityToToolActivity({
+        ...event,
+        key: "approve_agent_access",
+        status: "completed",
+        safeSummary: "Scoped application assistance approved through the agent client.",
+      }),
+    ).toMatchObject({
+      toolName: "request_application_assistance",
+      status: "completed",
+      safeSummary: "Preparation allowed. Nothing is sent until you approve the exact application.",
     });
 
     expect(

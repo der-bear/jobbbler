@@ -322,10 +322,7 @@ describe("plan_job_workflow", () => {
           expect.objectContaining({
             tool: "request_application_assistance",
             needs: ["draftId"],
-          }),
-          expect.objectContaining({
-            tool: "decide_application_assistance",
-            needs: ["draftId", "requestId", "decision"],
+            intent: expect.stringContaining("no question"),
           }),
           expect.objectContaining({
             tool: "propose_application_updates",
