@@ -815,6 +815,25 @@ export function createStableApplicationToolManifests(
           });
         }
 
+        if (
+          definition.name === "request_application_assistance" &&
+          verified.state.agentAuthorityStatus === "active"
+        ) {
+          // Asking twice is not a fault: the answer is the same, so say so.
+          return completedWebMcpResult({
+            summary:
+              "Preparation is already allowed for this application. Nothing is sent until the person approves the exact application.",
+            data: {
+              draftId: verified.state.draftId,
+              agentAuthorityStatus: verified.state.agentAuthorityStatus,
+              nextTool: nextApplicationTool(verified),
+            },
+            resources: [
+              { type: "application", id: verified.state.draftId, label: "Private application" },
+            ],
+          });
+        }
+
         const active = createApplicationToolManifests(surface);
         const delegate = active.find((tool) => tool.name === definition.name);
         if (delegate === undefined) {

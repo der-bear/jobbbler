@@ -645,6 +645,28 @@ describe("site-wide application tools", () => {
     });
   });
 
+  it("answers a repeated assistance request on an already-allowed draft without a conflict", async () => {
+    const activeState = { ...base, agentAuthorityStatus: "active" } as ApplicationAgentState;
+    const activeReadiness = readiness(activeState);
+    const surface = dependencies(activeState);
+    vi.mocked(surface.currentReadiness).mockReturnValue(activeReadiness);
+    const manifests = createStableApplicationToolManifests({
+      resolveApplication: vi.fn(async () => ({ readiness: activeReadiness, surface })),
+      withdrawConsent: vi.fn(),
+    });
+    const result = await manifests
+      .find(({ name }) => name === "request_application_assistance")!
+      .execute({ draftId: base.draftId }, { signal: new AbortController().signal });
+    expect(result).toMatchObject({
+      status: "completed",
+      data: {
+        draftId: base.draftId,
+        agentAuthorityStatus: "active",
+        nextTool: "propose_application_updates",
+      },
+    });
+  });
+
   it("withdraws consent directly without navigating to the application page", async () => {
     const withdrawConsent = vi.fn(async () => ({
       draftId: base.draftId,
