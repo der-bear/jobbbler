@@ -52,7 +52,8 @@ export const salarySearchSchema = z
     ) {
       context.addIssue({
         code: "custom",
-        message: "Currency is required when a salary amount is provided.",
+        message:
+          "Currency is required when a salary amount is provided; infer it from the person's wording or location before asking.",
         path: ["currency"],
       });
     }
