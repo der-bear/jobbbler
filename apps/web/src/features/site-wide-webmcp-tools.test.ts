@@ -56,7 +56,7 @@ describe("site-wide WebMCP tools", () => {
         name: "get_applications",
         purpose: "List private applications without returning candidate answers.",
         description:
-          "Use optional limit and offset with a current or recovered owner session to return application and job IDs, role details, status, update time, receipt availability, and nextOffset without returning answers, contact data, or credentials.",
+          "Use optional limit and offset with a current or recovered owner session to return application and job IDs, each application's page href, role details, status, update time, receipt availability, and nextOffset without returning answers, contact data, or credentials.",
       },
       {
         name: "enable_workspace_recovery",
@@ -138,11 +138,32 @@ describe("site-wide WebMCP tools", () => {
     expect(webMcpResultSize(result)).toBeLessThanOrEqual(MAX_WEBMCP_RESULT_BYTES);
   });
 
+  it("says so when a reopened application was already submitted", async () => {
+    const startApplication = vi.fn(async () => ({
+      draftId,
+      href: `/apply/${draftId}`,
+      disposition: "reopened" as const,
+      state: "submitted" as const,
+      nextTool: "get_application_readiness" as const,
+    }));
+    const manifests = createSiteWideToolManifests(dependencies({ startApplication }));
+    const result = await findTool(manifests, "prepare_application").execute(
+      { jobId: firstJobId },
+      { signal: new AbortController().signal },
+    );
+    expect(result).toMatchObject({
+      status: "completed",
+      summary: expect.stringContaining("already submitted"),
+      data: { draftId, disposition: "reopened", state: "submitted" },
+    });
+  });
+
   it("prepares one private application from any page and reports whether it was reopened", async () => {
     const startApplication = vi.fn(async () => ({
       draftId,
       href: `/apply/${draftId}`,
       disposition: "reopened" as const,
+      state: "draft" as const,
       nextTool: "get_application_readiness" as const,
     }));
     const manifests = createSiteWideToolManifests(dependencies({ startApplication }));
@@ -420,6 +441,7 @@ describe("site-wide WebMCP tools", () => {
         applications: [
           {
             applicationId: "application_00000002-0000-7000-8000-000000000002",
+            href: "/apply/application_00000002-0000-7000-8000-000000000002",
             jobId: "job_00000002-0000-7000-8000-000000000002",
             title,
             organization: organizationName,

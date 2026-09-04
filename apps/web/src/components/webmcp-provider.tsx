@@ -364,6 +364,7 @@ export function WebMcpProvider({ children }: Readonly<{ children: ReactNode }>) 
           draftId: result.draft.id,
           href: `/apply/${encodeURIComponent(result.draft.id)}`,
           disposition: result.disposition,
+          state: result.draft.state,
           nextTool: "get_application_readiness" as const,
         };
       },

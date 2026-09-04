@@ -75,6 +75,7 @@ describe("route tool manifests", () => {
         draftId: "application_00000001-0000-7000-8000-000000000001",
         href: "/apply/application_00000001-0000-7000-8000-000000000001",
         disposition: "created" as const,
+        state: "draft" as const,
         nextTool: "get_application_readiness" as const,
       }),
       startOwnerRecovery: never,

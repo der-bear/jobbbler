@@ -5,6 +5,7 @@ import {
   entityIdSchema,
   jobIdSchema,
   type ApplicationListItem,
+  type ApplicationState,
   type CompleteEmailVerificationInput,
   type CompleteEmailVerificationResult,
   type CompleteOwnerRecoveryInput,
@@ -125,6 +126,7 @@ export interface SiteWideToolDependencies {
       draftId: string;
       href: string;
       disposition: "created" | "reopened";
+      state: ApplicationState;
       nextTool: "get_application_readiness";
     }>
   >;
@@ -228,7 +230,9 @@ export function createSiteWideToolManifests(
           summary:
             workspace.disposition === "created"
               ? "Application created and ready for preparation."
-              : "Application reopened and ready for preparation.",
+              : workspace.state === "submitted" || workspace.state === "handed_off"
+                ? "This application was already submitted; its receipt is available and nothing is left to prepare."
+                : "Application reopened and ready for preparation.",
           data: { ...workspace, presentation: parsed.presentation },
           resources: [{ type: "application", id: workspace.draftId, label: "Private application" }],
         });
@@ -246,7 +250,7 @@ export function createSiteWideToolManifests(
     name: "get_applications",
     purpose: "List private applications without returning candidate answers.",
     description:
-      "Use optional limit and offset with a current or recovered owner session to return application and job IDs, role details, status, update time, receipt availability, and nextOffset without returning answers, contact data, or credentials.",
+      "Use optional limit and offset with a current or recovered owner session to return application and job IDs, each application's page href, role details, status, update time, receipt availability, and nextOffset without returning answers, contact data, or credentials.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -289,6 +293,7 @@ export function createSiteWideToolManifests(
             nextOffset,
             applications: page.map((item) => ({
               applicationId: item.draftId,
+              href: `/apply/${encodeURIComponent(item.draftId)}`,
               jobId: item.job.id,
               title: item.job.title,
               organization: item.job.organizationName,

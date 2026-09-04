@@ -841,7 +841,10 @@ export function createStableApplicationToolManifests(
           const next = nextApplicationTool(verified) ?? verified.nextAction;
           return failedWebMcpResult({
             code: "CONFLICT",
-            message: `${definition.name} is not ready yet. Next: ${next}. Available now: ${available}.`,
+            message:
+              verified.nextAction === "complete"
+                ? `This application was already submitted; nothing is left to prepare or send. Available now: ${available}.`
+                : `${definition.name} is not ready yet. Next: ${next}. Available now: ${available}.`,
             retryable: false,
           });
         }
