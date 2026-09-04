@@ -641,7 +641,11 @@ describe("site-wide application tools", () => {
     });
     expect(result).toMatchObject({
       status: "failed",
-      error: { code: "CONFLICT", retryable: false },
+      error: {
+        code: "CONFLICT",
+        retryable: false,
+        message: expect.stringContaining("Next: request_application_assistance."),
+      },
     });
   });
 

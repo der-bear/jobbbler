@@ -838,9 +838,10 @@ export function createStableApplicationToolManifests(
         const delegate = active.find((tool) => tool.name === definition.name);
         if (delegate === undefined) {
           const available = active.map(({ name }) => name).join(", ");
+          const next = nextApplicationTool(verified) ?? verified.nextAction;
           return failedWebMcpResult({
             code: "CONFLICT",
-            message: `${definition.name} is not ready yet. Next: ${verified.nextAction}. Available now: ${available}.`,
+            message: `${definition.name} is not ready yet. Next: ${next}. Available now: ${available}.`,
             retryable: false,
           });
         }
