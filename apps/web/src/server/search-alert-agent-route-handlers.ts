@@ -444,7 +444,8 @@ function validateDecisionIntent(
   ) {
     throw new DomainError({
       code: "CONFLICT",
-      message: "This search alert review already has a different decision intent.",
+      message:
+        "This review was already answered the other way. Nothing turns on until a correct code arrives, so to stop, simply do not send one; the review expires by itself. For a different decision, request a fresh review with request_search_alert.",
       details: { reason: "already_decided" },
     });
   }
@@ -1340,8 +1341,10 @@ export async function handleDecideSearchAlert(
           if (isDomainError(error) && error.code === "UNAUTHORIZED") {
             throw new DomainError({
               code: "UNAUTHORIZED",
-              message: "The mailbox verification code is invalid.",
+              message:
+                "The 6-digit code did not match. Ask the person to re-check the email and try again with the same requestId and reviewToken.",
               details: { reason: "invalid_code" },
+              retryable: true,
             });
           }
           throw error;
