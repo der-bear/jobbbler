@@ -46,6 +46,22 @@ describe("jobSearchInputSchema", () => {
     expect(() => jobSearchInputSchema.parse({ query: "x".repeat(501) })).toThrow();
   });
 
+  it("rejects a salary currency the catalog cannot be compared in, naming the accepted ones", () => {
+    const result = jobSearchInputSchema.safeParse({
+      salary: { minimum: 90_000, currency: "CHF" },
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]).toMatchObject({
+      path: ["salary", "currency"],
+      message: "Use USD, EUR, GBP, CAD; other currencies cannot be compared against this catalog.",
+    });
+    expect(
+      jobSearchInputSchema.parse({ salary: { minimum: 90_000, currency: "usd" } }).salary,
+    ).toMatchObject({
+      currency: "USD",
+    });
+  });
+
   it("accepts every user-facing deterministic sort order", () => {
     expect(searchSortSchema.options).toEqual([
       "relevance",

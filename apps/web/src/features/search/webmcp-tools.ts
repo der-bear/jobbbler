@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  comparableSalaryCurrencies,
   entityIdSchema,
   employmentTypeSchema,
   jobCategorySchema,
@@ -154,7 +155,11 @@ export const jobSearchToolInputJsonSchema = {
       properties: {
         minimum: { type: "number", minimum: 0 },
         maximum: { type: "number", minimum: 0 },
-        currency: { type: "string", pattern: "^[A-Z]{3}$" },
+        currency: {
+          type: "string",
+          enum: [...comparableSalaryCurrencies],
+          description: "Salary amounts are compared in USD, EUR, GBP, or CAD only.",
+        },
         period: { type: "string", enum: ["hour", "month", "year"] },
         unknownPolicy: { type: "string", enum: ["include", "exclude", "only"] },
       },
@@ -516,7 +521,7 @@ export function createSearchToolManifests(
             salary: {
               periods: [...salaryPeriodSchema.options],
               unknownPolicies: [...unknownSalaryPolicySchema.options],
-              currency: "Any ISO 4217 code; cross-currency ranking supports these.",
+              currency: "One of comparableCurrencies; other codes are rejected.",
               comparableCurrencies: [...comparableCurrencies],
             },
             sort: [...searchSortSchema.options],

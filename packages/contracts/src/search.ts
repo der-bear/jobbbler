@@ -22,6 +22,9 @@ export const searchSortSchema = z.enum([
   "salary_asc",
 ]);
 
+/** Currencies a salary criterion can be compared against the catalog in. */
+export const comparableSalaryCurrencies = ["USD", "EUR", "GBP", "CAD"] as const;
+
 export const salarySearchSchema = z
   .strictObject({
     minimum: z.number().finite().nonnegative().optional(),
@@ -50,6 +53,17 @@ export const salarySearchSchema = z
       context.addIssue({
         code: "custom",
         message: "Currency is required when a salary amount is provided.",
+        path: ["currency"],
+      });
+    }
+
+    if (
+      value.currency !== undefined &&
+      !comparableSalaryCurrencies.some((currency) => currency === value.currency)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: `Use ${comparableSalaryCurrencies.join(", ")}; other currencies cannot be compared against this catalog.`,
         path: ["currency"],
       });
     }
